@@ -233,6 +233,22 @@ public final class PacketGateManager {
         return !GATES.isEmpty();
     }
 
+    /** Number of gates currently installed (all owners). Used by the CLI status readout. */
+    public static int activeGateCount() {
+        if (PackHideState.isHardLocked()) return 0;
+        return GATES.size();
+    }
+
+    /** Human-readable summary of every installed gate, for the CLI status readout. */
+    public static java.util.List<String> describeActiveGates() {
+        java.util.List<String> out = new java.util.ArrayList<>();
+        for (Gate gate : GATES.values()) {
+            String packets = gate.matchesAll ? "*" : String.join(",", gate.normalizedPackets);
+            out.add(gate.id + " [" + gate.mode + "] " + packets);
+        }
+        return out;
+    }
+
     public static boolean matchesPacket(String expected, Packet<?> packet, String direction) {
         if (expected == null || expected.isBlank()) return true;
         return matchesNormalized(normalize(expected), packet, direction);

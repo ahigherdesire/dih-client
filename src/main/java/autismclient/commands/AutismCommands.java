@@ -61,8 +61,12 @@ public final class AutismCommands {
         register(new autismclient.commands.impl.ClickItemCommand());
         register(new autismclient.commands.impl.GiveCommand());
         register(new autismclient.commands.impl.DamageCommand());
+        register(new autismclient.commands.impl.PacketCommand());
+        register(new autismclient.commands.impl.GuiCommand());
+        register(new autismclient.commands.impl.GateCommand());
 
         if (!autismclient.util.AutismLiteVariant.enabled()) {
+            register(new autismclient.commands.impl.SettingCommand());
             register(new autismclient.commands.impl.IrcCommand());
             register(new autismclient.commands.impl.MatchmakingCommand());
             register(new autismclient.commands.impl.MultiCommand());
