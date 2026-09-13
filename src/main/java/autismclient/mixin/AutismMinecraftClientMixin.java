@@ -186,7 +186,12 @@ public class AutismMinecraftClientMixin {
             if (down && !wasDown) {
                 String cmd = entry.getValue();
                 if (cmd != null && !cmd.isBlank()) {
-                    autismclient.commands.AutismCommands.dispatch(cmd);
+                    // Chat-typed commands are dispatched with the prefix already stripped; a bound
+                    // command may or may not include it, so tolerate both forms here.
+                    String body = autismclient.commands.AutismCommands.isAutismCommandMessage(cmd)
+                        ? autismclient.commands.AutismCommands.commandBody(cmd)
+                        : cmd;
+                    autismclient.commands.AutismCommands.dispatch(body);
                 }
             }
         }

@@ -1,0 +1,30 @@
+[20:20:16] [Test worker/WARN]: [AutismProtector] Register fallback engaged (uninspectable autismclient.security.AutismProtectorChannelFilterTest$OpaqueRegisterPayload on minecraft:register); passing by whitelist verdict only.
+[20:20:35] [Test worker/INFO]: [STDOUT]: stone in STONE_ORE_REPLACEABLES = true
+[20:20:35] [Test worker/INFO]: [STDOUT]: deepslate in DEEPSLATE_ORE_REPLACEABLES = true
+[20:21:18] [Test worker/INFO]: [STDOUT]: Terrain block types: 40, total non-air: 118803
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:deepslate = 49921
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:stone = 32590
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:water = 10310
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:granite = 4386
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:tuff = 4156
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:andesite = 3990
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:bedrock = 3073
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:diorite = 3003
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:dirt = 2263
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:gravel = 1254
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:grass_block = 782
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:oak_leaves = 501
+[20:21:18] [Test worker/INFO]: [STDOUT]: Ore generated in 2^2 chunks:
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:coal_ore = 386
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:copper_ore = 230
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:deepslate_copper_ore = 29
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:deepslate_diamond_ore = 76
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:deepslate_gold_ore = 92
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:deepslate_iron_ore = 108
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:deepslate_lapis_ore = 50
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:deepslate_redstone_ore = 91
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:diamond_ore = 3
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:gold_ore = 1
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:iron_ore = 167
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:lapis_ore = 49
+[20:21:18] [Test worker/INFO]: [STDOUT]:   minecraft:redstone_ore = 10
