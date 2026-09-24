@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AUTISM addon toolkit: scaffold, scan, validate and build addons. Runs anywhere with Python 3.
+"""DIH addon toolkit: scaffold, scan, validate and build addons. Runs anywhere with Python 3.
 
   python addon-toolkit.py                 # menu
   python addon-toolkit.py setup --template minimal --name "My Addon" --output ../MyAddon
@@ -28,7 +28,7 @@ class ToolkitError(Exception):
     """Expected failure, shown without a traceback."""
 
 
-def info(msg: str) -> None: print(f"[AUTISM] {msg}")
+def info(msg: str) -> None: print(f"[DIH] {msg}")
 def ok(msg: str) -> None: print(f"[OK] {msg}")
 def warn(msg: str) -> None: print(f"[WARN] {msg}")
 def bad(msg: str) -> None: print(f"[FAIL] {msg}")
@@ -80,7 +80,7 @@ def to_package_segment(value: str) -> str:
 def to_mod_id(name: str) -> str:
     mod_id = re.sub(r"[^a-z0-9_-]+", "-", name.lower()).strip("-_")
     if not mod_id:
-        return "my-autism-addon"
+        return "my-dih-addon"
     if not mod_id[0].isalpha():
         mod_id = "addon-" + mod_id
     if len(mod_id) > 64:
@@ -188,7 +188,7 @@ def get_first_java_package(project: Path) -> str:
         data = get_json(entry)
         classes = []
         eps = data.get("entrypoints", {}) if isinstance(data, dict) else {}
-        for kind in ("client", "autism"):
+        for kind in ("client", "dih"):
             if eps.get(kind):
                 classes += list(eps[kind]) if isinstance(eps[kind], list) else [eps[kind]]
         for cls in classes:
@@ -342,7 +342,7 @@ def configure_addon(args) -> Path:
     old_version = get_toml_version(versions_path, "mod-version")
     eps = fabric.get("entrypoints", {}) or {}
     old_client = str((eps.get("client") or [f"{old_package}.Init"])[0])
-    old_addon = str((eps.get("autism") or [f"{old_package}.Addon"])[0])
+    old_addon = str((eps.get("dih") or [f"{old_package}.Addon"])[0])
     original_mixin = str((fabric.get("mixins") or [""])[0])
     client_simple = class_simple_name(old_client, "Init")
     addon_simple = class_simple_name(old_addon, "Addon")
@@ -377,7 +377,7 @@ def configure_addon(args) -> Path:
 
     description = args.description
     if not description or not description.strip():
-        suggested_desc = f"{addon_name} addon for AUTISM Client."
+        suggested_desc = f"{addon_name} addon for DIH Client."
         description = prompt("Description", suggested_desc, lambda v: bool(v and v.strip()), interactive) if advanced else suggested_desc
 
     replace_in_project_files(project, old_package, package)
@@ -392,7 +392,7 @@ def configure_addon(args) -> Path:
     fabric["authors"] = [author]
     fabric.setdefault("entrypoints", {})
     fabric["entrypoints"]["client"] = [f"{package}.{client_simple}"]
-    fabric["entrypoints"]["autism"] = [f"{package}.{addon_simple}"]
+    fabric["entrypoints"]["dih"] = [f"{package}.{addon_simple}"]
 
     if fabric.get("mixins"):
         old_mixin_name = original_mixin or str(fabric["mixins"][0])
@@ -455,15 +455,15 @@ def test_addon_project(project: Path, allow_template_names: bool = False):
             if not str(fabric.get("name", "")).strip():
                 failures.append("fabric.mod.json name is empty.")
             eps = fabric.get("entrypoints", {}) or {}
-            if not eps.get("autism"):
-                failures.append("Missing autism entrypoint in fabric.mod.json.")
+            if not eps.get("dih"):
+                failures.append("Missing dih entrypoint in fabric.mod.json.")
             else:
-                for entry in eps["autism"]:
+                for entry in eps["dih"]:
                     cls = project / ("src/main/java/" + str(entry).replace(".", "/") + ".java")
                     if not cls.is_file():
-                        failures.append(f"Autism entrypoint class file is missing: {entry}")
-            if not (fabric.get("depends", {}) or {}).get("autism"):
-                failures.append("fabric.mod.json must depend on autism.")
+                        failures.append(f"Dih entrypoint class file is missing: {entry}")
+            if not (fabric.get("depends", {}) or {}).get("dih"):
+                failures.append("fabric.mod.json must depend on dih.")
             if not allow_template_names:
                 if re.search(r"template|example", str(fabric.get("id", ""))):
                     warnings.append("Addon id still looks like a template/example.")
@@ -478,8 +478,8 @@ def test_addon_project(project: Path, allow_template_names: bool = False):
     if versions_path.is_file():
         if not test_version(get_toml_version(versions_path, "mod-version")):
             failures.append("Addon mod-version is missing or invalid.")
-        if not get_toml_version(versions_path, "autism").strip():
-            failures.append("AUTISM dependency version is missing from gradle/libs.versions.toml.")
+        if not get_toml_version(versions_path, "dih").strip():
+            failures.append("DIH dependency version is missing from gradle/libs.versions.toml.")
 
     if (project / ".gradle").exists():
         warnings.append(".gradle cache exists locally. Ignored; do not upload it.")
@@ -489,8 +489,8 @@ def test_addon_project(project: Path, allow_template_names: bool = False):
         warnings.append(".github exists inside this addon project. Fine for a copied template, but it is not root repo CI unless you move it.")
 
     leftovers = (
-        "autism-minimal-addon-template", "autism-advanced-addon-template",
-        "AUTISM Minimal Addon Template", "AUTISM Advanced Addon Template",
+        "dih-minimal-addon-template", "dih-advanced-addon-template",
+        "DIH Minimal Addon Template", "DIH Advanced Addon Template",
     )
     for file in project.rglob("*"):
         if not file.is_file() or file.suffix not in TEXT_EXTS or is_under_build_or_gradle(file, project):
@@ -536,20 +536,20 @@ def validate_addon_system(args) -> None:
     warnings: list[str] = []
 
     root_required = [
-        "src/main/java/autismclient/addons/AddonManager.java",
-        "src/main/java/autismclient/api/AutismAddon.java",
-        "src/main/java/autismclient/api/SimpleAddon.java",
-        "src/main/java/autismclient/api/AutismAddons.java",
-        "src/main/java/autismclient/api/ApiVersion.java",
-        "src/main/java/autismclient/api/module/SimpleModule.java",
-        "src/main/java/autismclient/api/macro/SimpleAction.java",
-        "src/main/java/autismclient/api/macro/SimpleCondition.java",
-        "src/main/java/autismclient/api/macro/MacroActionRegistry.java",
-        "src/main/java/autismclient/api/macro/MacroPresetRegistry.java",
-        "src/main/java/autismclient/api/hud/HudElements.java",
-        "src/main/java/autismclient/api/event/AddonEvents.java",
-        "src/main/java/autismclient/gui/screen/AutismAddonsScreen.java",
-        "src/main/java/autismclient/util/macro/MissingAddonAction.java",
+        "src/main/java/dihclient/addons/AddonManager.java",
+        "src/main/java/dihclient/api/DihAddon.java",
+        "src/main/java/dihclient/api/SimpleAddon.java",
+        "src/main/java/dihclient/api/DihAddons.java",
+        "src/main/java/dihclient/api/ApiVersion.java",
+        "src/main/java/dihclient/api/module/SimpleModule.java",
+        "src/main/java/dihclient/api/macro/SimpleAction.java",
+        "src/main/java/dihclient/api/macro/SimpleCondition.java",
+        "src/main/java/dihclient/api/macro/MacroActionRegistry.java",
+        "src/main/java/dihclient/api/macro/MacroPresetRegistry.java",
+        "src/main/java/dihclient/api/hud/HudElements.java",
+        "src/main/java/dihclient/api/event/AddonEvents.java",
+        "src/main/java/dihclient/gui/screen/DihAddonsScreen.java",
+        "src/main/java/dihclient/util/macro/MissingAddonAction.java",
         "addon-templates/README.md",
         "addon-templates/addon-toolkit.py",
         "addon-templates/addon-toolkit.ps1",
@@ -575,9 +575,9 @@ def validate_addon_system(args) -> None:
         t_failures, t_warnings = test_addon_project(project, allow_template_names=True)
         failures += [f"{template_name} template: {x}" for x in t_failures]
         warnings += [f"{template_name} template: {x}" for x in t_warnings]
-        target_version = get_toml_version(project / "gradle/libs.versions.toml", "autism")
+        target_version = get_toml_version(project / "gradle/libs.versions.toml", "dih")
         if main_version and target_version and main_version != target_version:
-            failures.append(f"{template_name} template targets AUTISM {target_version}, main client is {main_version}.")
+            failures.append(f"{template_name} template targets DIH {target_version}, main client is {main_version}.")
 
     for w in warnings:
         warn(f"Heads up: {w}")
@@ -653,7 +653,7 @@ def menu(args) -> None:
     last_path = ""
     while True:
         print()
-        print("AUTISM ADDON KIT")
+        print("DIH ADDON KIT")
         print("1. New addon")
         print("2. Build addon")
         print("3. Scan addon")
@@ -706,7 +706,7 @@ def normalize_action(value: str) -> str:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="AUTISM addon toolkit.")
+    parser = argparse.ArgumentParser(description="DIH addon toolkit.")
     parser.add_argument("action", nargs="?", default="menu", type=normalize_action,
                         choices=["menu", "setup", "scan", "validate", "publish-api", "build", "build-all", "clean"])
     parser.add_argument("--template", type=str.lower, choices=list(TEMPLATES), default="minimal")

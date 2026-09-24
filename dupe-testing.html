@@ -1,0 +1,385 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dupe Testing Playbook</title>
+<style>
+  :root{
+    --bg:#0b0d10; --bg2:#111419; --panel:#151a21; --panel2:#1a2028;
+    --line:#232b35; --text:#d7dde5; --dim:#8a94a3; --faint:#5c6675;
+    --accent:#7c5cff; --accent2:#22d3a6; --warn:#ff7c5c; --code:#e6c07b;
+    --mono:"SF Mono","JetBrains Mono",Consolas,"Liberation Mono",Menlo,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);line-height:1.6;font-size:15px}
+  a{color:var(--accent2);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{font-family:var(--mono);background:var(--bg2);color:var(--code);padding:.1em .4em;border-radius:5px;font-size:.85em;border:1px solid var(--line)}
+  pre{background:var(--bg2);border:1px solid var(--line);border-radius:10px;padding:16px;overflow-x:auto;font-family:var(--mono);font-size:13px;line-height:1.55;color:#c9d1d9}
+  pre code{background:none;border:none;padding:0;color:inherit}
+
+  .wrap{display:grid;grid-template-columns:250px minmax(0,1fr);max-width:1180px;margin:0 auto}
+  nav{position:sticky;top:0;align-self:start;height:100vh;overflow-y:auto;padding:26px 16px;border-right:1px solid var(--line);background:var(--bg)}
+  nav .brand{font-weight:800;letter-spacing:.4px;font-size:15px}
+  nav .brand b{color:var(--accent)}
+  nav .ver{color:var(--faint);font-size:12px;font-family:var(--mono);margin:2px 0 18px}
+  nav a{display:block;color:var(--dim);padding:5px 10px;border-radius:7px;font-size:13px;border-left:2px solid transparent}
+  nav a:hover{color:var(--text);background:var(--panel);text-decoration:none}
+  nav a.top{color:var(--accent2)}
+  nav .sec{color:var(--faint);font-size:11px;text-transform:uppercase;letter-spacing:1px;margin:16px 0 6px 10px}
+  main{padding:40px 46px 120px;min-width:0}
+
+  header.hero h1{font-size:34px;margin:0 0 6px;letter-spacing:-.5px;font-weight:800}
+  header.hero h1 span{color:var(--accent)}
+  header.hero p.tag{color:var(--dim);font-size:15px;margin:0 0 18px;max-width:680px}
+
+  section{margin:0 0 38px;scroll-margin-top:20px}
+  h2{font-size:23px;margin:0;padding-top:34px;border-top:1px solid var(--line);font-weight:700}
+  h2 .n{color:var(--faint);font-family:var(--mono);font-size:15px;margin-right:10px}
+  h3{font-size:15px;margin:20px 0 6px;color:#eef2f7;text-transform:uppercase;letter-spacing:.6px;font-family:var(--mono)}
+  h3.plain{text-transform:none;letter-spacing:0;font-family:var(--sans);font-size:17px}
+  p{margin:9px 0}
+
+  table{border-collapse:collapse;width:100%;margin:14px 0;font-size:13px;display:block;overflow-x:auto}
+  th,td{border:1px solid var(--line);padding:8px 11px;text-align:left;vertical-align:top}
+  th{background:var(--panel);color:#eef2f7;font-weight:600;white-space:nowrap}
+  tr:nth-child(even) td{background:var(--bg2)}
+  .ok{color:var(--accent2)}
+
+  .kbd{font-family:var(--mono);font-size:12px;background:var(--panel2);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:2px 7px;color:#eef2f7}
+
+  .callout{background:linear-gradient(180deg,rgba(124,92,255,.08),rgba(124,92,255,.02));border:1px solid #2c2748;border-left:3px solid var(--accent);border-radius:10px;padding:14px 18px;margin:16px 0}
+  .callout.warn{background:linear-gradient(180deg,rgba(255,124,92,.10),rgba(255,124,92,.02));border-color:#4a2d24;border-left-color:var(--warn)}
+  .callout.star{background:linear-gradient(180deg,rgba(34,211,166,.08),rgba(34,211,166,.02));border-color:#1f3d38;border-left-color:var(--accent2)}
+  .callout .h{font-weight:700;margin-bottom:4px}
+
+  ul,ol{margin:9px 0;padding-left:22px}
+  li{margin:4px 0}
+  .star-badge{display:inline-block;color:var(--accent2);font-size:13px;font-weight:700;margin-left:8px}
+  .chip{display:inline-block;font-family:var(--mono);font-size:11px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:2px 8px;color:var(--dim);margin-left:6px}
+  footer{border-top:1px solid var(--line);padding-top:20px;color:var(--faint);font-size:13px;margin-top:20px}
+
+  @media (max-width:860px){
+    .wrap{grid-template-columns:1fr}
+    nav{position:static;height:auto;border-right:none;border-bottom:1px solid var(--line)}
+    nav a{display:inline-block}
+    main{padding:26px 18px 80px}
+    header.hero h1{font-size:27px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav>
+  <div class="brand"><b>AUTISM</b> Client</div>
+  <div class="ver">Dupe Testing Playbook</div>
+  <div class="sec">Start here</div>
+  <a class="top" href="#prereq">0 · Prerequisites</a>
+  <a class="top" href="#verify">Universal verification</a>
+  <a class="top" href="#rank">Ranked by likelihood</a>
+  <div class="sec">Methods</div>
+  <a href="#m1">1 · Kick / lag race ★</a>
+  <a href="#m2">2 · Server-switch ★</a>
+  <a href="#m3">3 · Ender chest</a>
+  <a href="#m4">4 · Bundle</a>
+  <a href="#m5">5 · Container desync</a>
+  <a href="#m6">6 · XCarry / grid</a>
+  <a href="#m7">7 · Entity storage</a>
+  <a href="#m8">8 · Rollback</a>
+  <a href="#m9">9 · Revision-sync</a>
+  <div class="sec">Reference</div>
+  <a href="#timing">Timing helpers</a>
+  <a href="#fixes">Server-side fixes</a>
+</nav>
+
+<main>
+<header class="hero">
+  <h1><span>Dupe</span> Testing Playbook</h1>
+  <p class="tag">Every high-probability duplication technique this client can drive, with setup and execution steps — for validating a server against dupes.</p>
+</header>
+
+<div class="callout warn">
+  <div class="h">Scope — a server you own or are authorized to test</div>
+  Each method is a duplication <em>technique</em> the client performs. Whether it actually duplicates depends entirely on the server — that is the point of the test. A method that fails to dupe means the server handles that path correctly.
+</div>
+
+<!-- 0 -->
+<section id="prereq">
+  <h2><span class="n">00</span>Prerequisites</h2>
+  <ol>
+    <li>Install <code>build/libs/AUTISM Client-5.0-26.2-dev.jar</code> into <code>.minecraft/mods/</code> and launch.</li>
+    <li>Two facts that make everything work:
+      <ul>
+        <li><b>You can't type chat while a container/inventory screen is open</b> — so you trigger dupes with a <b>bound key</b>, set with the screen closed. Command binds fire even inside a container screen.</li>
+        <li>Bind syntax: <code>.bind &lt;key&gt; &lt;command&gt;</code> (leading <code>.</code> optional), list with <code>.binds</code>, remove with <code>.bind clear &lt;key&gt;</code>.</li>
+      </ul>
+    </li>
+    <li>Macros are authored from chat:
+      <ul>
+        <li><code>.macro new &lt;name&gt;</code> — create</li>
+        <li><code>.macro add &lt;name&gt; &lt;TYPE&gt; [key=value …]</code> — append a step (tab-completes <code>TYPE</code>; <code>key=value</code> sets any field)</li>
+        <li><code>.macro show &lt;name&gt;</code> · <code>.macro removeaction &lt;name&gt; &lt;index&gt;</code> · <code>.macro delete &lt;name&gt;</code> · <code>.macro &lt;name&gt;</code> (run)</li>
+      </ul>
+    </li>
+  </ol>
+</section>
+
+<!-- verify -->
+<section id="verify">
+  <h2>Universal verification <span class="chip">do this for every test</span></h2>
+  <ol>
+    <li><b>Baseline:</b> note the exact count of a disposable test item and where it is (chest / inventory / entity).</li>
+    <li>Run the dupe.</li>
+    <li><b>Rejoin / reload the chunk / hop back</b> — whatever severs and restores state.</li>
+    <li>Compare totals:
+      <ul>
+        <li>Source still holds the items <b>AND</b> you kept copies → total went up → <b style="color:var(--warn)">VULNERABLE</b>.</li>
+        <li>Source emptied, or copies vanished → total unchanged → <b class="ok">patched / not exploitable this way</b>.</li>
+      </ul>
+    </li>
+    <li>If you can read server files: compare the container's <code>region/*.mca</code> (or sync DB) against <code>playerdata/&lt;uuid&gt;.dat</code>. Both holding the items = dupe.</li>
+  </ol>
+  <div class="callout">Use a <b>countable, disposable</b> item (e.g. 64 of one block). Re-note the baseline before <b>every</b> attempt.</div>
+</section>
+
+<!-- rank -->
+<section id="rank">
+  <h2>Ranked by likelihood</h2>
+  <table>
+    <tr><th>#</th><th>Method</th><th>Attacks</th><th>In client code</th></tr>
+    <tr><td>1</td><td>Kick / lag race</td><td>async save ordering (inventory vs chunk)</td><td class="ok">✅ DisconnectAction KICK_DUPE</td></tr>
+    <tr><td>2</td><td>Server-switch / transfer</td><td>cross-server inventory sync</td><td>technique (<code>.server</code> + timing)</td></tr>
+    <tr><td>3</td><td>Ender chest cross-server</td><td>ender-chest sync across backends</td><td>technique</td></tr>
+    <tr><td>4</td><td>Bundle dupe</td><td>bundle select-packet validation</td><td class="ok">✅ BundleDupeV2Action</td></tr>
+    <tr><td>5</td><td>Container desync</td><td>window-close / container lock</td><td class="ok">✅ AutismGuiActions / DesyncAction</td></tr>
+    <tr><td>6</td><td>XCarry / crafting-grid disconnect</td><td>crafting/armor slot cleanup on disconnect</td><td class="ok">✅ XCarryAction</td></tr>
+    <tr><td>7</td><td>Entity storage (chest boat/minecart)</td><td>entity save timing</td><td class="ok">✅ lag methods BOAT_NBT/ENTITY_NBT</td></tr>
+    <tr><td>8</td><td>Rollback</td><td>inventory re-sync correctness</td><td class="ok">✅ RollbackAction</td></tr>
+    <tr><td>9</td><td>Revision-sync</td><td>container state-id validation</td><td class="ok">✅ RevisionSyncAction</td></tr>
+  </table>
+  <p>On a <b>BungeeCord / proxy</b> network start with <b>#2 and #3</b>; on a single backend start with <b>#1</b>.</p>
+</section>
+
+<!-- 1 -->
+<section id="m1">
+  <h2><span class="n">01</span>Kick / lag race dupe<span class="star-badge">★ highest single-server chance</span></h2>
+  <p><b>Exploits:</b> the server credits your inventory from an extraction, but the container/chunk write loses a race when the connection is abruptly severed under packet flood.</p>
+  <h3>Setup</h3>
+<pre><code>.macro delete lagdupe
+.macro new lagdupe
+.macro add lagdupe SAVE_GUI
+.macro add lagdupe DESYNC
+.macro add lagdupe DISCONNECT mode=KICK_DUPE useNextAction=true lagMethod=CLICK_SLOT kickMethod=INVALID_SLOT packetCount=500
+.macro add lagdupe CONTAINER_CLICK_SEQUENCE slotSource=RANGE startSlot=0 endSlot=26 containerInput=QUICK_MOVE
+.macro show lagdupe
+.bind C .macro lagdupe</code></pre>
+  <ul>
+    <li><code>endSlot=26</code> = single chest; <code>53</code> = double chest; <code>8</code> = dropper/dispenser.</li>
+    <li><code>lagMethod=CLICK_SLOT</code> needs no entity. <code>BOAT_NBT</code>/<code>ENTITY_NBT</code> hit harder but require a chest boat/minecart (see #7).</li>
+    <li>The Kick Dupe step runs the click-sequence as its payload (lag → extract → kick → lag), so the click step <b>must</b> come after it.</li>
+  </ul>
+  <h3>Perform</h3>
+  <ol>
+    <li>Fill a chest with the test item; note the count. Empty that item from your inventory.</li>
+    <li>Stand somewhere safe (you'll get kicked and relog here).</li>
+    <li><b>Right-click the chest</b> to open it.</li>
+    <li><b>Press <span class="kbd">C</span>.</b> You get disconnected — expected.</li>
+    <li>Rejoin → run universal verification.</li>
+  </ol>
+  <p><b>Tuning:</b> raise <code>packetCount</code> (500→1000), try <code>kickMethod=HURT</code> / <code>CLIENT_SETTINGS</code>, pull fewer slots (<code>endSlot=8</code>), or switch to <code>BOAT_NBT</code> (#7).</p>
+</section>
+
+<!-- 2 -->
+<section id="m2">
+  <h2><span class="n">02</span>Server-switch / transfer dupe<span class="star-badge">★ highest proxy chance</span></h2>
+  <p><b>Exploits:</b> on a proxy, inventory is saved on the source server and loaded on the destination. Changing your inventory <em>during</em> a switch can save the pre-change state on one server and the post-change state on the other.</p>
+  <h3>Setup</h3>
+  <p>Know your switch command (<code>.server &lt;name&gt;</code>, or your network's hub/warp command). Optionally bind it: <code>.bind H .server hub</code>.</p>
+  <h3>Perform</h3>
+  <ol>
+    <li>Baseline your inventory count.</li>
+    <li>Start an inventory change (deposit into a chest, craft, or drop a stack).</li>
+    <li><b>Immediately trigger the server switch</b> during/just after the change — tighter timing is better.</li>
+    <li>Switch back to the origin server.</li>
+    <li>Verify on <b>both</b> servers' view of your inventory (and the chest, if used).</li>
+  </ol>
+  <p><b>Read:</b> items present on both sides, or origin chest full while destination inventory kept the deposit → vulnerable sync. Consistent single copy → patched.</p>
+  <p><b>Tuning:</b> vary the delay between the change and the switch (same-tick, +1 tick, +½s). Try switching while a container is still open, or disconnecting from the backend (not the proxy) mid-change.</p>
+</section>
+
+<!-- 3 -->
+<section id="m3">
+  <h2><span class="n">03</span>Ender chest cross-server dupe</h2>
+  <p><b>Exploits:</b> ender chests are frequently synced across backends separately from the main inventory, with their own weaker timing.</p>
+  <h3>Perform</h3>
+  <ol>
+    <li>Baseline the ender-chest contents.</li>
+    <li>Put items into the ender chest on <b>server A</b>.</li>
+    <li><b>Switch to server B before the ender-chest sync commits</b> (immediately after closing / while still open).</li>
+    <li>Check the ender chest on both A and B.</li>
+  </ol>
+  <p><b>Read:</b> items on both → vulnerable. Same single copy → patched. <b>Tuning:</b> same timing sweep as #2; try hopping while the ender chest is still open.</p>
+</section>
+
+<!-- 4 -->
+<section id="m4">
+  <h2><span class="n">04</span>Bundle dupe</h2>
+  <p><b>Exploits:</b> bundle item-selection packets (<code>ServerboundSelectBundleItemPacket</code>) — rapid selection to desync bundle contents from the server.</p>
+  <h3>Setup</h3>
+<pre><code>.macro delete bundledupe
+.macro new bundledupe
+.macro add bundledupe BUNDLE_DUPE_V2 hotbarSlot=0 bundlePacketCount=20 maxCycles=0
+.bind B .macro bundledupe</code></pre>
+  <ul>
+    <li><code>hotbarSlot=0</code> = which hotbar slot holds the bundle. <code>maxCycles=0</code> = loop; set a number to bound it.</li>
+    <li>Auto variant with kick: <code>DISCONNECT mode=KICK_DUPE useNextAction=false</code> runs a bundle dupe + kick.</li>
+  </ul>
+  <h3>Perform</h3>
+  <ol>
+    <li>Put a <b>bundle containing items</b> in hotbar slot 0. Baseline its contents.</li>
+    <li>Press <span class="kbd">B</span>.</li>
+    <li>Verify.</li>
+  </ol>
+  <p><b>Tuning:</b> adjust <code>bundlePacketCount</code> (20→50), <code>delayAfterPickingUpMs</code> / <code>delayAfterPuttingBackMs</code>, <code>dropDelayMs</code>.</p>
+</section>
+
+<!-- 5 -->
+<section id="m5">
+  <h2><span class="n">05</span>Container desync dupe</h2>
+  <p><b>Exploits:</b> the server drops its container lock on a close packet while the client keeps the screen open and interactable, so extraction clicks aren't committed to the container on disk.</p>
+  <h3>Setup</h3>
+<pre><code>.bind X .gui save
+.bind V .gui desync
+.bind Z .gui close nopacket
+.bind N .gui load</code></pre>
+  <h3>Perform</h3>
+  <ol>
+    <li>Baseline a chest's contents.</li>
+    <li><b>Open the chest.</b></li>
+    <li><b>Press <span class="kbd">X</span></b> (save the handler).</li>
+    <li><b>Press <span class="kbd">V</span></b> (desync — sends the close packet; screen stays open).</li>
+    <li><b>Shift-click items</b> out of the chest into your inventory.</li>
+    <li><b>Press <span class="kbd">Z</span></b> (close without a packet, so the server can't resync).</li>
+    <li>Another pass: reopen the chest or press <span class="kbd">N</span> (load), repeat 5–6.</li>
+    <li>Log out, rejoin → verify.</li>
+  </ol>
+  <p><b>Read:</b> if the shift-clicks after <span class="kbd">V</span> <b>snap back / get rejected / the screen resyncs</b>, the server closed the window on the desync packet → <b class="ok">patched</b>, no tuning helps. If clicks land but rejoin empties the chest → it's a save-timing issue (use #1).</p>
+</section>
+
+<!-- 6 -->
+<section id="m6">
+  <h2><span class="n">06</span>XCarry / crafting-grid disconnect dupe</h2>
+  <p><b>Exploits:</b> items left in the crafting grid / armor / offhand on disconnect that the server both returns/drops <b>and</b> keeps.</p>
+  <h3>Setup</h3>
+<pre><code>.macro delete xdupe
+.macro new xdupe
+.macro add xdupe XCARRY mode=PUT_IN useCrafting=true useArmor=false useOffhand=false carryCursor=true
+.macro add xdupe DISCONNECT mode=DISCONNECT
+.bind K .macro xdupe</code></pre>
+  <h3 class="plain">Perform (manual is clearest)</h3>
+  <ol>
+    <li>Baseline a test stack (e.g. 64). Empty that item from your main inventory otherwise.</li>
+    <li>Press <span class="kbd">E</span> to open your inventory.</li>
+    <li>Drag the stack into a <b>2×2 crafting-grid</b> slot.</li>
+    <li>Disconnect while the items are in the grid (quit to title / Alt-F4, or press <span class="kbd">K</span> to let the macro do it).</li>
+    <li>Rejoin. Count <b>inventory + anything dropped at your feet.</b></li>
+  </ol>
+  <p><b>Read:</b> total = 64 → normal (server returned/dropped once) → <b class="ok">patched</b>. Total &gt; 64 (in inventory <em>and</em> on the ground) → <b style="color:var(--warn)">duped</b>.</p>
+  <p><b>Variations:</b> <code>useArmor=true</code> / <code>useOffhand=true</code>; a 3×3 crafting table; replace the disconnect with <code>DISCONNECT mode=KICK_DUPE useNextAction=false kickMethod=INVALID_SLOT</code> for a hard sever.</p>
+</section>
+
+<!-- 7 -->
+<section id="m7">
+  <h2><span class="n">07</span>Entity-storage (chest boat / minecart) dupe</h2>
+  <p><b>Exploits:</b> container entities (chest boat, chest minecart, donkey/mule) save on a different schedule than player data, so a lag-kick or hop mid-load can desync them. Also the strongest lag method for #1.</p>
+  <h3>Setup</h3>
+<pre><code>.macro delete entdupe
+.macro new entdupe
+.macro add entdupe DISCONNECT mode=KICK_DUPE useNextAction=false lagMethod=ENTITY_NBT kickMethod=INVALID_SLOT packetCount=500
+.bind J .macro entdupe</code></pre>
+  <ul>
+    <li><code>ENTITY_NBT</code> requires you to be <b>looking at</b> a loaded chest boat/minecart.</li>
+    <li><code>BOAT_NBT</code> requires you to be <b>riding</b> one (place it, sit in it).</li>
+  </ul>
+  <h3>Perform</h3>
+  <ol>
+    <li>Place a <b>chest boat or chest minecart</b>, load it with the test item, note the count.</li>
+    <li><b>Look at it</b> (ENTITY_NBT) or <b>sit in it</b> (BOAT_NBT).</li>
+    <li>Press <span class="kbd">J</span> — lag flood + kick.</li>
+    <li>Rejoin, break the entity, check both its contents and your inventory → verify.</li>
+  </ol>
+</section>
+
+<!-- 8 -->
+<section id="m8">
+  <h2><span class="n">08</span>Rollback dupe</h2>
+  <p><b>Exploits:</b> forcing the client's inventory to an earlier revision so the server re-sends items.</p>
+  <h3>Setup</h3>
+<pre><code>.macro delete rbdupe
+.macro new rbdupe
+.macro add rbdupe ROLLBACK scope=ALL_CONTAINER startSlot=0 endSlot=26
+.bind R .macro rbdupe</code></pre>
+  <p><code>scope</code>: <code>ALL_CONTAINER</code> / <code>CAPTURED_SLOTS</code> / <code>SLOT_RANGE</code>.</p>
+  <h3>Perform</h3>
+  <ol>
+    <li>Open a container, baseline it.</li>
+    <li>Move items around, then press <span class="kbd">R</span>.</li>
+    <li>Verify after the server re-syncs / rejoin.</li>
+  </ol>
+</section>
+
+<!-- 9 -->
+<section id="m9">
+  <h2><span class="n">09</span>Revision-sync dupe</h2>
+  <p><b>Exploits:</b> the container <b>state-id / revision</b> counter — sending clicks with a stale/forged revision the server should reject.</p>
+  <h3>Setup</h3>
+<pre><code>.macro delete revdupe
+.macro new revdupe
+.macro add revdupe SAVE_GUI
+.macro add revdupe REVISION_SYNC revisionOffset=1 preGenCount=-1
+.macro add revdupe CONTAINER_CLICK_SEQUENCE slotSource=RANGE startSlot=0 endSlot=26 containerInput=QUICK_MOVE
+.bind M .macro revdupe</code></pre>
+  <h3>Perform</h3>
+  <ol>
+    <li>Open a chest, baseline it.</li>
+    <li>Press <span class="kbd">M</span>.</li>
+    <li>Verify → stale clicks accepted = vulnerable; rejected = patched. <b>Tuning:</b> try <code>revisionOffset</code> 1–5.</li>
+  </ol>
+</section>
+
+<!-- timing -->
+<section id="timing">
+  <h2>Timing helpers <span class="chip">used by several methods</span></h2>
+  <ul>
+    <li><code>.packet delay on</code> — queue outgoing packets instead of sending; do your clicks, then <code>.packet flush</code> to release them as one burst.</li>
+    <li><code>.packet clear</code> — drop queued packets.</li>
+    <li><code>.gate cancel ServerboundContainerClosePacket</code> — stop a stray close packet from resyncing you mid-pull; <code>.gate end</code> when done.</li>
+    <li><code>.packet status</code> — show send/delay flags and queue size.</li>
+  </ul>
+</section>
+
+<!-- fixes -->
+<section id="fixes">
+  <h2>What to do with a positive result</h2>
+  <p>If a method dupes, the fix is <b>server-side</b>, matched to the vector:</p>
+  <table>
+    <tr><th>Vector</th><th>Fix</th></tr>
+    <tr><td>Desync / revision</td><td>Reject or resync container clicks whose window id / state-id no longer matches an open handler.</td></tr>
+    <tr><td>Kick / lag race</td><td>Persist container/chunk state before (or atomically with) the inventory on disconnect; rate-limit lag packets.</td></tr>
+    <tr><td>Server-switch / ender chest</td><td>Make cross-server inventory save/load atomic; lock the player during the hop; single source of truth (one DB write, not per-server files).</td></tr>
+    <tr><td>XCarry</td><td>Clear crafting/armor/offhand server-side on disconnect before returning items.</td></tr>
+    <tr><td>Bundle</td><td>Validate bundle select packets against actual bundle contents/rate.</td></tr>
+    <tr><td>Entity storage</td><td>Flush entity NBT on the same schedule as player data on disconnect.</td></tr>
+  </table>
+</section>
+
+<footer>
+  For authorized testing of a server you own or control. Method names and fields match the client source (<code>util/macro/*Action.java</code>, <code>util/AutismGuiActions.java</code>).
+</footer>
+</main>
+</div>
+</body>
+</html>

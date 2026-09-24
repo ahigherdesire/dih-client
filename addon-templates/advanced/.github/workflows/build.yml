@@ -22,10 +22,10 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      # NOTE: the build needs the AUTISM Client API artifact (com.autismclient:autism) to be resolvable.
+      # NOTE: the build needs the DIH Client API artifact (com.dihclient:dih) to be resolvable.
       # mavenLocal() is empty on a fresh CI runner, so make it available one of these ways:
-      #   - publish AUTISM to a maven repo your build.gradle.kts lists (GitHub Packages, a maven server), or
-      #   - commit the AUTISM jar into a `libs/` folder and add `flatDir { dirs("libs") }` to repositories.
+      #   - publish DIH to a maven repo your build.gradle.kts lists (GitHub Packages, a maven server), or
+      #   - commit the DIH jar into a `libs/` folder and add `flatDir { dirs("libs") }` to repositories.
       - name: Build
         run: ./gradlew build --stacktrace
 

@@ -6,4 +6,4 @@ pluginManagement {
     }
 }
 
-rootProject.name = "autism-advanced-addon-template"
+rootProject.name = "dih-advanced-addon-template"

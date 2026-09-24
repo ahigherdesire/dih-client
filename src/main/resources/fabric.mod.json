@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "autism",
+  "id": "dih",
   "version": "${version}",
-  "name": "AUTISM Client",
-  "description": "AUTISM Client is an elite packet, macro, and duping toolkit built for players who want total control.",
+  "name": "DIH Client",
+  "description": "DIH Client is an elite packet, macro, and duping toolkit built for players who want total control.",
   "authors": [
     "Melonik"
   ],
@@ -11,29 +11,29 @@
     "Melonik"
   ],
   "contact": {
-    "homepage": "https://ko-fi.com/melonik",
-    "sources": "https://ko-fi.com/melonik"
+    "homepage": "https://github.com/ahigherdesire/dih-client",
+    "sources": "https://github.com/ahigherdesire/dih-client",
+    "issues": "https://github.com/ahigherdesire/dih-client/issues"
   },
-  "custom": {
-    "modmenu": {
-      "links": {
-        "Discord": "https://discord.gg/2WQuvztM8m",
-        "Donate": "https://ko-fi.com/melonik"
-      }
-    }
-  },
-  "icon": "assets/autismclient/icon.png",
+  "icon": "assets/dihclient/icon.png",
   "environment": "client",
   "entrypoints": {
+    "preLaunch": [
+      "dihclient.DihLegacyMigration"
+    ],
     "client": [
-      "autismclient.AutismClientMod"
+      "dihclient.DihClientMod"
+    ],
+    "journeymap": [
+      "baritone.util.DihJourneyMapPlugin"
     ],
     "modmenu": [
-      "autismclient.compat.AutismModMenuIntegration"
+      "dihclient.compat.DihModMenuIntegration"
     ]
   },
   "mixins": [
-    "autism.mixins.json"
+    "dih.mixins.json",
+    "dih-baritone.mixins.json"
   ],
   "depends": {
     "java": ">=25",

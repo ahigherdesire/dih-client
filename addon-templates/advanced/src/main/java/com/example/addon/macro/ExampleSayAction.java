@@ -1,9 +1,9 @@
 package com.example.addon.macro;
 
 import com.example.addon.ExampleAddon;
-import autismclient.api.macro.ActionSchema;
-import autismclient.api.macro.AddonAction;
-import autismclient.util.AutismClientMessaging;
+import dihclient.api.macro.ActionSchema;
+import dihclient.api.macro.AddonAction;
+import dihclient.util.DihClientMessaging;
 import net.minecraft.client.Minecraft;
 import net.minecraft.nbt.CompoundTag;
 
@@ -19,7 +19,7 @@ public final class ExampleSayAction extends AddonAction {
 
     @Override
     protected void run(Minecraft mc) {
-        AutismClientMessaging.sendPrefixed("\u00a7d[Example] " + message);
+        DihClientMessaging.sendPrefixed("\u00a7d[Example] " + message);
     }
 
     // Field keys here, in load(), and in the schema must match.

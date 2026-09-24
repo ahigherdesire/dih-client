@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-// Example mixin. List your mixin classes in autism-advanced-addon-template.mixins.json (referenced from
+// Example mixin. List your mixin classes in dih-advanced-addon-template.mixins.json (referenced from
 // fabric.mod.json). An @Inject handler matches the target method's params, then CallbackInfo.
 @Mixin(Minecraft.class)
 public abstract class ExampleMixin {

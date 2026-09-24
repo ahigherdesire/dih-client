@@ -1,6 +1,6 @@
-# AUTISM Minimal Addon Template
+# DIH Minimal Addon Template
 
-Smallest useful AUTISM addon example:
+Smallest useful DIH addon example:
 
 - one module;
 - one macro action;
@@ -11,7 +11,7 @@ Use `../advanced` when you need commands, HUD elements, events, raw custom macro
 
 ## Build
 
-1. From the AUTISM Client project, publish the API locally:
+1. From the DIH Client project, publish the API locally:
    ```powershell
    .\gradlew.bat publishToMavenLocal --no-daemon
    ```
@@ -24,7 +24,7 @@ The jar lands in `build/libs/`.
 
 ## Customize
 
-Recommended (any OS, from the AUTISM Client repo root):
+Recommended (any OS, from the DIH Client repo root):
 
 ```sh
 python addon-templates/addon-toolkit.py setup --template minimal --output ../MyAddon

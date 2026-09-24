@@ -1,11 +1,11 @@
 package com.example.addon.modules;
 
 import com.example.addon.ExampleAddon;
-import autismclient.api.module.BoolSetting;
-import autismclient.api.module.EnumSetting;
-import autismclient.api.module.IntSetting;
-import autismclient.modules.Module;
-import autismclient.util.AutismClientMessaging;
+import dihclient.api.module.BoolSetting;
+import dihclient.api.module.EnumSetting;
+import dihclient.api.module.IntSetting;
+import dihclient.modules.Module;
+import dihclient.util.DihClientMessaging;
 
 import java.util.Locale;
 
@@ -27,7 +27,7 @@ public final class ExampleModule extends Module {
         .visibleWhen(() -> style.get() == Style.LOUD));
 
     public ExampleModule() {
-        super(ExampleAddon.ID + ":example", "Example", "Demonstrates an AUTISM addon module.");
+        super(ExampleAddon.ID + ":example", "Example", "Demonstrates an DIH addon module.");
     }
 
     @Override
@@ -35,7 +35,7 @@ public final class ExampleModule extends Module {
         if (greet.get()) {
             String msg = "[Example] enabled - amount " + amount.get() + ", style " + style.get();
             if (shout.get()) msg = msg.toUpperCase(Locale.ROOT);
-            AutismClientMessaging.sendPrefixed("§b" + msg);
+            DihClientMessaging.sendPrefixed("§b" + msg);
         }
     }
 }

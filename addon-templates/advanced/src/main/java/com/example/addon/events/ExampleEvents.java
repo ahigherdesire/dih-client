@@ -1,7 +1,7 @@
 package com.example.addon.events;
 
-import autismclient.api.AutismAddons;
-import autismclient.util.AutismClientMessaging;
+import dihclient.api.DihAddons;
+import dihclient.util.DihClientMessaging;
 
 // Event hooks. Register listeners once in onInitialize().
 // Available: onTick, onPacketSend (return true to cancel), onPacketReceive, onGameJoin, onGameLeft.
@@ -9,7 +9,7 @@ public final class ExampleEvents {
     private ExampleEvents() {}
 
     public static void register() {
-        AutismAddons.events().onGameJoin(() ->
-            AutismClientMessaging.sendPrefixed("\u00a7a[Example] joined a world!"));
+        DihAddons.events().onGameJoin(() ->
+            DihClientMessaging.sendPrefixed("\u00a7a[Example] joined a world!"));
     }
 }

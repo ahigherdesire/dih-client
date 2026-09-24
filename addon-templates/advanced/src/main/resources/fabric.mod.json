@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "id": "autism-advanced-addon-template",
+  "id": "dih-advanced-addon-template",
   "version": "${version}",
-  "name": "AUTISM Advanced",
-  "description": "Reference addon for AUTISM Client: a module, macro action, preset, condition, command, HUD element, and event hook.",
+  "name": "DIH Advanced",
+  "description": "Reference addon for DIH Client: a module, macro action, preset, condition, command, HUD element, and event hook.",
   "authors": [
     "You"
   ],
   "custom": {
-    "autism:color": "255,80,80",
+    "dih:color": "255,80,80",
     "modmenu": {
       "parent": {
-        "id": "autism"
+        "id": "dih"
       }
     }
   },
@@ -20,18 +20,18 @@
     "client": [
       "com.example.addon.ExampleInit"
     ],
-    "autism": [
+    "dih": [
       "com.example.addon.ExampleAddon"
     ]
   },
   "mixins": [
-    "autism-advanced-addon-template.mixins.json"
+    "dih-advanced-addon-template.mixins.json"
   ],
   "depends": {
     "java": ">=25",
     "minecraft": "${mc_compat}",
     "fabricloader": ">=0.19.3",
     "fabric-api": ">=${fabric_api_version}",
-    "autism": ">=${autism_api_version}"
+    "dih": ">=${dih_api_version}"
   }
 }

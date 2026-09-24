@@ -1,6 +1,6 @@
 package com.example.addon.macro;
 
-import autismclient.api.macro.AddonCondition;
+import dihclient.api.macro.AddonCondition;
 import net.minecraft.client.Minecraft;
 
 // A reusable predicate: implement check(). A waiting step blocks on it via ctx.awaitCondition(...).

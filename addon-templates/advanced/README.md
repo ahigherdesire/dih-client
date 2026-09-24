@@ -1,6 +1,6 @@
-# AUTISM Advanced Addon Template
+# DIH Advanced Addon Template
 
-A standalone reference addon for AUTISM Client. It registers one of each supported extension point, so
+A standalone reference addon for DIH Client. It registers one of each supported extension point, so
 you can copy it when you need the full API surface.
 
 Start small: keep `ExampleModule`, build once, then add macro actions, commands, HUD elements, events,
@@ -18,7 +18,7 @@ or mixins as needed.
 | Command | `commands/ExampleCommand` |
 | HUD element | `hud/ExampleHud` |
 | Event hooks | `events/ExampleEvents` |
-| Mixin | `mixin/ExampleMixin` + `autism-advanced-addon-template.mixins.json` |
+| Mixin | `mixin/ExampleMixin` + `dih-advanced-addon-template.mixins.json` |
 
 Presets are first-class addon entries. `ExamplePresets` appears in the macro editor `Presets` picker
 under this addon's category, and it can insert any normal stack of macro actions.
@@ -29,11 +29,11 @@ with built-ins or another addon.
 
 ## Build
 
-1. In the AUTISM Client project, publish the API to your local Maven repo:
+1. In the DIH Client project, publish the API to your local Maven repo:
    ```sh
    ./gradlew publishToMavenLocal
    ```
-2. Make sure the `autism` version in `gradle/libs.versions.toml` matches what you published.
+2. Make sure the `dih` version in `gradle/libs.versions.toml` matches what you published.
 3. Build this addon:
    ```sh
    ./gradlew build
@@ -45,12 +45,12 @@ The addon jar lands in `build/libs/`.
 
 Drop both jars into your `mods/` folder:
 
-- the AUTISM Client jar;
+- the DIH Client jar;
 - this addon's jar from `build/libs/`.
 
 ## Make It Yours
 
-Recommended (any OS, from the AUTISM Client repo root):
+Recommended (any OS, from the DIH Client repo root):
 
 ```sh
 python addon-templates/addon-toolkit.py setup --template advanced --output ../MyAdvancedAddon
@@ -66,9 +66,9 @@ Manual path:
 
 1. Rename the package `com.example.addon`.
 2. Change `ExampleAddon.ID`.
-3. Update `src/main/resources/fabric.mod.json`: `id`, `name`, `entrypoints`, `mixins`, and `autism:color`.
-4. Rename `autism-advanced-addon-template.mixins.json` and update its `package`.
-5. Keep `apiVersion()` and the `autism` dependency range honest for the client version you target.
+3. Update `src/main/resources/fabric.mod.json`: `id`, `name`, `entrypoints`, `mixins`, and `dih:color`.
+4. Rename `dih-advanced-addon-template.mixins.json` and update its `package`.
+5. Keep `apiVersion()` and the `dih` dependency range honest for the client version you target.
 
 ## Project Structure
 
@@ -89,7 +89,7 @@ addon-templates/advanced/
 |   `-- mixin/ExampleMixin.java
 |-- src/main/resources/
 |   |-- fabric.mod.json
-|   `-- autism-advanced-addon-template.mixins.json
+|   `-- dih-advanced-addon-template.mixins.json
 |-- build.gradle.kts
 `-- gradle.properties
 ```

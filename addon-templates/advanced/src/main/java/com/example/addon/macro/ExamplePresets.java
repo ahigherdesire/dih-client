@@ -1,6 +1,6 @@
 package com.example.addon.macro;
 
-import autismclient.util.macro.MacroAction;
+import dihclient.util.macro.MacroAction;
 
 import java.util.ArrayList;
 import java.util.List;

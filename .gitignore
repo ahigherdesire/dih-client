@@ -12,3 +12,7 @@ run/
 # OS
 .DS_Store
 Thumbs.db
+
+# Local logs (may contain usernames / server addresses)
+logs/
+dist/

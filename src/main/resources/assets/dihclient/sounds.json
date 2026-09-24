@@ -1,0 +1,12 @@
+{
+  "gui.main_menu_click": {
+    "sounds": [
+      "dihclient:gui/main_menu_click"
+    ]
+  },
+  "hitsound": {
+    "sounds": [
+      "dihclient:hit3"
+    ]
+  }
+}

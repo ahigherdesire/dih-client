@@ -50,6 +50,10 @@ plugins {
     `maven-publish`
 }
 
+// Optional: build outside a synced folder (Google Drive/OneDrive lock files and break clean/delete):
+//   gradlew build -PdihBuildDir=C:/dih-build
+providers.gradleProperty("dihBuildDir").orNull?.let { layout.buildDirectory.set(file(it)) }
+
 base {
     archivesName = properties["archives_base_name"] as String
     // Version = "<mod>-<mc>" (e.g. 3.1-26.2). Dev/source builds add a "-dev" suffix so they're distinguishable
@@ -62,6 +66,33 @@ base {
 repositories {
     mavenCentral()
     maven { url = uri("https://api.modrinth.com/maven") }
+    // Baritone (MinecraftAI) integration: pathfinding engine + native nether pathfinder
+    maven {
+        name = "impactdevelopment-repo"
+        url = uri("https://impactdevelopment.github.io/maven/")
+    }
+    maven {
+        name = "babbaj-repo"
+        url = uri("https://babbaj.github.io/maven/")
+    }
+}
+
+// JourneyMap ships its public v2 API as a jar-in-jar. We compile against exactly the API that
+// the pinned release carries (the maven SNAPSHOTs drift), extracted at build time. The API is
+// "All Rights Reserved", so it is fetched, never committed or bundled.
+val journeymapRelease: Configuration by configurations.creating {
+    isTransitive = false
+    isCanBeConsumed = false
+}
+val journeymapApiDir = layout.buildDirectory.dir("journeymap-api")
+val journeymapApiJar = journeymapApiDir.map { it.file("journeymap-api.jar") }
+val extractJourneyMapApi by tasks.registering(Copy::class) {
+    from({ zipTree(journeymapRelease.singleFile) }) {
+        include("META-INF/jars/journeymap-api-fabric-*.jar")
+        eachFile { path = "journeymap-api.jar" }
+        includeEmptyDirs = false
+    }
+    into(journeymapApiDir)
 }
 
 dependencies {
@@ -73,6 +104,10 @@ dependencies {
     compileOnly(libs.lithium)
     // Compile-only: ReplayMod ReplayStudio types for the team-parser compat mixin (runtime-optional).
     compileOnly("maven.modrinth:replaymod:26.2-2.6.27")
+    // Compile-only: the real JourneyMap v2 API (see extractJourneyMapApi). JourneyMap itself is a
+    // runtime-optional soft dependency; nothing from it is bundled.
+    journeymapRelease("maven.modrinth:journeymap:26.2-6.0.9+fabric")
+    compileOnly(files(journeymapApiJar).builtBy(extractJourneyMapApi))
 
     implementation("net.java.dev.jna:jna:5.13.0")
     implementation("net.java.dev.jna:jna-platform:5.13.0")
@@ -97,6 +132,13 @@ dependencies {
     implementation("io.github.llamalad7:mixinextras-fabric:0.5.4")
     include("io.github.llamalad7:mixinextras-fabric:0.5.4")
 
+    // === DIH Client AI: Baritone (MinecraftAI fork) pathfinding + LLM brain ===
+    // Native nether pathfinder used by Baritone's Elytra/Nether pathing; bundled jar-in-jar.
+    implementation("dev.babbaj:nether-pathfinder:1.4.1")
+    include("dev.babbaj:nether-pathfinder:1.4.1")
+    // Baritone sources compile against JSR-305 nullability annotations.
+    implementation("com.google.code.findbugs:jsr305:3.0.2")
+
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
@@ -107,7 +149,7 @@ tasks.test {
     useJUnitPlatform()
 }
 
-val generatedAutismResourcesDir = layout.buildDirectory.dir("generated/resources/autism/main")
+val generatedDihResourcesDir = layout.buildDirectory.dir("generated/resources/dih/main")
 
 data class SourceFile(val path: String, val text: String)
 data class FieldSpec(val name: String, val type: String, val kind: String, val editable: Boolean)
@@ -123,16 +165,35 @@ data class PacketSpec(
 )
 
 sourceSets {
-    main {
-        resources.srcDir(generatedAutismResourcesDir)
+    val main by getting {
+        resources.srcDir(generatedDihResourcesDir)
     }
+    // === Baritone (MinecraftAI) source sets, wired like the upstream MinecraftAI build ===
+    val api by creating {
+        compileClasspath += main.compileClasspath
+    }
+    // Compile-only stubs: real Litematica/Schematica provide these at runtime;
+    // deliberately NOT bundled (would shadow the real mods). Compile-only, like upstream.
+    val schematica_api by creating {
+        compileClasspath += main.compileClasspath
+    }
+    // main sees api + the compile-only stubs; api output is on the runtime path.
+    // (JourneyMap is compiled against its real API jar, not a stub — see extractJourneyMapApi.)
+    main.compileClasspath += api.output + schematica_api.output
+    main.runtimeClasspath += api.output + schematica_api.output
+    // launch (Baritone mixins) sees the fully-built main + api.
+    val launch by creating {
+        compileClasspath += main.compileClasspath + main.runtimeClasspath + main.output + api.output
+        runtimeClasspath += main.compileClasspath + main.runtimeClasspath + main.output + api.output
+    }
+    main.runtimeClasspath += launch.output
 }
 
 val generateVanillaUiAssets by tasks.registering {
     // Semantic feature icons used by the vanilla-friendly UI. Structural
     // actions such as close and reorder are rendered as text symbols.
     val iconSourceDir = file("assets/icons")
-    val outputDir = generatedAutismResourcesDir.map { it.dir("assets/autismclient") }
+    val outputDir = generatedDihResourcesDir.map { it.dir("assets/dihclient") }
 
     inputs.dir(iconSourceDir)
     outputs.dir(outputDir)
@@ -182,11 +243,11 @@ val generateVanillaUiAssets by tasks.registering {
     }
 }
 
-val generateAutismInspectorMappings by tasks.registering {
+val generateDihInspectorMappings by tasks.registering {
     val mappingFiles = fileTree(".gradle/loom-cache/source_mappings") {
         include("**/*.tiny")
     }
-    val outputFile = generatedAutismResourcesDir.map { it.file("autism-inspector-mappings.tsv") }
+    val outputFile = generatedDihResourcesDir.map { it.file("dih-inspector-mappings.tsv") }
 
     inputs.files(mappingFiles)
     outputs.file(outputFile)
@@ -338,9 +399,9 @@ val generateAutismInspectorMappings by tasks.registering {
     }
 }
 
-val generateAutismPacketSchemas by tasks.registering {
+val generateDihPacketSchemas by tasks.registering {
     val minecraftVersion = libs.versions.minecraft.get()
-    val outputFile = generatedAutismResourcesDir.map { it.file("autism-packet-schemas.tsv") }
+    val outputFile = generatedDihResourcesDir.map { it.file("dih-packet-schemas.tsv") }
 
     outputs.file(outputFile)
 
@@ -546,7 +607,7 @@ val generateAutismPacketSchemas by tasks.registering {
 }
 
 val shippedResourceExtensions = setOf("png", "mcmeta", "ttf", "json", "ogg", "fsh", "vsh", "svg", "bin")
-val shippedResourceRootFiles = setOf("fabric.mod.json", "autism.mixins.json")
+val shippedResourceRootFiles = setOf("fabric.mod.json", "dih.mixins.json", "dih-baritone.mixins.json")
 
 val verifyShippedResources by tasks.registering {
     group = "verification"
@@ -581,8 +642,8 @@ val verifyShippedResources by tasks.registering {
 tasks {
     processResources {
         dependsOn(verifyShippedResources)
-        dependsOn(generateAutismInspectorMappings)
-        dependsOn(generateAutismPacketSchemas)
+        dependsOn(generateDihInspectorMappings)
+        dependsOn(generateDihPacketSchemas)
         dependsOn(generateVanillaUiAssets)
         val propertyMap = mapOf(
             "version" to project.version,
@@ -605,8 +666,17 @@ tasks {
     jar {
         inputs.property("archivesName", project.base.archivesName.get())
 
+        // Bundle the Baritone (MinecraftAI) api + launch (mixins) source-set output into the mod jar.
+        // schematica_api is intentionally excluded (compile-only stubs).
+        from(sourceSets["api"].output, sourceSets["launch"].output)
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+
         from("LICENSE") {
             rename { "${it}_${inputs.properties["archivesName"]}" }
+        }
+        // Third-party licences for bundled assets (e.g. the Geist UI font, SIL OFL 1.1).
+        from("licenses") {
+            into("META-INF/licenses")
         }
 
         // ModMenu API is a compile-only soft dependency: we ship local stubs of its two API
@@ -634,13 +704,13 @@ tasks {
 }
 
 // Publish the Loom-remapped jar to the local Maven repo so the standalone addon-template (and any
-// third-party addon) can depend on it via `modImplementation("com.autismclient:autism:<version>")`.
+// third-party addon) can depend on it via `modImplementation("com.dihclient:dih:<version>")`.
 // Run: ./gradlew publishToMavenLocal
 publishing {
     publications {
         create<MavenPublication>("mavenJava") {
-            groupId = "com.autismclient"
-            artifactId = "autism"
+            groupId = "com.dihclient"
+            artifactId = "dih"
             version = project.version.toString()
             from(components["java"])
         }
@@ -675,7 +745,7 @@ val syncAddonTemplateVersions by tasks.registering {
             "fabric-loader" to readVersion("fabric-loader"),
             "fabric-api" to readVersion("fabric-api"),
             "loom" to readVersion("loom"),
-            "autism" to readVersion("mod-version")
+            "dih" to readVersion("mod-version")
         )
         templateCatalogs.forEach { file ->
             if (!file.exists()) throw GradleException("Missing template catalog: $file")
@@ -692,7 +762,7 @@ val syncAddonTemplateVersions by tasks.registering {
         }
         logger.lifecycle(
             "Synced addon templates: minecraft=${values["minecraft"]}, fabric-loader=${values["fabric-loader"]}, " +
-                "fabric-api=${values["fabric-api"]}, loom=${values["loom"]}, autism=${values["autism"]}"
+                "fabric-api=${values["fabric-api"]}, loom=${values["loom"]}, dih=${values["dih"]}"
         )
     }
 }
@@ -779,10 +849,10 @@ tasks.register("buildAllTemplates") {
 
 // ---------------------------------------------------------------------------
 // LITE variant: turns the FINAL release jar (post guardian weaving) into the stripped-down
-// "AUTISM Client Lite" build in four stages, with no recompilation so the jars can never drift.
+// "DIH Client Lite" build in four stages, with no recompilation so the jars can never drift.
 // The pipeline uses NO ProGuard and NO obfuscation tooling of any kind - every stage is our own
 // code (ASM for bytecode surgery, plain zip + constant-pool analysis for shrinking):
-//   litePatchVariant - copies the full jar, patches AutismLiteVariant.ENABLED to a compile-time
+//   litePatchVariant - copies the full jar, patches DihLiteVariant.ENABLED to a compile-time
 //                      constant true, and folds every literal enabled() gate with its own exact
 //                      ASM pass (branch fold + dead-code sweep, CheckClassAdapter-verified).
 //   liteShrinkJar    - our own reachability shrink: seeds (entrypoint, addon API, pinned classes,
@@ -801,38 +871,38 @@ tasks.register("buildAllTemplates") {
 
 val liteStripMixins = listOf(
     // Multi / POV pilot (the Multi system is stripped from lite)
-    "AutismBotPlayerInfoMixin", "AutismBotPilotMixin", "AutismBotEquipmentMixin",
-    "AutismPilotLocalPlayerRenderMixin", "AutismPilotChatMixin", "AutismPilotLocalInputMixin",
-    "AutismPilotEditRerouteMixin", "AutismPilotHandItemMixin", "AutismMultiPovChatMixin",
+    "DihBotPlayerInfoMixin", "DihBotPilotMixin", "DihBotEquipmentMixin",
+    "DihPilotLocalPlayerRenderMixin", "DihPilotChatMixin", "DihPilotLocalInputMixin",
+    "DihPilotEditRerouteMixin", "DihPilotHandItemMixin", "DihMultiPovChatMixin",
     // title/menu-only (custom main menu is stripped from lite; splash mixins stay for panic cosmetics)
-    "AutismTitleScreenSupportMixin", "AutismGuiRendererPanoramaMixin",
-    "AutismPanoramaOverlayMixin", "AutismLogoRendererMixin",
+    "DihTitleScreenSupportMixin", "DihGuiRendererPanoramaMixin",
+    "DihPanoramaOverlayMixin", "DihLogoRendererMixin",
     // cheat-module-only mixins whose module classes are physically excluded from the lite jar
     // (verified: nothing kept in lite references them; the lithium entries need their package
     // prefix so the json line filter matches)
-    "AutismCrystalViewModelMixin", "AutismCrystalViewRendererMixin", "AutismPlayerNoPhysicsMixin",
-    "AutismBlockCollisionsMixin", "lithium.AutismLithiumSweeperBlockPosMixin",
-    "lithium.AutismLithiumSweeperVoxelShapeMixin",
+    "DihCrystalViewModelMixin", "DihCrystalViewRendererMixin", "DihPlayerNoPhysicsMixin",
+    "DihBlockCollisionsMixin", "lithium.DihLithiumSweeperBlockPosMixin",
+    "lithium.DihLithiumSweeperVoxelShapeMixin",
     // stripped-module render mixins: their only writers (NoRender/Viewmodel/Chams modules) are all
-    // physically excluded, so every injection is pure dead weight in lite. AutismNoRenderTotemMixin
+    // physically excluded, so every injection is pure dead weight in lite. DihNoRenderTotemMixin
     // stays - it is also the hook for AutoTotem's kept No Render setting. The NoRenderState /
     // ViewmodelState / chams state classes stay pinned (referenced by kept mixins).
-    "AutismNoRenderHudMixin", "AutismNoRenderNauseaMixin", "AutismNoRenderHurtcamMixin",
-    "AutismNoRenderClientLevelMixin", "AutismNoRenderScreenEffectMixin",
-    "AutismNoRenderBossHealthOverlayMixin", "AutismNoRenderScreenMixin",
-    "AutismNoRenderEatParticleMixin", "AutismNoRenderFogMixin", "AutismNoRenderFogEnvMixin",
-    "AutismNoRenderWeatherMixin", "AutismNoRenderWeatherStateMixin", "AutismNoRenderSkyMixin",
-    "AutismNoRenderCloudMixin", "AutismNoRenderTimeMixin", "AutismNoRenderWorldBorderMixin",
-    "AutismNoRenderBlockBreakMixin", "AutismNoRenderBeaconMixin", "AutismNoRenderEnchantTableMixin",
-    "AutismNoRenderSignMixin", "AutismNoRenderMapMixin", "AutismNoRenderBannerMixin",
-    "AutismNoRenderParticleMixin", "AutismNoRenderBlockSeedMixin", "AutismNoRenderBlockOffsetMixin",
-    "AutismNoRenderBlockEntityMixin", "AutismNoRenderArmorLayerMixin", "AutismNoRenderHeadLayerMixin",
-    "AutismNoRenderEntityFlagsMixin", "AutismNoRenderSpawnerMixin", "AutismNoRenderDeadEntityMixin",
-    "AutismNoRenderEntityRendererMixin", "AutismNoRenderSpawnPacketMixin", "AutismNoRenderGlintMixin",
-    "AutismNoRenderObfuscationMixin",
-    "AutismViewmodelMixin", "AutismViewmodelSwingMixin", "AutismViewmodelStrideMixin",
-    "AutismChamsLivingEntityMixin", "AutismChamsSubmitMixin", "AutismChamsCapeLayerMixin",
-    "AutismEntityRenderStateChamsMixin"
+    "DihNoRenderHudMixin", "DihNoRenderNauseaMixin", "DihNoRenderHurtcamMixin",
+    "DihNoRenderClientLevelMixin", "DihNoRenderScreenEffectMixin",
+    "DihNoRenderBossHealthOverlayMixin", "DihNoRenderScreenMixin",
+    "DihNoRenderEatParticleMixin", "DihNoRenderFogMixin", "DihNoRenderFogEnvMixin",
+    "DihNoRenderWeatherMixin", "DihNoRenderWeatherStateMixin", "DihNoRenderSkyMixin",
+    "DihNoRenderCloudMixin", "DihNoRenderTimeMixin", "DihNoRenderWorldBorderMixin",
+    "DihNoRenderBlockBreakMixin", "DihNoRenderBeaconMixin", "DihNoRenderEnchantTableMixin",
+    "DihNoRenderSignMixin", "DihNoRenderMapMixin", "DihNoRenderBannerMixin",
+    "DihNoRenderParticleMixin", "DihNoRenderBlockSeedMixin", "DihNoRenderBlockOffsetMixin",
+    "DihNoRenderBlockEntityMixin", "DihNoRenderArmorLayerMixin", "DihNoRenderHeadLayerMixin",
+    "DihNoRenderEntityFlagsMixin", "DihNoRenderSpawnerMixin", "DihNoRenderDeadEntityMixin",
+    "DihNoRenderEntityRendererMixin", "DihNoRenderSpawnPacketMixin", "DihNoRenderGlintMixin",
+    "DihNoRenderObfuscationMixin",
+    "DihViewmodelMixin", "DihViewmodelSwingMixin", "DihViewmodelStrideMixin",
+    "DihChamsLivingEntityMixin", "DihChamsSubmitMixin", "DihChamsCapeLayerMixin",
+    "DihEntityRenderStateChamsMixin"
 )
 
 // The shrink (liteShrinkJar) removes dead classes on its own once the gates fold; the mixin
@@ -842,33 +912,33 @@ val liteStripMixins = listOf(
 // Assets excluded from the lite jar (~10.7 MB): every one of them is only referenced by
 // stripped/mixin-stripped code or by paths the lite gates close (loading overlay, welcome, title).
 val liteStripAssets = listOf(
-    "assets/autismclient/textures/gui/title/background/",
-    "assets/autismclient/captcha/",
-    "assets/autismclient/sounds.json", "assets/autismclient/sounds/",
-    "assets/autismclient/icons/window/",
-    "assets/autismclient/textures/gui/title/loading_logo.png",
-    "assets/autismclient/textures/gui/title/autism_client_logo.png",
-    "assets/autismclient/textures/gui/title/autism_client_logo.png.mcmeta",
-    "assets/autismclient/textures/gui/title/button_text/",
-    "assets/autismclient/textures/gui/title/icons/essential.png",
-    "assets/autismclient/textures/gui/title/icons/modmenu.png",
-    "assets/autismclient/textures/gui/title/icons/discord.png",
-    "assets/autismclient/textures/gui/title/icons/accessibility.png",
-    "assets/autismclient/textures/gui/title/icons/language.png",
-    // donate.png + autismclient_welcome.png STAY: the first-run donate dialog shows in lite too.
-    "assets/autismclient/textures/gui/hud/autismclient.png",
-    "assets/autismclient/textures/gui/hud/autismclient_hud.png",
-    "assets/autismclient/textures/gui/hud/autismclient.svg",
-    "assets/autismclient/textures/gui/autism/",
-    "assets/autismclient/shaders/core/",
-    "assets/autismclient/textures/gui/accounts/share.png",
-    "assets/autismclient/textures/gui/vanillaui/icons/matchmaking.png",
-    "assets/autismclient/textures/gui/vanillaui/icons/multi.png",
-    "assets/autismclient/textures/gui/vanillaui/icons/profiles.png",
-    "assets/autismclient/textures/gui/vanillaui/icons/mainmenucategory.png",
-    "assets/autismclient/textures/gui/vanillaui/icons/chatcategory.png",
-    "assets/autismclient/textures/gui/icons/chevron_left.png",
-    "META-INF/services/autismclient.util.mm.guardian.Guardian"
+    "assets/dihclient/textures/gui/title/background/",
+    "assets/dihclient/captcha/",
+    "assets/dihclient/sounds.json", "assets/dihclient/sounds/",
+    "assets/dihclient/icons/window/",
+    "assets/dihclient/textures/gui/title/loading_logo.png",
+    "assets/dihclient/textures/gui/title/dih_client_logo.png",
+    "assets/dihclient/textures/gui/title/dih_client_logo.png.mcmeta",
+    "assets/dihclient/textures/gui/title/button_text/",
+    "assets/dihclient/textures/gui/title/icons/essential.png",
+    "assets/dihclient/textures/gui/title/icons/modmenu.png",
+    "assets/dihclient/textures/gui/title/icons/discord.png",
+    "assets/dihclient/textures/gui/title/icons/accessibility.png",
+    "assets/dihclient/textures/gui/title/icons/language.png",
+    // donate.png + dihclient_welcome.png STAY: the first-run donate dialog shows in lite too.
+    "assets/dihclient/textures/gui/hud/dihclient.png",
+    "assets/dihclient/textures/gui/hud/dihclient_hud.png",
+    "assets/dihclient/textures/gui/hud/dihclient.svg",
+    "assets/dihclient/textures/gui/dih/",
+    "assets/dihclient/shaders/core/",
+    "assets/dihclient/textures/gui/accounts/share.png",
+    "assets/dihclient/textures/gui/vanillaui/icons/matchmaking.png",
+    "assets/dihclient/textures/gui/vanillaui/icons/multi.png",
+    "assets/dihclient/textures/gui/vanillaui/icons/profiles.png",
+    "assets/dihclient/textures/gui/vanillaui/icons/mainmenucategory.png",
+    "assets/dihclient/textures/gui/vanillaui/icons/chatcategory.png",
+    "assets/dihclient/textures/gui/icons/chevron_left.png",
+    "META-INF/services/dihclient.util.mm.guardian.Guardian"
 )
 
 // Nested libraries are stripped DATA-DRIVEN by liteJar: any bundled lib with zero references from
@@ -880,44 +950,44 @@ val liteStripAssets = listOf(
 // verifyLiteJar fails the build if any of these is missing from the lite jar - that is what makes
 // an over-aggressive strip impossible to ship.
 val liteKeepPinned = listOf(
-    "autismclient/modules/Module.class", "autismclient/modules/ModuleCategory.class",
-    "autismclient/modules/ModuleRegistry.class", "autismclient/modules/BuiltinModules.class",
-    "autismclient/modules/BuiltinModules\$HideModule.class", "autismclient/modules/AutismModule.class",
-    "autismclient/modules/PackHideState.class", "autismclient/modules/PackFreecamState.class",
-    "autismclient/modules/AutoTotemModule.class", "autismclient/modules/AutoArmorModule.class",
-    "autismclient/modules/BedDefenderModule.class", "autismclient/modules/SafeWalkModule.class",
-    "autismclient/modules/KillAuraModule.class", "autismclient/modules/FreeLookModule.class",
-    "autismclient/modules/GhostBlockModule.class",
-    "autismclient/modules/TeamsModule.class", "autismclient/modules/TpClickModule.class",
-    "autismclient/modules/HoleEspModule.class", "autismclient/modules/ScaffoldModule.class",
-    "autismclient/modules/ModuleOreSim.class", "autismclient/modules/TrajectoriesModule.class",
+    "dihclient/modules/Module.class", "dihclient/modules/ModuleCategory.class",
+    "dihclient/modules/ModuleRegistry.class", "dihclient/modules/BuiltinModules.class",
+    "dihclient/modules/BuiltinModules\$HideModule.class", "dihclient/modules/DihModule.class",
+    "dihclient/modules/PackHideState.class", "dihclient/modules/PackFreecamState.class",
+    "dihclient/modules/AutoTotemModule.class", "dihclient/modules/AutoArmorModule.class",
+    "dihclient/modules/BedDefenderModule.class", "dihclient/modules/SafeWalkModule.class",
+    "dihclient/modules/KillAuraModule.class", "dihclient/modules/FreeLookModule.class",
+    "dihclient/modules/GhostBlockModule.class",
+    "dihclient/modules/TeamsModule.class", "dihclient/modules/TpClickModule.class",
+    "dihclient/modules/HoleEspModule.class", "dihclient/modules/ScaffoldModule.class",
+    "dihclient/modules/ModuleOreSim.class", "dihclient/modules/TrajectoriesModule.class",
     // ModuleEspMesh is hit from StorageSnapshot.EMPTY's static initializer - any static access to
     // ModuleWorldRenderer would fail class init in lite without it (bootstrap + per-frame tracers).
-    "autismclient/modules/ModuleEspMesh.class",
-    "autismclient/modules/AirPlaceModule.class", "autismclient/modules/InventoryTweaksModule.class",
-    "autismclient/modules/GoldenLeverModule.class", "autismclient/modules/NameCensorModule.class",
-    "autismclient/modules/AntiVanishModule.class", "autismclient/modules/AutoSignModule.class",
-    "autismclient/modules/AutoLoginModule.class", "autismclient/modules/AntiHungerModule.class",
-    "autismclient/modules/BoatFlyModule.class", "autismclient/modules/EntityControlModule.class",
-    "autismclient/modules/AirJumpModule.class", "autismclient/modules/AutismAntiBot.class",
-    "autismclient/modules/BuiltinModules\$SneakModule.class", "autismclient/modules/BuiltinModules\$FastBreakModule.class",
-    "autismclient/modules/BuiltinModules\$FlightModule.class", "autismclient/modules/BuiltinModules\$SprintModule.class",
-    "autismclient/modules/BuiltinModules\$SpeedModule.class",
-    "autismclient/gui/screen/AutismPanicTitleScreen.class", "autismclient/gui/screen/AutismVoiceChatPromptScreen.class",
-    "autismclient/util/multi/PacketTeleportController.class", "autismclient/util/multi/MultiProxyVerifier.class",
-    "autismclient/util/multi/MultiManager.class", "autismclient/util/multi/MultiSession.class",
-    "autismclient/util/multi/MultiProfile.class",
-    "autismclient/util/multi/MultiPacketPolicy.class", "autismclient/util/multi/MultiAutoAccept.class",
-    "autismclient/util/multi/MultiQuickAction.class", "autismclient/util/multi/MultiTakeoverState.class",
-    "autismclient/util/multi/MultiPilot.class", "autismclient/util/multi/MultiPilotTruth.class",
-    "autismclient/util/multi/MultiPovModuleController.class", "autismclient/util/multi/MultiConnectionMarker.class",
-    "autismclient/util/multi/MultiConnectionContext.class",
-    "autismclient/util/AutismTheme.class",
-    "autismclient/util/AutismThemeTextures.class", "autismclient/util/AutismFabricatorOverlay.class",
-    // AutismMarquee is hit from AutismHudManager's own static initializer (spotifyTextCacheKey) -
+    "dihclient/modules/ModuleEspMesh.class",
+    "dihclient/modules/AirPlaceModule.class", "dihclient/modules/InventoryTweaksModule.class",
+    "dihclient/modules/GoldenLeverModule.class", "dihclient/modules/NameCensorModule.class",
+    "dihclient/modules/AntiVanishModule.class", "dihclient/modules/AutoSignModule.class",
+    "dihclient/modules/AutoLoginModule.class", "dihclient/modules/AntiHungerModule.class",
+    "dihclient/modules/BoatFlyModule.class", "dihclient/modules/EntityControlModule.class",
+    "dihclient/modules/AirJumpModule.class", "dihclient/modules/DihAntiBot.class",
+    "dihclient/modules/BuiltinModules\$SneakModule.class", "dihclient/modules/BuiltinModules\$FastBreakModule.class",
+    "dihclient/modules/BuiltinModules\$FlightModule.class", "dihclient/modules/BuiltinModules\$SprintModule.class",
+    "dihclient/modules/BuiltinModules\$SpeedModule.class",
+    "dihclient/gui/screen/DihPanicTitleScreen.class", "dihclient/gui/screen/DihVoiceChatPromptScreen.class",
+    "dihclient/util/multi/PacketTeleportController.class", "dihclient/util/multi/MultiProxyVerifier.class",
+    "dihclient/util/multi/MultiManager.class", "dihclient/util/multi/MultiSession.class",
+    "dihclient/util/multi/MultiProfile.class",
+    "dihclient/util/multi/MultiPacketPolicy.class", "dihclient/util/multi/MultiAutoAccept.class",
+    "dihclient/util/multi/MultiQuickAction.class", "dihclient/util/multi/MultiTakeoverState.class",
+    "dihclient/util/multi/MultiPilot.class", "dihclient/util/multi/MultiPilotTruth.class",
+    "dihclient/util/multi/MultiPovModuleController.class", "dihclient/util/multi/MultiConnectionMarker.class",
+    "dihclient/util/multi/MultiConnectionContext.class",
+    "dihclient/util/DihTheme.class",
+    "dihclient/util/DihThemeTextures.class", "dihclient/util/DihFabricatorOverlay.class",
+    // DihMarquee is hit from DihHudManager's own static initializer (spotifyTextCacheKey) -
     // stripping it crashed class init on the first screen click in lite.
-    "autismclient/util/AutismMarquee.class",
-    "autismclient/util/AutismSvgHudLogo.class"
+    "dihclient/util/DihMarquee.class",
+    "dihclient/util/DihSvgHudLogo.class"
 )
 
 val liteKeepLibs = listOf(
@@ -945,25 +1015,25 @@ val liteMacroParityExempt = listOf(
     // Constructed only from registry paths that are themselves dead in lite (the WaitGui action
     // type is unconstructable even in the full jar; entity conditions run through a different,
     // lite-live path - nothing alive constructs these). The member pass correctly removes them.
-    "autismclient/util/macro/MacroConditionRegistry\$EntityCondition.class",
-    "autismclient/util/macro/MacroConditionRegistry\$GuiCloseCondition.class",
+    "dihclient/util/macro/MacroConditionRegistry\$EntityCondition.class",
+    "dihclient/util/macro/MacroConditionRegistry\$GuiCloseCondition.class",
     // Referenced only by the stripped AutoFish module/cluster and the dead module menu.
-    "autismclient/util/macro/MacroConditionUtil.class",
+    "dihclient/util/macro/MacroConditionUtil.class",
     // Thrown/caught only from paths that are dead in lite (never from lite-live bindings code).
-    "autismclient/util/macro/MacroDynamicBindings\$MissingDynamicValueException.class"
+    "dihclient/util/macro/MacroDynamicBindings\$MissingDynamicValueException.class"
 )
 
 val liteKnownDead = listOf(
-    "autismclient/modules/BuiltinModules\$ParkourModule.class",
-    "autismclient/modules/BuiltinModules\$AdminToolsModule.class",
-    "autismclient/commands/impl/IrcCommand.class",
-    "autismclient/gui/mm/MatchmakingPanel.class",
-    "autismclient/gui/screen/AutismTitleScreen.class",
-    "autismclient/gui/screen/AutismModuleScreen.class",
-    "autismclient/util/mm/MatchmakingManager.class",
-    "autismclient/util/mm/relay/MqttRelay.class",
-    "autismclient/util/AutismProfileManager.class",
-    "autismclient/util/AutismAdminToolsOverlay.class",
+    "dihclient/modules/BuiltinModules\$ParkourModule.class",
+    "dihclient/modules/BuiltinModules\$AdminToolsModule.class",
+    "dihclient/commands/impl/IrcCommand.class",
+    "dihclient/gui/mm/MatchmakingPanel.class",
+    "dihclient/gui/screen/DihTitleScreen.class",
+    "dihclient/gui/screen/DihModuleScreen.class",
+    "dihclient/util/mm/MatchmakingManager.class",
+    "dihclient/util/mm/relay/MqttRelay.class",
+    "dihclient/util/DihProfileManager.class",
+    "dihclient/util/DihAdminToolsOverlay.class",
     "META-INF/jars/org.eclipse.paho.client.mqttv3-1.2.5.jar"
 )
 
@@ -973,8 +1043,8 @@ val liteKnownDead = listOf(
 // bodies are what kept DupeRadar/Spotify/geo lookup alive in lite-live classes). Conservative by
 // design - over-keep beats under-keep every time:
 //   WHOLESALE classes (kept complete): mixin seeds + nested, api.**, the entrypoint, enums,
-//   records, interfaces, annotations, and the gson config models (AutismConfig+nesteds,
-//   AutismPacketPreset, ServerPluginScanCache$CacheFile) - framework contracts and reflective
+//   records, interfaces, annotations, and the gson config models (DihConfig+nesteds,
+//   DihPacketPreset, ServerPluginScanCache$CacheFile) - framework contracts and reflective
 //   models are never pruned.
 //   SEEDS for the call walk: every method of wholesale classes, every <clinit>, and every no-arg
 //   <init> (gson/reflection instantiation safety).
@@ -1035,14 +1105,14 @@ fun litePruneMembers(classBytes: Map<String, ByteArray>, reachable: Set<String>,
     val wholesale = HashSet<String>()
     for ((name, cn) in nodes) {
         if (mixinSeeds.any { name == it || name.startsWith("$it\$") }) { wholesale += name; continue }
-        if (name.startsWith("autismclient/api/")) { wholesale += name; continue }
-        if (name == "autismclient/AutismClientMod" || name == "autismclient/util/AutismLiteVariant") { wholesale += name; continue }
-        if (name.startsWith("autismclient/util/AutismConfig")) { wholesale += name; continue }
-        if (name == "autismclient/util/AutismPacketPreset" ||
-            name == "autismclient/util/ServerPluginScanCache\$CacheFile" ||
-            name == "autismclient/util/AutismWaypoints\$Waypoint" ||
-            name == "autismclient/util/AutismPresetManager\$PresetEntry" ||
-            name == "autismclient/util/AutismPayloadJsonSupport\$EncodedPayload") { wholesale += name; continue }
+        if (name.startsWith("dihclient/api/")) { wholesale += name; continue }
+        if (name == "dihclient/DihClientMod" || name == "dihclient/util/DihLiteVariant") { wholesale += name; continue }
+        if (name.startsWith("dihclient/util/DihConfig")) { wholesale += name; continue }
+        if (name == "dihclient/util/DihPacketPreset" ||
+            name == "dihclient/util/ServerPluginScanCache\$CacheFile" ||
+            name == "dihclient/util/DihWaypoints\$Waypoint" ||
+            name == "dihclient/util/DihPresetManager\$PresetEntry" ||
+            name == "dihclient/util/DihPayloadJsonSupport\$EncodedPayload") { wholesale += name; continue }
         if ((cn.access and (Opcodes.ACC_ENUM or Opcodes.ACC_INTERFACE or Opcodes.ACC_ANNOTATION)) != 0) {
             wholesale += name
         }
@@ -1310,7 +1380,7 @@ fun litePatchVariantClass(bytes: ByteArray): ByteArray {
         }
     }
     require(enabledPatched && computePatched) {
-        "litePatchVariant: AutismLiteVariant shape drifted (ENABLED/compute not found)"
+        "litePatchVariant: DihLiteVariant shape drifted (ENABLED/compute not found)"
     }
     val cw = ClassWriter(ClassWriter.COMPUTE_MAXS)
     cn.accept(cw)
@@ -1342,8 +1412,8 @@ fun liteStripLocalVars(bytes: ByteArray): ByteArray {
 // LITE gate fold (our own bytecode transform - the ONLY optimization in the pipeline; there is
 // no ProGuard or any other external shrink/obfuscation tool anywhere). It replaces what an
 // optimizer would do with the exact, minimal transform the lite shrink needs:
-//   [invokestatic AutismLiteVariant.enabled()Z] [ifeq L]  -> deleted (never jumps, fall through)
-//   [invokestatic AutismLiteVariant.enabled()Z] [ifne L]  -> [goto L]
+//   [invokestatic DihLiteVariant.enabled()Z] [ifeq L]  -> deleted (never jumps, fall through)
+//   [invokestatic DihLiteVariant.enabled()Z] [ifne L]  -> [goto L]
 //   [invokestatic enabled()Z] [istore n]                  -> [iconst_1][istore n] (hoisted boolean:
 //     the slot now provably holds constant 1; same stack shape, so frames stay valid)
 //   [iload n][ifeq|ifne L] on such a proven slot          -> folded like the direct shape, but
@@ -1439,7 +1509,7 @@ fun liteFoldGates(bytes: ByteArray, cl: ClassLoader): ByteArray? {
         while (p != null) {
             val next = p.next
             if (p is MethodInsnNode && p.opcode == Opcodes.INVOKESTATIC &&
-                p.owner == "autismclient/util/AutismLiteVariant" && p.name == "enabled" && p.desc == "()Z") {
+                p.owner == "dihclient/util/DihLiteVariant" && p.name == "enabled" && p.desc == "()Z") {
                 if (next is JumpInsnNode && (next.opcode == Opcodes.IFEQ || next.opcode == Opcodes.IFNE)) {
                     val after = next.next
                     if (next.opcode == Opcodes.IFEQ) {
@@ -1577,7 +1647,7 @@ fun <T> withLiteBuildLock(block: () -> T): T {
 
 tasks.register("litePatchVariant") {
     group = "build"
-    description = "Copy the full jar and patch AutismLiteVariant.ENABLED to a compile-time constant true."
+    description = "Copy the full jar and patch DihLiteVariant.ENABLED to a compile-time constant true."
     // The full build (guardian secret bake, mixin injection) must be finished first.
     dependsOn("build")
 
@@ -1593,8 +1663,8 @@ tasks.register("litePatchVariant") {
             // Atomic publish: a concurrent build must never read a torn patched.jar - write to a
             // temp file, then move it into place (same temp+move pattern as the LVT strip below).
             val patchedTmp = File(patched.parentFile, patched.name + ".tmp")
-            val target = "autismclient/util/AutismLiteVariant.class"
-            val gateMarker = "autismclient/util/AutismLiteVariant".toByteArray(Charsets.US_ASCII)
+            val target = "dihclient/util/DihLiteVariant.class"
+            val gateMarker = "dihclient/util/DihLiteVariant".toByteArray(Charsets.US_ASCII)
             // Loader for frame computation + bytecode verification: the full jar's universe (the
             // fold never changes hierarchies) plus the library classpaths.
             val urls = ArrayList<URL>()
@@ -1669,17 +1739,17 @@ tasks.register("liteShrinkJar") {
             // the pinned lite-live classes, and every mixin the transformed lite config applies
             // (their nested classes are covered by the $-prefix pass below).
             val seeds = HashSet<String>()
-            seeds += "autismclient/AutismClientMod"
-            seeds += "autismclient/util/AutismLiteVariant"
+            seeds += "dihclient/DihClientMod"
+            seeds += "dihclient/util/DihLiteVariant"
             for (name in classBytes.keys) {
-                if (name.startsWith("autismclient/api/")) seeds += name
+                if (name.startsWith("dihclient/api/")) seeds += name
             }
             liteKeepPinned.forEach { seeds += it.removeSuffix(".class") }
 
-            val jsonText = entryBytes.getValue("autism.mixins.json").toString(Charsets.UTF_8)
+            val jsonText = entryBytes.getValue("dih.mixins.json").toString(Charsets.UTF_8)
             @Suppress("UNCHECKED_CAST")
             val json = groovy.json.JsonSlurper().parseText(jsonText) as Map<String, Any?>
-            val mixinPackage = (json["package"] as? String) ?: "autismclient.mixin"
+            val mixinPackage = (json["package"] as? String) ?: "dihclient.mixin"
             @Suppress("UNCHECKED_CAST")
             val client = (json["client"] as? List<Any?>) ?: emptyList<Any?>()
             val keptMixins = client.filterIsInstance<String>()
@@ -1758,7 +1828,7 @@ tasks.register<Jar>("liteJar") {
     inputs.property("liteStripAssets", liteStripAssets)
 
     destinationDirectory.set(libsDir)
-    archiveBaseName.set("Autism Lite")
+    archiveBaseName.set("Dih Lite")
     archiveVersion.set(project.version.toString())
     // No zero-byte entries for directories the strip emptied (jar hygiene).
     includeEmptyDirs = false
@@ -1776,7 +1846,7 @@ tasks.register<Jar>("liteJar") {
     // Copy the shrunk jar's entries (deferred), minus the stripped-feature assets, the dead mixin
     // classes (belt-and-braces: the shrink should have removed them already) and the dead libs.
     from({ zipTree(shrunkJar.get().asFile) }) {
-        exclude("autism.mixins.json") // whole-file-transformed copy is generated in doFirst instead
+        exclude("dih.mixins.json") // whole-file-transformed copy is generated in doFirst instead
         liteStripAssets.forEach { prefix ->
             if (prefix.endsWith("/")) exclude(prefix + "**") else exclude(prefix)
         }
@@ -1784,11 +1854,11 @@ tasks.register<Jar>("liteJar") {
         // saves zero bytes; a future FooMixin$1.class must not slip through either).
         liteStripMixins.forEach { name ->
             if (name.startsWith("lithium.")) {
-                exclude("autismclient/mixin/lithium/${name.removePrefix("lithium.")}.class")
-                exclude("autismclient/mixin/lithium/${name.removePrefix("lithium.")}\$*.class")
+                exclude("dihclient/mixin/lithium/${name.removePrefix("lithium.")}.class")
+                exclude("dihclient/mixin/lithium/${name.removePrefix("lithium.")}\$*.class")
             } else {
-                exclude("autismclient/mixin/$name.class")
-                exclude("autismclient/mixin/$name\$*.class")
+                exclude("dihclient/mixin/$name.class")
+                exclude("dihclient/mixin/$name\$*.class")
             }
         }
     }
@@ -1803,7 +1873,7 @@ tasks.register<Jar>("liteJar") {
     // text replaces; deadLibs is populated in doFirst before this filter runs during the copy.
     filesMatching("fabric.mod.json") {
         filter { text ->
-            var out = text.replace(",\"modmenu\":[\"autismclient.compat.AutismModMenuIntegration\"]", "")
+            var out = text.replace(",\"modmenu\":[\"dihclient.compat.DihModMenuIntegration\"]", "")
             for (lib in deadLibs) {
                 out = out.replace("{\"file\":\"$lib\"},", "").replace(",{\"file\":\"$lib\"}", "")
             }
@@ -1811,7 +1881,7 @@ tasks.register<Jar>("liteJar") {
         }
     }
 
-    // autism.mixins.json: Gradle's text filter is a LINEFilter (one line per call, re-joined with
+    // dih.mixins.json: Gradle's text filter is a LINEFilter (one line per call, re-joined with
     // the platform separator) - useless for a whole-file structural edit. So the original entry is
     // excluded in the main from-spec above and a whole-file-transformed copy is generated in
     // doFirst and re-added via markerDir below.
@@ -1858,14 +1928,14 @@ tasks.register<Jar>("liteJar") {
 
         val dir = markerDir.get().asFile
         dir.mkdirs()
-        dir.resolve("autism-lite.marker").writeText("")
+        dir.resolve("dih-lite.marker").writeText("")
 
         // Whole-file transform of the built mixins config: drop the lite-strip entries AND the
         // dead guardian entries from the client list (their impl already lives in excluded
         // util/mm), then re-emit - strict-JSON valid by construction.
-        val mixinsOut = dir.resolve("autism.mixins.json")
+        val mixinsOut = dir.resolve("dih.mixins.json")
         ZipFile(shrunkJar.get().asFile).use { zip ->
-            val text = zip.getInputStream(zip.getEntry("autism.mixins.json")).readBytes().toString(Charsets.UTF_8)
+            val text = zip.getInputStream(zip.getEntry("dih.mixins.json")).readBytes().toString(Charsets.UTF_8)
             @Suppress("UNCHECKED_CAST")
             val json = groovy.json.JsonSlurper().parseText(text) as MutableMap<String, Any?>
             @Suppress("UNCHECKED_CAST")
@@ -1883,7 +1953,7 @@ tasks.register<Jar>("liteJar") {
     doLast {
         try {
             val sidecar = libsDir.get().file("${base.archivesName.get()}-${project.version}.jar.kbuild").asFile
-            val target = libsDir.get().file("Autism Lite-${project.version}.jar.kbuild").asFile
+            val target = libsDir.get().file("Dih Lite-${project.version}.jar.kbuild").asFile
             if (sidecar.isFile) sidecar.copyTo(target, overwrite = true)
             else logger.warn("liteJar: no .kbuild sidecar found at $sidecar (unprotected build?) - skipped.")
         } finally {
@@ -1905,7 +1975,7 @@ tasks.register("verifyLiteJar") {
     description = "Fail the build if the LITE jar's contents regress (marker, asset/mixin strip, pinned classes, reference closure, metadata)."
     dependsOn("liteJar")
 
-    val liteJarFile = layout.buildDirectory.file("libs/Autism Lite-${project.version}.jar")
+    val liteJarFile = layout.buildDirectory.file("libs/Dih Lite-${project.version}.jar")
     val fullJarFile = layout.buildDirectory.file("libs/${base.archivesName.get()}-${project.version}.jar")
     inputs.file(liteJarFile)
     inputs.file(fullJarFile)
@@ -1926,16 +1996,16 @@ tasks.register("verifyLiteJar") {
                 zip.entries().asSequence().map { it.name }.toList()
             }
 
-            if (!entries.contains("autism-lite.marker")) {
-                fail("autism-lite.marker missing - every runtime gate would stay off in the lite jar")
+            if (!entries.contains("dih-lite.marker")) {
+                fail("dih-lite.marker missing - every runtime gate would stay off in the lite jar")
             }
 
             // Strip assertions: nothing from the asset/mixin strip lists may be present.
             val leakedAssets = liteStripAssets.filter { prefix -> entries.any { it.startsWith(prefix) } }
             if (leakedAssets.isNotEmpty()) fail("stripped assets leaked into the lite jar: $leakedAssets")
             val leakedMixinClasses = liteStripMixins.filter { name ->
-                val base = if (name.startsWith("lithium.")) "autismclient/mixin/lithium/${name.removePrefix("lithium.")}"
-                    else "autismclient/mixin/$name"
+                val base = if (name.startsWith("lithium.")) "dihclient/mixin/lithium/${name.removePrefix("lithium.")}"
+                    else "dihclient/mixin/$name"
                 entries.any { it == "$base.class" || (it.startsWith("$base\$") && it.endsWith(".class")) }
             }
             if (leakedMixinClasses.isNotEmpty()) fail("stripped mixin classes leaked into the lite jar: $leakedMixinClasses")
@@ -1947,12 +2017,12 @@ tasks.register("verifyLiteJar") {
             if (missingLibs.isNotEmpty()) fail("required bundled libraries missing from the lite jar: $missingLibs")
 
             // Macro parity: the macro system (editor included) ships in lite by design. A new macro
-            // action/condition registered the conventional way (AutismMacro.createActionFromTag case
+            // action/condition registered the conventional way (DihMacro.createActionFromTag case
             // + ActionFieldRegistry schema) is statically referenced from lite-live code and lands in
             // lite automatically - so any macro-package class present in the full jar but missing
             // from lite means someone registered ONLY in dead-in-lite code or reflectively, and the
             // action would silently not exist in lite. Fail loudly instead.
-            val macroPackages = listOf("autismclient/util/macro/", "autismclient/gui/macro/")
+            val macroPackages = listOf("dihclient/util/macro/", "dihclient/gui/macro/")
             val fullEntries = ZipFile(fullJarFile.get().asFile).use { zip ->
                 zip.entries().asSequence().map { it.name }.toList()
             }
@@ -1961,7 +2031,7 @@ tasks.register("verifyLiteJar") {
                 .filter { it !in liteMacroParityExempt && !entries.contains(it) }
             if (macroMissing.isNotEmpty()) {
                 fail("macro classes present in full but missing from lite (a new macro action/condition " +
-                    "would silently not ship in lite - register it via AutismMacro.createActionFromTag + " +
+                    "would silently not ship in lite - register it via DihMacro.createActionFromTag + " +
                     "ActionFieldRegistry, or audit it into liteMacroParityExempt): ${macroMissing.take(10)}")
             }
             // The exemption audit is two-directional: an exempt class that IS present in lite means
@@ -1973,14 +2043,14 @@ tasks.register("verifyLiteJar") {
                     "leak - re-audit the exemption list): $exemptPresent")
             }
 
-            // Config-model parity: every AutismConfig nested model class in the full jar must exist in
+            // Config-model parity: every DihConfig nested model class in the full jar must exist in
             // lite. A missing one means gson binds that part of the config as generic maps (silently
             // degrading persistence) - this tripwire fires before that ships.
             val configModelMissing = fullEntries
-                .filter { it.startsWith("autismclient/util/AutismConfig\$") && it.endsWith(".class") }
+                .filter { it.startsWith("dihclient/util/DihConfig\$") && it.endsWith(".class") }
                 .filter { !entries.contains(it) }
             if (configModelMissing.isNotEmpty()) {
-                fail("AutismConfig model classes present in full but missing from lite (gson config " +
+                fail("DihConfig model classes present in full but missing from lite (gson config " +
                     "persistence would silently degrade): ${configModelMissing.take(10)}")
             }
 
@@ -2119,10 +2189,10 @@ tasks.register("verifyLiteJar") {
             }
 
             val fabricJson = entryText("fabric.mod.json")
-            if (!fabricJson.contains("\"name\":\"AUTISM Client\"")) {
+            if (!fabricJson.contains("\"name\":\"DIH Client\"")) {
                 fail("fabric.mod.json name drifted - the game title/icon must not change in lite")
             }
-            if (fabricJson.contains("AutismModMenuIntegration")) {
+            if (fabricJson.contains("DihModMenuIntegration")) {
                 fail("fabric.mod.json still has the modmenu entrypoint (its config screen links stripped UI)")
             }
             // Metadata must match contents both ways: every bundled lib in the jar is declared in
@@ -2140,13 +2210,13 @@ tasks.register("verifyLiteJar") {
                 fail("fabric.mod.json is not valid JSON: ${t.message}")
             }
 
-            val mixinsJson = entryText("autism.mixins.json")
+            val mixinsJson = entryText("dih.mixins.json")
             val leakedMixins = liteStripMixins.filter { mixinsJson.contains("\"$it\"") }
             if (leakedMixins.isNotEmpty()) fail("strip-listed mixins back in the lite config: $leakedMixins")
             try {
                 groovy.json.JsonSlurper().parseText(mixinsJson)
             } catch (t: Throwable) {
-                fail("autism.mixins.json is not valid JSON after filtering: ${t.message}")
+                fail("dih.mixins.json is not valid JSON after filtering: ${t.message}")
             }
 
             // Mixin member-parity guard: every mixin class lite applies (transformed json entries
@@ -2156,7 +2226,7 @@ tasks.register("verifyLiteJar") {
             // an AbstractMethodError at startup (verified in-game: the plugin's onLoad once died
             // exactly like that).
             val mixinsJsonObj = groovy.json.JsonSlurper().parseText(mixinsJson) as Map<String, Any?>
-            val mixinPkg = ((mixinsJsonObj["package"] as? String) ?: "autismclient.mixin").replace('.', '/')
+            val mixinPkg = ((mixinsJsonObj["package"] as? String) ?: "dihclient.mixin").replace('.', '/')
             @Suppress("UNCHECKED_CAST")
             val mixinClassNames = ((mixinsJsonObj["client"] as? List<Any?>)?.filterIsInstance<String>() ?: emptyList())
                 .map { "$mixinPkg/${it.replace('.', '/')}" }.toMutableList()

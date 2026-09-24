@@ -9,7 +9,7 @@ base {
 }
 
 repositories {
-    // AUTISM Client is consumed from your local Maven repo. In the AUTISM project run:
+    // DIH Client is consumed from your local Maven repo. In the DIH project run:
     //     ./gradlew publishToMavenLocal
     mavenLocal()
     maven("https://maven.fabricmc.net/") { name = "Fabric" }
@@ -17,14 +17,14 @@ repositories {
 }
 
 dependencies {
-    // Mirrors the AUTISM Client build: official Mojang mappings are implicit for the configured version, so there is no
+    // Mirrors the DIH Client build: official Mojang mappings are implicit for the configured version, so there is no
     // explicit `mappings(...)` line and dependencies use plain `implementation`.
     minecraft(libs.minecraft)
     implementation(libs.fabric.loader)
     implementation(libs.fabric.api)
 
-    // The AUTISM Client API (published to mavenLocal from the AUTISM project).
-    implementation(libs.autism)
+    // The DIH Client API (published to mavenLocal from the DIH project).
+    implementation(libs.dih)
 }
 
 // Turns an exact Minecraft version (e.g. "26.2") into a compatible range ("~26.2") so the addon
@@ -43,7 +43,7 @@ tasks {
             "mc_version" to libs.versions.minecraft.get(),
             "mc_compat" to toMinecraftCompat(libs.versions.minecraft.get()),
             "fabric_api_version" to libs.versions.fabric.api.get(),
-            "autism_api_version" to libs.versions.autism.get()
+            "dih_api_version" to libs.versions.dih.get()
         )
         inputs.properties(propertyMap)
         filteringCharset = "UTF-8"

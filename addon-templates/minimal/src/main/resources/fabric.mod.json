@@ -1,17 +1,17 @@
 {
   "schemaVersion": 1,
-  "id": "autism-minimal-addon-template",
+  "id": "dih-minimal-addon-template",
   "version": "${version}",
-  "name": "AUTISM Minimal Addon Template",
-  "description": "Small AUTISM Client addon example: one module, one macro action, and one macro condition.",
+  "name": "DIH Minimal Addon Template",
+  "description": "Small DIH Client addon example: one module, one macro action, and one macro condition.",
   "authors": [
     "You"
   ],
   "custom": {
-    "autism:color": "80,220,120",
+    "dih:color": "80,220,120",
     "modmenu": {
       "parent": {
-        "id": "autism"
+        "id": "dih"
       }
     }
   },
@@ -20,7 +20,7 @@
     "client": [
       "com.example.minimal.MinimalInit"
     ],
-    "autism": [
+    "dih": [
       "com.example.minimal.MinimalAddon"
     ]
   },
@@ -29,6 +29,6 @@
     "minecraft": "${mc_compat}",
     "fabricloader": ">=0.19.3",
     "fabric-api": ">=${fabric_api_version}",
-    "autism": ">=${autism_api_version}"
+    "dih": ">=${dih_api_version}"
   }
 }
