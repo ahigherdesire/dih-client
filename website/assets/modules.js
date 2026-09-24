@@ -6,6 +6,10 @@ window.DIH_MODULES = {
    "d": "Smoothly assists your aim toward configured entities."
   },
   {
+   "n": "AnchorAura",
+   "d": "Blows targets up with respawn anchors."
+  },
+  {
    "n": "AutoArmor",
    "d": "Equips your best armor."
   },
@@ -16,6 +20,10 @@ window.DIH_MODULES = {
   {
    "n": "AutoTrap",
    "d": "Traps enemies in blocks."
+  },
+  {
+   "n": "CrystalAura",
+   "d": "Places and detonates end crystals."
   },
   {
    "n": "KillAura",

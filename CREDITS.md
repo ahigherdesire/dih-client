@@ -4,6 +4,13 @@ DIH Client includes original code written for this project, but it also uses, re
 
 Huge credit to the following developers and projects:
 
+## Autism Client (upstream)
+
+DIH Client is a fork of Autism Client by Melonik, simeonvartik and the AutismDevelopment contributors. The client framework, modules, macro system, UI toolkit and original artwork (including the title-screen panorama) come from it.
+
+Project: https://github.com/AutismDevelopment/Autism-Client
+License: GPL-3.0
+
 ## OpSec by aurickk
 
 Parts of DIH Client related to client privacy, mod detection protection, compatibility handling, and anti-fingerprinting behavior are inspired by or derived from OpSec.

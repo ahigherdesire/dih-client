@@ -787,6 +787,15 @@
       status.textContent = q ? `${total} match${total === 1 ? '' : 'es'} for “${searchBox.value.trim()}”` : 'hover a module';
     };
     searchBox.addEventListener('input', filter);
+    // cover tiles for a module category jump to its panel and flash it
+    document.querySelectorAll('.tile[data-cat]').forEach(tile => tile.addEventListener('click', () => {
+      if (searchBox.value) { searchBox.value = ''; filter(); }
+      const panel = gui.querySelector(`.panel[aria-label="${tile.dataset.cat}"]`);
+      if (!panel) return;
+      panel.classList.remove('flash');
+      void panel.offsetWidth;
+      panel.classList.add('flash');
+    }));
     document.addEventListener('keydown', ev => {
       if (ev.key === '/' && document.activeElement !== searchBox && !/input|textarea/i.test(document.activeElement.tagName)) {
         ev.preventDefault(); searchBox.focus();

@@ -678,6 +678,9 @@ tasks {
         from("licenses") {
             into("META-INF/licenses")
         }
+        from("NOTICE.md") {
+            into("META-INF")
+        }
 
         // ModMenu API is a compile-only soft dependency: we ship local stubs of its two API
         // interfaces so we can compile the integration without a cross-version ModMenu artifact, but

@@ -4,7 +4,7 @@ window.DIH_RELEASE = {
   mc: "26.2",
   file: "DIH-Client-5.0-26.2.jar",
   size: "20.8 MB",
-  sha256: "3467cb5c3b4ed60f7eebaa1efc600880e41d57360196791572883039cb9442a8",
+  sha256: "546dffb948ed15411b7e6491b372cdb407db33466f3740f119069aca063dae80",
   repo: "https://github.com/ahigherdesire/dih-client",
   download: "https://github.com/ahigherdesire/dih-client/releases/download/v5.0/DIH-Client-5.0-26.2.jar"
 };

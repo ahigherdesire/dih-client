@@ -133,10 +133,14 @@ The integrated pathfinding engine and AI feature set are built on Baritone (via 
 Baritone project: https://github.com/cabaletta/baritone
 License: LGPL-3.0
 
-## License Notice
+## License
 
-Because DIH Client uses and/or derives from GPL-licensed projects, DIH Client is released under the GNU General Public License v3.0.
+DIH Client is a fork of [Autism Client](https://github.com/AutismDevelopment/Autism-Client) by Melonik, simeonvartik and the AutismDevelopment contributors, modified by ahigherdesire (see `NOTICE.md` for what changed).
 
-Source code must stay available to users, and any redistributed modified versions must follow the same GPL-3.0 license terms.
+DIH Client is free software under the GNU General Public License, version 3 or (at your option) any later version. See `LICENSE`. The complete source for every release is at https://github.com/ahigherdesire/dih-client, and anyone who redistributes a modified version must keep it under the same terms and keep these notices.
+
+Bundled libraries and fonts keep their own licenses; see `licenses/THIRD_PARTY_NOTICES.md` (shipped in the jar under `META-INF/licenses/`).
+
+Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.
 
 If any credit is missing or inaccurate, contact the maintainers so it can be corrected.

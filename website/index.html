@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DIH Client</title>
-<meta name="description" content="A Fabric client for Minecraft 26.2. 73 modules, a 97-action macro engine, Baritone built in, and a seed map that checks every structure against real world generation. Free and open source (GPL-3.0).">
+<meta name="description" content="A Fabric client for Minecraft 26.2. 75 combat, movement and render modules, a 97-action macro engine, packet tools, Baritone built in, and a seed map that checks every structure against real world generation. Free and open source (GPL-3.0).">
 <meta name="theme-color" content="#0b0c10">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
@@ -50,10 +50,11 @@
   <canvas id="world" class="world" aria-label="Interactive seed map. Click anywhere to path there."></canvas>
   <div class="scrim" aria-hidden="true"></div>
 
+  <div class="hero-inner">
   <div class="hero-copy">
     <p class="kicker mono">FABRIC&nbsp;·&nbsp;MC <span data-release="mc">26.2</span>&nbsp;·&nbsp;JAVA 25&nbsp;·&nbsp;GPL-3.0</p>
     <h1 id="hero-title" class="title"><span class="t-dih">DIH</span><span class="t-client">CLIENT</span></h1>
-    <p class="lede">A Minecraft client for people who read the packet log. Macros that wait for the server, Baritone built in, and a seed map that runs real world generation before it tells you where anything is.</p>
+    <p class="lede">Everything in one jar: 75 combat, movement and render modules, macros that wait for the server, a full packet toolkit, Baritone pathing and AI, and a seed map that runs real world generation.</p>
     <div class="cta">
       <a class="btn btn-big" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0/DIH-Client-5.0-26.2.jar" data-release="download">
         <svg viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path d="M7 1h2v8h2v2H9v2H7v-2H5V9h2zM3 13h1v1h8v-1h1v2H3z" fill="currentColor"/></svg>
@@ -61,6 +62,34 @@
       </a>
       <a class="btn btn-ghost" href="https://github.com/ahigherdesire/dih-client" data-release="repo" rel="noopener">Read the source</a>
     </div>
+  </div>
+
+  <nav class="band" aria-label="What's inside">
+    <a class="tile" href="#modules" data-cat="Combat">
+      <span class="tile-k mono">08 modules</span><strong>Combat</strong>
+      <span class="tile-l">KillAura · CrystalAura · AnchorAura · AutoTotem · AimAssist · TriggerBot</span>
+    </a>
+    <a class="tile" href="#modules" data-cat="Movement">
+      <span class="tile-k mono">14 modules</span><strong>Movement</strong>
+      <span class="tile-l">Flight · Speed · NoFall · Scaffold · BoatFly · NoClip · Phase</span>
+    </a>
+    <a class="tile" href="#modules" data-cat="Render">
+      <span class="tile-k mono">20 modules</span><strong>Render</strong>
+      <span class="tile-l">ESP · Xray · StorageESP · Tracers · Chams · Freecam · Nametags</span>
+    </a>
+    <a class="tile" href="#macros">
+      <span class="tile-k mono">97 actions</span><strong>Macros &amp; packets</strong>
+      <span class="tile-l">macro editor · packet log · cancel · gates · Blink · NBT · LAN sync</span>
+    </a>
+    <a class="tile" href="#pathing">
+      <span class="tile-k mono">58 commands</span><strong>Baritone</strong>
+      <span class="tile-l">#goto · #mine · #follow · #elytra · #build · #ai</span>
+    </a>
+    <a class="tile" href="#seedmap">
+      <span class="tile-k mono">every structure</span><strong>Seed map</strong>
+      <span class="tile-l">validated by worldgen · JourneyMap layers · #seedinput</span>
+    </a>
+  </nav>
   </div>
 
   <aside class="legend" id="legend" aria-label="Map layers">
@@ -88,7 +117,7 @@
 
 <!-- ============================== NUMBERS ============================== -->
 <section class="numbers" aria-label="What's in the jar">
-  <div><strong>73</strong><span>modules</span></div>
+  <div><strong>75</strong><span>modules</span></div>
   <div><strong>97</strong><span>macro actions</span></div>
   <div><strong>103</strong><span>commands</span></div>
   <div><strong>1</strong><span>jar. no extra mods</span></div>
@@ -215,7 +244,7 @@
 <!-- ============================== MODULES ============================== -->
 <section class="modules" id="modules" aria-labelledby="mtitle">
   <div class="modules-head">
-    <h2 id="mtitle"><span class="big">73</span> modules. Here's all of them.</h2>
+    <h2 id="mtitle"><span class="big">75</span> modules. Here's all of them.</h2>
     <label class="search mono"><span>/</span><input id="msearch" type="search" placeholder="search modules" autocomplete="off" spellcheck="false" aria-label="Search modules"></label>
   </div>
   <p class="modules-note mono">Click to toggle, like in game. In game it's <kbd>R.Shift</kbd>.</p>
@@ -245,7 +274,7 @@
   </ol>
   <div class="checksum mono">
     <span>SHA-256</span>
-    <code id="sha" data-release="sha256">3467cb5c3b4ed60f7eebaa1efc600880e41d57360196791572883039cb9442a8</code>
+    <code id="sha" data-release="sha256">546dffb948ed15411b7e6491b372cdb407db33466f3740f119069aca063dae80</code>
     <button type="button" class="linkish" id="copy-sha">copy</button>
   </div>
 </section>
@@ -293,7 +322,7 @@
     </div>
     <div>
       <h3 class="mono">LICENSE</h3>
-      <p>DIH Client is free software under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener">GNU GPL v3</a>. The complete source for every release is on <a href="https://github.com/ahigherdesire/dih-client" data-release="repo" rel="noopener">GitHub</a>.</p>
+      <p>© 2026 ahigherdesire. DIH Client is free software under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener">GNU GPL v3 or later</a>, with no warranty. The complete source for every release is on <a href="https://github.com/ahigherdesire/dih-client" data-release="repo" rel="noopener">GitHub</a>.</p>
       <p class="legal mono">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</p>
     </div>
   </div>

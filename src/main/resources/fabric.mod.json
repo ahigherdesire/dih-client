@@ -5,11 +5,14 @@
   "name": "DIH Client",
   "description": "DIH Client is an elite packet, macro, and duping toolkit built for players who want total control.",
   "authors": [
-    "Melonik"
+    "ahigherdesire"
   ],
   "contributors": [
-    "Melonik"
+    "Melonik",
+    "simeonvartik",
+    "AutismDevelopment contributors"
   ],
+  "license": "GPL-3.0-or-later",
   "contact": {
     "homepage": "https://github.com/ahigherdesire/dih-client",
     "sources": "https://github.com/ahigherdesire/dih-client",
