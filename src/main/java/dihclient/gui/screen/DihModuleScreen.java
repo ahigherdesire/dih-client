@@ -75,6 +75,12 @@ public class DihModuleScreen extends DihScreen {
         this.mode = mode == null ? Mode.IN_GAME : mode;
     }
 
+    /** Opens straight onto one module's settings (used by {@code #flee gui}). */
+    public DihModuleScreen openingSettingsOf(String moduleId) {
+        this.returnSettingsModuleId = moduleId;
+        return this;
+    }
+
     public boolean isTitleSetup() {
         return mode == Mode.TITLE_SETUP;
     }

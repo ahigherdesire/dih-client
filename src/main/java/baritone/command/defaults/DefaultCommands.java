@@ -85,7 +85,8 @@ public final class DefaultCommands {
                 new ThreatsCommand(baritone),
                 new ListenToMineCommand(baritone),
                 new PlayersCommand(baritone),
-                new MenuCommand(baritone)
+                new MenuCommand(baritone),
+                new FleeCommand(baritone)
         ));
         ExecutionControlCommands prc = new ExecutionControlCommands(baritone);
         commands.add(prc.pauseCommand);

@@ -14,6 +14,8 @@ public final class PackAutoReconnectState {
     private static ServerAddress lastAddress;
     private static Screen countdownScreen;
     private static int ticksLeft;
+    /** Set by Flee so a deliberate disconnect isn't undone by AutoReconnect; cleared on the next join. */
+    private static boolean held;
 
     private PackAutoReconnectState() {
     }
@@ -30,11 +32,19 @@ public final class PackAutoReconnectState {
         copy.copyFrom(server);
         lastServer = copy;
         lastAddress = address != null ? address : ServerAddress.parseString(server.ip);
+        held = false;
         countdownScreen = null;
         ticksLeft = delayTicks();
     }
 
+    /** Skip auto-reconnect until you join a server again yourself. */
+    public static void holdUntilNextJoin() {
+        held = true;
+        countdownScreen = null;
+    }
+
     public static boolean shouldShow() {
+        if (held) return false;
         Module module = ModuleRegistry.get("auto-reconnect");
         return module != null && module.isEnabled() && lastServer != null && lastAddress != null && MC.allowsMultiplayer();
     }

@@ -211,6 +211,7 @@ public final class BuiltinModules {
         ModuleRegistry.register(new BookBotModule());
         ModuleRegistry.register(new PacketCancellerModule());
         ModuleRegistry.register(new AutoReconnectModule());
+        ModuleRegistry.register(new FleeModule());
         ModuleRegistry.register(new HideModule());
         ModuleRegistry.register(new InventoryTweaksModule());
         ModuleRegistry.register(new AntiHungerModule());
