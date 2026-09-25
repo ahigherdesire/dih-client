@@ -25,7 +25,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
 
       - name: Build
-        run: ./gradlew build -Prelease --console=plain
+        run: |
+          set -o pipefail
+          ./gradlew build -Prelease --console=plain 2>&1 | tee build.log
+
+      - name: Report build errors
+        if: failure()
+        run: |
+          # One annotation with the compiler errors, readable without the full log.
+          errors=$(grep -E -A3 "error:|What went wrong|FAILED|Test.*>.*FAILED" build.log | head -120 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+          echo "::error title=Build failed::$errors"
 
       - name: Collect the jar
         id: jar
