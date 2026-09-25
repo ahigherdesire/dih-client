@@ -17,6 +17,8 @@
 
 package baritone;
 
+import baritone.acquire.AcquireControl;
+import baritone.acquire.exec.AcquireProcess;
 import baritone.api.BaritoneAPI;
 import baritone.api.IBaritone;
 import baritone.api.Settings;
@@ -83,6 +85,7 @@ public class Baritone implements IBaritone {
     private final InventoryPauserProcess inventoryPauserProcess;
     private final MenuClickProcess menuClickProcess;
     private final IElytraProcess elytraProcess;
+    private final AcquireProcess acquireProcess;
 
     private final PathingControlManager pathingControlManager;
     private final SelectionManager selectionManager;
@@ -132,6 +135,12 @@ public class Baritone implements IBaritone {
             this.menuClickProcess        = this.registerProcess(MenuClickProcess::new);
             this.elytraProcess           = this.registerProcess(ElytraProcess::create);
             this.registerProcess(BackfillProcess::new);
+            this.acquireProcess          = this.registerProcess(AcquireProcess::new);
+        }
+        // #acquire for #ai and other callers. The first Baritone built is the primary one (BaritoneProvider
+        // creates it before any other), so only that one is registered.
+        if (AcquireControl.get() == null) {
+            AcquireControl.set(this.acquireProcess);
         }
 
         this.worldProvider = new WorldProvider(this);
@@ -220,6 +229,10 @@ public class Baritone implements IBaritone {
 
     public MenuClickProcess getMenuClickProcess() {
         return this.menuClickProcess;
+    }
+
+    public AcquireProcess getAcquireProcess() {
+        return this.acquireProcess;
     }
 
     public AutopilotBehavior getAutopilotBehavior() {

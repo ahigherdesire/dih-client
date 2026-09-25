@@ -1621,6 +1621,42 @@ public final class Settings {
     public final Setting<Boolean> allowWalkOnMagmaBlocks = new Setting<>(false);
 
     /**
+     * Let {@code #acquire} place a crafting table or furnace from your inventory when none is within
+     * {@link #acquireStationRadius}. When off it only uses stations that already exist.
+     */
+    public final Setting<Boolean> acquirePlaceStations = new Setting<>(true);
+
+    /**
+     * Let {@code #acquire} kill mobs for their drops (string, leather, ...). It only attacks the mob type
+     * the step names, never players, babies, named mobs or tamed pets.
+     */
+    public final Setting<Boolean> acquireKillMobs = new Setting<>(true);
+
+    /**
+     * How far, in blocks, {@code #acquire} looks for an existing crafting table or furnace before it
+     * places its own.
+     */
+    public final Setting<Integer> acquireStationRadius = new Setting<>(32);
+
+    /**
+     * How many times one {@code #acquire} may re-plan from your real inventory (after a step comes up short,
+     * fails, times out, a tool breaks or you die) before it gives up.
+     */
+    public final Setting<Integer> acquireMaxReplans = new Setting<>(8);
+
+    /**
+     * Seconds one {@code #acquire} step may take before it counts as stuck and the plan is redone.
+     */
+    public final Setting<Integer> acquireStepTimeoutSeconds = new Setting<>(300);
+
+    /**
+     * When the inventory fills up during {@code #acquire}, drop one stack of filler (dirt, gravel, spare
+     * cobblestone, ...) that the rest of the plan doesn't need. Off by default: with it off, {@code #acquire}
+     * stops and tells you the inventory is full.
+     */
+    public final Setting<Boolean> acquireDropJunk = new Setting<>(false);
+
+    /**
      * A map of lowercase setting field names to their respective setting
      */
     public final Map<String, Setting<?>> byLowerName;
