@@ -172,7 +172,7 @@ sourceSets {
     val api by creating {
         compileClasspath += main.compileClasspath
     }
-    // Compile-only stubs: real Litematica/Schematica provide these at runtime;
+    // Compile-only stubs: real Litematica/Schematica/SeedCrackerX provide these at runtime;
     // deliberately NOT bundled (would shadow the real mods). Compile-only, like upstream.
     val schematica_api by creating {
         compileClasspath += main.compileClasspath
@@ -878,8 +878,7 @@ val liteStripMixins = listOf(
     "DihPilotLocalPlayerRenderMixin", "DihPilotChatMixin", "DihPilotLocalInputMixin",
     "DihPilotEditRerouteMixin", "DihPilotHandItemMixin", "DihMultiPovChatMixin",
     // title/menu-only (custom main menu is stripped from lite; splash mixins stay for panic cosmetics)
-    "DihTitleScreenSupportMixin", "DihGuiRendererPanoramaMixin",
-    "DihPanoramaOverlayMixin", "DihLogoRendererMixin",
+    "DihTitleScreenSupportMixin", "DihLogoRendererMixin",
     // cheat-module-only mixins whose module classes are physically excluded from the lite jar
     // (verified: nothing kept in lite references them; the lithium entries need their package
     // prefix so the json line filter matches)

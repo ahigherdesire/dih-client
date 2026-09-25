@@ -4901,7 +4901,8 @@ public final class BuiltinModules {
             add(new BoolSetting("barriers", "Barriers", false)
                 .group("Blocks")
                 .description("Show invisible barrier blocks."));
-            add(new ColorSetting("color", "Color", 0xCCFF3B3B).group("Colors"));
+            add(new ColorSetting("color", "Color", 0xCCFF3B3B).group("Colors")
+                .description("Colour for non-ore blocks. Ores are coloured by type."));
         }
     }
 

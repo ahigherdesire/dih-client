@@ -107,8 +107,6 @@
     "DihFramerateLimitTrackerMixin",
     "DihFramerateLimiterMixin",
     "DihTitleScreenSupportMixin",
-    "DihGuiRendererPanoramaMixin",
-    "DihPanoramaOverlayMixin",
     "DihSleepingChatScreenMixin",
     "DihBookScreenMixin",
     "DihBookEditScreenMixin",

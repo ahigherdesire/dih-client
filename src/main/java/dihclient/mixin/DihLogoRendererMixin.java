@@ -16,9 +16,9 @@ public class DihLogoRendererMixin {
     @Unique
     private static final Identifier PACKUTIL_LOGO = Identifier.fromNamespaceAndPath("dihclient", "textures/gui/title/dih_client_logo.png");
     @Unique
-    private static final int PACKUTIL_LOGO_TEXTURE_WIDTH = 516;
+    private static final int PACKUTIL_LOGO_TEXTURE_WIDTH = 506;
     @Unique
-    private static final int PACKUTIL_LOGO_TEXTURE_HEIGHT = 144;
+    private static final int PACKUTIL_LOGO_TEXTURE_HEIGHT = 58;
     @Unique
     private static final int PACKUTIL_LOGO_MAX_WIDTH = 320;
     @Unique

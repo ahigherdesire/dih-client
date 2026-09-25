@@ -121,6 +121,9 @@ public class SeedInputCommand extends Command {
         if (!ClientStructureFinder.hasSeed()) {
             logDirect("No seed stored for " + where + ".");
             logDirect("Usage:  #seedinput <seed>   (numbers or text, like the world-creation screen)", ChatFormatting.GRAY);
+            if (!net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("seedcrackerx")) {
+                logDirect("Or install SeedCrackerX — its seed gets filled in here automatically.", ChatFormatting.GRAY);
+            }
             return;
         }
         long seed = ClientStructureFinder.getSeed();
@@ -158,6 +161,7 @@ public class SeedInputCommand extends Command {
             "and a seed that doesn't match is refused (add 'force' to keep it anyway).",
             "",
             "Singleplayer needs nothing — the world's seed is read automatically.",
+            "With SeedCrackerX installed the seed fills itself in (crack or database hit).",
             "",
             "Usage:",
             "> seedinput <seed>        - numbers or text (text converts like world creation)",

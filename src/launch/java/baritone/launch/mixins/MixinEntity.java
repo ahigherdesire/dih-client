@@ -19,17 +19,14 @@ package baritone.launch.mixins;
 
 import baritone.api.BaritoneAPI;
 import baritone.api.event.events.RotationMoveEvent;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.player.Player;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Entity.class)
 public class MixinEntity {
@@ -67,47 +64,6 @@ public class MixinEntity {
             this.yRot = this.motionUpdateRotationEvent.getOriginal().getYaw();
             this.xRot = this.motionUpdateRotationEvent.getOriginal().getPitch();
             this.motionUpdateRotationEvent = null;
-        }
-    }
-
-    // ── Player ESP: force the vanilla glowing outline on other players ──────────
-    //    espPlayers draws no box; instead we make Minecraft think the target is
-    //    glowing, so the game renders its real silhouette through walls (the same
-    //    effect as a spectral arrow), tinted with colorEspPlayer.
-
-    @Inject(method = "isCurrentlyGlowing", at = @At("HEAD"), cancellable = true)
-    private void baritone$espGlow(CallbackInfoReturnable<Boolean> cir) {
-        if (baritone$espTarget()) {
-            cir.setReturnValue(true);
-        }
-    }
-
-    @Inject(method = "getTeamColor", at = @At("HEAD"), cancellable = true)
-    private void baritone$espColor(CallbackInfoReturnable<Integer> cir) {
-        if (baritone$espTarget()) {
-            cir.setReturnValue(BaritoneAPI.getSettings().colorEspPlayer.value.getRGB() & 0xFFFFFF);
-        }
-    }
-
-    /** True when this entity is another player that player-ESP should outline. */
-    @Unique
-    private boolean baritone$espTarget() {
-        try {
-            if (!BaritoneAPI.getSettings().espPlayers.value) {
-                return false;
-            }
-            if (!(((Object) this) instanceof Player)) {
-                return false;
-            }
-            LocalPlayer me = Minecraft.getInstance().player;
-            if (me == null || ((Object) this) == me) {
-                return false; // never outline ourselves
-            }
-            Entity self = (Entity) (Object) this;
-            double range = BaritoneAPI.getSettings().espPlayerRange.value;
-            return self.distanceToSqr(me) <= range * range;
-        } catch (Throwable t) {
-            return false;
         }
     }
 }

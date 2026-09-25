@@ -71,6 +71,12 @@ public class SettingsUtil {
         }
     }
 
+    /** Settings that no longer exist; old settings files may still list them. Lower case. */
+    private static final java.util.Set<String> REMOVED_SETTINGS = java.util.Set.of(
+            "espblocks", "espblocklist", "espblockrange", "espblockrescanticks", "espblocklimit", "colorespblock",
+            "espplayers", "espplayerrange", "espignoredepth", "esplinewidthpixels", "esplabels", "esptracers",
+            "espitems", "espitemrange", "espmobs", "espmobrange", "colorespplayer", "colorespitem", "colorespmob");
+
     public static void readAndApply(Settings settings, String settingsName) {
         try {
             forEachLine(settingsByName(settingsName), line -> {
@@ -85,6 +91,9 @@ public class SettingsUtil {
                 // TODO remove soonish
                 if ("allowjumpat256".equals(settingName)) {
                     settingName = "allowjumpatbuildlimit";
+                }
+                if (REMOVED_SETTINGS.contains(settingName)) {
+                    return; // dropped on the next save
                 }
                 try {
                     parseAndApply(settings, settingName, settingValue);

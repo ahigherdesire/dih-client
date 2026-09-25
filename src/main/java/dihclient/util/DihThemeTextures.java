@@ -8,14 +8,10 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.textures.FilterMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
-import net.minecraft.client.renderer.texture.CubeMapTexture;
 import net.minecraft.client.renderer.texture.TextureContents;
-import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
-import net.minecraft.server.packs.resources.ResourceManager;
 
-import java.io.IOException;
 import java.io.InputStream;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -25,13 +21,6 @@ import java.util.Set;
 
 public final class DihThemeTextures {
     private static final Minecraft MC = Minecraft.getInstance();
-
-    public static final Identifier PANORAMA_LOCATION =
-        Identifier.fromNamespaceAndPath("dihclient", "textures/gui/title/background/panorama");
-    private static final Identifier PANORAMA_OVERLAY_SRC =
-        Identifier.fromNamespaceAndPath("dihclient", "textures/gui/title/background/panorama_overlay.png");
-    private static final Identifier PANORAMA_OVERLAY_DYN =
-        Identifier.fromNamespaceAndPath("dihclient", "dynamic/theme/panorama_overlay");
 
     private record Recolored(Identifier id, int generation) {}
 
@@ -46,10 +35,6 @@ public final class DihThemeTextures {
     private static final Map<Identifier, Integer> FAILED = new HashMap<>();
     private static final Map<Identifier, Identifier> WHITE_IDS = new HashMap<>();
     private static int themeGeneration;
-    private static RecoloredCubeMapTexture panorama;
-    private static volatile boolean panoramaAvailable;
-    private static AbstractTexture overlayTexture;
-    private static boolean overlayBuilt;
 
     private DihThemeTextures() {}
 
@@ -208,111 +193,10 @@ public final class DihThemeTextures {
             "dynamic/theme/" + source.getNamespace() + "/" + source.getPath().replace('/', '_').replace(".png", ""));
     }
 
-    public static void registerPanorama(TextureManager textureManager) {
-
-        try {
-            panorama = new RecoloredCubeMapTexture(PANORAMA_LOCATION);
-            textureManager.register(PANORAMA_LOCATION, panorama);
-        } catch (Throwable t) {
-            panoramaAvailable = false;
-            DihClientAddon.LOG.warn("Failed to register themed panorama", t);
-        }
-    }
-
-    public static boolean isPanoramaAvailable() {
-        return panoramaAvailable;
-    }
-
-    public static void reloadPanorama() {
-        if (panorama == null || !panoramaAvailable) return;
-        int generation = themeGeneration;
-        Runnable jobDone = dihclient.gui.DihThemeApplyOverlay.beginJob("Recoloring panorama");
-
-        MC.execute(() -> {
-            try {
-                if (generation != themeGeneration) return;
-                TextureContents contents = panorama.loadContents(MC.getResourceManager());
-                try {
-                    panorama.apply(contents);
-                } catch (Throwable t) {
-                    DihClientAddon.LOG.warn("Failed to upload the recolored panorama (keeping the current one)", t);
-                    try { contents.image().close(); } catch (Throwable ignored) {  }
-                }
-            } catch (Throwable t) {
-                DihClientAddon.LOG.warn("Failed to recolor themed panorama (keeping the current one)", t);
-            } finally {
-                jobDone.run();
-            }
-        });
-    }
-
-    public static Identifier panoramaOverlay(Identifier original) {
-        DihTheme.State st = DihTheme.active();
-        if (!st.isActive(Channel.BACKDROP)) return original;
-        if (overlayTexture != null) return PANORAMA_OVERLAY_DYN;
-        if (!overlayBuilt) {
-            overlayBuilt = true;
-            kickOverlayBuild(st, () -> {});
-        }
-        return original;
-    }
-
-    private static void kickOverlayBuild(DihTheme.State st, Runnable jobDone) {
-        int generation = themeGeneration;
-
-        byte[] png;
-        try {
-            Optional<Resource> res = MC.getResourceManager().getResource(PANORAMA_OVERLAY_SRC);
-            if (res.isEmpty()) {
-                overlayBuilt = false;
-                jobDone.run();
-                return;
-            }
-            try (InputStream in = res.get().open()) {
-                png = in.readAllBytes();
-            }
-        } catch (Throwable t) {
-            DihClientAddon.LOG.warn("Failed to build themed panorama overlay", t);
-            jobDone.run();
-            return;
-        }
-        DihBackgroundTasks.runTracked("theme-overlay", () -> {
-            NativeImage recolored = null;
-            try (NativeImage src = NativeImage.read(png)) {
-                recolored = src.mappedCopy(argb -> DihTheme.recolorImagePixel(argb, Channel.BACKDROP, st));
-            } catch (Throwable t) {
-                DihClientAddon.LOG.warn("Failed to build themed panorama overlay", t);
-            }
-            NativeImage result = recolored;
-            MC.execute(() -> {
-                try {
-                    if (generation != themeGeneration) {
-                        if (result != null) result.close();
-                        return;
-                    }
-                    if (result == null) return;
-                    overlayTexture = new DynamicTexture("panorama_overlay", result, FilterMode.LINEAR);
-                    MC.getTextureManager().register(PANORAMA_OVERLAY_DYN, overlayTexture);
-                } finally {
-                    jobDone.run();
-                }
-            });
-        });
-    }
-
     public static void invalidate() {
         themeGeneration++;
         FAILED.clear();
-        overlayBuilt = false;
-        overlayTexture = null;
         DihSvgHudLogo.clear();
-        DihTheme.State st = DihTheme.active();
-        if (st.isActive(Channel.BACKDROP)) {
-
-            overlayBuilt = true;
-            kickOverlayBuild(st, dihclient.gui.DihThemeApplyOverlay.beginJob("Recoloring backdrop"));
-        }
-        reloadPanorama();
     }
 
     public static final class Preview implements AutoCloseable {
@@ -501,39 +385,6 @@ public final class DihThemeTextures {
         @Override public void close() {
             try { pixels.close(); } catch (Throwable ignored) {  }
             super.close();
-        }
-    }
-
-    private static final class RecoloredCubeMapTexture extends CubeMapTexture {
-        private RecoloredCubeMapTexture(Identifier id) { super(id); }
-
-        @Override
-        public TextureContents loadContents(ResourceManager resourceManager) throws IOException {
-            TextureContents contents = super.loadContents(resourceManager);
-
-            panoramaAvailable = true;
-            DihTheme.State st = DihTheme.active();
-
-            float hue = st.hueOf(Channel.BACKDROP);
-            float sat = st.satOf(Channel.BACKDROP);
-            NativeImage img = contents.image();
-            int changed = 0;
-            for (int y = 0; y < img.getHeight(); y++) {
-                for (int x = 0; x < img.getWidth(); x++) {
-                    int before = img.getPixel(x, y);
-                    int after = DihTheme.recolorImagePixelTo(before, hue, sat);
-                    if (before != after) {
-                        img.setPixel(x, y, after);
-                        changed++;
-                    }
-                }
-            }
-
-            DihClientAddon.LOG.info("Panorama recolored to hue {} sat {}: {} of {} pixels changed",
-                String.format(java.util.Locale.ROOT, "%.0f", hue * 360.0f),
-                String.format(java.util.Locale.ROOT, "%.2f", sat),
-                changed, img.getWidth() * img.getHeight());
-            return contents;
         }
     }
 }

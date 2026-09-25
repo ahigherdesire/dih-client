@@ -62,7 +62,7 @@ DIH Client now ships with a full Baritone-based pathfinding engine and the Minec
 
 * `#seedinput <seed>` — the world seed for the server you're on (numbers or text, converted like the world-creation screen). Each server keeps its own seed, shared with OreSim, and it's **verified** against the seed hash the server sends when you join — a wrong seed is refused instead of silently drawing a wrong map. `#seedinput check` shows the status.
 
-Baritone's in-world overlays all work on 26.2: `#sel` selection boxes, ESP (`#set espBlocks true`, players/items/mobs, tracers and labels), the `#click` GUI highlight and elytra flight paths.
+Baritone's in-world overlays all work on 26.2: `#sel` selection boxes, the `#click` GUI highlight and elytra flight paths.
 
 While Baritone is pathing, its route is drawn in the world: a guide line from you to the next step, the current and queued path, the goal (box for block goals, beacon column for `#goto x z`), and the blocks it will break or place. Toggle with `#set renderPath false` / `#set renderGoal false`; colours and widths use the usual Baritone settings (`colorCurrentPath`, `pathRenderLineWidthPixels`, …).
 

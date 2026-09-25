@@ -30,6 +30,9 @@
     "journeymap": [
       "baritone.util.DihJourneyMapPlugin"
     ],
+    "seedcrackerx": [
+      "baritone.util.DihSeedCrackerPlugin"
+    ],
     "modmenu": [
       "dihclient.compat.DihModMenuIntegration"
     ]

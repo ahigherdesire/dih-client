@@ -25,8 +25,8 @@ import java.util.function.Consumer;
 public class DihLoadingOverlay extends LoadingOverlay {
     private static final Identifier CUSTOM_LOGO =
         Identifier.fromNamespaceAndPath("dihclient", "textures/gui/title/loading_logo.png");
-    private static final int LOGO_WIDTH = 2106;
-    private static final int LOGO_HEIGHT = 1297;
+    private static final int LOGO_WIDTH = 2108;
+    private static final int LOGO_HEIGHT = 237;
     private static final int BG_COLOR = DihColors.loadingBg();
     private static final int BAR_R = 236;
     private static final int BAR_G = 32;

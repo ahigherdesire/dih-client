@@ -834,65 +834,6 @@ public final class Settings {
     public final Setting<Boolean> chatControlAnyway = new Setting<>(false);
 
     // ════════════════════════════════════════════════════════════════════════
-    //  ESP (block + player highlighting) — see EspBehavior / #esp
-    // ════════════════════════════════════════════════════════════════════════
-
-    /** Master toggle for block ESP: outline nearby blocks matching {@link #espBlockList}. Off by default. Toggle with {@code #esp blocks}. */
-    public final Setting<Boolean> espBlocks = new Setting<>(false);
-
-    /**
-     * Blocks to highlight, as a comma/space-separated list of registry-path
-     * substrings — {@code diamond_ore} matches only diamond ore, {@code ore}
-     * matches every ore, {@code _ore,ancient_debris} mixes both. Case-insensitive.
-     */
-    public final Setting<String> espBlockList = new Setting<>(
-            "diamond_ore,deepslate_diamond_ore,ancient_debris,emerald_ore,deepslate_emerald_ore");
-
-    /**
-     * Cube half-extent (blocks) scanned around you for block ESP. The scan is
-     * incremental (a few thousand blocks per tick), so a large radius costs
-     * latency-to-first-highlight rather than FPS, but very large values still
-     * mean a long refresh. Default 16.
-     */
-    public final Setting<Integer> espBlockRange = new Setting<>(16);
-
-    /** Ticks to wait after a block-ESP scan pass completes before starting the next. Default 20. */
-    public final Setting<Integer> espBlockRescanTicks = new Setting<>(20);
-
-    /** Safety cap on how many blocks ESP will outline at once. Default 1000. */
-    public final Setting<Integer> espBlockLimit = new Setting<>(1000);
-
-    /** Master toggle for player ESP: outline other players. Off by default. Toggle with {@code #esp players}. */
-    public final Setting<Boolean> espPlayers = new Setting<>(false);
-
-    /** Max distance (blocks) at which player ESP outlines a player. Default 128. */
-    public final Setting<Double> espPlayerRange = new Setting<>(128.0);
-
-    /** See ESP outlines through walls (ignore depth). Default true. */
-    public final Setting<Boolean> espIgnoreDepth = new Setting<>(true);
-
-    /** Line width of ESP outlines, in pixels. Default 3. */
-    public final Setting<Float> espLineWidthPixels = new Setting<>(3F);
-
-    /** Draw text labels (name + distance, item counts) on ESP targets. Default true. */
-    public final Setting<Boolean> espLabels = new Setting<>(true);
-
-    /** Draw a line from your view toward each ESP entity target (players/items/mobs). Default false. */
-    public final Setting<Boolean> espTracers = new Setting<>(false);
-
-    /** ESP dropped items on the ground: box + label. Off by default. Toggle with {@code #esp items}. */
-    public final Setting<Boolean> espItems = new Setting<>(false);
-
-    /** Max distance (blocks) at which item ESP shows a dropped item. Default 48. */
-    public final Setting<Double> espItemRange = new Setting<>(48.0);
-
-    /** ESP hostile mobs: box + label. Off by default. Toggle with {@code #esp mobs}. */
-    public final Setting<Boolean> espMobs = new Setting<>(false);
-
-    /** Max distance (blocks) at which mob ESP shows a hostile mob. Default 48. */
-    public final Setting<Double> espMobRange = new Setting<>(48.0);
-
-    // ════════════════════════════════════════════════════════════════════════
     //  LISTEN-TO-MINE — see MineListenerBehavior / #listentomine
     // ════════════════════════════════════════════════════════════════════════
 
@@ -1573,18 +1514,6 @@ public final class Settings {
      * The color of the path to the most recent considered node
      */
     public final Setting<Color> colorMostRecentConsidered = new Setting<>(Color.CYAN);
-
-    /** The color of block-ESP outlines. */
-    public final Setting<Color> colorEspBlock = new Setting<>(Color.CYAN);
-
-    /** The color of player-ESP outlines. */
-    public final Setting<Color> colorEspPlayer = new Setting<>(Color.RED);
-
-    /** The color of item-ESP boxes/labels. */
-    public final Setting<Color> colorEspItem = new Setting<>(Color.YELLOW);
-
-    /** The color of hostile-mob-ESP boxes/labels. */
-    public final Setting<Color> colorEspMob = new Setting<>(new Color(255, 96, 0));
 
     /**
      * The color of the goal box

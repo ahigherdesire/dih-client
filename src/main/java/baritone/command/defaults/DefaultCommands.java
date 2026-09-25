@@ -83,7 +83,6 @@ public final class DefaultCommands {
                 new HeatmapCommand(baritone),
                 new ChestCommand(baritone),
                 new ThreatsCommand(baritone),
-                new EspCommand(baritone),
                 new ListenToMineCommand(baritone),
                 new PlayersCommand(baritone),
                 new MenuCommand(baritone),

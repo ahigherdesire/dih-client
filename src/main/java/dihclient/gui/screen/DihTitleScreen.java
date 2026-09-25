@@ -65,8 +65,8 @@ public class DihTitleScreen extends Screen {
     private static final Identifier LOGO = Identifier.fromNamespaceAndPath("dihclient", "textures/gui/title/dih_client_logo.png");
     private static final Identifier BUTTON_CLICK_SOUND_ID = Identifier.fromNamespaceAndPath("dihclient", "gui.main_menu_click");
     private static final SoundEvent BUTTON_CLICK_SOUND = SoundEvent.createVariableRangeEvent(BUTTON_CLICK_SOUND_ID);
-    private static final int LOGO_TEXTURE_WIDTH = 516;
-    private static final int LOGO_TEXTURE_HEIGHT = 144;
+    private static final int LOGO_TEXTURE_WIDTH = 506;
+    private static final int LOGO_TEXTURE_HEIGHT = 58;
 
     private static final Identifier ESSENTIAL_ICON = Identifier.fromNamespaceAndPath("dihclient", "textures/gui/title/icons/essential.png");
     private static final Identifier MODMENU_ICON = Identifier.fromNamespaceAndPath("dihclient", "textures/gui/title/icons/modmenu.png");

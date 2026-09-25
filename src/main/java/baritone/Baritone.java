@@ -117,7 +117,6 @@ public class Baritone implements IBaritone {
             this.autopilotBehavior    = this.registerBehavior(baritone.behavior.AutopilotBehavior::new);
             this.autoMineBehavior     = this.registerBehavior(baritone.behavior.AutoMineBehavior::new);
             this.registerBehavior(baritone.behavior.ThreatsBehavior::new);
-            this.registerBehavior(baritone.behavior.EspBehavior::new);
             this.registerBehavior(baritone.behavior.MineListenerBehavior::new);
             this.aiBehavior           = this.registerBehavior(baritone.behavior.AiBehavior::new);
         }

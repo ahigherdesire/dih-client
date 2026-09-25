@@ -57,7 +57,7 @@ public class MixinWorldRenderer {
                                      final Matrix4fc positionMatrix, final GpuBufferSlice fog, final Vector4f fogColor,
                                      final boolean renderSky, final CallbackInfo ci) {
         if (cameraState == null || cameraState.pos == null) return;
-        BaritoneRenderBuffer.begin(cameraState.pos, cameraState.orientation, positionMatrix);
+        BaritoneRenderBuffer.begin();
         try {
             float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(false);
             for (IBaritone ibaritone : BaritoneAPI.getProvider().getAllBaritones()) {

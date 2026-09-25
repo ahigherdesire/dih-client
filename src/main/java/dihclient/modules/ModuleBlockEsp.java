@@ -1,5 +1,6 @@
 package dihclient.modules;
 
+import dihclient.util.oresim.DihOreSimOre;
 import net.minecraft.client.multiplayer.ClientChunkCache;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
@@ -147,11 +148,20 @@ final class ModuleBlockEsp {
                         if (!targets.contains(state.getBlock())) continue;
                         mutable.set(x, y, z);
                         out.add(new ModuleEspChunkCache.Entry(
-                            blockShape(level, mutable, state), new Vec3(x + 0.5, y + 0.5, z + 0.5), color));
+                            blockShape(level, mutable, state), new Vec3(x + 0.5, y + 0.5, z + 0.5),
+                            colorFor(state.getBlock(), color)));
                     }
                 }
             }
         }
+    }
+
+    /** Ores get their family's colour (diamond cyan, gold yellow, ...) at the configured alpha; anything else uses the configured colour. */
+    static int colorFor(Block block, int configured) {
+        Identifier id = BuiltInRegistries.BLOCK.getKey(block);
+        DihOreSimOre.Kind family = id == null ? null : DihOreSimOre.familyOf(id.toString());
+        if (family == null) return configured;
+        return (configured & 0xFF000000) | (family.defaultColor & 0x00FFFFFF);
     }
 
     private static int[] yLevelOrder(int band, int playerBand, int playerSy) {
