@@ -70,7 +70,7 @@ public final class JourneyMapHelper {
         }
         return installed
             ? "JourneyMap is installed but hasn't loaded its API yet (or is an incompatible version)."
-            : "JourneyMap isn't installed — add the JourneyMap mod to see this on the map.";
+            : "JourneyMap isn't installed. Get it from modrinth.com/mod/journeymap (Fabric 26.2) and put it in your mods folder to see this on the map.";
     }
 
     /**

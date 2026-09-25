@@ -60,6 +60,9 @@
         <svg viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path d="M7 1h2v8h2v2H9v2H7v-2H5V9h2zM3 13h1v1h8v-1h1v2H3z" fill="currentColor"/></svg>
         <span class="btn-stack"><span>Download <span data-release="version">5.0</span></span><span class="btn-meta"><span data-release="file">DIH-Client-5.0-26.2.jar</span> · <span data-release="size">20.8 MB</span></span></span>
       </a>
+      <a class="btn btn-ghost" href="https://cdn.modrinth.com/data/lfHFW1mp/versions/tbOrSD59/journeymap-fabric-26.2-6.0.9.jar" data-release="journeymap" rel="noopener">
+        <span class="btn-stack"><span>+ JourneyMap</span><span class="btn-meta">for the minimap · from Modrinth</span></span>
+      </a>
       <a class="btn btn-ghost" href="https://github.com/ahigherdesire/dih-client" data-release="repo" rel="noopener">Read the source</a>
     </div>
   </div>
@@ -120,7 +123,7 @@
   <div><strong>75</strong><span>modules</span></div>
   <div><strong>97</strong><span>macro actions</span></div>
   <div><strong>103</strong><span>commands</span></div>
-  <div><strong>1</strong><span>jar. no extra mods</span></div>
+  <div><strong>2</strong><span>jars. DIH + JourneyMap</span></div>
 </section>
 
 <!-- ============================== 01 SEED MAP ============================== -->
@@ -131,7 +134,7 @@
     <div class="cols">
       <div class="prose">
         <p>Most seed maps stop at “this chunk could have a village.” <code>#seedmap</code> keeps going. For every candidate around you it runs Minecraft's own structure generation offline: biome checks, terrain checks, jigsaw assembly. Only the ones that would really generate make it onto the map.</p>
-        <p>With JourneyMap installed they land on the fullscreen map with real footprints, hover details, per-family layers and right-click <em>go here</em>. Without it you get the list in chat with clickable coordinates.</p>
+        <p>They land on JourneyMap's minimap and fullscreen map with real footprints, hover details, per-family layers and right-click <em>go here</em>. Without JourneyMap you only get the list in chat with clickable coordinates.</p>
         <p>On a server, give it the seed once with <code>#seedinput</code>. It's checked against the seed hash the server sends when you join, so a wrong seed gets refused instead of quietly drawing the wrong map. Each server keeps its own.</p>
       </div>
       <figure class="chat" aria-label="Example #seedmap output in chat">
@@ -263,18 +266,18 @@
     </li>
     <li>
       <span class="step-n">2</span>
-      <h3>Drop the jar</h3>
-      <p>Put <code data-release="file">DIH-Client-5.0-26.2.jar</code> in <code>.minecraft/mods</code>. Nothing else. Baritone and the pathfinder are inside.</p>
+      <h3>Drop the jars</h3>
+      <p>Put <code data-release="file">DIH-Client-5.0-26.2.jar</code> and <a href="https://cdn.modrinth.com/data/lfHFW1mp/versions/tbOrSD59/journeymap-fabric-26.2-6.0.9.jar" data-release="journeymap" rel="noopener"><code data-release="jmFile">journeymap-fabric-26.2-6.0.9.jar</code></a> in <code>.minecraft/mods</code>. JourneyMap gives you the minimap and draws the seed map. Baritone and the pathfinder are already inside DIH.</p>
     </li>
     <li>
       <span class="step-n">3</span>
       <h3>Play</h3>
-      <p>Launch the Fabric profile. <kbd>R.Shift</kbd> opens modules, <code>.help</code> lists commands, <code>#help</code> lists Baritone. Want the seed map on a map? Add <a href="https://modrinth.com/mod/journeymap" rel="noopener">JourneyMap</a>.</p>
+      <p>Launch the Fabric profile. <kbd>R.Shift</kbd> opens modules, <code>.help</code> lists commands, <code>#help</code> lists Baritone.</p>
     </li>
   </ol>
   <div class="checksum mono">
     <span>SHA-256</span>
-    <code id="sha" data-release="sha256">546dffb948ed15411b7e6491b372cdb407db33466f3740f119069aca063dae80</code>
+    <code id="sha" data-release="sha256">0e523fd0f0185542ca403cce9abdd0f535400efff63d6b87d7818b051b10dce7</code>
     <button type="button" class="linkish" id="copy-sha">copy</button>
   </div>
 </section>
@@ -285,7 +288,7 @@
   <details><summary>Will I get banned?</summary><p>On servers with an anticheat, some modules will flag. The client says so in the module description when it knows (AntiHunger, for one). Use it where you're allowed to.</p></details>
   <details><summary>Is it a virus?</summary><p>The whole thing is open source under GPL-3.0. Read it, build it yourself with <code>gradlew build -Prelease</code>, and compare the SHA-256 above with what you downloaded.</p></details>
   <details><summary>I used XINYUAN / Autism Client. Where are my settings?</summary><p>On first launch DIH copies your old accounts, proxies, macros and config over to the new names. The old files stay where they were, in case you go back.</p></details>
-  <details><summary>Do I need JourneyMap?</summary><p>No. It's optional. With it, the seed map and heatmap draw on the fullscreen map with toolbar toggles and right-click actions. Without it everything still works and results go to chat.</p></details>
+  <details><summary>Do I need JourneyMap?</summary><p>Yes, if you want a minimap. DIH doesn't have its own; it draws the seed map and heatmap on JourneyMap's minimap and fullscreen map. JourneyMap's licence doesn't allow it to be packed inside another mod, so it's a separate download from <a href="https://modrinth.com/mod/journeymap" rel="noopener">Modrinth</a>. Without it the client still runs and seed-map results go to chat.</p></details>
   <details><summary>Which Minecraft versions?</summary><p><span data-release="mc">26.2</span> only, for now. Each release is built for one version.</p></details>
 </section>
 

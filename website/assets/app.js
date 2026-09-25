@@ -12,6 +12,7 @@
     const key = el.dataset.release;
     if (key === 'download') { if (R.download) el.href = R.download; }
     else if (key === 'repo') { if (R.repo) el.href = R.repo; }
+    else if (key === 'journeymap') { if (R.journeymap) el.href = R.journeymap; }
     else if (R[key] != null) el.textContent = R[key];
   });
   const copyBtn = $('#copy-sha');

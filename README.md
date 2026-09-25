@@ -68,9 +68,9 @@ While Baritone is pathing, its route is drawn in the world: a guide line from yo
 
 Pathfinding, the native nether pathfinder, and all AI behaviour are bundled into the single client jar.
 
-### JourneyMap (optional)
+### JourneyMap (install it with the client)
 
-JourneyMap is not bundled — install the JourneyMap mod for Minecraft 26.2 alongside the client to get the map features. The client registers as a JourneyMap plugin, which adds:
+DIH has no minimap of its own; it draws on JourneyMap's. Download [JourneyMap for Fabric 26.2](https://modrinth.com/mod/journeymap/versions?g=26.2&l=fabric) and put it in `mods` next to the DIH jar. It isn't bundled because JourneyMap's licence doesn't allow redistribution. The client registers as a JourneyMap plugin, which adds:
 
 * toolbar toggles on the fullscreen map for the seed-map layer (map icon) and the `#heatmap` layer (fire-charge icon);
 * right-click on the map → "Baritone: go here" or "Seed map around here";
