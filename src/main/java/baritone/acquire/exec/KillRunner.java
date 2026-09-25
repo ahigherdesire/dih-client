@@ -1,6 +1,7 @@
 package baritone.acquire.exec;
 
 import baritone.acquire.model.Step;
+import baritone.acquire.planner.AcquirePlanner;
 import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.pathing.goals.GoalNear;
 import net.minecraft.client.player.LocalPlayer;
@@ -60,7 +61,7 @@ final class KillRunner extends RunnerBase {
 
     @Override
     public Result tick(boolean calcFailed, boolean safeToCancel) {
-        if (type == null || "minecraft:player".equals(step.entity())) return Result.failed("can't hunt " + step.entity());
+        if (type == null || AcquirePlanner.NEVER_KILL.contains(step.entity())) return Result.failed("can't hunt " + step.entity());
         if (x.have(step.item()) >= step.untilCount()) return Result.done();
         Result full = x.checkRoom(step.item());
         if (full != null) return full;

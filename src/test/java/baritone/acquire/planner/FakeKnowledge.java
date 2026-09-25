@@ -78,6 +78,9 @@ final class FakeKnowledge implements Knowledge {
         mine(TORCH, "minecraft:torch", 1.0, ToolReq.NONE);
         mine(TORCH, WALL_TORCH, 1.0, ToolReq.NONE);
         add(new KillSource("minecraft:zombie", IRON_INGOT, 0.0083, true));
+        // On the never-kill list: the planner must not use these even though they look cheap.
+        add(new KillSource("minecraft:iron_golem", IRON_INGOT, 4.0, false));
+        add(new KillSource("minecraft:cat", STRING, 1.0, false));
         mine(APPLE, "minecraft:oak_leaves", 0.005, new ToolReq("hoe", 0, false));
 
         pickaxes.put(WOODEN_PICKAXE, 1);

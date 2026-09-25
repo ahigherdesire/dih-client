@@ -199,6 +199,7 @@ public final class DihClientMod implements ClientModInitializer {
             runSafe("join.lagWatchdog", dihclient.util.DihLagWatchdog::reset);
             runSafe("join.macroEditor", dihclient.util.DihMacroEditorOverlay::onPlayJoin);
             runSafe("join.updateNotice", dihclient.util.DihUpdateChecker::announceOnJoin);
+            runSafe("join.acquireKnowledge", baritone.acquire.knowledge.VanillaKnowledge::preload);
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             runSafe("leave.seedMap", baritone.command.defaults.SeedMapCommand::onDisconnect);

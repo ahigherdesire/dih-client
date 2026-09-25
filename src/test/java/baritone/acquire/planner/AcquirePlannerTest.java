@@ -241,6 +241,18 @@ final class AcquirePlannerTest {
     }
 
     @Test
+    void neverHuntsGolemsOrPets() {
+        FakeWorld world = new FakeWorld().entity("minecraft:iron_golem", 4).entity("minecraft:cat", 2);
+        for (String item : List.of(IRON_INGOT, STRING)) {
+            Plan plan = new AcquirePlanner(KNOWLEDGE, world, PlannerOptions.DEFAULT).plan(item, 3, InventorySnapshot.empty());
+            valid(plan, InventorySnapshot.empty(), world);
+            for (Step step : plan.steps()) {
+                if (step instanceof Step.Kill kill) assertFalse(AcquirePlanner.NEVER_KILL.contains(kill.entity()), AcquirePlanner.explain(plan));
+            }
+        }
+    }
+
+    @Test
     void oreBlocksAreGroupedNearestFirst() {
         FakeWorld world = new FakeWorld().block("minecraft:iron_ore", 40).block("minecraft:deepslate_iron_ore", 12);
         InventorySnapshot start = inv(STONE_PICKAXE, 1);

@@ -68,6 +68,20 @@ public final class AcquirePlanner {
     private static final Set<String> NEVER_OBTAIN_AS_FUEL = Set.of("minecraft:lava_bucket");
     /** Mine and kill sources below this drop rate (zombie -> iron_ingot) only count when nothing else makes the item. */
     private static final double MIN_DROP_RATE = 0.02;
+    /**
+     * Mobs never hunted for drops. Bosses, golems and group-aggro mobs are dangerous, and villagers,
+     * traders, pets and kept animals are things players don't want killed (a cat is a string source,
+     * an iron golem the cheapest iron on paper).
+     */
+    public static final Set<String> NEVER_KILL = Set.of(
+            "minecraft:player", "minecraft:iron_golem", "minecraft:snow_golem", "minecraft:wither",
+            "minecraft:ender_dragon", "minecraft:warden", "minecraft:elder_guardian", "minecraft:piglin_brute",
+            "minecraft:zombified_piglin", "minecraft:villager", "minecraft:wandering_trader", "minecraft:allay",
+            "minecraft:cat", "minecraft:ocelot", "minecraft:parrot", "minecraft:wolf", "minecraft:fox",
+            "minecraft:axolotl", "minecraft:dolphin", "minecraft:turtle", "minecraft:panda", "minecraft:polar_bear",
+            "minecraft:horse", "minecraft:donkey", "minecraft:mule", "minecraft:skeleton_horse", "minecraft:zombie_horse",
+            "minecraft:llama", "minecraft:trader_llama", "minecraft:camel", "minecraft:sniffer", "minecraft:armadillo",
+            "minecraft:bee");
 
     /** Ingredient alternatives and fuels trial-planned per choice, cheapest-looking first. */
     private static final int MAX_ALTERNATIVES = 6;
@@ -516,7 +530,7 @@ public final class AcquirePlanner {
                     }
                     case KillSource k -> {
                         if (!options.allowKill()) killOff = true;
-                        else if (k.dropsPerKill() > 0 && k.entity() != null)
+                        else if (k.dropsPerKill() > 0 && k.entity() != null && !NEVER_KILL.contains(k.entity()))
                             (k.dropsPerKill() < MIN_DROP_RATE ? rare : out).add(new KillOption(k, world.distanceToEntity(k.entity())));
                     }
                     case CraftSource c -> {

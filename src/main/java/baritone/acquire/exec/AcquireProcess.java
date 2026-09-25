@@ -146,9 +146,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
 
     /**
      * The knowledge base, loaded on first use (about half a second). A failed load is not kept, so the
-     * next {@code #acquire} tries again.
-     * TODO(integration): call {@code VanillaKnowledge.preload()} on world join (DihClientMod's JOIN hook)
-     * once the knowledge branch is merged; the scaffold here has no such method yet.
+     * next {@code #acquire} tries again. {@code DihClientMod} preloads it on world join.
      */
     private Knowledge knowledge() {
         if (knowledge == null) {
