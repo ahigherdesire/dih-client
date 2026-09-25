@@ -40,7 +40,7 @@ public class AiCommand extends Command {
 
     private static final List<String> SUBCOMMANDS = Arrays.asList(
             "on", "off", "status", "key", "url", "model", "extra", "trust", "untrust",
-            "trigger", "goal", "persona", "chat", "auto", "forget", "clear", "deny", "allow"
+            "trigger", "goal", "persona", "chat", "auto", "followups", "forget", "clear", "deny", "allow"
     );
 
     public AiCommand(IBaritone baritone) {
@@ -183,6 +183,20 @@ public class AiCommand extends Command {
                         : "Autonomous mode off — it only acts when spoken to.", ChatFormatting.GREEN);
                 return;
             }
+            case "followups": {
+                String value = args.rawRest().trim().toLowerCase(Locale.ROOT);
+                if (value.matches("\\d{1,3}")) {
+                    config.maxAutoFollowUps = Math.min(Integer.parseInt(value), AiConfig.MAX_AUTO_FOLLOW_UPS_LIMIT);
+                } else {
+                    config.acquireFollowUps = parseToggle(value, !config.acquireFollowUps);
+                    if (config.acquireFollowUps && config.maxAutoFollowUps <= 0) {
+                        config.maxAutoFollowUps = AiConfig.DEFAULT_AUTO_FOLLOW_UPS;
+                    }
+                }
+                config.save();
+                logDirect(followUpsLine(config), ChatFormatting.GREEN);
+                return;
+            }
             case "forget": {
                 String needle = args.rawRest().trim();
                 if (needle.isEmpty()) {
@@ -243,11 +257,20 @@ public class AiCommand extends Command {
         logDirect("  trusted: " + (config.trusted.isEmpty() ? "(nobody)" : String.join(", ", config.trusted)));
         logDirect("  trigger: " + (config.triggerWord == null || config.triggerWord.isEmpty() ? "(any message)" : config.triggerWord));
         logDirect("  replies in chat: " + config.respondInChat);
+        logDirect("  " + followUpsLine(config));
         logDirect("  tokens used: " + brain.getLlm().getPromptTokens() + " in / "
                 + brain.getLlm().getCompletionTokens() + " out over " + brain.getLlm().getCalls() + " calls");
         if (brain.getLastError() != null) {
             logDirect("  last error: " + brain.getLastError(), ChatFormatting.RED);
         }
+    }
+
+    private static String followUpsLine(AiConfig config) {
+        if (!config.followUpsActive()) {
+            return "acquire follow-ups: off (the AI stops after starting an acquire)";
+        }
+        return "acquire follow-ups: on, up to " + config.maxAutoFollowUps
+                + " automatic turns in a row when an acquire it started ends";
     }
 
     private static boolean parseToggle(String raw, boolean fallback) {
@@ -300,6 +323,7 @@ public class AiCommand extends Command {
                 "> ai <anything>           - tell the AI to do something yourself",
                 "> ai status               - config, token usage, last error",
                 "> ai auto [on|off]        - let it think on its own timer",
+                "> ai followups [on|off|n] - continue after an acquire it started ends (n = max in a row)",
                 "> ai chat [on|off]        - whether it may talk in server chat",
                 "> ai trigger <word|none>  - require a wake word from trusted players",
                 "> ai goal <text>          - its standing objective",

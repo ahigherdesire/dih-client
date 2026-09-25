@@ -23,6 +23,8 @@ import baritone.ai.AiConfig;
 import baritone.ai.AiMemory;
 import baritone.api.event.events.ChatReceivedEvent;
 import baritone.api.event.events.TickEvent;
+import baritone.api.event.events.WorldEvent;
+import baritone.api.event.events.type.EventState;
 import baritone.api.event.listener.AbstractGameEventListener;
 import net.minecraft.client.player.LocalPlayer;
 
@@ -85,6 +87,14 @@ public final class AiBehavior extends Behavior implements AbstractGameEventListe
                 && this.config.isTrusted(sender);
 
         this.brain.onChat(sender, text, trusted);
+    }
+
+    @Override
+    public void onWorldEvent(WorldEvent event) {
+        // Leaving the world (not a dimension change) ends whatever acquire the AI was tracking.
+        if (event.getState() == EventState.POST && event.getWorld() == null && this.brain != null) {
+            this.brain.onWorldUnloaded();
+        }
     }
 
     @Override

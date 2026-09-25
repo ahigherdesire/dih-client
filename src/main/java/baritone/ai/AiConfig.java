@@ -26,6 +26,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 
@@ -80,6 +81,18 @@ public final class AiConfig {
             "activate", "set", "setting", "settings", "reloadall", "saveall", "gc", "render", "ai"
     ));
 
+    // ── #acquire follow-ups ─────────────────────────────────────────────────
+    /**
+     * When an acquire the AI started finishes or fails, give it one more turn to carry on (the next
+     * armour piece, say) without you typing again. Acquires you start yourself never trigger this.
+     */
+    public boolean acquireFollowUps = true;
+    /** Most automatic follow-up turns in a row before the AI waits for you again. 0 disables them. */
+    public int maxAutoFollowUps = DEFAULT_AUTO_FOLLOW_UPS;
+
+    public static final int DEFAULT_AUTO_FOLLOW_UPS = 6;
+    public static final int MAX_AUTO_FOLLOW_UPS_LIMIT = 20;
+
     private transient Path file;
 
     public static AiConfig load(Path file) {
@@ -96,8 +109,15 @@ public final class AiConfig {
         }
         if (config.trusted == null) config.trusted = new ArrayList<>();
         if (config.deniedCommands == null) config.deniedCommands = new ArrayList<>();
+        // Files written before an option existed simply lack it and keep the field default.
+        config.maxAutoFollowUps = Math.max(0, Math.min(MAX_AUTO_FOLLOW_UPS_LIMIT, config.maxAutoFollowUps));
         config.file = file;
         return config;
+    }
+
+    /** Whether acquire events may give the AI extra turns at all. */
+    public boolean followUpsActive() {
+        return this.acquireFollowUps && this.maxAutoFollowUps > 0;
     }
 
     public void save() {
@@ -142,6 +162,24 @@ public final class AiConfig {
         for (String denied : this.deniedCommands) {
             if (denied.equalsIgnoreCase(name)) {
                 return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Whether a command may run, checking the name that was typed and every name the command goes
+     * by, so denying a command by any of its names also blocks its aliases.
+     */
+    public boolean allowsCommand(String typed, Collection<String> names) {
+        if (typed != null && !isCommandAllowed(typed)) {
+            return false;
+        }
+        if (names != null) {
+            for (String name : names) {
+                if (name != null && !isCommandAllowed(name)) {
+                    return false;
+                }
             }
         }
         return true;
