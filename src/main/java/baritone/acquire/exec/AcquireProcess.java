@@ -483,8 +483,8 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         if (need == HealthPolicy.Need.NONE && health > healHealth && food > HealthPolicy.HUNGRY_FOOD) return null;
         if (runner != null && runner.busy()) return null;
         Minecraft mc = ctx.minecraft();
-        if (mc.screen != null && emergency && player.containerMenu != player.inventoryMenu) player.closeContainer();
-        if (mc.screen != null) return null;
+        if (mc.gui.screen() != null && emergency && player.containerMenu != player.inventoryMenu) player.closeContainer();
+        if (mc.gui.screen() != null) return null;
 
         boolean fighting = runner instanceof KillRunner;
         if (emergency && fighting && backOffTicks < BACK_OFF_TICKS) {

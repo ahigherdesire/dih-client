@@ -104,7 +104,7 @@ public final class EatBehavior extends Behavior {
         Minecraft mc = ctx.minecraft();
         if (player == null || ctx.world() == null) return "not in a world";
         if (player.isDeadOrDying()) return "you are dead";
-        if (mc.screen != null) return "a screen is open";
+        if (mc.gui.screen() != null) return "a screen is open";
         if (player.isUsingItem()) return "already using an item";
         Item food = InventoryReader.itemOf(id);
         if (food == null) return "unknown item " + id;
@@ -173,7 +173,7 @@ public final class EatBehavior extends Behavior {
             end("you died");
             return;
         }
-        if (ctx.minecraft().screen != null) {
+        if (ctx.minecraft().gui.screen() != null) {
             end("a screen opened");
             return;
         }
