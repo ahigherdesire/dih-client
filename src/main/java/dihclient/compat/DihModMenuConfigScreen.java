@@ -155,6 +155,7 @@ public class DihModMenuConfigScreen extends Screen {
         out.add(toggleRow("Auto Probe Plugins", () -> cfg.autoProbePlugins, v -> { cfg.autoProbePlugins = v; cfg.save(); }));
         out.add(toggleRow("InfiniChat", () -> cfg.infiniChat, v -> { cfg.infiniChat = v; cfg.save(); }));
         out.add(toggleRow("Stop On Leave", () -> cfg.stopMacroOnLeave, v -> { cfg.stopMacroOnLeave = v; cfg.save(); }));
+        out.add(toggleRow("Update Check", () -> cfg.updateCheck, v -> { cfg.updateCheck = v; cfg.save(); }));
 
         out.add(cycleRow("Overlay Scale", DihUiScale.getOverlayScaleLabel(),
             () -> DihUiScale.setOverlayScaleMultiplier(DihUiScale.nextOverlayScaleMultiplier()),

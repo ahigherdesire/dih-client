@@ -64,6 +64,7 @@ public final class DihCommands {
         register(new dihclient.commands.impl.PacketCommand());
         register(new dihclient.commands.impl.GuiCommand());
         register(new dihclient.commands.impl.GateCommand());
+        register(new dihclient.commands.impl.UpdateCommand());
 
         if (!dihclient.util.DihLiteVariant.enabled()) {
             register(new dihclient.commands.impl.SettingCommand());

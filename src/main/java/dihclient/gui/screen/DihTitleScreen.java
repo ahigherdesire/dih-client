@@ -99,6 +99,7 @@ public class DihTitleScreen extends Screen {
     private int cachedServerCount = -1;
     private long serverCountCheckedAt;
     private boolean layoutDirty = true;
+    private int seenUpdateGeneration = -1;
     private int layoutScreenW = -1;
     private int layoutScreenH = -1;
 
@@ -142,6 +143,7 @@ public class DihTitleScreen extends Screen {
         }
 
         this.layoutDirty = true;
+        dihclient.util.DihUpdateChecker.checkOnce();
 
         this.cachedServerCount = -1;
     }
@@ -306,6 +308,11 @@ public class DihTitleScreen extends Screen {
     private void layout() {
         int screenW = DihUiScale.getVirtualScreenWidth();
         int screenH = DihUiScale.getVirtualScreenHeight();
+        int updateGeneration = dihclient.util.DihUpdateChecker.generation();
+        if (updateGeneration != seenUpdateGeneration) {
+            seenUpdateGeneration = updateGeneration;
+            layoutDirty = true; // an update notice may have appeared
+        }
         if (!layoutDirty && screenW == layoutScreenW && screenH == layoutScreenH) {
             return;
         }
@@ -393,7 +400,13 @@ public class DihTitleScreen extends Screen {
         int supportRowH = Math.max(compact ? 16 : 20, UiText.fontHeight(UiAssets.FONT_LABEL) + 8);
         int supportRowGap = 3;
 
-        String[] supportLabels = {"Website", "Source code"};
+        dihclient.util.DihUpdateChecker.Result update = dihclient.util.DihUpdateChecker.result();
+        String updateLabel = update.updateAvailable()
+            ? (update.newerBuild() ? "Update " + update.latest() + " (new build)" : "Update to " + update.latest())
+            : null;
+        String[] supportLabels = updateLabel == null
+            ? new String[] {"Website", "Source code"}
+            : new String[] {updateLabel, "Website", "Source code"};
         int supportTextW = 0;
         for (String label : supportLabels) {
             supportTextW = Math.max(supportTextW,
@@ -405,10 +418,20 @@ public class DihTitleScreen extends Screen {
         supportY = statusY + statusH + 6;
         int supportRowY = supportY + PANEL_PAD;
 
-        addSupportRow(supportX + 4, supportRowY, supportW - 8, supportRowH,
-            supportLabels[0], () -> DihLinks.open(DihLinks.WEBSITE), DihLinks.WEBSITE);
-        addSupportRow(supportX + 4, supportRowY + (supportRowH + supportRowGap), supportW - 8, supportRowH,
-            supportLabels[1], () -> DihLinks.open(DihLinks.SOURCE), DihLinks.SOURCE);
+        int supportRow = 0;
+        if (updateLabel != null) {
+            String download = update.downloadUrl().isEmpty() ? update.pageUrl() : update.downloadUrl();
+            buttons.add(new MenuButton(supportX + 4, supportRowY, supportW - 8, supportRowH,
+                Component.literal(updateLabel), true, () -> DihLinks.open(download))
+                .asSupportRow()
+                .withTooltip(Component.literal(dihclient.util.DihUpdateChecker.summary(update).getString()
+                    + "  Click to download.")));
+            supportRow++;
+        }
+        addSupportRow(supportX + 4, supportRowY + supportRow++ * (supportRowH + supportRowGap), supportW - 8, supportRowH,
+            "Website", () -> DihLinks.open(DihLinks.WEBSITE), DihLinks.WEBSITE);
+        addSupportRow(supportX + 4, supportRowY + supportRow * (supportRowH + supportRowGap), supportW - 8, supportRowH,
+            "Source code", () -> DihLinks.open(DihLinks.SOURCE), DihLinks.SOURCE);
 
         String activeText = Integer.toString(moduleActiveCount);
         String activeSuffix = " / " + moduleTotalCount + " ACTIVE";
@@ -552,7 +575,8 @@ public class DihTitleScreen extends Screen {
     private void buildStatusRows() {
         statusRows.clear();
         statusRows.add(new StatusRow("USER:", () -> this.minecraft.getUser().getName()));
-        statusRows.add(new StatusRow("BUILD:", DihTitleScreen::modVersion));
+        statusRows.add(new StatusRow("BUILD:", () -> modVersion()
+            + (dihclient.util.DihUpdateChecker.result().updateAvailable() ? " (outdated)" : "")));
     }
 
     private void buildCategoryRows(int maxCategoryRows) {

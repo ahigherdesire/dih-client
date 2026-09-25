@@ -111,6 +111,8 @@ public final class DihConfig implements Cloneable {
     public boolean joinMacroKeepEnabled = false;
 
     public boolean stopMacroOnLeave = true;
+    /** Ask GitHub for the latest release at startup and say when this jar is behind. */
+    public boolean updateCheck = true;
 
     public Map<String, String> joinMacroFormValues = new LinkedHashMap<>();
     public Map<Integer, String> commandBinds = new LinkedHashMap<>();

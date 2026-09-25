@@ -54,6 +54,7 @@ public final class DihClientMod implements ClientModInitializer {
         dihclient.dev.DihDevScreenshots.registerIfRequested();
 
         runSafe("initialize", () -> DihModule.get().initialize());
+        runSafe("updateCheck", dihclient.util.DihUpdateChecker::checkOnce);
 
         DihProtectorTracker.bootstrap();
 
@@ -197,6 +198,7 @@ public final class DihClientMod implements ClientModInitializer {
             runSafe("join.surfaceFailures", dihclient.addons.AddonManager::surfaceFailuresOnJoin);
             runSafe("join.lagWatchdog", dihclient.util.DihLagWatchdog::reset);
             runSafe("join.macroEditor", dihclient.util.DihMacroEditorOverlay::onPlayJoin);
+            runSafe("join.updateNotice", dihclient.util.DihUpdateChecker::announceOnJoin);
         });
         ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
             runSafe("leave.seedMap", baritone.command.defaults.SeedMapCommand::onDisconnect);
