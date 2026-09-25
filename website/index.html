@@ -4,19 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>DIH Client</title>
-<meta name="description" content="A Fabric client for Minecraft 26.2. 75 combat, movement and render modules, a 97-action macro engine, packet tools, Baritone built in, and a seed map that checks every structure against real world generation. Free and open source (GPL-3.0).">
-<meta name="theme-color" content="#0b0c10">
+<meta name="description" content="Fabric client for Minecraft 26.2. Modules, macros, packet tools, Baritone and a seed map that runs real worldgen. Free and open source (GPL-3.0).">
+<meta name="theme-color" content="#09090b">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
 <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="assets/icon-180.png">
 <meta property="og:type" content="website">
 <meta property="og:title" content="DIH Client">
-<meta property="og:description" content="Packets, macros, pathing and a seed map that runs real worldgen. One jar for Minecraft 26.2.">
+<meta property="og:description" content="Modules, macros, packets, Baritone and a real seed map. Fabric, MC 26.2.">
 <meta property="og:image" content="assets/og.png">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wdth,wght@0,62..125,100..900;1,62..125,100..900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/release.js"></script>
 <script defer src="assets/modules.js"></script>
@@ -31,304 +31,164 @@
     <span>DIH</span>
   </a>
   <nav class="nav" aria-label="Sections">
-    <a href="#seedmap">Seed map</a>
-    <a href="#macros">Macros</a>
-    <a href="#pathing">Pathing</a>
+    <a href="#features">Features</a>
     <a href="#modules">Modules</a>
     <a href="#install">Install</a>
-    <a href="https://github.com/ahigherdesire/dih-client" data-release="repo" rel="noopener">Source</a>
+    <a href="https://github.com/ahigherdesire/dih-client" data-release="repo" rel="noopener">GitHub</a>
   </nav>
-  <a class="btn btn-small" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0/DIH-Client-5.0-26.2.jar" data-release="download">
-    <span>Download</span><span class="btn-meta" data-release="version">5.0</span>
-  </a>
+  <a class="btn btn-sm" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0/DIH-Client-5.0-26.2.jar" data-release="download">Download</a>
 </header>
 
 <main id="main">
 
-<!-- ============================== HERO ============================== -->
 <section class="hero" aria-labelledby="hero-title">
   <canvas id="world" class="world" aria-label="Interactive seed map. Click anywhere to path there."></canvas>
   <div class="scrim" aria-hidden="true"></div>
 
-  <div class="hero-inner">
   <div class="hero-copy">
-    <p class="kicker mono">FABRIC&nbsp;·&nbsp;MC <span data-release="mc">26.2</span>&nbsp;·&nbsp;JAVA 25&nbsp;·&nbsp;GPL-3.0</p>
-    <h1 id="hero-title" class="title"><span class="t-dih">DIH</span><span class="t-client">CLIENT</span></h1>
-    <p class="lede">Everything in one jar: 75 combat, movement and render modules, macros that wait for the server, a full packet toolkit, Baritone pathing and AI, and a seed map that runs real world generation.</p>
+    <p class="pill mono"><span class="dot"></span><span>v<span data-release="version">5.0</span> · MC <span data-release="mc">26.2</span> · Fabric</span></p>
+    <h1 id="hero-title">DIH Client</h1>
+    <p class="lede">Modules, macros, packets, Baritone and a seed map that runs real worldgen.</p>
     <div class="cta">
-      <a class="btn btn-big" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0/DIH-Client-5.0-26.2.jar" data-release="download">
-        <svg viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><path d="M7 1h2v8h2v2H9v2H7v-2H5V9h2zM3 13h1v1h8v-1h1v2H3z" fill="currentColor"/></svg>
-        <span class="btn-stack"><span>Download <span data-release="version">5.0</span></span><span class="btn-meta"><span data-release="file">DIH-Client-5.0-26.2.jar</span> · <span data-release="size">20.8 MB</span></span></span>
+      <a class="btn" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0/DIH-Client-5.0-26.2.jar" data-release="download">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v8m0 0-3.5-3.5M8 10l3.5-3.5M3 13h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Download <span data-release="version">5.0</span>
       </a>
-      <a class="btn btn-ghost" href="https://cdn.modrinth.com/data/lfHFW1mp/versions/tbOrSD59/journeymap-fabric-26.2-6.0.9.jar" data-release="journeymap" rel="noopener">
-        <span class="btn-stack"><span>+ JourneyMap</span><span class="btn-meta">for the minimap · from Modrinth</span></span>
-      </a>
-      <a class="btn btn-ghost" href="https://github.com/ahigherdesire/dih-client" data-release="repo" rel="noopener">Read the source</a>
+      <a class="btn btn-ghost" href="https://modrinth.com/mod/journeymap" data-release="journeymap" rel="noopener">+ JourneyMap</a>
     </div>
+    <p class="meta mono"><span data-release="size">20.8 MB</span> · GPL-3.0 · JourneyMap adds the minimap</p>
   </div>
 
-  <nav class="band" aria-label="What's inside">
-    <a class="tile" href="#modules" data-cat="Combat">
-      <span class="tile-k mono">08 modules</span><strong>Combat</strong>
-      <span class="tile-l">KillAura · CrystalAura · AnchorAura · AutoTotem · AimAssist · TriggerBot</span>
-    </a>
-    <a class="tile" href="#modules" data-cat="Movement">
-      <span class="tile-k mono">14 modules</span><strong>Movement</strong>
-      <span class="tile-l">Flight · Speed · NoFall · Scaffold · BoatFly · NoClip · Phase</span>
-    </a>
-    <a class="tile" href="#modules" data-cat="Render">
-      <span class="tile-k mono">20 modules</span><strong>Render</strong>
-      <span class="tile-l">ESP · Xray · StorageESP · Tracers · Chams · Freecam · Nametags</span>
-    </a>
-    <a class="tile" href="#macros">
-      <span class="tile-k mono">97 actions</span><strong>Macros &amp; packets</strong>
-      <span class="tile-l">macro editor · packet log · cancel · gates · Blink · NBT · LAN sync</span>
-    </a>
-    <a class="tile" href="#pathing">
-      <span class="tile-k mono">58 commands</span><strong>Baritone</strong>
-      <span class="tile-l">#goto · #mine · #follow · #elytra · #build · #ai</span>
-    </a>
-    <a class="tile" href="#seedmap">
-      <span class="tile-k mono">every structure</span><strong>Seed map</strong>
-      <span class="tile-l">validated by worldgen · JourneyMap layers · #seedinput</span>
-    </a>
-  </nav>
-  </div>
-
-  <aside class="legend" id="legend" aria-label="Map layers">
-    <div class="legend-head mono"><span>LAYERS</span><button class="linkish" id="reseed" type="button" title="Generate a new world">↻ new seed</button></div>
+  <aside class="legend glass" id="legend" aria-label="Map layers">
+    <div class="legend-head mono"><span>Layers</span><button class="linkish" id="reseed" type="button" title="Generate a new world">↻ reseed</button></div>
     <ul id="legend-list"></ul>
   </aside>
 
-  <div class="hud mono" aria-live="polite">
-    <div><b>SEED</b><span id="hud-seed">—</span></div>
-    <div><b>XZ</b><span id="hud-pos">—</span></div>
-    <div><b>GOAL</b><span id="hud-goal">click the map</span></div>
-    <div><b>PATH</b><span id="hud-path">—</span></div>
+  <div class="hud glass mono" aria-live="polite">
+    <div><b>seed</b><span id="hud-seed">—</span></div>
+    <div><b>xz</b><span id="hud-pos">—</span></div>
+    <div><b>goal</b><span id="hud-goal">click the map</span></div>
+    <div><b>path</b><span id="hud-path">—</span></div>
   </div>
   <p class="actionbar mono" id="actionbar" aria-hidden="true"></p>
   <div class="tip mono" id="tip" role="tooltip" hidden></div>
 </section>
 
-<!-- ============================== TICKER ============================== -->
-<div class="ticker mono" aria-hidden="true">
-  <div class="ticker-track">
-    <span>#seedmap village 4000</span><span>.macro run sort-shulkers</span><span>#goto 1200 -340</span><span>.packet</span><span>#seedinput -4172094116</span><span>.oresim</span><span>#mine diamond_ore</span><span>.vclip 5</span><span>#elytra</span><span>.waypoints</span><span>#structure stronghold</span><span>.multi</span><span>#follow player</span><span>.nbt</span><span>#heatmap</span><span>.bind kill-aura R</span>
-    <span>#seedmap village 4000</span><span>.macro run sort-shulkers</span><span>#goto 1200 -340</span><span>.packet</span><span>#seedinput -4172094116</span><span>.oresim</span><span>#mine diamond_ore</span><span>.vclip 5</span><span>#elytra</span><span>.waypoints</span><span>#structure stronghold</span><span>.multi</span><span>#follow player</span><span>.nbt</span><span>#heatmap</span><span>.bind kill-aura R</span>
-  </div>
+<div class="stats mono" aria-label="What's in the jar">
+  <span><b>75</b> modules</span>
+  <span><b>97</b> macro actions</span>
+  <span><b>103</b> commands</span>
+  <span><b>1</b> seed map that runs worldgen</span>
 </div>
 
-<!-- ============================== NUMBERS ============================== -->
-<section class="numbers" aria-label="What's in the jar">
-  <div><strong>75</strong><span>modules</span></div>
-  <div><strong>97</strong><span>macro actions</span></div>
-  <div><strong>103</strong><span>commands</span></div>
-  <div><strong>2</strong><span>jars. DIH + JourneyMap</span></div>
-</section>
+<section class="section" id="features" aria-labelledby="ftitle">
+  <h2 id="ftitle" class="sr">Features</h2>
+  <div class="bento">
 
-<!-- ============================== 01 SEED MAP ============================== -->
-<section class="chapter" id="seedmap" aria-labelledby="c1">
-  <div class="rail mono"><span class="num">01</span><span>SEED MAP</span></div>
-  <div class="chapter-body">
-    <h2 id="c1">Every structure. Checked, not guessed.</h2>
-    <div class="cols">
-      <div class="prose">
-        <p>Most seed maps stop at “this chunk could have a village.” <code>#seedmap</code> keeps going. For every candidate around you it runs Minecraft's own structure generation offline: biome checks, terrain checks, jigsaw assembly. Only the ones that would really generate make it onto the map.</p>
-        <p>They land on JourneyMap's minimap and fullscreen map with real footprints, hover details, per-family layers and right-click <em>go here</em>. Without JourneyMap you only get the list in chat with clickable coordinates.</p>
-        <p>On a server, give it the seed once with <code>#seedinput</code>. It's checked against the seed hash the server sends when you join, so a wrong seed gets refused instead of quietly drawing the wrong map. Each server keeps its own.</p>
-      </div>
-      <figure class="chat" aria-label="Example #seedmap output in chat">
-        <div class="chat-lines">
-          <p><span class="c-tag">[DIH]</span> Seed map · 2000 blocks around 212, -1044 · 6.4 s</p>
-          <p><span class="sq" style="--c:#43A047"></span><u>14× Village</u> <span class="c-dim">nearest</span> <a class="c-link">388, -1210</a></p>
-          <p><span class="sq" style="--c:#8E24AA"></span><u>6× Ruined Portal</u> <span class="c-dim">nearest</span> <a class="c-link">-40, -760</a></p>
-          <p><span class="sq" style="--c:#9E9E9E"></span><u>3× Pillager Outpost</u> <span class="c-dim">nearest</span> <a class="c-link">905, -1488</a></p>
-          <p><span class="sq" style="--c:#E08A2E"></span><u>2× Trial Chambers</u> <span class="c-dim">nearest</span> <a class="c-link">-610, -2200</a></p>
-          <p><span class="sq" style="--c:#00838F"></span><u>2× Ocean Monument</u> <span class="c-dim">nearest</span> <a class="c-link">1510, -300</a></p>
-          <p><span class="sq" style="--c:#7E57C2"></span><u>1× Stronghold</u> <span class="c-dim">at</span> <a class="c-link">1520, -2980</a></p>
-          <p class="c-dim">Click a family to show only that one. Click coordinates to #goto.</p>
-        </div>
-        <figcaption class="mono">what you get in chat</figcaption>
+    <article class="card span-2" id="seedmap">
+      <header><span class="tag mono">#seedmap</span><h3>Every structure, checked.</h3><p>Runs vanilla generation offline, draws on JourneyMap. Seed fills in from SeedCrackerX.</p></header>
+      <figure class="chat" aria-label="Example #seedmap output">
+        <p><span class="c-tag">[DIH]</span> 2000 blocks around 212, -1044 · 6.4 s</p>
+        <p><span class="sq" style="--c:#43A047"></span>14× Village <span class="c-dim">→</span> <a class="c-link">388, -1210</a></p>
+        <p><span class="sq" style="--c:#8E24AA"></span>6× Ruined Portal <span class="c-dim">→</span> <a class="c-link">-40, -760</a></p>
+        <p><span class="sq" style="--c:#E08A2E"></span>2× Trial Chambers <span class="c-dim">→</span> <a class="c-link">-610, -2200</a></p>
+        <p><span class="sq" style="--c:#7E57C2"></span>1× Stronghold <span class="c-dim">→</span> <a class="c-link">1520, -2980</a></p>
       </figure>
-    </div>
-  </div>
-</section>
+    </article>
 
-<!-- ============================== 02 MACROS ============================== -->
-<section class="chapter" id="macros" aria-labelledby="c2">
-  <div class="rail mono"><span class="num">02</span><span>MACROS</span></div>
-  <div class="chapter-body">
-    <h2 id="c2">Macros that wait for the server, not a timer.</h2>
-    <div class="cols">
-      <div class="prose">
-        <p>97 action types. Packet gates and bursts, server-tick sync, container click sequences. Waits on a GUI, a chat line, a sound, an entity, a slot change or a teleport. Branches, labels, variables, <code>finally</code> blocks.</p>
-        <p>Build them in the editor, bind them to a key, and run them across accounts with LAN sync. Addons can register their own actions and conditions.</p>
-      </div>
-      <figure class="macro" aria-label="A macro running in the editor">
-        <div class="macro-head mono"><span>sort-shulkers.macro</span><span class="macro-state" id="macro-state">running</span></div>
-        <ol class="macro-steps mono" id="macro-steps">
-          <li><i>WAIT_GUI_TYPE</i><span>shulker_box</span></li>
-          <li><i>SAVE_GUI</i><span>src</span></li>
-          <li><i>PACKET_GATE</i><span>hold ServerboundContainerClick</span></li>
-          <li><i>CONTAINER_CLICK_SEQUENCE</i><span>0..26 quick_move</span></li>
-          <li><i>SERVER_TICK_SYNC</i><span>2 ticks</span></li>
-          <li><i>END_PACKET_GATE</i><span>flush in order</span></li>
-          <li><i>WAIT_SLOT_CHANGE</i><span>timeout 40t</span></li>
-          <li><i>BRANCH</i><span>if free_slots &lt; 3 → store</span></li>
-          <li><i>CLOSE_GUI</i><span></span></li>
-          <li><i>FINALLY</i><span>RESTORE_GUI src</span></li>
+    <article class="card" id="macros">
+      <header><span class="tag mono">.macro</span><h3>Waits on the server.</h3><p>97 actions. Gates, ticks, GUIs, branches.</p></header>
+      <figure class="macro mono" aria-label="A macro running">
+        <div class="macro-head"><span>sort-shulkers</span><span class="macro-state" id="macro-state">running</span></div>
+        <ol class="macro-steps" id="macro-steps">
+          <li><i>WAIT_GUI_TYPE</i></li>
+          <li><i>PACKET_GATE</i></li>
+          <li><i>CLICK_SEQUENCE</i></li>
+          <li><i>SERVER_TICK_SYNC</i></li>
+          <li><i>END_PACKET_GATE</i></li>
+          <li><i>CLOSE_GUI</i></li>
         </ol>
       </figure>
-    </div>
-  </div>
-</section>
+    </article>
 
-<!-- ============================== 03 PATHING ============================== -->
-<section class="chapter" id="pathing" aria-labelledby="c3">
-  <div class="rail mono"><span class="num">03</span><span>PATHING</span></div>
-  <div class="chapter-body">
-    <h2 id="c3">Baritone lives inside.</h2>
-    <div class="cols">
-      <div class="prose">
-        <p>No second mod to install. <code>#goto</code>, <code>#mine</code>, <code>#follow</code>, <code>#elytra</code>, <code>#build</code>, the native nether pathfinder, all in the same jar.</p>
-        <p>While it walks you see the plan in the world: a guide line to the next step, the current and queued path, the blocks it's about to break or place, and a beacon on the goal. That's what the map at the top of this page is doing.</p>
-        <p>Or give the controls away: <code>#ai</code> hands the player to a language model that reads chat and plays by running Baritone commands. Bring your own key and endpoint.</p>
-      </div>
-      <figure class="term" aria-label="Baritone commands in chat">
-        <div class="term-lines mono" id="term"></div>
+    <article class="card" id="pathing">
+      <header><span class="tag mono">#goto</span><h3>Baritone inside.</h3><p>Pathing, mining, elytra, and <code>#ai</code>.</p></header>
+      <figure class="term mono" aria-label="Baritone commands"><div class="term-lines" id="term"></div></figure>
+    </article>
+
+    <article class="card" id="packets">
+      <header><span class="tag mono">.packet</span><h3>See the wire.</h3><p>Log, cancel, hold, burst.</p></header>
+      <figure class="plog mono" aria-label="Live packet log"><ol class="plog-rows" id="plog"></ol></figure>
+    </article>
+
+    <article class="card" id="privacy">
+      <header><span class="tag mono">opsec</span><h3>Servers see less.</h3><p>Hides mod channels and probes.</p></header>
+      <figure class="probe mono" aria-label="What servers can learn">
+        <div><span>channels</span><span><s>dih:payload</s></span></div>
+        <div><span>key.dih.menu</span><span class="ok">untranslated</span></div>
+        <div><span>pack probe</span><span class="ok">vanilla only</span></div>
       </figure>
-    </div>
+    </article>
+
   </div>
 </section>
 
-<!-- ============================== 04 PACKETS ============================== -->
-<section class="chapter" id="packets" aria-labelledby="c4">
-  <div class="rail mono"><span class="num">04</span><span>PACKETS</span></div>
-  <div class="chapter-body">
-    <h2 id="c4">See the wire.</h2>
-    <div class="cols">
-      <div class="prose">
-        <p>A packet log, a packet canceller, a custom payload sender, an NBT viewer, delay and burst gates. When a dupe works you'll know which packet did it, and when it doesn't you'll know which one the server threw away.</p>
-        <p>It's a debugging client first. Test on servers you own or have permission to break.</p>
-      </div>
-      <figure class="plog" aria-label="Live packet log">
-        <div class="plog-head mono"><span>DIR</span><span>PACKET</span><span>BYTES</span></div>
-        <ol class="plog-rows mono" id="plog"></ol>
-      </figure>
-    </div>
+<section class="section" id="modules" aria-labelledby="mtitle">
+  <div class="section-head">
+    <h2 id="mtitle">75 modules</h2>
+    <label class="search mono"><span>/</span><input id="msearch" type="search" placeholder="search" autocomplete="off" spellcheck="false" aria-label="Search modules"></label>
   </div>
-</section>
-
-<!-- ============================== 05 PRIVACY ============================== -->
-<section class="chapter" id="privacy" aria-labelledby="c5">
-  <div class="rail mono"><span class="num">05</span><span>PRIVACY</span></div>
-  <div class="chapter-body">
-    <h2 id="c5">Servers see less.</h2>
-    <div class="cols">
-      <div class="prose">
-        <p>Servers fingerprint clients by the channels they register, the translation keys they resolve and how they answer resource-pack probes. DIH filters mod channels, answers translation-key probes with vanilla strings and keeps its own packs out of resource-pack responses.</p>
-        <p>Built on ideas from <a href="https://github.com/aurickk/OpSec" rel="noopener">OpSec</a>. It raises the bar. It isn't a cloak.</p>
-      </div>
-      <figure class="probe mono" aria-label="How DIH answers common client fingerprinting probes">
-        <table>
-          <thead><tr><th>server asks</th><th>modded client says</th><th>DIH says</th></tr></thead>
-          <tbody>
-            <tr><td>registered channels</td><td>dih:payload<br>journeymap:*</td><td><s>dih:payload</s><br>journeymap:*</td></tr>
-            <tr><td>translate <b>key.dih.menu</b></td><td>“Modules”</td><td class="ok">key.dih.menu</td></tr>
-            <tr><td>resource-pack probe</td><td>lists dih assets</td><td class="ok">vanilla only</td></tr>
-          </tbody>
-        </table>
-        <figcaption>what a server can learn</figcaption>
-      </figure>
-    </div>
-  </div>
-</section>
-
-<!-- ============================== MODULES ============================== -->
-<section class="modules" id="modules" aria-labelledby="mtitle">
-  <div class="modules-head">
-    <h2 id="mtitle"><span class="big">75</span> modules. Here's all of them.</h2>
-    <label class="search mono"><span>/</span><input id="msearch" type="search" placeholder="search modules" autocomplete="off" spellcheck="false" aria-label="Search modules"></label>
-  </div>
-  <p class="modules-note mono">Click to toggle, like in game. In game it's <kbd>R.Shift</kbd>.</p>
   <div class="gui" id="gui"></div>
   <p class="gui-status mono" id="gui-status" aria-live="polite">hover a module</p>
 </section>
 
-<!-- ============================== INSTALL ============================== -->
-<section class="install" id="install" aria-labelledby="itl">
-  <h2 id="itl">Three steps.</h2>
+<section class="section" id="install" aria-labelledby="itl">
+  <div class="section-head"><h2 id="itl">Install</h2></div>
   <ol class="steps">
-    <li>
-      <span class="step-n">1</span>
-      <h3>Get Fabric</h3>
-      <p>Install <a href="https://fabricmc.net/use/installer/" rel="noopener">Fabric Loader</a> 0.19.3 or newer for Minecraft <span data-release="mc">26.2</span>, plus <a href="https://modrinth.com/mod/fabric-api" rel="noopener">Fabric API</a>. You need Java 25.</p>
-    </li>
-    <li>
-      <span class="step-n">2</span>
-      <h3>Drop the jars</h3>
-      <p>Put <code data-release="file">DIH-Client-5.0-26.2.jar</code> and <a href="https://cdn.modrinth.com/data/lfHFW1mp/versions/tbOrSD59/journeymap-fabric-26.2-6.0.9.jar" data-release="journeymap" rel="noopener"><code data-release="jmFile">journeymap-fabric-26.2-6.0.9.jar</code></a> in <code>.minecraft/mods</code>. JourneyMap gives you the minimap and draws the seed map. Baritone and the pathfinder are already inside DIH.</p>
-    </li>
-    <li>
-      <span class="step-n">3</span>
-      <h3>Play</h3>
-      <p>Launch the Fabric profile. <kbd>R.Shift</kbd> opens modules, <code>.help</code> lists commands, <code>#help</code> lists Baritone.</p>
-    </li>
+    <li><b>1</b><span><a href="https://fabricmc.net/use/installer/" rel="noopener">Fabric</a> 0.19.3+ and <a href="https://modrinth.com/mod/fabric-api" rel="noopener">Fabric API</a>. Java 25.</span></li>
+    <li><b>2</b><span>Drop <a href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0/DIH-Client-5.0-26.2.jar" data-release="download">DIH</a> and <a href="https://modrinth.com/mod/journeymap" data-release="journeymap" rel="noopener">JourneyMap</a> in <code>mods</code>.</span></li>
+    <li><b>3</b><span><kbd>R.Shift</kbd> for modules. <code>.help</code> and <code>#help</code>.</span></li>
   </ol>
   <div class="checksum mono">
-    <span>SHA-256</span>
+    <span>sha-256</span>
     <code id="sha" data-release="sha256">0e523fd0f0185542ca403cce9abdd0f535400efff63d6b87d7818b051b10dce7</code>
     <button type="button" class="linkish" id="copy-sha">copy</button>
   </div>
-</section>
-
-<!-- ============================== FAQ ============================== -->
-<section class="faq" aria-labelledby="ftl">
-  <h2 id="ftl">Questions people actually ask</h2>
-  <details><summary>Will I get banned?</summary><p>On servers with an anticheat, some modules will flag. The client says so in the module description when it knows (AntiHunger, for one). Use it where you're allowed to.</p></details>
-  <details><summary>Is it a virus?</summary><p>The whole thing is open source under GPL-3.0. Read it, build it yourself with <code>gradlew build -Prelease</code>, and compare the SHA-256 above with what you downloaded.</p></details>
-  <details><summary>I used XINYUAN / Autism Client. Where are my settings?</summary><p>On first launch DIH copies your old accounts, proxies, macros and config over to the new names. The old files stay where they were, in case you go back.</p></details>
-  <details><summary>Do I need JourneyMap?</summary><p>Yes, if you want a minimap. DIH doesn't have its own; it draws the seed map and heatmap on JourneyMap's minimap and fullscreen map. JourneyMap's licence doesn't allow it to be packed inside another mod, so it's a separate download from <a href="https://modrinth.com/mod/journeymap" rel="noopener">Modrinth</a>. Without it the client still runs and seed-map results go to chat.</p></details>
-  <details><summary>Which Minecraft versions?</summary><p><span data-release="mc">26.2</span> only, for now. Each release is built for one version.</p></details>
+  <dl class="faq">
+    <div><dt>Bannable?</dt><dd>Some modules flag anticheats. Play where you're allowed.</dd></div>
+    <div><dt>Safe?</dt><dd>Open source. Build it yourself and compare the hash.</dd></div>
+    <div><dt>Why is JourneyMap separate?</dt><dd>Its licence bans bundling. It gives you the minimap.</dd></div>
+    <div><dt>Old Autism / XINYUAN settings?</dt><dd>Copied over on first launch.</dd></div>
+  </dl>
 </section>
 
 </main>
 
-<!-- ============================== FOOTER ============================== -->
 <footer class="foot">
-  <div class="foot-big" aria-hidden="true">DIH</div>
-  <div class="foot-grid">
-    <div>
-      <h3 class="mono">CREDITS</h3>
-      <p>DIH Client is a fork of <a href="https://github.com/AutismDevelopment/Autism-Client" rel="noopener">Autism Client</a> by AutismDevelopment and builds on the work of these projects:</p>
-      <ul class="credits">
-        <li><a href="https://github.com/AutismDevelopment/Autism-Client" rel="noopener">Autism Client</a><span>GPL-3.0</span></li>
-        <li><a href="https://github.com/cabaletta/baritone" rel="noopener">Baritone</a><span>LGPL-3.0</span></li>
-        <li><a href="https://github.com/MeteorDevelopment/meteor-client" rel="noopener">Meteor Client</a><span>GPL-3.0</span></li>
-        <li><a href="https://github.com/Wurst-Imperium/Wurst7" rel="noopener">Wurst</a><span>GPL-3.0</span></li>
-        <li><a href="https://github.com/aurickk/OpSec" rel="noopener">OpSec</a><span>GPL-3.0</span></li>
-        <li><a href="https://github.com/NikOverflow/ExploitPreventer" rel="noopener">ExploitPreventer</a><span>MIT</span></li>
-        <li><a href="https://github.com/ErneTalu/Dupe-Radar" rel="noopener">Dupe Radar</a><span>MIT</span></li>
-        <li><a href="https://github.com/bestluaucoder/Xinyuan-Better-Storage-esp-1-addon" rel="noopener">Better Storage ESP</a><span>idea</span></li>
-      </ul>
-    </div>
-    <div>
-      <h3 class="mono">BUNDLED</h3>
-      <ul class="credits">
-        <li><a href="https://github.com/babbaj/nether-pathfinder" rel="noopener">nether-pathfinder</a><span>babbaj</span></li>
-        <li><a href="https://github.com/LlamaLad7/MixinExtras" rel="noopener">MixinExtras</a><span>MIT</span></li>
-        <li><a href="https://github.com/weisJ/jsvg" rel="noopener">JSVG</a><span>MIT</span></li>
-        <li><a href="https://netty.io" rel="noopener">Netty proxy/socks</a><span>Apache-2.0</span></li>
-        <li><a href="https://github.com/eclipse-paho/paho.mqtt.java" rel="noopener">Eclipse Paho</a><span>EPL-2.0 / EDL-1.0</span></li>
-        <li><a href="https://github.com/FlorianMichael/WaybackAuthLib" rel="noopener">WaybackAuthLib</a><span>Apache-2.0</span></li>
-      </ul>
-    </div>
-    <div>
-      <h3 class="mono">LICENSE</h3>
-      <p>© 2026 ahigherdesire. DIH Client is free software under the <a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener">GNU GPL v3 or later</a>, with no warranty. The complete source for every release is on <a href="https://github.com/ahigherdesire/dih-client" data-release="repo" rel="noopener">GitHub</a>.</p>
-      <p class="legal mono">NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.</p>
-    </div>
+  <div class="foot-row">
+    <a class="brand" href="#top" aria-label="Back to top">
+      <svg class="brand-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><use href="#pixel-d"/></svg>
+      <span>DIH</span>
+    </a>
+    <p>© 2026 ahigherdesire · <a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener">GPL-3.0-or-later</a>, no warranty · <a href="https://github.com/ahigherdesire/dih-client" data-release="repo" rel="noopener">Source</a></p>
   </div>
+  <p class="credits">
+    Fork of <a href="https://github.com/AutismDevelopment/Autism-Client" rel="noopener">Autism Client</a> (GPL-3.0). Builds on
+    <a href="https://github.com/cabaletta/baritone" rel="noopener">Baritone</a> (LGPL-3.0),
+    <a href="https://github.com/MeteorDevelopment/meteor-client" rel="noopener">Meteor</a>,
+    <a href="https://github.com/Wurst-Imperium/Wurst7" rel="noopener">Wurst</a>,
+    <a href="https://github.com/aurickk/OpSec" rel="noopener">OpSec</a> (GPL-3.0),
+    <a href="https://github.com/NikOverflow/ExploitPreventer" rel="noopener">ExploitPreventer</a>,
+    <a href="https://github.com/ErneTalu/Dupe-Radar" rel="noopener">Dupe Radar</a> (MIT),
+    <a href="https://github.com/bestluaucoder/Xinyuan-Better-Storage-esp-1-addon" rel="noopener">Better Storage ESP</a>.
+    Bundles <a href="https://github.com/babbaj/nether-pathfinder" rel="noopener">nether-pathfinder</a>,
+    <a href="https://github.com/LlamaLad7/MixinExtras" rel="noopener">MixinExtras</a>,
+    <a href="https://github.com/weisJ/jsvg" rel="noopener">JSVG</a> (MIT),
+    <a href="https://netty.io" rel="noopener">Netty</a>,
+    <a href="https://github.com/FlorianMichael/WaybackAuthLib" rel="noopener">WaybackAuthLib</a> (Apache-2.0),
+    <a href="https://github.com/eclipse-paho/paho.mqtt.java" rel="noopener">Eclipse Paho</a> (EPL-2.0).
+  </p>
+  <p class="legal mono">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.</p>
 </footer>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

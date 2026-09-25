@@ -404,7 +404,7 @@
       const r = (st.f.landmark ? 5.5 : 4) * (hover === st ? 1.35 : 1);
       drawShape(st.f.shape, px, py, r, st.f.c);
       if (st.f.landmark) {
-        ctx.font = '600 11px "JetBrains Mono", monospace';
+        ctx.font = '600 11px "Geist Mono", monospace';
         ctx.fillStyle = 'rgba(8,9,12,.85)';
         ctx.fillText(st.f.name, px + 11, py + 5);
         ctx.fillStyle = '#ece7dc';
@@ -432,7 +432,7 @@
     ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(7.5, 7.5); ctx.lineTo(0, 3.5); ctx.lineTo(-7.5, 7.5); ctx.closePath();
     ctx.fillStyle = '#fff'; ctx.fill(); ctx.lineWidth = 2; ctx.strokeStyle = '#0b0c10'; ctx.stroke();
     ctx.restore();
-    ctx.font = '600 11px "JetBrains Mono", monospace';
+    ctx.font = '600 11px "Geist Mono", monospace';
     ctx.fillStyle = 'rgba(8,9,12,.85)'; ctx.fillText('you', px + 19, py + 5);
     ctx.fillStyle = '#fff'; ctx.fillText('you', px + 18, py + 4);
   }
@@ -691,7 +691,7 @@
         const p = document.createElement('p');
         p.className = kind;
         term.appendChild(p);
-        while (term.children.length > 9) term.removeChild(term.firstChild);
+        while (term.children.length > 7) term.removeChild(term.firstChild);
         if (kind === 'out') { p.innerHTML = text; setTimeout(typeLine, 520); return; }
         let c = 0;
         p.classList.add('caret');
