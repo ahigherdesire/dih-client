@@ -1,5 +1,7 @@
-# Builds the mod on every push to beta; on a version tag it also publishes the jar as a GitHub release.
-# Tags with a hyphen (v5.1-beta.2) become pre-releases, which the in-game update checker ignores.
+# Builds the mod on every push to beta. When the push brings a mod-version with no release yet
+# (gradle/libs.versions.toml), it publishes the jar as release v<version>, creating the tag, with
+# the notes from .github/release-notes/<version>.md. A pushed v* tag publishes that tag the same way.
+# Versions with a hyphen (5.1-beta.2) become pre-releases, which the in-game update checker ignores.
 name: Release
 
 on:
@@ -44,6 +46,7 @@ jobs:
           name="DIH-Client-$version-$mc.jar"
           cp "build/libs/DIH Client-$version-$mc.jar" "$name"
           sha=$(sha256sum "$name" | cut -d' ' -f1)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "name=$name" >> "$GITHUB_OUTPUT"
           echo "sha=$sha" >> "$GITHUB_OUTPUT"
           echo "$name  $(stat -c %s "$name") bytes  sha256 $sha" >> "$GITHUB_STEP_SUMMARY"
@@ -54,14 +57,19 @@ jobs:
           path: ${{ steps.jar.outputs.name }}
 
       - name: Publish the release
-        if: startsWith(github.ref, 'refs/tags/')
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.jar.outputs.version }}
         run: |
-          tag="${GITHUB_REF_NAME}"
+          if [ "$GITHUB_REF_TYPE" = tag ]; then tag="$GITHUB_REF_NAME"; else tag="v$VERSION"; fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; nothing to publish."
+            exit 0
+          fi
           flags=""
           case "$tag" in *-*) flags="--prerelease --latest=false" ;; esac
-          notes=$(git tag -l --format='%(contents)' "$tag")
-          [ -n "$notes" ] || notes="DIH Client $tag"
-          printf '%s\n\nSHA-256: `%s`\n' "$notes" "${{ steps.jar.outputs.sha }}" > notes.md
-          gh release create "$tag" "${{ steps.jar.outputs.name }}" --title "DIH Client ${tag#v}" --notes-file notes.md $flags
+          notes_file=".github/release-notes/${tag#v}.md"
+          if [ -f "$notes_file" ]; then cp "$notes_file" notes.md; else echo "DIH Client ${tag#v}" > notes.md; fi
+          printf '\nSHA-256: `%s`\n' "${{ steps.jar.outputs.sha }}" >> notes.md
+          gh release create "$tag" "${{ steps.jar.outputs.name }}" --target "$GITHUB_SHA" \
+            --title "DIH Client ${tag#v}" --notes-file notes.md $flags
