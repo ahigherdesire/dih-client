@@ -4,19 +4,22 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Not found · DIH Client</title>
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#08080a">
 <link rel="icon" href="/assets/icon.svg" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@500&family=Geist+Mono:wght@400;500&family=Kanit:ital,wght@1,900&display=swap" rel="stylesheet">
 <style>
   :root { color-scheme: dark; }
-  body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #09090b; color: #a1a1aa; font: 15px/1.6 "Geist", "Segoe UI", sans-serif; padding: 16px; box-sizing: border-box; }
+  body { margin: 0; min-height: 100vh; min-height: 100svh; display: grid; place-items: center; padding: 16px; box-sizing: border-box; background: radial-gradient(60% 50% at 50% 40%, rgba(59, 110, 255, .12), transparent 70%), #08080a; color: #a1a1aa; font: 15px/1.6 "Geist", "Segoe UI", system-ui, sans-serif; -webkit-font-smoothing: antialiased; }
   main { max-width: 480px; text-align: center; }
-  h1 { margin: 0 0 8px; font: 700 clamp(64px, 16vw, 120px)/.9 "Geist", sans-serif; letter-spacing: -.05em; background: linear-gradient(180deg, #fff 30%, #a5b4fc 140%); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  p { margin: 0 0 24px; font-family: "Geist Mono", monospace; font-size: 13px; }
+  h1 { margin: 0 0 10px; font: italic 900 clamp(88px, 22vw, 150px)/.9 "Kanit", "Geist", sans-serif; background: linear-gradient(135deg, #fff 30%, #8ba6ff 70%, #a855f7); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  p { margin: 0 0 28px; font: 13px/1.6 "Geist Mono", monospace; }
   p b { color: #facc15; font-weight: 500; }
-  a { display: inline-block; background: #3b6eff; color: #fff; text-decoration: none; font-weight: 500; font-size: 14px; padding: 11px 18px; border-radius: 9px; }
-  a:hover { background: #5580ff; }
+  a { display: inline-flex; align-items: center; gap: 8px; height: 46px; padding: 0 20px; border-radius: 12px; color: #fff; text-decoration: none; font-weight: 500; font-size: 14px; background: linear-gradient(135deg, #3b6eff, #6d5dfc 55%, #a855f7); box-shadow: 0 1px 0 rgba(255,255,255,.25) inset, 0 12px 30px -12px rgba(110, 90, 255, 1); transition: transform .2s cubic-bezier(.2, .8, .2, 1); }
+  a:hover { transform: translateY(-2px); }
+  a:focus-visible { outline: 2px solid #8ba6ff; outline-offset: 3px; }
 </style>
 </head>
 <body>

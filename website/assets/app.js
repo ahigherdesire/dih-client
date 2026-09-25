@@ -8,23 +8,34 @@
   const $ = (s, el = document) => el.querySelector(s);
 
   // ------------------------------------------------------------ release wiring
+  const pick = key => key.split('.').reduce((o, k) => (o == null ? o : o[k]), R);
   document.querySelectorAll('[data-release]').forEach(el => {
-    const key = el.dataset.release;
-    if (key === 'download') { if (R.download) el.href = R.download; }
-    else if (key === 'repo') { if (R.repo) el.href = R.repo; }
-    else if (key === 'journeymap') { if (R.journeymap) el.href = R.journeymap; }
-    else if (R[key] != null) el.textContent = R[key];
+    const val = pick(el.dataset.release);
+    if (val == null) return;
+    if (el.tagName === 'A') el.href = val;
+    else el.textContent = val;
   });
-  const copyBtn = $('#copy-sha');
-  if (copyBtn) {
-    copyBtn.addEventListener('click', async () => {
+  document.querySelectorAll('[data-copy]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const code = btn.parentElement.querySelector('code');
       try {
-        await navigator.clipboard.writeText(R.sha256 || $('#sha').textContent.trim());
-        copyBtn.textContent = 'copied';
-      } catch { copyBtn.textContent = 'select it'; }
-      setTimeout(() => { copyBtn.textContent = 'copy'; }, 1600);
+        await navigator.clipboard.writeText(pick(btn.dataset.copy) || code.textContent.trim());
+        btn.textContent = 'Copied';
+      } catch { btn.textContent = 'Select it'; }
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1600);
     });
-  }
+  });
+  // download buttons: a short "started" state, since the browser gives no feedback of its own
+  document.querySelectorAll('[data-dl]').forEach(a => {
+    const sub = a.querySelector('[data-dl-sub]');
+    const idle = sub ? sub.innerHTML : '';
+    a.addEventListener('click', () => {
+      if (a.classList.contains('is-going')) return;
+      a.classList.add('is-going');
+      if (sub) sub.textContent = 'Download started';
+      setTimeout(() => { a.classList.remove('is-going'); if (sub) sub.innerHTML = idle; }, 2600);
+    });
+  });
 
   // top bar goes solid once past the hero's top
   const bar = $('.bar');
@@ -606,11 +617,6 @@
     else setGoal(c.x, c.y, 'GoalXZ');
     if (!reduceMotion) showActionbar(`Baritone: pathing to ${s ? s.f.name : 'goal'}`, 1400);
   });
-  const reseed = $('#reseed');
-  if (reseed) reseed.addEventListener('click', () => {
-    seed = randomSeed(); generate();
-    if (demo && !reduceMotion) setTimeout(demoStep, 1900);
-  });
 
   // ------------------------------------------------------------ sizing
   function resize() {
@@ -706,44 +712,6 @@
     }
   }
 
-  // ------------------------------------------------------------ packet log
-  const plog = $('#plog');
-  const PACKETS = [
-    ['c2s', 'ServerboundMovePlayerPacket.Pos', 21, 7], ['c2s', 'ServerboundMovePlayerPacket.PosRot', 29, 5],
-    ['c2s', 'ServerboundSwingPacket', 2, 3], ['c2s', 'ServerboundUseItemOnPacket', 18, 2],
-    ['c2s', 'ServerboundContainerClickPacket', 34, 3], ['c2s', 'ServerboundKeepAlivePacket', 9, 1],
-    ['c2s', 'ServerboundPlayerActionPacket', 13, 2], ['c2s', 'ServerboundClientTickEndPacket', 1, 4],
-    ['s2c', 'ClientboundSetEntityMotionPacket', 11, 5], ['s2c', 'ClientboundMoveEntityPacket.Pos', 10, 6],
-    ['s2c', 'ClientboundContainerSetSlotPacket', 42, 3], ['s2c', 'ClientboundLevelChunkWithLightPacket', 9214, 1],
-    ['s2c', 'ClientboundSystemChatPacket', 64, 1], ['s2c', 'ClientboundBlockUpdatePacket', 12, 3],
-    ['s2c', 'ClientboundSetTimePacket', 18, 1], ['s2c', 'ClientboundKeepAlivePacket', 9, 1],
-  ];
-  const bag = PACKETS.flatMap(p => Array(p[3]).fill(p));
-  function addPacket() {
-    const [dir, name, bytes] = bag[Math.floor(Math.random() * bag.length)];
-    const li = document.createElement('li');
-    const roll = Math.random();
-    if (dir === 'c2s' && name.includes('Swing') && roll < 0.5) li.className = 'x';
-    else if (dir === 'c2s' && name.includes('ContainerClick') && roll < 0.6) li.className = 'h';
-    const size = Math.max(1, Math.round(bytes * (0.8 + Math.random() * 0.4)));
-    li.innerHTML = `<span class="d ${dir}">${dir === 'c2s' ? 'C→S' : 'S→C'}</span><span class="p"></span><span class="b">${size}</span>`;
-    li.children[1].textContent = name;
-    plog.prepend(li);
-    while (plog.children.length > 12) plog.removeChild(plog.lastChild);
-  }
-  if (plog) {
-    for (let k = 0; k < 11; k++) addPacket();
-    plog.querySelectorAll('li').forEach(li => li.classList.add('seed'));
-    if (!reduceMotion) {
-      let timer = 0;
-      const io = new IntersectionObserver(e => {
-        clearInterval(timer);
-        if (e[0].isIntersecting) timer = setInterval(addPacket, 900);
-      });
-      io.observe(plog);
-    }
-  }
-
   // ------------------------------------------------------------ module GUI
   const gui = $('#gui');
   const status = $('#gui-status');
@@ -786,18 +754,9 @@
         panel.querySelector('.empty').hidden = n > 0;
         total += n;
       });
-      status.textContent = q ? `${total} match${total === 1 ? '' : 'es'} for “${searchBox.value.trim()}”` : 'hover a module';
+      status.textContent = q ? `${total} match${total === 1 ? '' : 'es'} for “${searchBox.value.trim()}”` : 'Hover a module to see what it does.';
     };
     searchBox.addEventListener('input', filter);
-    // cover tiles for a module category jump to its panel and flash it
-    document.querySelectorAll('.tile[data-cat]').forEach(tile => tile.addEventListener('click', () => {
-      if (searchBox.value) { searchBox.value = ''; filter(); }
-      const panel = gui.querySelector(`.panel[aria-label="${tile.dataset.cat}"]`);
-      if (!panel) return;
-      panel.classList.remove('flash');
-      void panel.offsetWidth;
-      panel.classList.add('flash');
-    }));
     document.addEventListener('keydown', ev => {
       if (ev.key === '/' && document.activeElement !== searchBox && !/input|textarea/i.test(document.activeElement.tagName)) {
         ev.preventDefault();
@@ -821,12 +780,62 @@
   });
   // fade sections up as they scroll in
   if (!reduceMotion && 'IntersectionObserver' in window) {
-    const els = document.querySelectorAll('.card, .mods, .steps li, .checksum, .section-head');
+    const els = document.querySelectorAll('.card, .beta-copy > *, .acq, .mods, .section > h2, .steps li, .checksum');
     els.forEach((el, k) => { el.classList.add('reveal'); el.style.setProperty('--d', `${(k % 3) * 80}ms`); });
     const io = new IntersectionObserver(entries => entries.forEach(e => {
       if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
     }), { rootMargin: '0px 0px -8% 0px' });
     els.forEach(el => io.observe(el));
+  }
+
+  // ------------------------------------------------------------ #acquire demo
+  // The real plan for an iron pickaxe from an empty inventory, as the beta prints it.
+  const acqLines = $('#acq-lines');
+  const ACQ = [
+    'mine 4 oak_log', 'craft 16 oak_planks', 'craft 8 stick', 'craft 1 crafting_table',
+    'set up a crafting_table', 'craft 1 wooden_pickaxe', 'mine 11 stone for cobblestone',
+    'set up a crafting_table', 'craft 1 stone_pickaxe', 'craft 1 furnace',
+    'mine 3 iron_ore for raw_iron', 'set up a furnace', 'smelt 3 raw_iron into iron_ingot',
+    'set up a crafting_table', 'craft 1 iron_pickaxe',
+  ];
+  if (acqLines) {
+    const n = ACQ.length;
+    const count = $('#acq-count'), bar = $('#acq-bar');
+    const add = (text, cls, step) => {
+      const li = document.createElement('li');
+      if (cls) li.className = cls;
+      const span = document.createElement('span');
+      if (step != null) { const b = document.createElement('b'); b.textContent = `Step ${step + 1}/${n}`; span.append(b, '  '); }
+      span.append(text);
+      li.appendChild(span);
+      acqLines.appendChild(li);
+      while (acqLines.children.length > 8) acqLines.removeChild(acqLines.firstChild);
+      return li;
+    };
+    const progress = done => { count.textContent = `${done}/${n}`; bar.style.width = `${(done / n) * 100}%`; };
+    const DONE = 'Done: you have 1 iron_pickaxe.';
+    if (reduceMotion) {
+      ACQ.forEach((t, k) => add(t, 'ok', k));
+      add(DONE, 'fin');
+      progress(n);
+    } else {
+      let k = 0, cur = null;
+      const hold = t => /^(mine|smelt)/.test(t) ? 1500 : /^set up/.test(t) ? 650 : 850;
+      const next = () => {
+        if (cur) { cur.classList.remove('now'); cur.classList.add('ok'); }
+        progress(k);
+        if (k >= n) {
+          add(DONE, 'fin');
+          setTimeout(() => { acqLines.textContent = ''; k = 0; cur = null; progress(0); start(); }, 4000);
+          return;
+        }
+        cur = add(ACQ[k], 'now', k);
+        setTimeout(next, hold(ACQ[k++]));
+      };
+      const start = () => { add(`Plan: ${n} steps from an empty inventory`); setTimeout(next, 700); };
+      const io = new IntersectionObserver(e => { if (e[0].isIntersecting) { io.disconnect(); start(); } }, { threshold: .3 });
+      io.observe(acqLines);
+    }
   }
 
   // ------------------------------------------------------------ wordmark + meteors
