@@ -121,7 +121,8 @@
   let path = null, pathPos = 0, goal = null, search = null;
   let revealStart = 0, hover = null, mouse = null, visible = true, frame = 0, demo = true;
 
-  const hud = { seed: $('#hud-seed'), pos: $('#hud-pos'), goal: $('#hud-goal'), path: $('#hud-path') };
+  const slot = id => $(id) || {};   // the HUD is optional
+  const hud = { seed: slot('#hud-seed'), pos: slot('#hud-pos'), goal: slot('#hud-goal'), path: slot('#hud-path') };
   const actionbar = $('#actionbar');
   const tip = $('#tip');
 
@@ -691,7 +692,7 @@
         const p = document.createElement('p');
         p.className = kind;
         term.appendChild(p);
-        while (term.children.length > 7) term.removeChild(term.firstChild);
+        while (term.children.length > 6) term.removeChild(term.firstChild);
         if (kind === 'out') { p.innerHTML = text; setTimeout(typeLine, 520); return; }
         let c = 0;
         p.classList.add('caret');
@@ -799,7 +800,10 @@
     }));
     document.addEventListener('keydown', ev => {
       if (ev.key === '/' && document.activeElement !== searchBox && !/input|textarea/i.test(document.activeElement.tagName)) {
-        ev.preventDefault(); searchBox.focus();
+        ev.preventDefault();
+        const box = searchBox.closest('details');
+        if (box) box.open = true;
+        searchBox.focus();
       } else if (ev.key === 'Escape' && document.activeElement === searchBox) {
         searchBox.value = ''; filter(); searchBox.blur();
       }

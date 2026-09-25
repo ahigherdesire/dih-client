@@ -56,48 +56,27 @@
       </a>
       <a class="btn btn-ghost" href="https://modrinth.com/mod/journeymap" data-release="journeymap" rel="noopener">+ JourneyMap</a>
     </div>
-    <p class="meta mono"><span data-release="size">20.8 MB</span> · GPL-3.0 · JourneyMap adds the minimap</p>
   </div>
 
-  <aside class="legend glass" id="legend" aria-label="Map layers">
-    <div class="legend-head mono"><span>Layers</span><button class="linkish" id="reseed" type="button" title="Generate a new world">↻ reseed</button></div>
-    <ul id="legend-list"></ul>
-  </aside>
-
-  <div class="hud glass mono" aria-live="polite">
-    <div><b>seed</b><span id="hud-seed">—</span></div>
-    <div><b>xz</b><span id="hud-pos">—</span></div>
-    <div><b>goal</b><span id="hud-goal">click the map</span></div>
-    <div><b>path</b><span id="hud-path">—</span></div>
-  </div>
   <p class="actionbar mono" id="actionbar" aria-hidden="true"></p>
   <div class="tip mono" id="tip" role="tooltip" hidden></div>
 </section>
-
-<div class="stats mono" aria-label="What's in the jar">
-  <span><b>75</b> modules</span>
-  <span><b>97</b> macro actions</span>
-  <span><b>103</b> commands</span>
-  <span><b>1</b> seed map that runs worldgen</span>
-</div>
 
 <section class="section" id="features" aria-labelledby="ftitle">
   <h2 id="ftitle" class="sr">Features</h2>
   <div class="bento">
 
-    <article class="card span-2" id="seedmap">
-      <header><span class="tag mono">#seedmap</span><h3>Every structure, checked.</h3><p>Runs vanilla generation offline, draws on JourneyMap. Seed fills in from SeedCrackerX.</p></header>
+    <article class="card" id="seedmap">
+      <header><span class="tag mono">#seedmap</span><h3>Every structure, checked.</h3><p>Real worldgen, on JourneyMap.</p></header>
       <figure class="chat" aria-label="Example #seedmap output">
-        <p><span class="c-tag">[DIH]</span> 2000 blocks around 212, -1044 · 6.4 s</p>
         <p><span class="sq" style="--c:#43A047"></span>14× Village <span class="c-dim">→</span> <a class="c-link">388, -1210</a></p>
-        <p><span class="sq" style="--c:#8E24AA"></span>6× Ruined Portal <span class="c-dim">→</span> <a class="c-link">-40, -760</a></p>
         <p><span class="sq" style="--c:#E08A2E"></span>2× Trial Chambers <span class="c-dim">→</span> <a class="c-link">-610, -2200</a></p>
         <p><span class="sq" style="--c:#7E57C2"></span>1× Stronghold <span class="c-dim">→</span> <a class="c-link">1520, -2980</a></p>
       </figure>
     </article>
 
     <article class="card" id="macros">
-      <header><span class="tag mono">.macro</span><h3>Waits on the server.</h3><p>97 actions. Gates, ticks, GUIs, branches.</p></header>
+      <header><span class="tag mono">.macro</span><h3>Waits on the server.</h3><p>97 actions, synced to ticks.</p></header>
       <figure class="macro mono" aria-label="A macro running">
         <div class="macro-head"><span>sort-shulkers</span><span class="macro-state" id="macro-state">running</span></div>
         <ol class="macro-steps" id="macro-steps">
@@ -105,41 +84,25 @@
           <li><i>PACKET_GATE</i></li>
           <li><i>CLICK_SEQUENCE</i></li>
           <li><i>SERVER_TICK_SYNC</i></li>
-          <li><i>END_PACKET_GATE</i></li>
-          <li><i>CLOSE_GUI</i></li>
         </ol>
       </figure>
     </article>
 
     <article class="card" id="pathing">
-      <header><span class="tag mono">#goto</span><h3>Baritone inside.</h3><p>Pathing, mining, elytra, and <code>#ai</code>.</p></header>
+      <header><span class="tag mono">#goto</span><h3>Baritone inside.</h3><p>Pathing, mining, elytra.</p></header>
       <figure class="term mono" aria-label="Baritone commands"><div class="term-lines" id="term"></div></figure>
-    </article>
-
-    <article class="card" id="packets">
-      <header><span class="tag mono">.packet</span><h3>See the wire.</h3><p>Log, cancel, hold, burst.</p></header>
-      <figure class="plog mono" aria-label="Live packet log"><ol class="plog-rows" id="plog"></ol></figure>
-    </article>
-
-    <article class="card" id="privacy">
-      <header><span class="tag mono">opsec</span><h3>Servers see less.</h3><p>Hides mod channels and probes.</p></header>
-      <figure class="probe mono" aria-label="What servers can learn">
-        <div><span>channels</span><span><s>dih:payload</s></span></div>
-        <div><span>key.dih.menu</span><span class="ok">untranslated</span></div>
-        <div><span>pack probe</span><span class="ok">vanilla only</span></div>
-      </figure>
     </article>
 
   </div>
 </section>
 
 <section class="section" id="modules" aria-labelledby="mtitle">
-  <div class="section-head">
-    <h2 id="mtitle">75 modules</h2>
+  <details class="mods">
+    <summary><h2 id="mtitle">75 modules</h2><span class="more mono">Browse</span></summary>
     <label class="search mono"><span>/</span><input id="msearch" type="search" placeholder="search" autocomplete="off" spellcheck="false" aria-label="Search modules"></label>
-  </div>
-  <div class="gui" id="gui"></div>
-  <p class="gui-status mono" id="gui-status" aria-live="polite">hover a module</p>
+    <div class="gui" id="gui"></div>
+    <p class="gui-status mono" id="gui-status" aria-live="polite">hover a module</p>
+  </details>
 </section>
 
 <section class="section" id="install" aria-labelledby="itl">
@@ -154,12 +117,6 @@
     <code id="sha" data-release="sha256">0e523fd0f0185542ca403cce9abdd0f535400efff63d6b87d7818b051b10dce7</code>
     <button type="button" class="linkish" id="copy-sha">copy</button>
   </div>
-  <dl class="faq">
-    <div><dt>Bannable?</dt><dd>Some modules flag anticheats. Play where you're allowed.</dd></div>
-    <div><dt>Safe?</dt><dd>Open source. Build it yourself and compare the hash.</dd></div>
-    <div><dt>Why is JourneyMap separate?</dt><dd>Its licence bans bundling. It gives you the minimap.</dd></div>
-    <div><dt>Old Autism / XINYUAN settings?</dt><dd>Copied over on first launch.</dd></div>
-  </dl>
 </section>
 
 </main>
@@ -172,7 +129,7 @@
     </a>
     <p>© 2026 ahigherdesire · <a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener">GPL-3.0-or-later</a>, no warranty · <a href="https://github.com/ahigherdesire/dih-client" data-release="repo" rel="noopener">Source</a></p>
   </div>
-  <p class="credits">
+  <details class="credits"><summary class="mono">Credits &amp; licences</summary><p>
     Fork of <a href="https://github.com/AutismDevelopment/Autism-Client" rel="noopener">Autism Client</a> (GPL-3.0). Builds on
     <a href="https://github.com/cabaletta/baritone" rel="noopener">Baritone</a> (LGPL-3.0),
     <a href="https://github.com/MeteorDevelopment/meteor-client" rel="noopener">Meteor</a>,
@@ -187,7 +144,7 @@
     <a href="https://netty.io" rel="noopener">Netty</a>,
     <a href="https://github.com/FlorianMichael/WaybackAuthLib" rel="noopener">WaybackAuthLib</a> (Apache-2.0),
     <a href="https://github.com/eclipse-paho/paho.mqtt.java" rel="noopener">Eclipse Paho</a> (EPL-2.0).
-  </p>
+  </p></details>
   <p class="legal mono">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.</p>
 </footer>
 
