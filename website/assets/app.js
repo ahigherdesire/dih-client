@@ -798,6 +798,8 @@
     'mine 3 iron_ore for raw_iron', 'set up a furnace', 'smelt 3 raw_iron into iron_ingot',
     'set up a crafting_table', 'craft 1 iron_pickaxe',
   ];
+  // Mid-run it gets hurt and hungry, eats, and carries on (beta 2).
+  const EAT = { after: 10, text: 'Eating bread (4 hearts, food 5/20)' };
   if (acqLines) {
     const n = ACQ.length;
     const count = $('#acq-count'), bar = $('#acq-bar');
@@ -815,18 +817,24 @@
     const progress = done => { count.textContent = `${done}/${n}`; bar.style.width = `${(done / n) * 100}%`; };
     const DONE = 'Done: you have 1 iron_pickaxe.';
     if (reduceMotion) {
-      ACQ.forEach((t, k) => add(t, 'ok', k));
+      ACQ.forEach((t, k) => { add(t, 'ok', k); if (k === EAT.after) add(EAT.text, 'ok'); });
       add(DONE, 'fin');
       progress(n);
     } else {
-      let k = 0, cur = null;
+      let k = 0, cur = null, ate = false;
       const hold = t => /^(mine|smelt)/.test(t) ? 1500 : /^set up/.test(t) ? 650 : 850;
       const next = () => {
         if (cur) { cur.classList.remove('now'); cur.classList.add('ok'); }
         progress(k);
+        if (k === EAT.after + 1 && !ate) {
+          ate = true;
+          cur = add(EAT.text, 'now');
+          setTimeout(next, 1100);
+          return;
+        }
         if (k >= n) {
           add(DONE, 'fin');
-          setTimeout(() => { acqLines.textContent = ''; k = 0; cur = null; progress(0); start(); }, 4000);
+          setTimeout(() => { acqLines.textContent = ''; k = 0; cur = null; ate = false; progress(0); start(); }, 4000);
           return;
         }
         cur = add(ACQ[k], 'now', k);

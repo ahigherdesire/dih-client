@@ -14,11 +14,11 @@ window.DIH_RELEASE = {
   /* Pre-release: a GitHub pre-release, so the in-game update checker (releases/latest) ignores it. */
   beta: {
     label: "5.1 beta",
-    version: "5.1-beta.1",
-    file: "DIH-Client-5.1-beta.1-26.2.jar",
-    size: "21.0 MB",
-    sha256: "c2a0416e00d9f98f6599975c3b48ad2b9c14309429196b6f1e2fc123da5f144d",
-    download: "https://github.com/ahigherdesire/dih-client/releases/download/v5.1-beta.1/DIH-Client-5.1-beta.1-26.2.jar",
-    notes: "https://github.com/ahigherdesire/dih-client/releases/tag/v5.1-beta.1"
+    version: "5.1-beta.2",
+    file: "DIH-Client-5.1-beta.2-26.2.jar",
+    size: "20.8 MB",
+    sha256: "79fc91fcf2beef9c0567b30f84773c86619ef10c2bd307bbcb22107cab57ef99",
+    download: "https://github.com/ahigherdesire/dih-client/releases/download/v5.1-beta.2/DIH-Client-5.1-beta.2-26.2.jar",
+    notes: "https://github.com/ahigherdesire/dih-client/releases/tag/v5.1-beta.2"
   }
 };
