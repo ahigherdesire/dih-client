@@ -120,6 +120,11 @@ final class CraftRunner extends RunnerBase {
     }
 
     @Override
+    public boolean busy() {
+        return task != null;
+    }
+
+    @Override
     public void cancel() {
         if (task != null) {
             task.cancel(true); // the helper stops at its next wait and closes a table it opened

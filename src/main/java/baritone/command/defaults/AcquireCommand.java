@@ -22,7 +22,7 @@ import java.util.stream.Stream;
  */
 public class AcquireCommand extends Command {
 
-    private static final List<String> SUBCOMMANDS = List.of("plan", "status", "stop");
+    private static final List<String> SUBCOMMANDS = List.of("plan", "status", "stop", "food");
 
     public AcquireCommand(IBaritone baritone) {
         super(baritone, "acquire", "aquire");
@@ -99,7 +99,10 @@ public class AcquireCommand extends Command {
                 "Progress goes to chat. When a step comes up short, fails, a tool breaks or you die, it",
                 "re-plans from your real inventory (at most acquireMaxReplans times).",
                 "",
-                "It never runs server commands, eats, teleports or respawns for you. It only drops items",
+                "Health comes first (acquireHeal): while it runs it eats when you're hurt and below 18 food,",
+                "or at 6 food, eats a golden apple at acquireEmergencyHealth (backing off from a fight first),",
+                "and with no safe food and health at acquireHealHealth or below it gets food before going on.",
+                "It never runs server commands, teleports or respawns for you. It only drops items",
                 "when acquireDropJunk is on; otherwise a full inventory stops it with a message.",
                 "#stop, #cancel and Flee stop it like any other Baritone task, #pause pauses it.",
                 "",
@@ -108,12 +111,14 @@ public class AcquireCommand extends Command {
                 "Usage:",
                 "> acquire <item> [count] - Get the item, e.g. #acquire stone_pickaxe or #acquire torch 64.",
                 "> acquire <count> <item> - Same, count first: #acquire 64 torch.",
+                "> acquire food [count] - The cheapest food: enough for 10-20 food points, or count items of it.",
                 "> acquire plan <item> [count] - Print the steps without doing anything.",
                 "> acquire status - Show the current step and progress.",
                 "> acquire stop - Stop acquiring (so does #stop).",
                 "",
                 "Settings: acquirePlaceStations, acquireKillMobs, acquireStationRadius, acquireMaxReplans,",
-                "acquireStepTimeoutSeconds, acquireDropJunk (see #set)."
+                "acquireStepTimeoutSeconds, acquireDropJunk, acquireHeal, acquireHealHealth,",
+                "acquireEmergencyHealth (see #set)."
         );
     }
 }

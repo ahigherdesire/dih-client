@@ -1657,6 +1657,25 @@ public final class Settings {
     public final Setting<Boolean> acquireDropJunk = new Setting<>(false);
 
     /**
+     * Let {@code #acquire} look after your health while it runs: eat when hurt and below 18 food (natural
+     * regeneration needs it) or at 6 food and below, eat a golden apple at {@link #acquireEmergencyHealth},
+     * and fetch food first when there is none to eat. Only while {@code #acquire} runs; {@code #eat} eats on request.
+     */
+    public final Setting<Boolean> acquireHeal = new Setting<>(true);
+
+    /**
+     * Health, in half-hearts (12 = 6 hearts), at or below which {@code #acquire} gets food before carrying on
+     * when you hold nothing safe to eat. Needs {@link #acquireHeal}.
+     */
+    public final Setting<Integer> acquireHealHealth = new Setting<>(12);
+
+    /**
+     * Health, in half-hearts, at or below which {@code #acquire} (and {@code #eat}) eats a golden apple even on
+     * a full food bar, may eat food the plan needs, and stops fighting to back off and eat. Needs {@link #acquireHeal}.
+     */
+    public final Setting<Integer> acquireEmergencyHealth = new Setting<>(6);
+
+    /**
      * A map of lowercase setting field names to their respective setting
      */
     public final Map<String, Setting<?>> byLowerName;

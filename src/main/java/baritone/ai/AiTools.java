@@ -64,7 +64,8 @@ public final class AiTools {
                         + "\"make me X\" or \"craft X\" request instead of chaining mine and craft commands by "
                         + "hand. One acquire runs at a time; the stop command cancels it.",
                 object(
-                        property("item", "string", "The item, as an id or plain words, e.g. \"iron_pickaxe\" or \"torch\"."),
+                        property("item", "string", "The item, as an id or plain words, e.g. \"iron_pickaxe\" or \"torch\"; "
+                                + "\"food\" gets the cheapest food."),
                         property("count", "integer", "How many to have in the inventory. Default 1.")
                 ),
                 "item"));

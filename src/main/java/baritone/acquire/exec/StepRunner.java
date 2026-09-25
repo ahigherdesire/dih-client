@@ -18,6 +18,11 @@ interface StepRunner {
     /** Stops whatever this runner started: the mine process, an open container, a background craft. Idempotent. */
     void cancel();
 
+    /** True while it is mid-way through something inventory clicks would break (a background craft); no eating then. */
+    default boolean busy() {
+        return false;
+    }
+
     /** What a step tick produced. */
     record Result(Kind kind, PathingCommand command, String reason) {
 

@@ -19,6 +19,7 @@ package baritone;
 
 import baritone.acquire.AcquireControl;
 import baritone.acquire.exec.AcquireProcess;
+import baritone.acquire.exec.EatBehavior;
 import baritone.api.BaritoneAPI;
 import baritone.api.IBaritone;
 import baritone.api.Settings;
@@ -73,6 +74,7 @@ public class Baritone implements IBaritone {
     private final InventoryBehavior inventoryBehavior;
     private final AutopilotBehavior autopilotBehavior;
     private final AiBehavior aiBehavior;
+    private final EatBehavior eatBehavior;
     private final InputOverrideHandler inputOverrideHandler;
 
     private final FollowProcess followProcess;
@@ -120,6 +122,7 @@ public class Baritone implements IBaritone {
             this.registerBehavior(baritone.behavior.ThreatsBehavior::new);
             this.registerBehavior(baritone.behavior.MineListenerBehavior::new);
             this.aiBehavior           = this.registerBehavior(baritone.behavior.AiBehavior::new);
+            this.eatBehavior          = this.registerBehavior(EatBehavior::new);
         }
 
         this.pathingControlManager = new PathingControlManager(this);
@@ -136,6 +139,7 @@ public class Baritone implements IBaritone {
             this.elytraProcess           = this.registerProcess(ElytraProcess::create);
             this.registerProcess(BackfillProcess::new);
             this.acquireProcess          = this.registerProcess(AcquireProcess::new);
+            this.pathingControlManager.registerProcess(this.eatBehavior.pauser()); // pauses pathing while #eat or #acquire eats
         }
         // #acquire for #ai and other callers. The first Baritone built is the primary one (BaritoneProvider
         // creates it before any other), so only that one is registered.
@@ -233,6 +237,10 @@ public class Baritone implements IBaritone {
 
     public AcquireProcess getAcquireProcess() {
         return this.acquireProcess;
+    }
+
+    public EatBehavior getEatBehavior() {
+        return this.eatBehavior;
     }
 
     public AutopilotBehavior getAutopilotBehavior() {
