@@ -16,7 +16,7 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&family=Unbounded:wght@500;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css">
 <script src="assets/release.js"></script>
 <script defer src="assets/modules.js"></script>
@@ -44,10 +44,18 @@
 <section class="hero" aria-labelledby="hero-title">
   <canvas id="world" class="world" aria-label="Interactive seed map. Click anywhere to path there."></canvas>
   <div class="scrim" aria-hidden="true"></div>
+  <div class="meteors" id="meteors" aria-hidden="true"></div>
 
   <div class="hero-copy">
     <p class="pill mono"><span class="dot"></span><span>v<span data-release="version">5.0</span> · MC <span data-release="mc">26.2</span> · Fabric</span></p>
-    <h1 id="hero-title">DIH Client</h1>
+    <h1 id="hero-title"><span class="sr">DIH Client</span>
+      <svg class="wordmark" id="wordmark" viewBox="0 0 760 124" aria-hidden="true">
+        <defs><linearGradient id="wm-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7c9bff"/><stop offset="1" stop-color="#a855f7"/></linearGradient></defs>
+        <text class="wm wm-a" x="0" y="100">DIH</text>
+        <text class="wm wm-b" x="300" y="100">Client</text>
+        <rect class="wm wm-dot" x="728" y="78" width="22" height="22" rx="3" pathLength="100"/>
+      </svg>
+    </h1>
     <p class="lede">Modules, macros, packets, Baritone and a seed map that runs real worldgen.</p>
     <div class="cta">
       <a class="btn" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0/DIH-Client-5.0-26.2.jar" data-release="download">
@@ -114,7 +122,7 @@
   </ol>
   <div class="checksum mono">
     <span>sha-256</span>
-    <code id="sha" data-release="sha256">0e523fd0f0185542ca403cce9abdd0f535400efff63d6b87d7818b051b10dce7</code>
+    <code id="sha" data-release="sha256">a92e39eb2f5067a72038e30ab0311261cc93c94c94092d309d2d0e7ec6b3a975</code>
     <button type="button" class="linkish" id="copy-sha">copy</button>
   </div>
 </section>
@@ -146,6 +154,7 @@
     <a href="https://github.com/eclipse-paho/paho.mqtt.java" rel="noopener">Eclipse Paho</a> (EPL-2.0).
   </p></details>
   <p class="legal mono">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.</p>
+  <div class="foot-mark" aria-hidden="true">DIH CLIENT</div>
 </footer>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">

@@ -809,4 +809,59 @@
       }
     });
   }
+
+  // ------------------------------------------------------------ polish
+  // cards: border + glow follow the pointer
+  document.querySelectorAll('.card').forEach(card => {
+    card.addEventListener('pointermove', ev => {
+      const r = card.getBoundingClientRect();
+      card.style.setProperty('--mx', `${ev.clientX - r.left}px`);
+      card.style.setProperty('--my', `${ev.clientY - r.top}px`);
+    });
+  });
+  // fade sections up as they scroll in
+  if (!reduceMotion && 'IntersectionObserver' in window) {
+    const els = document.querySelectorAll('.card, .mods, .steps li, .checksum, .section-head');
+    els.forEach((el, k) => { el.classList.add('reveal'); el.style.setProperty('--d', `${(k % 3) * 80}ms`); });
+    const io = new IntersectionObserver(entries => entries.forEach(e => {
+      if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); }
+    }), { rootMargin: '0px 0px -8% 0px' });
+    els.forEach(el => io.observe(el));
+  }
+
+  // ------------------------------------------------------------ wordmark + meteors
+  const wm = $('#wordmark');
+  if (wm) {
+    // lay the words out from real glyph widths once the display font is in
+    const fit = () => {
+      const a = wm.querySelector('.wm-a'), b = wm.querySelector('.wm-b'), dot = wm.querySelector('.wm-dot');
+      try {
+        const ba = a.getBBox();
+        b.setAttribute('x', String(ba.x + ba.width + 34));
+        const bb = b.getBBox();
+        dot.setAttribute('x', String(bb.x + bb.width + 16));
+        const w = bb.x + bb.width + 16 + 22 + 6;
+        wm.setAttribute('viewBox', `-4 ${ba.y - 6} ${w + 8} ${ba.height + 12}`);
+      } catch (e) { /* not rendered yet */ }
+    };
+    fit();
+    if (document.fonts) {
+      Promise.all(['800 112px Unbounded', '500 112px Unbounded'].map(f => document.fonts.load(f)))
+        .then(fit, fit);
+      document.fonts.addEventListener('loadingdone', fit);
+    }
+  }
+  const sky = $('#meteors');
+  if (sky && !reduceMotion) {
+    for (let k = 0; k < 14; k++) {
+      const m = document.createElement('span');
+      m.className = 'meteor';
+      m.style.setProperty('--x', `${20 + Math.random() * 95}%`);
+      m.style.setProperty('--y', `${-10 + Math.random() * 45}%`);
+      m.style.setProperty('--d', `${(Math.random() * 9).toFixed(2)}s`);
+      m.style.setProperty('--t', `${(3 + Math.random() * 5).toFixed(2)}s`);
+      m.style.setProperty('--len', `${70 + Math.random() * 110}px`);
+      sky.appendChild(m);
+    }
+  }
 })();
