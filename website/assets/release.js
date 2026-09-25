@@ -4,7 +4,7 @@ window.DIH_RELEASE = {
   mc: "26.2",
   file: "DIH-Client-5.0-26.2.jar",
   size: "20.8 MB",
-  sha256: "232f2bb2f0dd48a4ba9b5a33c0214649877d9d97b9066479312b7d39d890f4fd",
+  sha256: "2c2e62f56554bfcde706104dc30a72cd6d362fcdb5a640b7ee3e6cd53a70b148",
   repo: "https://github.com/ahigherdesire/dih-client",
   download: "https://github.com/ahigherdesire/dih-client/releases/download/v5.0/DIH-Client-5.0-26.2.jar",
   /* JourneyMap can't be bundled (All Rights Reserved), so link Modrinth's own file. */

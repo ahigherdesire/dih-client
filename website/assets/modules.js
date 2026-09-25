@@ -134,6 +134,10 @@ window.DIH_MODULES = {
    "d": "Speeds up item use."
   },
   {
+   "n": "Flee",
+   "d": "Disconnects, runs a command or stops Baritone when a trigger you turned on fires."
+  },
+  {
    "n": "GhostBlock",
    "d": "Client-side ghost blocks you can walk through."
   },
