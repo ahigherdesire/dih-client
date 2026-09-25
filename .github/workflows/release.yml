@@ -1,0 +1,58 @@
+# Builds the mod on every push to beta; on a version tag it also publishes the jar as a GitHub release.
+# Tags with a hyphen (v5.1-beta.2) become pre-releases, which the in-game update checker ignores.
+name: Release
+
+on:
+  push:
+    branches: [beta]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: ./gradlew build -Prelease --console=plain
+
+      - name: Collect the jar
+        id: jar
+        run: |
+          version=$(sed -n 's/^mod-version = "\(.*\)"/\1/p' gradle/libs.versions.toml)
+          mc=$(sed -n 's/^minecraft = "\(.*\)"/\1/p' gradle/libs.versions.toml)
+          name="DIH-Client-$version-$mc.jar"
+          cp "build/libs/DIH Client-$version-$mc.jar" "$name"
+          sha=$(sha256sum "$name" | cut -d' ' -f1)
+          echo "name=$name" >> "$GITHUB_OUTPUT"
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+          echo "$name  $(stat -c %s "$name") bytes  sha256 $sha" >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.jar.outputs.name }}
+          path: ${{ steps.jar.outputs.name }}
+
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          flags=""
+          case "$tag" in *-*) flags="--prerelease --latest=false" ;; esac
+          notes=$(git tag -l --format='%(contents)' "$tag")
+          [ -n "$notes" ] || notes="DIH Client $tag"
+          printf '%s\n\nSHA-256: `%s`\n' "$notes" "${{ steps.jar.outputs.sha }}" > notes.md
+          gh release create "$tag" "${{ steps.jar.outputs.name }}" --title "DIH Client ${tag#v}" --notes-file notes.md $flags
