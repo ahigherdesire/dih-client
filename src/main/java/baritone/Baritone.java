@@ -70,7 +70,6 @@ public class Baritone implements IBaritone {
     private final LookBehavior lookBehavior;
     private final InventoryBehavior inventoryBehavior;
     private final AutopilotBehavior autopilotBehavior;
-    private final AutoMineBehavior autoMineBehavior;
     private final AiBehavior aiBehavior;
     private final InputOverrideHandler inputOverrideHandler;
 
@@ -115,7 +114,6 @@ public class Baritone implements IBaritone {
             this.inputOverrideHandler = this.registerBehavior(InputOverrideHandler::new);
             this.registerBehavior(WaypointBehavior::new);
             this.autopilotBehavior    = this.registerBehavior(baritone.behavior.AutopilotBehavior::new);
-            this.autoMineBehavior     = this.registerBehavior(baritone.behavior.AutoMineBehavior::new);
             this.registerBehavior(baritone.behavior.ThreatsBehavior::new);
             this.registerBehavior(baritone.behavior.MineListenerBehavior::new);
             this.aiBehavior           = this.registerBehavior(baritone.behavior.AiBehavior::new);
@@ -226,10 +224,6 @@ public class Baritone implements IBaritone {
 
     public AutopilotBehavior getAutopilotBehavior() {
         return this.autopilotBehavior;
-    }
-
-    public AutoMineBehavior getAutoMineBehavior() {
-        return this.autoMineBehavior;
     }
 
     public AiBehavior getAiBehavior() {

@@ -75,7 +75,13 @@ public class SettingsUtil {
     private static final java.util.Set<String> REMOVED_SETTINGS = java.util.Set.of(
             "espblocks", "espblocklist", "espblockrange", "espblockrescanticks", "espblocklimit", "colorespblock",
             "espplayers", "espplayerrange", "espignoredepth", "esplinewidthpixels", "esplabels", "esptracers",
-            "espitems", "espitemrange", "espmobs", "espmobrange", "colorespplayer", "colorespitem", "colorespmob");
+            "espitems", "espitemrange", "espmobs", "espmobrange", "colorespplayer", "colorespitem", "colorespmob",
+            // the #start minecmd gold-mining loop and its #mine guards
+            "minefleeonlowhealth", "minefleehealth", "minefleecommand", "minefleeonplayer", "minefleeplayerradius",
+            "mineautoeat", "mineautoeathunger", "minefleedurability", "minetoolmatch", "minefleehunger",
+            "minefleewhenfull", "minefleeitem", "minefleeitemstacks", "autominetarget", "autominetravelcommand",
+            "autominetravelsteps", "automineteleportdistance", "automineresumehealth", "automineresumefood",
+            "automineseeditem", "autominedeposit", "autominedepositblock", "autominekeep");
 
     public static void readAndApply(Settings settings, String settingsName) {
         try {

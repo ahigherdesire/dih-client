@@ -66,7 +66,7 @@ public final class MenuClickProcess extends BaritoneProcessHelper {
 
     /** How a step identifies its target slot. */
     public enum MatchType {
-        /** Registry id, e.g. {@code minecraft:heart_of_the_sea}. Most reliable. */
+        /** Registry id, e.g. {@code minecraft:compass}. Most reliable. */
         ITEM,
         /** Case-insensitive substring of the icon's display name or lore. */
         TEXT,
@@ -311,7 +311,7 @@ public final class MenuClickProcess extends BaritoneProcessHelper {
         return c.getString().replaceAll("§.", "").toLowerCase(Locale.ROOT);
     }
 
-    /** Parse a {@code >}-separated chain like {@code item:heart_of_the_sea>orange sand}. */
+    /** Parse a {@code >}-separated chain like {@code item:compass>spawn}. */
     public static List<Step> parseChain(String spec) {
         List<Step> out = new ArrayList<>();
         for (String part : spec.split(">")) {

@@ -53,7 +53,7 @@ import java.util.stream.Stream;
  *
  * <h2>Matchers</h2>
  * <pre>
- *   item:&lt;id&gt;      registry id, e.g. item:heart_of_the_sea   (most reliable)
+ *   item:&lt;id&gt;      registry id, e.g. item:compass   (most reliable)
  *   slot:&lt;n&gt;       literal container-slot index, 0-based
  *   &lt;text&gt;         case-insensitive substring of display name or lore
  * </pre>
@@ -207,12 +207,12 @@ public class MenuCommand extends Command {
                 "> #menu stop                    - cancel a pending click",
                 "",
                 "Matchers:",
-                "> item:<id>   registry id, e.g. item:heart_of_the_sea  (most reliable)",
+                "> item:<id>   registry id, e.g. item:compass  (most reliable)",
                 "> slot:<n>    literal container-slot index, 0-based",
                 "> <text>      substring of the icon's display name or lore",
                 "",
                 "Examples:",
-                "> #menu run rtp item:heart_of_the_sea",
+                "> #menu run warps item:compass",
                 "> #menu run warps ocean",
                 "> #menu click slot:18",
                 "",
