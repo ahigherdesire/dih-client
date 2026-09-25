@@ -18,7 +18,7 @@
 
   --sans: "Geist", "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "Geist Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
-  --display: "Unbounded", "Geist", system-ui, sans-serif;
+  --display: "Kanit", "Geist", system-ui, sans-serif;
 
   --gutter: clamp(16px, 4vw, 40px);
   --max: 1120px;
@@ -81,7 +81,7 @@ figure { margin: 0; }
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   border-bottom-color: var(--line);
 }
-.brand { display: flex; align-items: center; gap: 8px; color: var(--fg); font: 800 15px/1 var(--display); letter-spacing: .02em; }
+.brand { display: flex; align-items: center; gap: 8px; color: var(--fg); font: italic 900 17px/1 var(--display); letter-spacing: .01em; }
 .brand:hover { color: var(--fg); }
 .brand-icon { width: 20px; height: 20px; image-rendering: pixelated; border-radius: 3px; }
 .nav { display: flex; gap: 22px; margin-left: auto; }
@@ -146,21 +146,25 @@ figure { margin: 0; }
 .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 8px var(--green); }
 .hero h1 { margin: 0 0 18px; }
 .wordmark { display: block; width: min(560px, 100%); height: auto; overflow: visible; filter: drop-shadow(0 8px 34px rgba(90, 110, 255, .35)); }
-.wm { font: 800 112px/1 var(--display); letter-spacing: -.02em; paint-order: stroke; }
-.wm-a, .wm-b {
-  fill: transparent; stroke-width: 1.6; stroke-linejoin: round;
-  stroke-dasharray: 900; stroke-dashoffset: 900;
-  animation: wm-draw 2s cubic-bezier(.6, .1, .3, 1) forwards, wm-fill .6s ease forwards;
+.wm { font: italic 900 118px/1 var(--display); letter-spacing: -.01em; }
+/* Static by default (inline fills). With JS the mark waits, hidden, for the font,
+   then draws its outline and fills in. */
+.js .wordmark:not(.go) { opacity: 0; }
+.wm-dot { transform-box: fill-box; transform-origin: center; transform: skewX(-12deg); }
+.go .wm-a, .go .wm-b {
+  fill: transparent; stroke-width: 2; stroke-linejoin: round;
+  stroke-dasharray: 1400; stroke-dashoffset: 1400;
 }
-.wm-a { stroke: #fff; animation-delay: 0s, 1.6s; --fill: #fff; }
-.wm-b { stroke: var(--blue-hi); animation-delay: .35s, 1.95s; --fill: url(#wm-g); font-weight: 500; }
-.wm-dot {
+.go .wm-a { stroke: #fff; animation: wm-draw 1.8s cubic-bezier(.6, .1, .3, 1) forwards, wm-fill-white .5s ease 1.4s forwards; }
+.go .wm-b { stroke: var(--blue-hi); animation: wm-draw 1.8s cubic-bezier(.6, .1, .3, 1) .3s forwards, wm-fill-grad .5s ease 1.7s forwards; }
+.go .wm-dot {
   fill: transparent; stroke: var(--red); stroke-width: 2;
   stroke-dasharray: 100; stroke-dashoffset: 100;
-  animation: wm-draw 1s ease forwards 1.4s, wm-red .4s ease forwards 2.4s, pulse 2.4s ease-in-out 3s infinite;
+  animation: wm-draw .8s ease 1.3s forwards, wm-red .4s ease 2.1s forwards, pulse 2.4s ease-in-out 2.8s infinite;
 }
 @keyframes wm-draw { to { stroke-dashoffset: 0; } }
-@keyframes wm-fill { to { fill: var(--fill); stroke-width: 0; } }
+@keyframes wm-fill-white { to { fill: #fff; stroke-width: 0; } }
+@keyframes wm-fill-grad { to { fill: url(#wm-g); stroke-width: 0; } }
 @keyframes wm-red { to { fill: var(--red); } }
 @keyframes pulse { 50% { opacity: .55; } }
 .lede { font-size: clamp(15px, 1.3vw, 17px); color: var(--text); margin: 0 0 26px; max-width: 34ch; text-wrap: pretty; }
@@ -228,7 +232,7 @@ figure { margin: 0; }
 /* ---------------------------------------------------------------- sections */
 .section { max-width: var(--max); margin: 0 auto; padding: clamp(56px, 8vw, 96px) var(--gutter) 0; }
 .section-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 18px; }
-.section h2 { font: 700 clamp(20px, 2.2vw, 26px)/1.1 var(--display); letter-spacing: -.02em; }
+.section h2 { font: italic 800 clamp(22px, 2.6vw, 30px)/1.1 var(--display); letter-spacing: 0; }
 
 /* bento */
 .bento { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
@@ -492,6 +496,7 @@ body::after {
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
-  .wm-a, .wm-b, .wm-dot { stroke-dashoffset: 0; stroke-width: 0; }
-  .wm-a { fill: #fff; } .wm-b { fill: url(#wm-g); } .wm-dot { fill: var(--red); }
+  .js .wordmark:not(.go) { opacity: 1; }
+  .go .wm-a, .go .wm-b, .go .wm-dot { stroke-dashoffset: 0; stroke-width: 0; }
+  .go .wm-a { fill: #fff; } .go .wm-b { fill: url(#wm-g); } .go .wm-dot { fill: var(--red); }
 }

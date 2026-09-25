@@ -837,17 +837,20 @@
       const a = wm.querySelector('.wm-a'), b = wm.querySelector('.wm-b'), dot = wm.querySelector('.wm-dot');
       try {
         const ba = a.getBBox();
-        b.setAttribute('x', String(ba.x + ba.width + 34));
+        b.setAttribute('x', String(ba.x + ba.width + 30));
         const bb = b.getBBox();
-        dot.setAttribute('x', String(bb.x + bb.width + 16));
-        const w = bb.x + bb.width + 16 + 22 + 6;
+        dot.setAttribute('x', String(bb.x + bb.width - 2));
+        const w = bb.x + bb.width - 2 + 22 + 8;
         wm.setAttribute('viewBox', `-4 ${ba.y - 6} ${w + 8} ${ba.height + 12}`);
       } catch (e) { /* not rendered yet */ }
     };
     fit();
+    if (!document.fonts) wm.classList.add('go');
     if (document.fonts) {
-      Promise.all(['800 112px Unbounded', '500 112px Unbounded'].map(f => document.fonts.load(f)))
-        .then(fit, fit);
+      // start drawing only once the real font is in, so the outline isn't drawn in a fallback
+      const go = () => { fit(); wm.classList.add('go'); };
+      Promise.race([document.fonts.load('italic 900 118px Kanit'), new Promise(r => setTimeout(r, 2500))])
+        .then(go, go);
       document.fonts.addEventListener('loadingdone', fit);
     }
   }
