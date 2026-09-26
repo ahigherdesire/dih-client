@@ -23,10 +23,21 @@ window.DIH_RELEASE = {
   },
   beta3: {
     version: "5.1-beta.3",
+    mc: "26.2",
     file: "DIH-Client-5.1-beta.3-26.2.jar",
     size: "20.8 MB",
     sha256: "e553d76b6a285250027f00de8cbd3bf222c08188ea7e47834ccd5b9ccbea7f45",
     download: "https://github.com/ahigherdesire/dih-client/releases/download/v5.1-beta.3/DIH-Client-5.1-beta.3-26.2.jar",
+    notes: "https://github.com/ahigherdesire/dih-client/releases/tag/v5.1-beta.3"
+  },
+  /* The same beta built for Minecraft 26.3 (an extra asset on the beta 3 release). */
+  beta3_263: {
+    version: "5.1-beta.3",
+    mc: "26.3",
+    file: "DIH-Client-5.1-beta.3-26.3.jar",
+    size: "21.1 MB",
+    sha256: "daf5f6624d697f9934479f5e8809c2bf6957dd94cd034edf17410dc05767e5f8",
+    download: "https://github.com/ahigherdesire/dih-client/releases/download/v5.1-beta.3/DIH-Client-5.1-beta.3-26.3.jar",
     notes: "https://github.com/ahigherdesire/dih-client/releases/tag/v5.1-beta.3"
   }
 };

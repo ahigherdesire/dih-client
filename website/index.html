@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DIH Client · Fabric client for Minecraft 26.2</title>
-<meta name="description" content="Free, open-source Fabric client for Minecraft 26.2: 76 modules, tick-synced macros, Baritone built in and a seed map that runs real worldgen.">
+<title>DIH Client · Fabric client for Minecraft 26.2 and 26.3</title>
+<meta name="description" content="Free, open-source Fabric client for Minecraft 26.2 and 26.3: 76 modules, tick-synced macros, Baritone built in and a seed map that runs real worldgen.">
 <meta name="theme-color" content="#08080a">
 <meta name="color-scheme" content="dark">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DIH Client">
 <meta property="og:title" content="DIH Client">
-<meta property="og:description" content="76 modules, tick-synced macros, Baritone built in and a real seed map. Fabric, MC 26.2.">
+<meta property="og:description" content="76 modules, tick-synced macros, Baritone built in and a real seed map. Fabric, MC 26.2 and 26.3.">
 <meta property="og:image" content="https://raw.githubusercontent.com/ahigherdesire/dih-client-site/main/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -22,8 +22,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Kanit:ital,wght@1,800;1,900&display=swap" rel="stylesheet">
 <script src="assets/boot.js?v=37529cf4"></script>
-<link rel="stylesheet" href="assets/style.css?v=c0378dc0">
-<script src="assets/release.js?v=4a25b2f5"></script>
+<link rel="stylesheet" href="assets/style.css?v=f54749d5">
+<script src="assets/release.js?v=92a58191"></script>
 <script defer src="assets/modules.js?v=d9f384fb"></script>
 <script defer src="assets/app.js?v=78e48f9c"></script>
 </head>
@@ -87,6 +87,7 @@
       </a>
     </div>
     <p class="fine mono">Free and open source · GPL-3.0 · needs Fabric API<span id="dl-count" hidden> · <b>0</b> downloads</span></p>
+    <p class="fine mono">On Minecraft 26.3? <a href="#beta">Get the 5.1 beta for 26.3</a></p>
   </div>
 
   <p class="actionbar mono" id="actionbar" aria-hidden="true"></p>
@@ -156,12 +157,22 @@
           <svg class="dl-check" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg>
         </span>
         <span class="dl-text">
-          <b>Download Beta 3</b>
-          <small class="mono" data-dl-sub><span data-release="beta3.version">5.1-beta.3</span> · <span data-release="beta3.size">20.8 MB</span></small>
+          <b>Beta 3 for 26.2</b>
+          <small class="mono" data-dl-sub>MC <span data-release="beta3.mc">26.2</span> · <span data-release="beta3.size">20.8 MB</span></small>
+        </span>
+      </a>
+      <a class="dl dl-beta" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.1-beta.3/DIH-Client-5.1-beta.3-26.3.jar" data-release="beta3_263.download" data-dl>
+        <span class="dl-icon" aria-hidden="true">
+          <svg class="dl-arrow" viewBox="0 0 16 16"><path d="M8 2.5v8m0 0L4.8 7.3M8 10.5l3.2-3.2M3 13.5h10"/></svg>
+          <svg class="dl-check" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg>
+        </span>
+        <span class="dl-text">
+          <b>Beta 3 for 26.3</b>
+          <small class="mono" data-dl-sub>MC <span data-release="beta3_263.mc">26.3</span> · <span data-release="beta3_263.size">21.1 MB</span></small>
         </span>
       </a>
     </div>
-    <p class="fine mono">Pre-releases. Try them in a singleplayer world first.</p>
+    <p class="fine mono">Pre-releases. Try them in a singleplayer world first. On 26.3, OreSim is off for now.</p>
   </div>
   <figure class="acq mono" aria-label="#acquire iron_pickaxe running">
     <div class="acq-head">
@@ -203,6 +214,11 @@
     <span class="checksum-label">SHA-256 · <span data-release="beta3.file">DIH-Client-5.1-beta.3-26.2.jar</span></span>
     <code data-release="beta3.sha256">e553d76b6a285250027f00de8cbd3bf222c08188ea7e47834ccd5b9ccbea7f45</code>
     <button type="button" class="linkish" data-copy="beta3.sha256">Copy</button>
+  </div>
+  <div class="checksum mono">
+    <span class="checksum-label">SHA-256 · <span data-release="beta3_263.file">DIH-Client-5.1-beta.3-26.3.jar</span></span>
+    <code data-release="beta3_263.sha256">daf5f6624d697f9934479f5e8809c2bf6957dd94cd034edf17410dc05767e5f8</code>
+    <button type="button" class="linkish" data-copy="beta3_263.sha256">Copy</button>
   </div>
 </section>
 
