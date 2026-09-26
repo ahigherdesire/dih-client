@@ -1,6 +1,7 @@
 
 
 package dihclient.modules;
+import dihclient.util.DihPackets;
 import dihclient.api.module.*;
 
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -115,7 +116,7 @@ public final class EntityControlModule extends Module {
         if (restorePacketPending) {
             Entity vehicle = MC.player.getVehicle();
             if (isControlledVehicle(vehicle)) {
-                sendSynthetic(new ServerboundMoveVehiclePacket(
+                sendSynthetic(DihPackets.moveVehicle(
                     new Vec3(vehicle.getX(), lastPacketY, vehicle.getZ()),
                     vehicle.getYRot(), vehicle.getXRot(), vehicle.onGround()));
             }
@@ -132,16 +133,16 @@ public final class EntityControlModule extends Module {
 
         Entity vehicle = MC.player == null ? null : MC.player.getVehicle();
         if (!isControlledVehicle(vehicle) || vehicle.isFlyingVehicle() || !isOnAir(vehicle)) {
-            lastPacketY = movePacket.position().y;
+            lastPacketY = DihPackets.position(movePacket).y;
             return false;
         }
 
-        double currentY = movePacket.position().y;
+        double currentY = DihPackets.position(movePacket).y;
         if (antiKickTicks <= 0 && !restorePacketPending && shouldFlyDown(currentY)) {
             double baseline = lastPacketY == Double.MAX_VALUE ? currentY : lastPacketY;
-            ServerboundMoveVehiclePacket lowered = new ServerboundMoveVehiclePacket(
-                new Vec3(movePacket.position().x, baseline - 0.03130D, movePacket.position().z),
-                movePacket.yRot(), movePacket.xRot(), movePacket.onGround());
+            ServerboundMoveVehiclePacket lowered = DihPackets.moveVehicle(
+                new Vec3(DihPackets.position(movePacket).x, baseline - 0.03130D, DihPackets.position(movePacket).z),
+                DihPackets.yRot(movePacket), DihPackets.xRot(movePacket), movePacket.onGround());
             sendSynthetic(lowered);
             restorePacketPending = true;
             antiKickTicks = integer("anti-kick-delay");

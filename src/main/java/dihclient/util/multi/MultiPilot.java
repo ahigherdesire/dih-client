@@ -1,5 +1,8 @@
 package dihclient.util.multi;
 
+import dihclient.util.DihScreens;
+import dihclient.util.DihEntities;
+import dihclient.util.DihPackets;
 import dihclient.util.DihKeys;
 import dihclient.DihClientAddon;
 import dihclient.util.macro.PacketRoutePlanner;
@@ -15,7 +18,6 @@ import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerInputPacket;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.util.Mth;
@@ -779,19 +781,18 @@ public final class MultiPilot {
         macroObserving = false;
         clearBreaking();
 
-        Vec3 truth = bot.getInterpolation().position();
+        Vec3 truth = DihEntities.interpolationTarget(bot);
         simPosition = truth == null ? bot.position() : truth;
         simDelta = Vec3.ZERO;
-        simYaw = bot.getInterpolation().yRot();
-        simPitch = bot.getInterpolation().xRot();
+        simYaw = DihEntities.interpolationYRot(bot);
+        simPitch = DihEntities.interpolationXRot(bot);
         simOnGround = bot.onGround();
         simHorizontalCollision = false;
         simInitialized = true;
         simulating = false;
         MultiPovModuleController.begin(pilotSession, bot);
         SERVER_TRUTH.reset(simPosition, System.currentTimeMillis());
-        bot.getInterpolation().setInterpolationLength(1);
-        bot.getInterpolation().interpolateTo(simPosition, simYaw, simPitch);
+        DihEntities.interpolateTo(bot, simPosition, simYaw, simPitch, 1);
         applySimulationPose(bot);
 
         lastMenuRevision = Long.MIN_VALUE;
@@ -859,8 +860,7 @@ public final class MultiPilot {
         pendingSignRestore = false;
         if (bot != null) {
             bot.noPhysics = true;
-            bot.getInterpolation().setInterpolationLength(
-                net.minecraft.world.entity.InterpolationHandler.DEFAULT_INTERPOLATION_STEPS);
+            DihEntities.resetInterpolationLength(bot);
             bot.setSprinting(false);
             bot.setShiftKeyDown(false);
         }
@@ -909,7 +909,7 @@ public final class MultiPilot {
             return false;
         }
 
-        Vec3 observedTruth = bot.getInterpolation().position();
+        Vec3 observedTruth = DihEntities.interpolationTarget(bot);
         if (observedTruth == null) observedTruth = bot.position();
         s.pilotObserveServerTruth(observedTruth);
 
@@ -934,8 +934,8 @@ public final class MultiPilot {
         if (!simInitialized) {
             simPosition = observedTruth;
             simDelta = Vec3.ZERO;
-            simYaw = bot.getInterpolation().yRot();
-            simPitch = bot.getInterpolation().xRot();
+            simYaw = DihEntities.interpolationYRot(bot);
+            simPitch = DihEntities.interpolationXRot(bot);
             simOnGround = bot.onGround();
             simInitialized = true;
             SERVER_TRUTH.reset(observedTruth, System.currentTimeMillis());
@@ -1170,7 +1170,7 @@ public final class MultiPilot {
     public static void observeMacro(RemotePlayer bot) {
         MultiSession s = session;
         if (s == null) return;
-        Vec3 observed = bot.getInterpolation().position();
+        Vec3 observed = DihEntities.interpolationTarget(bot);
         s.pilotObserveServerTruth(observed == null ? bot.position() : observed);
         if (!macroObserving) {
             macroObserving = true;
@@ -1279,7 +1279,7 @@ public final class MultiPilot {
                 if (!s.pilotAttackEntity(picked.wireId())) {
                     notePilotActionFailure("attack packet blocked or disconnected");
                 }
-                bot.swing(InteractionHand.MAIN_HAND);
+                DihEntities.swing(bot, InteractionHand.MAIN_HAND);
                 return true;
             }
             switch (pilotHit.getType()) {
@@ -1299,9 +1299,9 @@ public final class MultiPilot {
                         }
                     }
                 }
-                default -> s.pilotSend(new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
+                default -> s.pilotSend(DihPackets.mainHandSwing());
             }
-            bot.swing(InteractionHand.MAIN_HAND);
+            DihEntities.swing(bot, InteractionHand.MAIN_HAND);
         } catch (Throwable error) {
             DihClientAddon.LOG.warn("POV pilot attack failed", error);
         }
@@ -1361,8 +1361,8 @@ public final class MultiPilot {
     }
 
     private static void swingWhileMining(RemotePlayer bot, MultiSession s) {
-        bot.swing(InteractionHand.MAIN_HAND);
-        s.pilotSend(new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
+        DihEntities.swing(bot, InteractionHand.MAIN_HAND);
+        s.pilotSend(DihPackets.mainHandSwing());
     }
 
     private static void startBreaking(Minecraft mc, RemotePlayer bot, MultiSession s, BlockPos pos, Direction dir) {
@@ -1408,7 +1408,7 @@ public final class MultiPilot {
         return List.of(
             new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK,
                 pos, dir == null ? Direction.UP : dir, sequence),
-            new ServerboundSwingPacket(InteractionHand.MAIN_HAND)
+            DihPackets.mainHandSwing()
         );
     }
 
@@ -1501,8 +1501,9 @@ public final class MultiPilot {
                 }
                 s.pilotSend(new ServerboundUseItemOnPacket(
                     airPlacement.hand(), airPlacement.hit(), s.nextUseSeq()));
-                s.pilotSend(new ServerboundSwingPacket(airPlacement.hand()));
-                bot.swing(airPlacement.hand());
+                var placeSwing = DihPackets.useSwing(airPlacement.hand());
+                if (placeSwing != null) s.pilotSend(placeSwing);
+                DihEntities.swing(bot, airPlacement.hand());
                 return true;
             }
 
@@ -1545,8 +1546,9 @@ public final class MultiPilot {
                             net.minecraft.world.item.component.WritableBookContent.EMPTY)));
                 }
             }
-            s.pilotSend(new ServerboundSwingPacket(hand));
-            bot.swing(hand);
+            var useSwing = DihPackets.useSwing(hand);
+            if (useSwing != null) s.pilotSend(useSwing);
+            DihEntities.swing(bot, hand);
         } catch (Throwable ignored) {
             notePilotActionFailure("interaction failed");
         }
@@ -1578,8 +1580,9 @@ public final class MultiPilot {
             if (!route.sent) continue;
             if (result instanceof InteractionResult.Success success) {
                 if (success.swingSource() == InteractionResult.SwingSource.CLIENT) {
-                    session.pilotSend(new ServerboundSwingPacket(candidateHand));
-                    bot.swing(candidateHand);
+                    var useSwing = DihPackets.useSwing(candidateHand);
+                    if (useSwing != null) session.pilotSend(useSwing);
+                    DihEntities.swing(bot, candidateHand);
                 }
                 return;
             }
@@ -1629,8 +1632,8 @@ public final class MultiPilot {
             boolean hanging = block instanceof net.minecraft.world.level.block.CeilingHangingSignBlock
                 || block instanceof net.minecraft.world.level.block.WallHangingSignBlock;
             mc.gui.setScreen(hanging
-                ? new net.minecraft.client.gui.screens.inventory.HangingSignEditScreen(sign, front, mc.isTextFilteringEnabled())
-                : new net.minecraft.client.gui.screens.inventory.SignEditScreen(sign, front, mc.isTextFilteringEnabled()));
+                ? DihScreens.hangingSignEdit(sign, front, mc.isTextFilteringEnabled())
+                : DihScreens.signEdit(sign, front, mc.isTextFilteringEnabled()));
         } catch (Throwable error) {
             DihClientAddon.LOG.warn("POV pilot sign editor open failed", error);
         }

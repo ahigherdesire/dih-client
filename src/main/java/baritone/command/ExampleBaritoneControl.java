@@ -17,6 +17,7 @@
 
 package baritone.command;
 
+import dihclient.util.DihLinks;
 import baritone.Baritone;
 import baritone.api.BaritoneAPI;
 import baritone.api.Settings;
@@ -96,7 +97,7 @@ public class ExampleBaritoneControl extends Behavior implements Helper {
             return false;
         } else if (msg.trim().equalsIgnoreCase("orderpizza")) {
             try {
-                Util.getPlatform().openUri("https://www.dominos.com/en/pages/order/");
+                DihLinks.openUri("https://www.dominos.com/en/pages/order/");
             } catch (Exception ignored) {}
             return false;
         }

@@ -1,5 +1,6 @@
 package dihclient.commands.impl;
 
+import dihclient.util.DihEntities;
 import dihclient.commands.DihCommandSource;
 import dihclient.commands.DihCommands;
 import dihclient.commands.Command;
@@ -67,7 +68,7 @@ public class DropCommand extends Command {
 
         int amount = held.getCount();
         Identifier id = BuiltInRegistries.ITEM.getKey(held.getItem());
-        mc.player.drop(true);
+        DihEntities.dropSelected(mc, true);
         DihClientMessaging.sendPrefixed("§aDropped §f" + amount + "x " + id + "§a.");
         return SUCCESS;
     }

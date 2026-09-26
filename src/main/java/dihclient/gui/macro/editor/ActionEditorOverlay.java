@@ -1,5 +1,6 @@
 package dihclient.gui.macro.editor;
 
+import dihclient.util.DihFileDialogs;
 import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.macro.editor.FieldType;
 import dihclient.gui.macro.editor.components.MacroCaptureButton;
@@ -6743,14 +6744,7 @@ public class ActionEditorOverlay extends DihOverlayBase {
     private void pickNbtBookTextFile(DihChatField field) {
         if (field == null) return;
         String current = field.getText() == null ? "" : field.getText().trim();
-        String selected = org.lwjgl.util.tinyfd.TinyFileDialogs.tinyfd_openFileDialog(
-                "NBT Book Text File",
-                current.isBlank() ? null : current,
-                null,
-                null,
-                false
-        );
-        if (selected != null && !selected.isBlank()) field.setText(selected);
+        DihFileDialogs.openFile("NBT Book Text File", current, java.util.List.of(), null, field::setText);
     }
 
     private void renderStringList(GuiGraphicsExtractor ctx, FieldDef field, int x, int y, int w,

@@ -1,5 +1,6 @@
 package dihclient.util.macro;
 
+import dihclient.util.DihPackets;
 import dihclient.modules.PackHideState;
 import dihclient.util.DihSharedState;
 import dihclient.util.DihSignEditAccess;
@@ -50,7 +51,7 @@ public class SignEditAction implements MacroAction, WaitsForGui {
             if (!MacroVariables.resolved("Edit sign command", resolvedCommand)) return;
         }
         DihSharedState.get().setForceNextSignUpdatePacket(true);
-        mc.getConnection().send(new ServerboundSignUpdatePacket(
+        mc.getConnection().send(DihPackets.signUpdate(
             pos,
             resolveFront(mc),
             resolvedLine1.value(),

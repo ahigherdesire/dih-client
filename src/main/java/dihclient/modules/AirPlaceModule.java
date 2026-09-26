@@ -1,5 +1,7 @@
 package dihclient.modules;
 
+import dihclient.util.DihRender;
+import dihclient.util.DihEntities;
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ColorSetting;
 import dihclient.api.module.DoubleSetting;
@@ -103,9 +105,9 @@ public final class AirPlaceModule extends Module {
             int oldCount = stack.getCount();
             InteractionResult blockResult = MC.gameMode.useItemOn(MC.player, hand, hit);
             if (blockResult instanceof InteractionResult.Success success) {
-                if (success.swingSource() == InteractionResult.SwingSource.CLIENT) MC.player.swing(hand);
+                if (success.swingSource() == InteractionResult.SwingSource.CLIENT) DihEntities.swing(MC.player, hand);
                 if (!stack.isEmpty() && (stack.getCount() != oldCount || MC.player.hasInfiniteMaterials())) {
-                    MC.gameRenderer.itemInHandRenderer.itemUsed(hand);
+                    DihRender.itemUsed(hand);
                 }
                 return;
             }
@@ -114,8 +116,8 @@ public final class AirPlaceModule extends Module {
             if (stack.isEmpty()) continue;
             InteractionResult itemResult = MC.gameMode.useItem(MC.player, hand);
             if (!(itemResult instanceof InteractionResult.Success success)) continue;
-            if (success.swingSource() == InteractionResult.SwingSource.CLIENT) MC.player.swing(hand);
-            MC.gameRenderer.itemInHandRenderer.itemUsed(hand);
+            if (success.swingSource() == InteractionResult.SwingSource.CLIENT) DihEntities.swing(MC.player, hand);
+            DihRender.itemUsed(hand);
             return;
         }
     }

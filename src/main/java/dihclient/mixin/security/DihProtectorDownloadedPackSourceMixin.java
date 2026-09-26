@@ -49,6 +49,17 @@ public abstract class DihProtectorDownloadedPackSourceMixin {
         if (!DihProtectorPackStrip.isWrapped(packId)) return real;
 
         return new FilePackResources.FileResourcesSupplier(file) {
+            //? if >=26.3 {
+            /*@Override
+            public net.minecraft.server.packs.PackMetadataResources openMetadata(PackLocationInfo loc) {
+                return real.openMetadata(loc);
+            }
+
+            @Override
+            public java.util.stream.Stream<PackResources> openResources(PackLocationInfo loc, Pack.Metadata md) {
+                return real.openResources(loc, md).map(DihProtectorLangOnlyPackResources::new);
+            }
+            *///?} else {
             @Override
             public PackResources openPrimary(PackLocationInfo loc) {
                 return new DihProtectorLangOnlyPackResources(real.openPrimary(loc));
@@ -58,6 +69,7 @@ public abstract class DihProtectorDownloadedPackSourceMixin {
             public PackResources openFull(PackLocationInfo loc, Pack.Metadata md) {
                 return new DihProtectorLangOnlyPackResources(real.openFull(loc, md));
             }
+            //?}
         };
     }
 }

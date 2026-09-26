@@ -23,6 +23,7 @@ stonecutter parameters {
     replacements {
         string(current.parsed >= "26.3") {
             // The render API moved from com.mojang.blaze3d to com.mojang.renderpearl.api.
+            replace("com.mojang.blaze3d.IndexType", "com.mojang.renderpearl.api.pipeline.IndexType")
             replace("com.mojang.blaze3d.GpuFormat", "com.mojang.renderpearl.api.GpuFormat")
             replace("com.mojang.blaze3d.PrimitiveTopology", "com.mojang.renderpearl.api.pipeline.PrimitiveTopology")
             replace("com.mojang.blaze3d.buffers.GpuBuffer", "com.mojang.renderpearl.api.buffers.GpuBuffer")
@@ -41,6 +42,13 @@ stonecutter parameters {
             // Renamed classes (bare names, so uses like `instanceof EnderMan` follow; neither new spelling occurs in src).
             replace("EnderMan", "Enderman")
             replace("RedStoneWireBlock", "RedstoneWireBlock")
+            // authlib 10 (26.3) moved these out of the Yggdrasil package; the renamed types go through DihAuthServices.
+            replace("com.mojang.authlib.yggdrasil.FriendsService", "com.mojang.authlib.services.FriendsService")
+            replace("com.mojang.authlib.yggdrasil.ProfileResult", "com.mojang.authlib.services.ProfileResult")
+            replace("InteractionResult.SwingSource.CLIENT", "InteractionResult.SwingSource.PREDICTED")
+            replace("DataComponents.SWING_ANIMATION", "DataComponents.ATTACK_ANIMATION")
+            replace("BedRule.EXPLODES", "BedRule.DESTROY_ON_USE")
+            replace(".getVanillaPackResources().getResource(", ".getVanillaPackResources().fullResources().getResource(")
             replace("RegistryDataLoader.WORLDGEN_REGISTRIES", "RegistryDataLoader.WORLD_REGISTRIES")
             replace("RegistryLayer.WORLDGEN", "RegistryLayer.WORLD")
         }

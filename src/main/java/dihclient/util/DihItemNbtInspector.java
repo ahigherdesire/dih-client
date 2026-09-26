@@ -181,7 +181,9 @@ public final class DihItemNbtInspector {
             component(DataComponents.POTION_CONTENTS, "Potion Contents"),
             component(DataComponents.POTION_DURATION_SCALE, "Potion Duration Scale"),
             component(DataComponents.SUSPICIOUS_STEW_EFFECTS, "Suspicious Stew Effects"),
+            //? if <26.3 {
             component(DataComponents.MAP_COLOR, "Map Color"),
+            //?}
             component(DataComponents.MAP_ID, "Map ID"),
             component(DataComponents.MAP_DECORATIONS, "Map Decorations"),
             component(DataComponents.MAP_POST_PROCESSING, "Map Post Processing"));
@@ -229,7 +231,7 @@ public final class DihItemNbtInspector {
         }
 
         boolean wroteOtherComponents = false;
-        for (Map.Entry<DataComponentType<?>, Optional<?>> entry : stack.getComponentsPatch().entrySet()) {
+        for (Map.Entry<DataComponentType<?>, Optional<?>> entry : DihItems.patchEntries(stack.getComponentsPatch()).entrySet()) {
             String id = componentId(entry.getKey());
             if (isKnownNiceComponent(id)) continue;
             if (!wroteOtherComponents) {
@@ -298,7 +300,7 @@ public final class DihItemNbtInspector {
         addIdentityComponent(ids, stack, DataComponents.BLOCK_ENTITY_DATA, "block_entity_data");
         addIdentityComponent(ids, stack, DataComponents.ENTITY_DATA, "entity_data");
         addIdentityComponent(ids, stack, DataComponents.BUCKET_ENTITY_DATA, "bucket_entity_data");
-        for (Map.Entry<DataComponentType<?>, Optional<?>> entry : stack.getComponentsPatch().entrySet()) {
+        for (Map.Entry<DataComponentType<?>, Optional<?>> entry : DihItems.patchEntries(stack.getComponentsPatch()).entrySet()) {
             String id = componentId(entry.getKey());
             if (looksLikeIdentityKey(id) && entry.getValue().isPresent()) ids.put(id, componentValueString(entry.getValue().get()));
         }

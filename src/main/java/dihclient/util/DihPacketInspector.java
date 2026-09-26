@@ -515,18 +515,18 @@ public final class DihPacketInspector {
         }
 
         if (packet instanceof ServerboundUseItemOnPacket interactBlock) {
-            BlockHitResult hit = interactBlock.getHitResult();
+            BlockHitResult hit = DihPackets.hitResult(interactBlock);
             wrote = true;
             complete = true;
             builder.line("Interaction: Use Block (right click targeted block)", DihColors.textPrimary());
-            builder.line("Hand: " + interactBlock.getHand(), DihColors.textPrimary());
+            builder.line("Hand: " + DihPackets.hand(interactBlock), DihColors.textPrimary());
             builder.line("Block Pos: " + formatBlockPos(hit.getBlockPos()), DihColors.textPrimary());
             builder.line("Side: " + hit.getDirection(), DihColors.textPrimary());
             builder.line("Hit Pos: " + formatVec3(hit.getLocation()), DihColors.textPrimary());
             builder.line("Inside Block: " + hit.isInside(), DihColors.textPrimary());
-            builder.line("Sequence: " + interactBlock.getSequence(), DihColors.textSecondary());
+            builder.line("Sequence: " + DihPackets.sequence(interactBlock), DihColors.textSecondary());
             if (MC.player != null) {
-                builder.line("Held Item: " + formatItemStack(MC.player.getItemInHand(interactBlock.getHand())), DihColors.successText());
+                builder.line("Held Item: " + formatItemStack(MC.player.getItemInHand(DihPackets.hand(interactBlock))), DihColors.successText());
             }
             String capturedBlockState = entry == null ? null : entry.capturedBlockState;
             if (capturedBlockState != null && !capturedBlockState.isBlank()) {
@@ -543,16 +543,16 @@ public final class DihPacketInspector {
             wrote = true;
             complete = true;
             builder.line("Interaction: Use Item (right click without a targeted block)", DihColors.textPrimary());
-            builder.line("Hand: " + interactItem.getHand(), DihColors.textPrimary());
-            builder.line("Sequence: " + interactItem.getSequence(), DihColors.textSecondary());
-            builder.line("Yaw: " + interactItem.getYRot(), DihColors.textSecondary());
-            builder.line("Pitch: " + interactItem.getXRot(), DihColors.textSecondary());
+            builder.line("Hand: " + DihPackets.hand(interactItem), DihColors.textPrimary());
+            builder.line("Sequence: " + DihPackets.sequence(interactItem), DihColors.textSecondary());
+            builder.line("Yaw: " + DihPackets.yRot(interactItem), DihColors.textSecondary());
+            builder.line("Pitch: " + DihPackets.xRot(interactItem), DihColors.textSecondary());
             if (MC.player != null) {
                 Object selectedSlot = invokeFirstNoArg(MC.player.getInventory(), "getSelectedSlot", "selectedSlot");
                 if (selectedSlot instanceof Number number) {
                     builder.line("Selected Slot: " + formatHotbarSlot(number.intValue()), DihColors.textPrimary());
                 }
-                builder.line("Held Item: " + formatItemStack(MC.player.getItemInHand(interactItem.getHand())), DihColors.successText());
+                builder.line("Held Item: " + formatItemStack(MC.player.getItemInHand(DihPackets.hand(interactItem))), DihColors.successText());
             }
         }
 
@@ -605,15 +605,17 @@ public final class DihPacketInspector {
 
         if (packet instanceof ClientboundLevelChunkWithLightPacket chunkData) {
             wrote = true;
-            builder.line("Chunk: " + chunkData.getX() + ", " + chunkData.getZ(), DihColors.textPrimary());
-            builder.line("Chunk Data: " + safeLeafString(chunkData.getChunkData()), DihColors.textSecondary());
-            builder.line("Light Data: " + safeLeafString(chunkData.getLightData()), DihColors.textSecondary());
+            builder.line("Chunk: " + DihPackets.chunkX(chunkData) + ", " + DihPackets.chunkZ(chunkData), DihColors.textPrimary());
+            builder.line("Chunk Data: " + safeLeafString(DihPackets.chunkData(chunkData)), DihColors.textSecondary());
+            builder.line("Light Data: " + safeLeafString(DihPackets.lightData(chunkData)), DihColors.textSecondary());
         }
 
         if (packet instanceof ClientboundEntityPositionSyncPacket positionSync) {
             wrote = true;
             appendEntityIdLine(builder, "Entity Id", positionSync.id());
-            builder.line("Values: " + safeLeafString(positionSync.values()), DihColors.textPrimary());
+            builder.line("Position: " + safeLeafString(DihPackets.position(positionSync)), DihColors.textPrimary());
+            builder.line("Movement: " + safeLeafString(DihPackets.movement(positionSync)), DihColors.textPrimary());
+            builder.line("Yaw / Pitch: " + DihPackets.yRot(positionSync) + " / " + DihPackets.xRot(positionSync), DihColors.textPrimary());
             builder.line("On Ground: " + positionSync.onGround(), DihColors.textPrimary());
         }
 
@@ -2386,7 +2388,7 @@ public final class DihPacketInspector {
     private static SummaryResult appendReflectivePacketSummary(Packet<?> packet, String packetNameHint,
                                                                DihPacketLoggerOverlay.LogEntry entry,
                                                                InspectionBuilder builder) {
-        if (packet instanceof net.minecraft.network.protocol.game.ServerboundSwingPacket
+        if (DihPackets.isSwing(packet)
             || packetMatchesHint(packet, packetNameHint, "HandSwingC2S", "HandSwingC2SPacket")) {
             Object hand = firstNonNull(
                 invokeFirstNoArg(packet, "getHand", "hand"),

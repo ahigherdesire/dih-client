@@ -45,6 +45,26 @@ public final class DihChamsPipelines {
     private static final Identifier CHAMS_FRAGMENT = Identifier.fromNamespaceAndPath("dihclient", "core/chams");
 
     private static RenderPipeline clone(RenderPipeline base, String name, DepthStencilState depth) {
+        //? if >=26.3 {
+        /*java.util.Map<com.mojang.renderpearl.api.pipeline.ShaderType, Identifier> shaders = new java.util.EnumMap<>(
+            com.mojang.renderpearl.api.pipeline.ShaderType.class);
+        shaders.putAll(base.getShaders());
+        shaders.put(com.mojang.renderpearl.api.pipeline.ShaderType.FRAGMENT, CHAMS_FRAGMENT);
+        return DihRenderPipelineInvoker.dih$create(
+            Identifier.fromNamespaceAndPath("dihclient", "pipeline/" + name),
+            shaders,
+            base.getShaderDefines(),
+            base.getBindGroupLayouts(),
+            base.getColorTargetStates().toArray(new com.mojang.blaze3d.pipeline.ColorTargetState[0]),
+            depth,
+            base.getPolygonMode(),
+            true,
+            base.getVertexFormatBindings().toArray(new com.mojang.blaze3d.vertex.VertexFormat[0]),
+            base.getPrimitiveTopology(),
+            ((DihRenderPipelineInvoker) base).dih$pushConstantSize(),
+            base.getSortKey()
+        );
+        *///?} else {
         return DihRenderPipelineInvoker.dih$create(
             Identifier.fromNamespaceAndPath("dihclient", "pipeline/" + name),
             base.getVertexShader(),
@@ -59,6 +79,7 @@ public final class DihChamsPipelines {
             base.getPrimitiveTopology(),
             base.getSortKey()
         );
+        //?}
     }
 
     private static CompareOp invertDepth(CompareOp op) {

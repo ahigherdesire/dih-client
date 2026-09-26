@@ -22,10 +22,12 @@ public abstract class DihBotPilotMixin extends AbstractClientPlayer {
         return MultiPilot.isManualControlEntity(this) || super.isLocalClientAuthoritative();
     }
 
+    //? if <26.3 {
     @Override
     public boolean canSimulateMovement() {
         return MultiPilot.isManualControlEntity(this) || super.canSimulateMovement();
     }
+    //?}
 
     @Override
     public boolean isEffectiveAi() {

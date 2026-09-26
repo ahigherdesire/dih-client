@@ -269,7 +269,7 @@ public final class DihNormalPacketAnalyzer {
         }
         if (packet instanceof ServerboundAcceptTeleportationPacket ack) {
             out.context("Client acknowledges a server teleport/correction.", DihColors.textPrimary());
-            out.context("Teleport Id: " + ack.getId(), DihColors.packetBlue());
+            out.context("Teleport Id: " + DihPackets.teleportId(ack), DihColors.packetBlue());
             return;
         }
 
@@ -323,7 +323,7 @@ public final class DihNormalPacketAnalyzer {
         }
         if (packet instanceof ClientboundLevelChunkWithLightPacket chunk) {
             out.context("Server sends chunk data with light data.", DihColors.textPrimary());
-            out.context("Chunk: " + chunk.getX() + ", " + chunk.getZ(), DihColors.successText());
+            out.context("Chunk: " + DihPackets.chunkX(chunk) + ", " + DihPackets.chunkZ(chunk), DihColors.successText());
             return;
         }
         if (packet instanceof ClientboundGameEventPacket gameEvent) {
@@ -486,10 +486,10 @@ public final class DihNormalPacketAnalyzer {
         if (packet instanceof ServerboundAcceptTeleportationPacket ack) {
             out.decoded("Status: context-aware", DihColors.packetGreen());
             out.decoded("Meaning: client acknowledged server teleport/correction", DihColors.textPrimary());
-            out.decoded("Teleport Id: " + ack.getId(), DihColors.packetBlue());
+            out.decoded("Teleport Id: " + DihPackets.teleportId(ack), DihColors.packetBlue());
             if (before.lastTeleportId() >= 0) {
                 out.decoded("Pending Before: " + before.lastTeleportId()
-                    + (before.lastTeleportId() == ack.getId() ? " (matched)" : " (different)"), DihColors.textPrimary());
+                    + (before.lastTeleportId() == DihPackets.teleportId(ack) ? " (matched)" : " (different)"), DihColors.textPrimary());
             }
             return true;
         }
@@ -550,9 +550,9 @@ public final class DihNormalPacketAnalyzer {
         if (packet instanceof ClientboundLevelChunkWithLightPacket chunk) {
             out.decoded("Status: fallback", DihColors.packetYellow());
             out.decoded("Meaning: server sent chunk data with light data", DihColors.textPrimary());
-            out.decoded("Chunk: " + chunk.getX() + ", " + chunk.getZ(), DihColors.successText());
-            out.decoded("Chunk Data: " + safe(chunk.getChunkData()), DihColors.textSecondary());
-            out.decoded("Light Data: " + safe(chunk.getLightData()), DihColors.textSecondary());
+            out.decoded("Chunk: " + DihPackets.chunkX(chunk) + ", " + DihPackets.chunkZ(chunk), DihColors.successText());
+            out.decoded("Chunk Data: " + safe(DihPackets.chunkData(chunk)), DihColors.textSecondary());
+            out.decoded("Light Data: " + safe(DihPackets.lightData(chunk)), DihColors.textSecondary());
             return false;
         }
         if (packet instanceof ClientboundGameEventPacket gameEvent) {

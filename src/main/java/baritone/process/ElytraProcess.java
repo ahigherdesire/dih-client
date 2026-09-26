@@ -17,6 +17,7 @@
 
 package baritone.process;
 
+import dihclient.util.DihBlocks;
 import baritone.Baritone;
 import baritone.api.IBaritone;
 import baritone.api.event.events.*;
@@ -368,12 +369,12 @@ public class ElytraProcess extends BaritoneProcessHelper implements IBaritonePro
 
             if (ctx.world().isLoaded(destination)) {
                 final BlockState state = ctx.world().getBlockState(destination);
-                if (state.blocksMotion()) {
+                if (DihBlocks.blocksMotion(state)) {
                     isSolid = true;
                     // Scan upward until we find open air above the surface.
                     BlockPos.MutableBlockPos mut = new BlockPos.MutableBlockPos(
                             destination.getX(), destination.getY(), destination.getZ());
-                    while (mut.getY() < worldMaxY && ctx.world().getBlockState(mut).blocksMotion()) {
+                    while (mut.getY() < worldMaxY && DihBlocks.blocksMotion(ctx.world().getBlockState(mut))) {
                         mut.set(mut.getX(), mut.getY() + 1, mut.getZ());
                     }
                     surfaceY = mut.getY() + 3; // a few blocks clear of the surface

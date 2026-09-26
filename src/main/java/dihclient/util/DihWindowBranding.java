@@ -83,6 +83,7 @@ public final class DihWindowBranding {
     private static boolean applyIcon(long windowHandle) {
         if (windowHandle == 0L) return false;
 
+        //? if <26.3 {
         if (MacosUtil.IS_MACOS) {
             try {
                 MacosUtil.loadIcon(() -> openIconStream("mac_icon.png"));
@@ -91,6 +92,7 @@ public final class DihWindowBranding {
                 return false;
             }
         }
+        //?}
 
         //? if >=26.3 {
         /*return applySdlIcon(windowHandle);

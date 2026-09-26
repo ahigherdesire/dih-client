@@ -1,4 +1,9 @@
 package dihclient.modules;
+import dihclient.util.DihFileDialogs;
+import dihclient.util.DihItems;
+import dihclient.util.DihBlocks;
+import dihclient.util.DihEntities;
+import dihclient.util.DihPackets;
 import dihclient.api.module.*;
 
 import dihclient.util.DihClientMessaging;
@@ -77,7 +82,6 @@ import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerInputPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCreativeModeSlotPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.server.network.Filterable;
@@ -134,7 +138,6 @@ import net.minecraft.resources.Identifier;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryUtil;
-import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -1800,7 +1803,7 @@ public final class BuiltinModules {
             int bottom = MC.level.getMinY();
             while (pos.getY() > bottom) {
                 net.minecraft.world.level.block.state.BlockState state = MC.level.getBlockState(pos);
-                if (state.blocksMotion()) break;
+                if (DihBlocks.blocksMotion(state)) break;
                 if (state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) return true;
                 pos.move(Direction.DOWN);
             }
@@ -3113,10 +3116,10 @@ public final class BuiltinModules {
             if (DihHandArbiter.handPacketOwner() != null) return false;
             if (packet instanceof ServerboundUseItemPacket usePacket) {
                 if (consumeOwnedUsePacket()) return false;
-                if (isRodHand(usePacket.getHand())) handleManualRodUse();
+                if (isRodHand(DihPackets.hand(usePacket))) handleManualRodUse();
             } else if (packet instanceof ServerboundUseItemOnPacket useOnPacket) {
                 if (consumeOwnedUsePacket()) return false;
-                if (isRodHand(useOnPacket.getHand())) handleManualRodUse();
+                if (isRodHand(DihPackets.hand(useOnPacket))) handleManualRodUse();
             } else if (packet instanceof ServerboundSetCarriedItemPacket carriedPacket) {
                 if (consumeOwnedSlotPacket()) return false;
                 handleManualSlotSwitch(carriedPacket.getSlot());
@@ -3213,7 +3216,7 @@ public final class BuiltinModules {
 
                 if (ModuleRegistry.shouldCancelUseExcept(MC.hitResult, hand, id())) return false;
                 InteractionResult result = MC.gameMode.useItem(MC.player, hand);
-                if (result != null && result.consumesAction()) MC.player.swing(hand);
+                if (result != null && result.consumesAction()) DihEntities.swing(MC.player, hand);
             } else {
                 DihInputClicker.queueUseClick();
             }
@@ -3905,7 +3908,7 @@ public final class BuiltinModules {
                 MC.getConnection().send(new ServerboundPlayerActionPacket(
                     ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, pos, dir));
             }
-            MC.getConnection().send(new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
+            MC.getConnection().send(DihPackets.mainHandSwing());
         }
 
         private int colorValue(String id, int fallback) {
@@ -3972,9 +3975,9 @@ public final class BuiltinModules {
         @Override
         public boolean onPacketSend(Packet<?> packet) {
             if (packet instanceof ServerboundUseItemOnPacket use) {
-                if (!matchesHand(choice("block-interact-hand"), use.getHand())) return false;
+                if (!matchesHand(choice("block-interact-hand"), DihPackets.hand(use))) return false;
                 if (MC.level == null) return matchesRegistry("", list("block-interact"), choice("block-interact-mode"));
-                String id = BuiltInRegistries.BLOCK.getKey(MC.level.getBlockState(use.getHitResult().getBlockPos()).getBlock()).toString();
+                String id = BuiltInRegistries.BLOCK.getKey(MC.level.getBlockState(DihPackets.hitResult(use).getBlockPos()).getBlock()).toString();
                 return matchesRegistry(id, list("block-interact"), choice("block-interact-mode"));
             }
             if (packet instanceof ServerboundPlayerActionPacket action && action.getAction() == ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK) {
@@ -4033,7 +4036,7 @@ public final class BuiltinModules {
         @Override
         public boolean onPacketSend(Packet<?> packet) {
             if (sendingSynthetic || MC.gameMode == null || MC.player == null) return false;
-            if (packet instanceof ServerboundUseItemOnPacket use && use.getHand() == InteractionHand.MAIN_HAND) {
+            if (packet instanceof ServerboundUseItemOnPacket use && DihPackets.hand(use) == InteractionHand.MAIN_HAND) {
 
                 if (DihBlinkManager.holdsActionsWithoutMovement()) return false;
 
@@ -4041,7 +4044,7 @@ public final class BuiltinModules {
 
                 if (AutoTotemModule.operationActive()) return false;
 
-                if (ModuleRegistry.shouldCancelUseExcept(use.getHitResult(), InteractionHand.OFF_HAND, id())) return false;
+                if (ModuleRegistry.shouldCancelUseExcept(DihPackets.hitResult(use), InteractionHand.OFF_HAND, id())) return false;
 
                 String placementOwner = DihPlacementTick.owner();
                 if (placementOwner != null && !placementOwner.equals(id())) return false;
@@ -4050,7 +4053,7 @@ public final class BuiltinModules {
                 sendingSynthetic = true;
                 try {
 
-                    MC.gameMode.useItemOn(MC.player, InteractionHand.OFF_HAND, use.getHitResult());
+                    MC.gameMode.useItemOn(MC.player, InteractionHand.OFF_HAND, DihPackets.hitResult(use));
                 } finally {
                     sendingSynthetic = false;
                 }
@@ -4263,21 +4266,8 @@ public final class BuiltinModules {
 
         private void pickFile() {
             String current = text("file-path").trim();
-            PointerBuffer filters = BufferUtils.createPointerBuffer(4);
-            java.nio.ByteBuffer txt = MemoryUtil.memASCII("*.txt");
-            java.nio.ByteBuffer md = MemoryUtil.memASCII("*.md");
-            java.nio.ByteBuffer json = MemoryUtil.memASCII("*.json");
-            java.nio.ByteBuffer nbtTxt = MemoryUtil.memASCII("*.nbt.txt");
-            filters.put(txt).put(md).put(json).put(nbtTxt).rewind();
-            try {
-                String selected = TinyFileDialogs.tinyfd_openFileDialog("BookBot Text File", current.isBlank() ? null : current, filters, "Text files", false);
-                if (selected != null && !selected.isBlank()) setValue("file-path", selected);
-            } finally {
-                MemoryUtil.memFree(txt);
-                MemoryUtil.memFree(md);
-                MemoryUtil.memFree(json);
-                MemoryUtil.memFree(nbtTxt);
-            }
+            DihFileDialogs.openFile("BookBot Text File", current, java.util.List.of("txt", "md", "json", "nbt.txt"),
+                "Text files", selected -> setValue("file-path", selected));
         }
 
         private String fileSelectionFailureMessage() {
@@ -5270,14 +5260,9 @@ public final class BuiltinModules {
         }
 
         public void loadForceOpPasswords() {
-            org.lwjgl.system.MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush();
-            try {
-                org.lwjgl.PointerBuffer filters = stack.mallocPointer(1);
-                java.nio.ByteBuffer txt = org.lwjgl.system.MemoryUtil.memASCII("*.txt");
-                filters.put(txt).rewind();
+            DihFileDialogs.openFile("Load Passwords", null, java.util.List.of("txt"), "Text files", selected -> {
                 try {
-                    String selected = org.lwjgl.util.tinyfd.TinyFileDialogs.tinyfd_openFileDialog("Load Passwords", null, filters, "Text files", false);
-                    if (selected != null && !selected.isBlank()) {
+                    {
                         java.util.List<String> loadedPWs = java.nio.file.Files.readAllLines(java.nio.file.Paths.get(selected), java.nio.charset.StandardCharsets.UTF_8);
                         java.util.Set<String> parsed = new java.util.LinkedHashSet<>();
                         for (String line : loadedPWs) {
@@ -5297,12 +5282,8 @@ public final class BuiltinModules {
                     DihClientMessaging.sendPrefixed("Admin Tools: Failed to load passwords.");
                     forceOpPasswords = defaultForceOpList;
                     forceOpIndex = 0;
-                } finally {
-                    org.lwjgl.system.MemoryUtil.memFree(txt);
                 }
-            } finally {
-                stack.close();
-            }
+            });
         }
 
         public void unloadForceOpPasswords() {
@@ -5920,7 +5901,7 @@ public final class BuiltinModules {
         private <T> T explicitComponent(ItemStack stack, net.minecraft.core.component.DataComponentType<T> type) {
             if (stack == null || stack.isEmpty() || type == null) return null;
             for (Map.Entry<net.minecraft.core.component.DataComponentType<?>, Optional<?>> entry
-                : stack.getComponentsPatch().entrySet()) {
+                : DihItems.patchEntries(stack.getComponentsPatch()).entrySet()) {
                 if (entry.getKey() == type) return (T) entry.getValue().orElse(null);
             }
             return null;

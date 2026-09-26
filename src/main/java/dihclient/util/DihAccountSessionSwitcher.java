@@ -4,7 +4,6 @@ import dihclient.DihClientAddon;
 import dihclient.mixin.accessor.DihMinecraftAccessor;
 import com.mojang.authlib.minecraft.UserApiService;
 import com.mojang.authlib.yggdrasil.FriendsService;
-import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
 import net.minecraft.client.gui.screens.social.PlayerSocialManager;
@@ -33,20 +32,19 @@ public final class DihAccountSessionSwitcher {
     }
 
     public static boolean setSession(User user) {
-        return setSession(user, new YggdrasilAuthenticationService(DihAuthNetwork.directProxy()));
+        return setSession(user, DihAuthServices.mojang(DihAuthNetwork.directProxy()));
     }
 
-    public static boolean setSession(User user, YggdrasilAuthenticationService authService) {
+    public static boolean setSession(User user, DihAuthServices authService) {
         lastError = "";
         try {
             Minecraft mc = Minecraft.getInstance();
             if (originalUser == null) originalUser = mc.getUser();
             DihMinecraftAccessor accessor = (DihMinecraftAccessor) mc;
-            YggdrasilAuthenticationService userApiAuthService =
-                new YggdrasilAuthenticationService(DihAuthNetwork.directProxy());
-            Services services = Services.create(authService, mc.gameDirectory);
-            UserApiService apiService = userApiAuthService.createUserApiService(user.getAccessToken());
-            FriendsService friendsService = userApiAuthService.createFriendsService(user.getAccessToken());
+            DihAuthServices userApiAuthService = DihAuthServices.mojang(DihAuthNetwork.directProxy());
+            Services services = authService.services(mc.gameDirectory);
+            UserApiService apiService = userApiAuthService.userApi(user.getAccessToken());
+            FriendsService friendsService = userApiAuthService.friends(user.getAccessToken());
             RemoteFriendListUpdateHandler friendListUpdateHandler = new RemoteFriendListUpdateHandler(friendsService, mc);
             Path skinCachePath = mc.gameDirectory.toPath().resolve("assets").resolve("skins");
 

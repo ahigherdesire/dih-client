@@ -1,4 +1,5 @@
 package dihclient.modules;
+import dihclient.util.DihPackets;
 import dihclient.api.module.*;
 
 import dihclient.mixin.accessor.DihChatComponentAccessor;
@@ -530,7 +531,7 @@ public final class NameCensorModule extends Module {
         if (packet instanceof ClientboundPlayerChatPacket playerChatPacket) {
             if (aggressive) {
                 learnAggressiveNamesFromText(playerChatPacket.body().content());
-                learnAggressiveNamesFromComponent(playerChatPacket.unsignedContent());
+                learnAggressiveNamesFromComponent(DihPackets.unsignedContent(playerChatPacket));
                 learnAggressiveNamesFromComponent(playerChatPacket.chatType().name());
                 playerChatPacket.chatType().targetName().ifPresent(NameCensorModule::learnAggressiveNamesFromComponent);
             }

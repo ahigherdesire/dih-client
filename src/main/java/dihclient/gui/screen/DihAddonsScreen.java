@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihLinks;
 import dihclient.addons.AddonManager;
 import dihclient.addons.AddonManager.AddonLoadStatus;
 import dihclient.addons.AddonManager.AddonReport;
@@ -351,7 +352,7 @@ public final class DihAddonsScreen extends DihScreen {
     }
 
     private void openModsFolder() {
-        Util.getPlatform().openFile(AddonManager.modsFolder());
+        DihLinks.openPath(AddonManager.modsFolder().toPath());
     }
 
     private List<AddonReport> filteredReports() {

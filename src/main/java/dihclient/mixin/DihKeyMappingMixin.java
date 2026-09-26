@@ -63,12 +63,18 @@ public abstract class DihKeyMappingMixin implements DihKeyMappingBridge {
         Window window = mc.getWindow();
         int action = pressed ? InputConstants.PRESS : InputConstants.RELEASE;
         switch (key.getType()) {
+            //? if >=26.3 {
+            /*case KEYBOARD -> ((DihKeyboardHandlerAccessor) mc.keyboardHandler).dih$invokeKeyPress(
+                window.handle(), action, new KeyEvent(key.getValue(), 0, 0)
+            );
+            *///?} else {
             case KEYSYM -> ((DihKeyboardHandlerAccessor) mc.keyboardHandler).dih$invokeKeyPress(
                 window.handle(), action, new KeyEvent(key.getValue(), 0, 0)
             );
             case SCANCODE -> ((DihKeyboardHandlerAccessor) mc.keyboardHandler).dih$invokeKeyPress(
                 window.handle(), action, new KeyEvent(DihKeys.UNKNOWN, key.getValue(), 0)
             );
+            //?}
             case MOUSE -> ((DihMouseHandlerAccessor) mc.mouseHandler).dih$invokeOnButton(
                 window.handle(), new MouseButtonInfo(key.getValue(), 0), action
             );

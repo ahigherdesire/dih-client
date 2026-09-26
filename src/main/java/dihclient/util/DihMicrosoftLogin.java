@@ -60,7 +60,7 @@ public final class DihMicrosoftLogin {
             + "&code_challenge_method=S256"
             + "&state=" + enc(oauthState)
             + "&prompt=select_account";
-        Util.getPlatform().openUri(url);
+        DihLinks.openUri(url);
         return url;
     }
 

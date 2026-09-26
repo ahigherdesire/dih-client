@@ -205,7 +205,7 @@ public class DihPresetManager {
         entries.add(new PresetEntry(
             presetFromPacketNames("Movement & World",
                 Set.of(
-                    "ServerboundSwingPacket",
+                    DihPackets.SWING.getSimpleName(),
                     "ServerboundPlayerActionPacket",
                     "ServerboundUseItemOnPacket",
                     "ServerboundInteractPacket",
@@ -271,7 +271,7 @@ public class DihPresetManager {
                 Set.of(
                     "ServerboundChunkBatchReceivedPacket",
                     "ServerboundClientCommandPacket",
-                    "ServerboundSwingPacket",
+                    DihPackets.SWING.getSimpleName(),
                     "ServerboundPlayerActionPacket",
                     "ServerboundPlayerInputPacket",
                     "ServerboundUseItemOnPacket",
@@ -489,7 +489,7 @@ public class DihPresetManager {
 
     private static Map<String, String> createLegacyPacketNameAliases() {
         return Map.ofEntries(
-            Map.entry("HandSwingC2SPacket", "ServerboundSwingPacket"),
+            Map.entry("HandSwingC2SPacket", DihPackets.SWING.getSimpleName()),
             Map.entry("PlayerMoveC2SPacket", "ServerboundMovePlayerPacket.PosRot"),
             Map.entry("PlayerMoveC2SPacket.Full", "ServerboundMovePlayerPacket.PosRot"),
             Map.entry("PlayerMoveC2SPacket.LookAndOnGround", "ServerboundMovePlayerPacket.Rot"),

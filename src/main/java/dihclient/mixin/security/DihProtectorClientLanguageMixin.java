@@ -8,6 +8,7 @@ import com.llamalad7.mixinextras.sugar.Local;
 import net.fabricmc.fabric.impl.resource.pack.ModNioPackResources;
 import net.minecraft.client.resources.language.ClientLanguage;
 import net.minecraft.locale.Language;
+//? if <26.3
 import net.minecraft.server.packs.CompositePackResources;
 import net.minecraft.server.packs.FilePackResources;
 import net.minecraft.server.packs.PackResources;
@@ -44,7 +45,11 @@ public class DihProtectorClientLanguageMixin {
             original.call(stream, trackingOutput(output, (key, value) -> DihProtectorTracker.addVanillaTranslation(key)));
             return;
         }
+        //? if >=26.3 {
+        /*if (source instanceof FilePackResources || source instanceof net.minecraft.server.packs.OverlayedPackResources) {
+        *///?} else {
         if (source instanceof FilePackResources || source instanceof CompositePackResources) {
+        //?}
             original.call(stream, trackingOutput(output, DihProtectorTracker::addServerTranslation));
             return;
         }

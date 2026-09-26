@@ -1,5 +1,6 @@
 package dihclient.modules;
 
+import dihclient.util.DihEntities;
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ChoiceSetting;
 import dihclient.api.module.ColorSetting;
@@ -289,7 +290,7 @@ public final class GhostBlockModule extends Module {
             rememberOriginal(entry.getKey(), entry.getValue());
             markGhost(entry.getKey(), current);
         }
-        MC.player.swing(hand);
+        DihEntities.swing(MC.player, hand);
     }
 
     private Map<BlockPos, BlockState> snapshotAround(BlockPos pos) {

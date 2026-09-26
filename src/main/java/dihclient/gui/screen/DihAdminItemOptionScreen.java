@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihKeys;
 import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
@@ -245,7 +246,7 @@ public final class DihAdminItemOptionScreen extends DihScreen {
             onClose();
             return true;
         }
-        return lastDirectContext == null || editor.keyPressed(lastDirectContext, input.key(), input.scancode(), input.modifiers());
+        return lastDirectContext == null || editor.keyPressed(lastDirectContext, input.key(), DihKeys.secondaryCode(input), input.modifiers());
     }
 
     @Override

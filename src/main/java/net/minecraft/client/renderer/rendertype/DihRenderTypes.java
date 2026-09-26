@@ -106,7 +106,9 @@ public final class DihRenderTypes {
         "dih_tracer_esp_lines",
         RenderSetup.builder(TRACER_ESP_LINES_PIPELINE)
             .setLayeringTransform(LayeringTransform.VIEW_OFFSET_Z_LAYERING)
+            //? if <26.3 {
             .setOutputTarget(OutputTarget.ITEM_ENTITY_TARGET)
+            //?}
             .createRenderSetup()
     );
 

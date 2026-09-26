@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihKeys;
 import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
@@ -391,10 +392,10 @@ public final class DihAdminItemStructuredScreen extends DihScreen {
             return true;
         }
         if (direct == null) return false;
-        return search.keyPressed(direct, input.key(), input.scancode(), input.modifiers())
-            || level.keyPressed(direct, input.key(), input.scancode(), input.modifiers())
-            || amount.keyPressed(direct, input.key(), input.scancode(), input.modifiers())
-            || modifier.keyPressed(direct, input.key(), input.scancode(), input.modifiers());
+        return search.keyPressed(direct, input.key(), DihKeys.secondaryCode(input), input.modifiers())
+            || level.keyPressed(direct, input.key(), DihKeys.secondaryCode(input), input.modifiers())
+            || amount.keyPressed(direct, input.key(), DihKeys.secondaryCode(input), input.modifiers())
+            || modifier.keyPressed(direct, input.key(), DihKeys.secondaryCode(input), input.modifiers());
     }
 
     @Override

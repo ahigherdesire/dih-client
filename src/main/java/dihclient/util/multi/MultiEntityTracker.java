@@ -110,12 +110,29 @@ final class MultiEntityTracker {
         });
     }
 
-    void sync(int id, PositionMoveRotation values, boolean onGround) {
-        if (values == null) return;
-        byId.computeIfPresent(id, (ignored, old) -> copy(old, values.position(), values.deltaMovement(),
-            values.yRot(), values.xRot(), old.headYRot(), onGround, old.hookedId()));
+    /** A position sync; a null position or movement leaves that part as it was. */
+    void sync(int id, Vec3 position, Vec3 movement, float yRot, float xRot, boolean onGround) {
+        byId.computeIfPresent(id, (ignored, old) -> copy(old, position == null ? old.position() : position,
+            movement == null ? old.movement() : movement, yRot, xRot, old.headYRot(), onGround, old.hookedId()));
     }
 
+    //? if >=26.3 {
+    /*/^* 26.3's compressed move: decoded against the last known position, as moveRelative adds to it. ^/
+    void moveDelta(int id, net.minecraft.network.protocol.game.VecDelta delta, boolean hasPosition,
+                   float yRot, float xRot, boolean hasRotation, boolean onGround) {
+        byId.computeIfPresent(id, (ignored, old) -> {
+            Vec3 pos = old.position();
+            if (hasPosition && delta != null) {
+                net.minecraft.network.protocol.game.VecDeltaCodec codec = new net.minecraft.network.protocol.game.VecDeltaCodec();
+                codec.setBase(pos);
+                pos = delta.decode(codec).endPosition();
+            }
+            return copy(old, pos, old.movement(), hasRotation ? yRot : old.yRot(),
+                hasRotation ? xRot : old.xRot(), old.headYRot(), onGround, old.hookedId());
+        });
+    }
+
+    *///?}
     void moveAbsolute(int id, Vec3 position, Vec3 movement, float yRot, float xRot) {
         if (position == null) return;
         byId.computeIfPresent(id, (ignored, old) -> copy(old, position,

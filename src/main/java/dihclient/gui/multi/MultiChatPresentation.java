@@ -79,7 +79,7 @@ public final class MultiChatPresentation {
         if (uri == null || uri.getScheme() == null) return;
         String scheme = uri.getScheme().toLowerCase(java.util.Locale.ROOT);
         if (scheme.equals("http") || scheme.equals("https")) {
-            net.minecraft.util.Util.getPlatform().openUri(uri);
+            dihclient.util.DihLinks.openUri(uri);
         }
     }
 
