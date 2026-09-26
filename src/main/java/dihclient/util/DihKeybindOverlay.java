@@ -330,7 +330,7 @@ public class DihKeybindOverlay extends DihOverlayBase {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!visible || collapsed) return false;
-        if (prefixDropdown != null && prefixDropdown.isOpen() && keyCode == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+        if (prefixDropdown != null && prefixDropdown.isOpen() && keyCode == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) {
             prefixDropdown.close();
             prefixDropdown = null;
             return true;

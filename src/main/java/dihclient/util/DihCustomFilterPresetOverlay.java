@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.components.CompactListRenderer;
 import dihclient.gui.vanillaui.components.CompactListViewport;
@@ -16,7 +17,6 @@ import dihclient.gui.vanillaui.direct.DirectViewport;
 import dihclient.modules.DihModule;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -555,7 +555,7 @@ public class DihCustomFilterPresetOverlay extends DihOverlayBase {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!visible) return false;
 
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if (keyCode == InputConstants.KEY_ESCAPE) {
             if (nameField.isFocused()) {
                 clearFocus();
                 return true;
@@ -564,7 +564,7 @@ public class DihCustomFilterPresetOverlay extends DihOverlayBase {
             return true;
         }
 
-        if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
+        if (keyCode == InputConstants.KEY_RETURN || keyCode == InputConstants.KEY_NUMPADENTER) {
             if (nameField.isFocused() && canSaveNamed()) {
                 saveNamedPreset();
                 return true;

@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.gui.vanillaui.components.Button;
@@ -27,7 +28,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.EnumSet;
@@ -622,7 +622,7 @@ public final class DihMultiScreen extends DihScreen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == GLFW.GLFW_KEY_ESCAPE && CompactDropdown.closeOpenMenu(dropdowns)) return true;
+        if (event.key() == InputConstants.KEY_ESCAPE && CompactDropdown.closeOpenMenu(dropdowns)) return true;
         if (accountSearchField != null && accountSearchField.keyPressed(event)) return true;
         return super.keyPressed(event);
     }

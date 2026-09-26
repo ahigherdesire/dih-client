@@ -1,5 +1,6 @@
 package dihclient.util.multi;
 
+import dihclient.util.DihKeys;
 import dihclient.DihClientAddon;
 import dihclient.util.macro.PacketRoutePlanner;
 import net.minecraft.client.Minecraft;
@@ -1780,9 +1781,8 @@ public final class MultiPilot {
 
     private static boolean ctrlDown(Minecraft mc) {
         if (mc.getWindow() == null) return false;
-        long window = mc.getWindow().handle();
-        return org.lwjgl.glfw.GLFW.glfwGetKey(window, org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_CONTROL) == org.lwjgl.glfw.GLFW.GLFW_PRESS
-            || org.lwjgl.glfw.GLFW.glfwGetKey(window, org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_CONTROL) == org.lwjgl.glfw.GLFW.GLFW_PRESS;
+        return DihKeys.isKeyDown(com.mojang.blaze3d.platform.InputConstants.KEY_LCONTROL)
+            || DihKeys.isKeyDown(com.mojang.blaze3d.platform.InputConstants.KEY_RCONTROL);
     }
 
     private static RemotePlayer botEntity(Minecraft mc) {

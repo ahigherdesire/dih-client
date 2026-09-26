@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContexts;
 import dihclient.gui.vanillaui.components.Button;
@@ -12,7 +13,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 public class DihOverlayHostScreen extends Screen {
 
@@ -166,7 +166,7 @@ public class DihOverlayHostScreen extends Screen {
         boolean inventoryKey = minecraft != null && minecraft.options != null
             && minecraft.options.keyInventory != null
             && minecraft.options.keyInventory.matches(input);
-        boolean closeKey = input.key() == GLFW.GLFW_KEY_ESCAPE || inventoryKey;
+        boolean closeKey = input.key() == InputConstants.KEY_ESCAPE || inventoryKey;
 
         if (closeKey && minecraft != null && !DihOverlayManager.get().isAnyTextFieldFocused()) {
             goBack();

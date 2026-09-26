@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.gui.vanillaui.components.CompactDropdown;
 import dihclient.gui.vanillaui.direct.DirectLayout;
@@ -27,7 +28,6 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -289,7 +289,7 @@ public class DihHudElementSettingsScreen extends Screen {
         int my = DihUiScale.toVirtualInt(event.y());
         int[] panel = panelBounds();
         int x = panel[0], y = panel[1], w = panel[2], h = panel[3];
-        if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT && event.button() != GLFW.GLFW_MOUSE_BUTTON_RIGHT) return true;
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT && event.button() != InputConstants.MOUSE_BUTTON_RIGHT) return true;
         if (colorPicker != null) {
             colorPicker.mouseClicked(mx, my, event.button());
             if (!colorPicker.isOpen()) clearColorPicker();
@@ -425,14 +425,14 @@ public class DihHudElementSettingsScreen extends Screen {
             if (!colorPicker.isOpen()) clearColorPicker();
             return true;
         }
-        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (input.key() == InputConstants.KEY_ESCAPE) {
             if (modulePickerOpen) modulePickerOpen = false;
             else if (focusedKey != null) clearHudFocus();
             else minecraft.gui.setScreen(parent);
             return true;
         }
         if (focusedKey != null) {
-            if (input.key() == GLFW.GLFW_KEY_ENTER || input.key() == GLFW.GLFW_KEY_KP_ENTER) {
+            if (input.key() == InputConstants.KEY_RETURN || input.key() == InputConstants.KEY_NUMPADENTER) {
                 commitFocus();
                 return true;
             }
@@ -453,7 +453,7 @@ public class DihHudElementSettingsScreen extends Screen {
     }
 
     private void handleRowClick(Row row, int button, int mx, int my, int valueX, int valueW) {
-        int dir = button == GLFW.GLFW_MOUSE_BUTTON_RIGHT ? -1 : 1;
+        int dir = button == InputConstants.MOUSE_BUTTON_RIGHT ? -1 : 1;
         if (row.type == RowType.BOOL) {
             DihHudManager.setSetting(id, row.key, Boolean.toString(!bool(row.key)));
             clearHudFocus();

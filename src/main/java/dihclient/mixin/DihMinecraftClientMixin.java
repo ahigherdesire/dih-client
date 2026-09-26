@@ -1,5 +1,7 @@
 package dihclient.mixin;
 
+import dihclient.util.DihKeys;
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.DihLoadingOverlay;
 import dihclient.gui.macro.editor.ActionEditorOverlay;
 import dihclient.modules.DihBlinkManager;
@@ -27,7 +29,6 @@ import net.minecraft.client.gui.screens.LoadingOverlay;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.server.packs.resources.ReloadInstance;
-import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -177,10 +178,9 @@ public class DihMinecraftClientMixin {
         if (client.gui.screen() instanceof net.minecraft.client.gui.screens.inventory.SignEditScreen) return;
         java.util.Map<Integer, String> binds = module.getCommandBinds();
         if (binds.isEmpty()) return;
-        long handle = client.getWindow().handle();
         for (java.util.Map.Entry<Integer, String> entry : binds.entrySet()) {
             int key = entry.getKey();
-            boolean down = GLFW.glfwGetKey(handle, key) == GLFW.GLFW_PRESS;
+            boolean down = DihKeys.isKeyDown(key);
             boolean wasDown = dih$commandBindWasDown.getOrDefault(key, false);
             dih$commandBindWasDown.put(key, down);
             if (down && !wasDown) {
@@ -383,7 +383,7 @@ public class DihMinecraftClientMixin {
             dihclient.util.multi.MultiPilot.drainKeybinds(client);
         }
 
-        boolean escapeDown = GLFW.glfwGetKey(client.getWindow().handle(), GLFW.GLFW_KEY_ESCAPE) == GLFW.GLFW_PRESS;
+        boolean escapeDown = DihKeys.isKeyDown(InputConstants.KEY_ESCAPE);
         boolean justPressed = escapeDown && !dih$escapeWasDown;
         dih$escapeWasDown = escapeDown;
         boolean inventoryDown = client.options != null && client.options.keyInventory.isDown();

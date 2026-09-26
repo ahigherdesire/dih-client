@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.direct.DirectUiButton;
 import dihclient.gui.vanillaui.direct.DirectUiInsets;
@@ -27,7 +28,6 @@ import dihclient.util.macro.MacroExecutor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -841,7 +841,7 @@ public class DihMacroListOverlay extends DihOverlayBase {
         if (!visible) return false;
         if (collapsed) return false;
         if (surface.keyPressed(keyCode, scanCode, modifiers)) return true;
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE && pasteMode) {
+        if (keyCode == InputConstants.KEY_ESCAPE && pasteMode) {
             cancelPasteMode();
             return true;
         }

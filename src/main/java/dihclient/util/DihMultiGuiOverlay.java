@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.multi.MultiMenuInput;
 import dihclient.gui.multi.MultiMenuRenderer;
 import dihclient.gui.vanillaui.UiBounds;
@@ -19,7 +20,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -561,9 +561,9 @@ public final class DihMultiGuiOverlay extends DihOverlayBase {
 
         if (DihOverlayManager.get().isAnyTextFieldFocused()) return false;
 
-        if (!collapsed && keyCode == GLFW.GLFW_KEY_Q && hoveredHandler >= 0
+        if (!collapsed && keyCode == InputConstants.KEY_Q && hoveredHandler >= 0
             && view != null && view.interactive()) {
-            boolean wholeStack = (modifiers & GLFW.GLFW_MOD_CONTROL) != 0 || ctrlDown();
+            boolean wholeStack = (modifiers & InputConstants.MOD_CONTROL) != 0 || ctrlDown();
             MultiClientCommands.ClickSpec spec = MultiClientCommands.dropSpec(wholeStack);
             if (shared) handleFanout(MultiManager.get().clickBotSlots(sharedIds(), hoveredHandler, spec));
             else handleClickResult(MultiManager.get().clickBotSlot(accountId, hoveredHandler, spec));
@@ -571,8 +571,8 @@ public final class DihMultiGuiOverlay extends DihOverlayBase {
         }
 
         if (!collapsed && hoveredHotbar >= 0 && view != null && view.interactive()
-            && (keyCode == GLFW.GLFW_KEY_U || keyCode == GLFW.GLFW_KEY_I)) {
-            boolean use = keyCode == GLFW.GLFW_KEY_I;
+            && (keyCode == InputConstants.KEY_U || keyCode == InputConstants.KEY_I)) {
+            boolean use = keyCode == InputConstants.KEY_I;
             if (shared) {
                 handleFanout(use ? MultiManager.get().useBotHotbars(sharedIds(), hoveredHotbar)
                     : MultiManager.get().selectBotHotbars(sharedIds(), hoveredHotbar));
@@ -715,16 +715,14 @@ public final class DihMultiGuiOverlay extends DihOverlayBase {
 
     private boolean ctrlDown() {
         if (mc == null || mc.getWindow() == null) return false;
-        long window = mc.getWindow().handle();
-        return GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS
-            || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_CONTROL) == GLFW.GLFW_PRESS;
+        return DihKeys.isKeyDown(InputConstants.KEY_LCONTROL)
+            || DihKeys.isKeyDown(InputConstants.KEY_RCONTROL);
     }
 
     private boolean shiftDown() {
         if (mc == null || mc.getWindow() == null) return false;
-        long window = mc.getWindow().handle();
-        return GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
-            || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
+        return DihKeys.isKeyDown(InputConstants.KEY_LSHIFT)
+            || DihKeys.isKeyDown(InputConstants.KEY_RSHIFT);
     }
 
     private int text() { return DihTheme.recolor(TEXT, DihTheme.Channel.TEXT); }

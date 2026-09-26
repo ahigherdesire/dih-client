@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.commands.DihCommands;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.direct.DirectUiButton;
@@ -27,7 +28,6 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 import java.util.function.Supplier;
 
 public class DihLauncherOverlay extends DihOverlayBase {
@@ -552,7 +552,7 @@ public class DihLauncherOverlay extends DihOverlayBase {
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!visible || isCollapsed()) return false;
 
-        if (keyCode == GLFW.GLFW_KEY_TAB && chatField != null && chatField.isFocused()
+        if (keyCode == InputConstants.KEY_TAB && chatField != null && chatField.isFocused()
             && chatField.text().isEmpty()) {
             String last = lastSentChatLine();
             if (last != null && !last.isBlank()) {

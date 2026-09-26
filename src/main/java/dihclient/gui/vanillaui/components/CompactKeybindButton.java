@@ -1,9 +1,9 @@
 package dihclient.gui.vanillaui.components;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
 import dihclient.util.DihBindUtil;
-import org.lwjgl.glfw.GLFW;
 
 public final class CompactKeybindButton {
     public static final int WIDTH = 34;
@@ -23,9 +23,9 @@ public final class CompactKeybindButton {
     }
 
     public static int keyOrClear(int keyCode) {
-        return keyCode == GLFW.GLFW_KEY_ESCAPE
-            || keyCode == GLFW.GLFW_KEY_BACKSPACE
-            || keyCode == GLFW.GLFW_KEY_DELETE
+        return keyCode == InputConstants.KEY_ESCAPE
+            || keyCode == InputConstants.KEY_BACKSPACE
+            || keyCode == InputConstants.KEY_DELETE
             ? -1
             : keyCode;
     }

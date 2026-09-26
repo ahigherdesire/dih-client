@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import java.util.Locale;
 
 import org.jetbrains.annotations.Nullable;
@@ -41,7 +42,6 @@ import dihclient.util.DihUiScale;
 
 import dihclient.util.DihSharedState;
 import dihclient.util.DihCursorClickHelper;
-import org.lwjgl.glfw.GLFW;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -624,7 +624,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
             return;
         }
 
-        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (input.key() == InputConstants.KEY_ESCAPE) {
             if (DihSharedState.get().consumeCaptureCancelCallback()) {
                 cir.setReturnValue(true);
                 return;
@@ -701,7 +701,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
             return;
         }
 
-        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && click.hasShiftDown()
+        if (click.button() == InputConstants.MOUSE_BUTTON_LEFT && click.hasShiftDown()
                 && hoveredSlot != null && !hoveredSlot.getItem().isEmpty()
                 && InventoryTweaksModule.shouldShiftDragMove()
                 && inventoryTweaksLastShiftDragSlot != hoveredSlot.index) {

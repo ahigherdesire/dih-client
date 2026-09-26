@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihKeys;
 import dihclient.mixin.accessor.DihKeyboardHandlerAccessor;
 import dihclient.mixin.accessor.DihMouseHandlerAccessor;
 import dihclient.modules.ModuleRegistry;
@@ -10,7 +11,6 @@ import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonInfo;
-import org.lwjgl.glfw.GLFW;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -42,12 +42,11 @@ public abstract class DihKeyMappingMixin implements DihKeyMappingBridge {
     public boolean dih$isActuallyDown() {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null || mc.getWindow() == null) return false;
-        Window window = mc.getWindow();
         int code = key.getValue();
         if (key.getType() == InputConstants.Type.MOUSE) {
-            return GLFW.glfwGetMouseButton(window.handle(), code) == GLFW.GLFW_PRESS;
+            return DihKeys.isMouseDown(code);
         }
-        return InputConstants.isKeyDown(window, code);
+        return DihKeys.isKeyDown(code);
     }
 
     @Override
@@ -62,13 +61,13 @@ public abstract class DihKeyMappingMixin implements DihKeyMappingBridge {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null || mc.getWindow() == null || mc.keyboardHandler == null || mc.mouseHandler == null) return;
         Window window = mc.getWindow();
-        int action = pressed ? GLFW.GLFW_PRESS : GLFW.GLFW_RELEASE;
+        int action = pressed ? InputConstants.PRESS : InputConstants.RELEASE;
         switch (key.getType()) {
             case KEYSYM -> ((DihKeyboardHandlerAccessor) mc.keyboardHandler).dih$invokeKeyPress(
                 window.handle(), action, new KeyEvent(key.getValue(), 0, 0)
             );
             case SCANCODE -> ((DihKeyboardHandlerAccessor) mc.keyboardHandler).dih$invokeKeyPress(
-                window.handle(), action, new KeyEvent(GLFW.GLFW_KEY_UNKNOWN, key.getValue(), 0)
+                window.handle(), action, new KeyEvent(DihKeys.UNKNOWN, key.getValue(), 0)
             );
             case MOUSE -> ((DihMouseHandlerAccessor) mc.mouseHandler).dih$invokeOnButton(
                 window.handle(), new MouseButtonInfo(key.getValue(), 0), action

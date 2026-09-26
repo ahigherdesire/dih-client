@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.util.DihTheme;
@@ -23,7 +24,6 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -353,7 +353,7 @@ public final class DihJoinMacroScreen extends DihScreen {
     @Override
     public boolean keyPressed(KeyEvent input) {
         if (searchField != null && searchField.keyPressed(input)) return true;
-        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (input.key() == InputConstants.KEY_ESCAPE) {
             if (CompactDropdown.closeOpenMenu(dropdowns)) return true;
             minecraft.gui.setScreen(parent);
             return true;

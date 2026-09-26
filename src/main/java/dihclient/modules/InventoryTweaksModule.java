@@ -1,4 +1,5 @@
 package dihclient.modules;
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.api.module.*;
 
 import dihclient.util.DihBindUtil;
@@ -28,7 +29,6 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
-import org.lwjgl.glfw.GLFW;
 
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -60,7 +60,7 @@ public final class InventoryTweaksModule extends Module {
             .description("Preview container on hover").build());
 
         add(new BoolSetting("sorting-enabled", "Sorting", true).group("Sorting").description("Enable inventory sorting.").build());
-        add(new KeybindSetting("sorting-key", "Sort Key", DihBindUtil.encodeMouseButton(GLFW.GLFW_MOUSE_BUTTON_MIDDLE))
+        add(new KeybindSetting("sorting-key", "Sort Key", DihBindUtil.encodeMouseButton(InputConstants.MOUSE_BUTTON_MIDDLE))
             .group("Sorting").visibleWhen(() -> bool("sorting-enabled")).description("Sort key").build());
         add(new IntSetting("sorting-delay", "Sort Delay", 1, 0, 20, 1)
             .group("Sorting").visibleWhen(() -> bool("sorting-enabled")).description("Ticks between sorting moves.").build());

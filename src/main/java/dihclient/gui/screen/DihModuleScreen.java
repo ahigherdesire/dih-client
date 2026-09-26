@@ -37,7 +37,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.LinkedHashSet;
 import java.util.Set;

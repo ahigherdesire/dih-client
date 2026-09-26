@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.components.CompactOverlayButton;
 import dihclient.gui.vanillaui.direct.DirectLayout;
 import dihclient.gui.vanillaui.components.CompactScrollbar;
@@ -27,7 +28,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.PointerBuffer;
-import org.lwjgl.glfw.GLFW;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
@@ -682,7 +682,7 @@ public class DihProxiesScreen extends DihScreen {
 
     @Override
     public boolean keyPressed(KeyEvent input) {
-        if (importChooserOpen && input.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (importChooserOpen && input.key() == InputConstants.KEY_ESCAPE) {
             importChooserOpen = false;
             return true;
         }

@@ -1,5 +1,6 @@
 package dihclient.gui.vanillaui.components;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.gui.vanillaui.TextWrapLayout;
@@ -19,7 +20,6 @@ import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.network.chat.Style;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -738,14 +738,14 @@ public class CompactTextInput extends DirectUiNode implements FocusableTextInput
     @Override
     public boolean keyPressed(DirectRenderContext context, int keyCode, int scanCode, int modifiers) {
         if (!focused || !editable) return false;
-        boolean ctrl = (modifiers & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_SUPER)) != 0;
-        boolean shift = (modifiers & GLFW.GLFW_MOD_SHIFT) != 0;
+        boolean ctrl = (modifiers & (InputConstants.MOD_CONTROL | InputConstants.MOD_SUPER)) != 0;
+        boolean shift = (modifiers & InputConstants.MOD_SHIFT) != 0;
         switch (keyCode) {
-            case GLFW.GLFW_KEY_ESCAPE -> {
+            case InputConstants.KEY_ESCAPE -> {
                 setFocused(false);
                 return true;
             }
-            case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
+            case InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> {
 
                 if (multiline && !(submitOnEnter && !shift)) {
                     replaceSelection("\n");
@@ -754,7 +754,7 @@ public class CompactTextInput extends DirectUiNode implements FocusableTextInput
                 if (onSubmit != null) onSubmit.accept(value);
                 return true;
             }
-            case GLFW.GLFW_KEY_A -> {
+            case InputConstants.KEY_A -> {
                 if (ctrl) {
                     selectionAnchor = 0;
                     cursor = value.length();
@@ -763,36 +763,36 @@ public class CompactTextInput extends DirectUiNode implements FocusableTextInput
                     return true;
                 }
             }
-            case GLFW.GLFW_KEY_C -> {
+            case InputConstants.KEY_C -> {
                 if (ctrl) {
                     copySelection();
                     return true;
                 }
             }
-            case GLFW.GLFW_KEY_X -> {
+            case InputConstants.KEY_X -> {
                 if (ctrl) {
                     copySelection();
                     deleteSelection();
                     return true;
                 }
             }
-            case GLFW.GLFW_KEY_V -> {
+            case InputConstants.KEY_V -> {
                 if (ctrl) {
                     pasteClipboard();
                     return true;
                 }
             }
-            case GLFW.GLFW_KEY_LEFT -> {
+            case InputConstants.KEY_LEFT -> {
                 if (ctrl) setCursor(previousWordBoundary(cursor), shift);
                 else moveCursor(-1, shift);
                 return true;
             }
-            case GLFW.GLFW_KEY_RIGHT -> {
+            case InputConstants.KEY_RIGHT -> {
                 if (ctrl) setCursor(nextWordBoundary(cursor), shift);
                 else moveCursor(1, shift);
                 return true;
             }
-            case GLFW.GLFW_KEY_UP -> {
+            case InputConstants.KEY_UP -> {
                 if (!multiline && historyNavigationEnabled) {
                     navigateHistory(-1);
                     return true;
@@ -802,7 +802,7 @@ public class CompactTextInput extends DirectUiNode implements FocusableTextInput
                     return true;
                 }
             }
-            case GLFW.GLFW_KEY_DOWN -> {
+            case InputConstants.KEY_DOWN -> {
                 if (!multiline && historyNavigationEnabled) {
                     navigateHistory(1);
                     return true;
@@ -812,17 +812,17 @@ public class CompactTextInput extends DirectUiNode implements FocusableTextInput
                     return true;
                 }
             }
-            case GLFW.GLFW_KEY_HOME -> {
+            case InputConstants.KEY_HOME -> {
                 if (ctrl || !multiline) setCursor(0, shift);
                 else setCursor(lineStart(cursor), shift);
                 return true;
             }
-            case GLFW.GLFW_KEY_END -> {
+            case InputConstants.KEY_END -> {
                 if (ctrl || !multiline) setCursor(value.length(), shift);
                 else setCursor(lineEnd(cursor), shift);
                 return true;
             }
-            case GLFW.GLFW_KEY_BACKSPACE -> {
+            case InputConstants.KEY_BACKSPACE -> {
                 if (deleteSelection()) return true;
                 if (cursor > 0) {
                     int from = ctrl ? previousWordBoundary(cursor) : Utf16TextMetrics.previousBoundary(value, cursor);
@@ -830,7 +830,7 @@ public class CompactTextInput extends DirectUiNode implements FocusableTextInput
                 }
                 return true;
             }
-            case GLFW.GLFW_KEY_DELETE -> {
+            case InputConstants.KEY_DELETE -> {
                 if (deleteSelection()) return true;
                 if (cursor < value.length()) {
                     int to = ctrl ? nextWordBoundary(cursor) : Utf16TextMetrics.nextBoundary(value, cursor);

@@ -1,5 +1,6 @@
 package dihclient.gui.macro.editor;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.macro.editor.FieldType;
 import dihclient.gui.macro.editor.components.MacroCaptureButton;
 import dihclient.gui.macro.editor.components.MacroCaptureSession;
@@ -82,7 +83,6 @@ import net.minecraft.world.phys.Vec3;
 import net.minecraft.resources.Identifier;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import org.lwjgl.glfw.GLFW;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -8140,12 +8140,12 @@ public class ActionEditorOverlay extends DihOverlayBase {
         if (packetSelectorOverlay.isVisible()) return packetSelectorOverlay.keyPressed(keyCode, scanCode, modifiers);
         if (raceStepSelectorOverlay.isVisible()) return raceStepSelectorOverlay.keyPressed(keyCode, scanCode, modifiers);
         if (CompactDropdown.isMenuOpen(enumDropdowns)) {
-            if (keyCode == GLFW.GLFW_KEY_ESCAPE || keyCode == GLFW.GLFW_KEY_ENTER) {
+            if (keyCode == InputConstants.KEY_ESCAPE || keyCode == InputConstants.KEY_RETURN) {
                 CompactDropdown.closeOpenMenu(enumDropdowns);
             }
             return true;
         }
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if (keyCode == InputConstants.KEY_ESCAPE) {
             if (cancelCaptureIfActive()) return true;
             if (hasTextFieldFocused()) { clearTextFieldFocus(); return true; }
             closeEditor(false);

@@ -1,7 +1,7 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
-import org.lwjgl.glfw.GLFW;
 
 public final class DihBindUtil {
     private static final int MOUSE_BIND_BASE = -1000;
@@ -22,73 +22,72 @@ public final class DihBindUtil {
     }
 
     public static boolean isAllowedMouseButton(int button) {
-        return button > GLFW.GLFW_MOUSE_BUTTON_LEFT && button <= GLFW.GLFW_MOUSE_BUTTON_LAST;
+        return button > InputConstants.MOUSE_BUTTON_LEFT && button <= InputConstants.MOUSE_BUTTON_8;
     }
 
     public static boolean isBindPressed(Minecraft client, int bindCode) {
         if (bindCode == -1 || client == null || client.getWindow() == null) return false;
-        long handle = client.getWindow().handle();
         if (isMouseBind(bindCode)) {
             int button = decodeMouseButton(bindCode);
-            return isAllowedMouseButton(button) && GLFW.glfwGetMouseButton(handle, button) == GLFW.GLFW_PRESS;
+            return isAllowedMouseButton(button) && DihKeys.isMouseDown(button);
         }
-        return GLFW.glfwGetKey(handle, bindCode) == GLFW.GLFW_PRESS;
+        return DihKeys.isKeyDown(bindCode);
     }
 
     public static String getBindName(int bindCode) {
         if (bindCode == -1) return "None";
         if (isMouseBind(bindCode)) return getMouseButtonName(decodeMouseButton(bindCode));
-        String name = GLFW.glfwGetKeyName(bindCode, 0);
-        if (name != null) return name.toUpperCase();
+        String name = DihKeys.displayName(bindCode);
+        if (name.length() == 1) return name.toUpperCase();
         return switch (bindCode) {
-            case GLFW.GLFW_KEY_F1 -> "F1";
-            case GLFW.GLFW_KEY_F2 -> "F2";
-            case GLFW.GLFW_KEY_F3 -> "F3";
-            case GLFW.GLFW_KEY_F4 -> "F4";
-            case GLFW.GLFW_KEY_F5 -> "F5";
-            case GLFW.GLFW_KEY_F6 -> "F6";
-            case GLFW.GLFW_KEY_F7 -> "F7";
-            case GLFW.GLFW_KEY_F8 -> "F8";
-            case GLFW.GLFW_KEY_F9 -> "F9";
-            case GLFW.GLFW_KEY_F10 -> "F10";
-            case GLFW.GLFW_KEY_F11 -> "F11";
-            case GLFW.GLFW_KEY_F12 -> "F12";
-            case GLFW.GLFW_KEY_LEFT_SHIFT -> "L.Shift";
-            case GLFW.GLFW_KEY_RIGHT_SHIFT -> "R.Shift";
-            case GLFW.GLFW_KEY_LEFT_CONTROL -> "L.Ctrl";
-            case GLFW.GLFW_KEY_RIGHT_CONTROL -> "R.Ctrl";
-            case GLFW.GLFW_KEY_LEFT_ALT -> "L.Alt";
-            case GLFW.GLFW_KEY_RIGHT_ALT -> "R.Alt";
-            case GLFW.GLFW_KEY_TAB -> "Tab";
-            case GLFW.GLFW_KEY_CAPS_LOCK -> "CapsLk";
-            case GLFW.GLFW_KEY_SPACE -> "Space";
-            case GLFW.GLFW_KEY_ENTER -> "Enter";
-            case GLFW.GLFW_KEY_BACKSPACE -> "Backsp";
-            case GLFW.GLFW_KEY_DELETE -> "Delete";
-            case GLFW.GLFW_KEY_INSERT -> "Insert";
-            case GLFW.GLFW_KEY_HOME -> "Home";
-            case GLFW.GLFW_KEY_END -> "End";
-            case GLFW.GLFW_KEY_PAGE_UP -> "PgUp";
-            case GLFW.GLFW_KEY_PAGE_DOWN -> "PgDn";
-            case GLFW.GLFW_KEY_UP -> "Up";
-            case GLFW.GLFW_KEY_DOWN -> "Down";
-            case GLFW.GLFW_KEY_LEFT -> "Left";
-            case GLFW.GLFW_KEY_RIGHT -> "Right";
-            case GLFW.GLFW_KEY_KP_ENTER -> "Num Enter";
-            case GLFW.GLFW_KEY_NUM_LOCK -> "NumLk";
-            case GLFW.GLFW_KEY_PRINT_SCREEN -> "PrtSc";
-            case GLFW.GLFW_KEY_SCROLL_LOCK -> "ScrLk";
-            case GLFW.GLFW_KEY_PAUSE -> "Pause";
-            default -> "Key " + bindCode;
+            case InputConstants.KEY_F1 -> "F1";
+            case InputConstants.KEY_F2 -> "F2";
+            case InputConstants.KEY_F3 -> "F3";
+            case InputConstants.KEY_F4 -> "F4";
+            case InputConstants.KEY_F5 -> "F5";
+            case InputConstants.KEY_F6 -> "F6";
+            case InputConstants.KEY_F7 -> "F7";
+            case InputConstants.KEY_F8 -> "F8";
+            case InputConstants.KEY_F9 -> "F9";
+            case InputConstants.KEY_F10 -> "F10";
+            case InputConstants.KEY_F11 -> "F11";
+            case InputConstants.KEY_F12 -> "F12";
+            case InputConstants.KEY_LSHIFT -> "L.Shift";
+            case InputConstants.KEY_RSHIFT -> "R.Shift";
+            case InputConstants.KEY_LCONTROL -> "L.Ctrl";
+            case InputConstants.KEY_RCONTROL -> "R.Ctrl";
+            case InputConstants.KEY_LALT -> "L.Alt";
+            case InputConstants.KEY_RALT -> "R.Alt";
+            case InputConstants.KEY_TAB -> "Tab";
+            case InputConstants.KEY_CAPSLOCK -> "CapsLk";
+            case InputConstants.KEY_SPACE -> "Space";
+            case InputConstants.KEY_RETURN -> "Enter";
+            case InputConstants.KEY_BACKSPACE -> "Backsp";
+            case InputConstants.KEY_DELETE -> "Delete";
+            case InputConstants.KEY_INSERT -> "Insert";
+            case InputConstants.KEY_HOME -> "Home";
+            case InputConstants.KEY_END -> "End";
+            case InputConstants.KEY_PAGEUP -> "PgUp";
+            case InputConstants.KEY_PAGEDOWN -> "PgDn";
+            case InputConstants.KEY_UP -> "Up";
+            case InputConstants.KEY_DOWN -> "Down";
+            case InputConstants.KEY_LEFT -> "Left";
+            case InputConstants.KEY_RIGHT -> "Right";
+            case InputConstants.KEY_NUMPADENTER -> "Num Enter";
+            case InputConstants.KEY_NUMLOCK -> "NumLk";
+            case InputConstants.KEY_PRINTSCREEN -> "PrtSc";
+            case InputConstants.KEY_SCROLLLOCK -> "ScrLk";
+            case InputConstants.KEY_PAUSE -> "Pause";
+            default -> name;
         };
     }
 
     public static String getMouseButtonName(int button) {
         return switch (button) {
-            case GLFW.GLFW_MOUSE_BUTTON_LEFT -> "LMB";
-            case GLFW.GLFW_MOUSE_BUTTON_RIGHT -> "RMB";
-            case GLFW.GLFW_MOUSE_BUTTON_MIDDLE -> "MMB";
-            default -> "M" + (button + 1);
+            case InputConstants.MOUSE_BUTTON_LEFT -> "LMB";
+            case InputConstants.MOUSE_BUTTON_RIGHT -> "RMB";
+            case InputConstants.MOUSE_BUTTON_MIDDLE -> "MMB";
+            default -> "M" + DihKeys.mouseButtonNumber(button);
         };
     }
 }

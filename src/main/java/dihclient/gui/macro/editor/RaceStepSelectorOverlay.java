@@ -1,5 +1,6 @@
 package dihclient.gui.macro.editor;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.components.OverlayTopBar;
 import dihclient.gui.vanillaui.direct.DirectUiInsets;
@@ -25,7 +26,6 @@ import dihclient.util.DihWindowLayout;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.List;
 import java.util.function.Consumer;
@@ -306,7 +306,7 @@ public final class RaceStepSelectorOverlay extends DihOverlayBase {
 
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!visible) return false;
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if (keyCode == InputConstants.KEY_ESCAPE) {
             close();
             return true;
         }

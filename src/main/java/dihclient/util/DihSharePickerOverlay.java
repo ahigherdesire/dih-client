@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.gui.vanillaui.UiScissorStack;
@@ -10,7 +11,6 @@ import dihclient.gui.vanillaui.direct.DirectRenderContext;
 import dihclient.gui.vanillaui.direct.DirectViewport;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -192,7 +192,7 @@ public final class DihSharePickerOverlay extends DihOverlayBase {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!visible) return false;
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE && !search.isFocused()) { setVisible(false); return true; }
+        if (keyCode == InputConstants.KEY_ESCAPE && !search.isFocused()) { setVisible(false); return true; }
         return search.keyPressed(ctx(null, 0, 0, 0f), keyCode, scanCode, modifiers);
     }
 
