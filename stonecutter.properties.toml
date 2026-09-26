@@ -1,0 +1,17 @@
+# Per-version, per-loader dependency versions for the Stonecutter builds (versions/<mc>-<loader>).
+# gradle/libs.versions.toml keeps mod-version (read by the release workflow) and the addon templates' baseline.
+
+deps.fabric_loader = "0.19.5"
+
+[fabric."26.2"]
+deps.fabric_api = "0.152.2+26.2"
+deps.lithium = "mc26.2-0.25.0-fabric"
+deps.journeymap = "26.2-6.0.9+fabric"
+# ReplayMod has no 26.3 build yet; its types are compile-only (one compat mixin), so both versions use this one.
+deps.replaymod = "26.2-2.6.27"
+
+[fabric."26.3"]
+deps.fabric_api = "0.161.0+26.3"
+deps.lithium = "mc26.3-0.26.1-fabric"
+deps.journeymap = "26.3-6.0.9+fabric"
+deps.replaymod = "26.2-2.6.27"

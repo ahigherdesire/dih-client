@@ -147,9 +147,9 @@ public final class DihCombatClicker {
             || main.getItem() instanceof net.minecraft.world.item.BoatItem
             || main.getItem() instanceof net.minecraft.world.item.MinecartItem
             || main.getItem() instanceof net.minecraft.world.item.ItemFrameItem
-            || main.getItem() instanceof net.minecraft.world.item.ShovelItem
-            || main.getItem() instanceof net.minecraft.world.item.AxeItem
-            || main.getItem() instanceof net.minecraft.world.item.HoeItem
+            || main.is(net.minecraft.tags.ItemTags.SHOVELS)
+            || main.is(net.minecraft.tags.ItemTags.AXES)
+            || main.is(net.minecraft.tags.ItemTags.HOES)
             || main.getItem() instanceof net.minecraft.world.item.ShearsItem;
     }
 

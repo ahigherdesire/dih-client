@@ -303,7 +303,11 @@ public final class BlockOptionalMeta {
             // Simplified from {@link net.minecraft.server.WorldLoader#load()}
             CloseableResourceManager closeableResourceManager = new MultiPackResourceManager(
                 PackType.SERVER_DATA,
+                //? if >=26.3 {
+                /*List.of(ServerPacksSource.createVanillaPackSource().fullResources())
+                *///?} else {
                 List.of(ServerPacksSource.createVanillaPackSource())
+                //?}
             );
             LayeredRegistryAccess<RegistryLayer> baseLayeredRegistry = RegistryLayer.createRegistryAccess();
             List<Registry.PendingTags<?>> pendingTags = TagLoader.loadTagsForExistingRegistries(

@@ -50,15 +50,19 @@ plugins {
     `maven-publish`
 }
 
+// Stonecutter node (versions/<mc>-<fabric>): its Minecraft version and dependency versions.
+val mcVersion: String = sc.current.version
+fun dep(key: String): String = sc.properties["deps.$key"]
+
 // Optional: build outside a synced folder (Google Drive/OneDrive lock files and break clean/delete):
-//   gradlew build -PdihBuildDir=C:/dih-build
-providers.gradleProperty("dihBuildDir").orNull?.let { layout.buildDirectory.set(file(it)) }
+//   gradlew build -PdihBuildDir=C:/dih-build     (each node builds into <dir>/<node>, e.g. C:/dih-build/26.2-fabric)
+providers.gradleProperty("dihBuildDir").orNull?.let { layout.buildDirectory.set(file(it).resolve(project.name)) }
 
 base {
     archivesName = properties["archives_base_name"] as String
     // Version = "<mod>-<mc>" (e.g. 3.1-26.2). Dev/source builds add a "-dev" suffix so they're distinguishable
     // from a tagged release; a release is built with:  gradlew build -Prelease
-    version = libs.versions.mod.version.get() + "-" + libs.versions.minecraft.get() +
+    version = libs.versions.mod.version.get() + "-" + mcVersion +
         (if (project.hasProperty("release")) "" else "-dev")
     group = properties["maven_group"] as String
 }
@@ -97,16 +101,16 @@ val extractJourneyMapApi by tasks.registering(Copy::class) {
 
 dependencies {
 
-    minecraft(libs.minecraft)
-    implementation(libs.fabric.loader)
-    implementation(libs.fabric.api)
+    minecraft("com.mojang:minecraft:$mcVersion")
+    implementation("net.fabricmc:fabric-loader:${dep("fabric_loader")}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${dep("fabric_api")}")
     // Compile-only: mixins for Lithium's collision sweeper (runtime-optional, plugin-gated).
-    compileOnly(libs.lithium)
+    compileOnly("maven.modrinth:lithium:${dep("lithium")}")
     // Compile-only: ReplayMod ReplayStudio types for the team-parser compat mixin (runtime-optional).
-    compileOnly("maven.modrinth:replaymod:26.2-2.6.27")
+    compileOnly("maven.modrinth:replaymod:${dep("replaymod")}")
     // Compile-only: the real JourneyMap v2 API (see extractJourneyMapApi). JourneyMap itself is a
     // runtime-optional soft dependency; nothing from it is bundled.
-    journeymapRelease("maven.modrinth:journeymap:26.2-6.0.9+fabric")
+    journeymapRelease("maven.modrinth:journeymap:${dep("journeymap")}")
     compileOnly(files(journeymapApiJar).builtBy(extractJourneyMapApi))
 
     implementation("net.java.dev.jna:jna:5.13.0")
@@ -207,7 +211,7 @@ sourceSets.named("gametest") {
 val generateVanillaUiAssets by tasks.registering {
     // Semantic feature icons used by the vanilla-friendly UI. Structural
     // actions such as close and reorder are rendered as text symbols.
-    val iconSourceDir = file("assets/icons")
+    val iconSourceDir = rootProject.file("assets/icons")
     val outputDir = generatedDihResourcesDir.map { it.dir("assets/dihclient") }
 
     inputs.dir(iconSourceDir)
@@ -272,7 +276,7 @@ val generateDihInspectorMappings by tasks.registering {
             val target = outputFile.get().asFile
             target.parentFile.mkdirs()
             target.writeText(
-                "# Official Mojang mappings are used for Minecraft ${libs.versions.minecraft.get()}; no Yarn aliases are generated.\n",
+                "# Official Mojang mappings are used for Minecraft $mcVersion; no Yarn aliases are generated.\n",
                 Charsets.UTF_8
             )
             return@doLast
@@ -415,7 +419,7 @@ val generateDihInspectorMappings by tasks.registering {
 }
 
 val generateDihPacketSchemas by tasks.registering {
-    val minecraftVersion = libs.versions.minecraft.get()
+    val minecraftVersion = mcVersion
     val outputFile = generatedDihResourcesDir.map { it.file("dih-packet-schemas.tsv") }
 
     outputs.file(outputFile)
@@ -539,7 +543,7 @@ val generateDihPacketSchemas by tasks.registering {
                 }
             }
 
-            val localRoot = file("mc-src$minecraftVersion/libs/net.minecraft.minecraft-merged-deobf/net/minecraft/network/protocol")
+            val localRoot = rootProject.file("mc-src$minecraftVersion/libs/net.minecraft.minecraft-merged-deobf/net/minecraft/network/protocol")
             if (localRoot.isDirectory) {
                 return localRoot.walkTopDown()
                     .filter { it.isFile && it.name.endsWith("Packet.java") }
@@ -627,7 +631,7 @@ val shippedResourceRootFiles = setOf("fabric.mod.json", "dih.mixins.json", "dih-
 val verifyShippedResources by tasks.registering {
     group = "verification"
     description = "Fails the build if a non-asset file in src/main/resources would be packaged into the jar."
-    val resourceRoot = layout.projectDirectory.dir("src/main/resources").asFile
+    val resourceRoot = rootProject.file("src/main/resources")
     inputs.dir(resourceRoot)
     doLast {
         if (!resourceRoot.exists()) return@doLast
@@ -662,8 +666,8 @@ tasks {
         dependsOn(generateVanillaUiAssets)
         val propertyMap = mapOf(
             "version" to project.version,
-            "mc_version" to libs.versions.minecraft.get(),
-            "fabric_api_version" to libs.versions.fabric.api.get()
+            "mc_version" to mcVersion,
+            "fabric_api_version" to dep("fabric_api")
         )
 
         inputs.properties(propertyMap)
@@ -686,14 +690,14 @@ tasks {
         from(sourceSets["api"].output, sourceSets["launch"].output)
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
 
-        from("LICENSE") {
+        from(rootProject.file("LICENSE")) {
             rename { "${it}_${inputs.properties["archivesName"]}" }
         }
         // Third-party licences for bundled assets (e.g. the Geist UI font, SIL OFL 1.1).
-        from("licenses") {
+        from(rootProject.file("licenses")) {
             into("META-INF/licenses")
         }
-        from("NOTICE.md") {
+        from(rootProject.file("NOTICE.md")) {
             into("META-INF")
         }
 
