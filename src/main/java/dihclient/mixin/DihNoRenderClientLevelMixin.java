@@ -21,7 +21,8 @@ public abstract class DihNoRenderClientLevelMixin {
     /*@Inject(method = "addBreakingBlockEffects", at = @At("HEAD"), cancellable = true, require = 0)
     private void dih$noBreakingParticles(BlockPos pos, Direction direction, boolean sound, CallbackInfo ci) {
     *///?} else {
-    @Inject(method = "addBreakingBlockEffect", at = @At("HEAD"), cancellable = true, require = 0)
+    // Descriptor pinned: Forge adds an addBreakingBlockEffect(BlockPos, BlockHitResult) overload.
+    @Inject(method = "addBreakingBlockEffect(Lnet/minecraft/core/BlockPos;Lnet/minecraft/core/Direction;)V", at = @At("HEAD"), cancellable = true, require = 0)
     private void dih$noBreakingParticles(BlockPos pos, Direction direction, CallbackInfo ci) {
     //?}
         if (NoRenderState.noBlockBreakParticles()) ci.cancel();

@@ -2,7 +2,7 @@ package dihclient.mixin;
 
 import net.minecraft.client.multiplayer.ClientConfigurationPacketListenerImpl;
 import org.spongepowered.asm.mixin.Mixin;
-//? if neoforge {
+//? if !fabric {
 /*import dihclient.platform.DihPlatform;
 import net.minecraft.network.DisconnectionDetails;
 import org.spongepowered.asm.mixin.injection.At;
@@ -11,12 +11,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 *///?}
 
 /**
- * Configuration-phase connection events for DihPlatform where the loader has none (NeoForge). Fabric API fires its
+ * Configuration-phase connection events for DihPlatform where the loader has none (NeoForge, Forge). Fabric API fires its
  * own ClientConfigurationConnectionEvents from the same places, so this mixin is empty there.
  */
 @Mixin(ClientConfigurationPacketListenerImpl.class)
 public abstract class DihPlatformHooksMixin {
-    //? if neoforge {
+    //? if !fabric {
     /*@Inject(method = "<init>", at = @At("TAIL"))
     private void dih$configurationInit(CallbackInfo ci) {
         DihPlatform.fireConfigurationInit((ClientConfigurationPacketListenerImpl) (Object) this);

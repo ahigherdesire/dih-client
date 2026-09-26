@@ -190,13 +190,29 @@ public final class AddonManager {
                 DihClientAddon.LOG.error("[Addons] Failed to inspect an addon entrypoint", t);
             }
         }
-        //?} else {
+        //?} elif neoforge {
         /*for (var provider : java.util.ServiceLoader.load(DihAddon.class, AddonManager.class.getClassLoader()).stream().toList()) {
             try {
                 java.nio.file.Path source = java.nio.file.Path.of(
                     provider.type().getProtectionDomain().getCodeSource().getLocation().toURI());
                 net.neoforged.neoforgespi.language.IModInfo info = null;
                 for (var file : net.neoforged.fml.ModList.get().getModFiles()) {
+                    if (source.equals(file.getFile().getFilePath()) && !file.getMods().isEmpty()) info = file.getMods().getFirst();
+                }
+                String id = info != null ? info.getModId() : provider.type().getName();
+                out.add(new Candidate(id, info != null ? info.getDisplayName() : id,
+                    info != null ? info.getVersion().toString() : "", "", null, provider::get));
+            } catch (Throwable t) {
+                DihClientAddon.LOG.error("[Addons] Failed to inspect an addon service entry", t);
+            }
+        }
+        *///?} else {
+        /*for (var provider : java.util.ServiceLoader.load(DihAddon.class, AddonManager.class.getClassLoader()).stream().toList()) {
+            try {
+                java.nio.file.Path source = java.nio.file.Path.of(
+                    provider.type().getProtectionDomain().getCodeSource().getLocation().toURI());
+                net.minecraftforge.forgespi.language.IModInfo info = null;
+                for (var file : net.minecraftforge.fml.ModList.getModFiles()) {
                     if (source.equals(file.getFile().getFilePath()) && !file.getMods().isEmpty()) info = file.getMods().getFirst();
                 }
                 String id = info != null ? info.getModId() : provider.type().getName();

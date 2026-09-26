@@ -678,7 +678,7 @@ tasks {
         filteringCharset = "UTF-8"
 
         exclude("addon-template.mixins.json")
-        exclude("META-INF/neoforge.mods.toml")
+        exclude("META-INF/neoforge.mods.toml", "META-INF/mods.toml")
         exclude("assets/template/**")
 
         filesMatching("fabric.mod.json") {

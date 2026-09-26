@@ -60,8 +60,14 @@ public class DihLivingEntityMovementMixin {
         return DihSilentAim.correctedFallFlyingLook(entity, scaffold);
     }
 
-    @Inject(method = "travelInFluid", at = @At("RETURN"))
+    // Forge moves the body into a travelInFluid(Vec3, FluidState) overload, which travel() calls directly.
+    //? if forge {
+    /*@Inject(method = "travelInFluid(Lnet/minecraft/world/phys/Vec3;Lnet/minecraft/world/level/material/FluidState;)V", at = @At("RETURN"))
+    private void dih$restoreLiquidSpeed(Vec3 input, net.minecraft.world.level.material.FluidState fluid, CallbackInfo ci) {
+    *///?} else {
+    @Inject(method = "travelInFluid(Lnet/minecraft/world/phys/Vec3;)V", at = @At("RETURN"))
     private void dih$restoreLiquidSpeed(Vec3 input, CallbackInfo ci) {
+    //?}
         ModuleMovementUtil.applySpeedAfterLiquidTravel((LivingEntity) (Object) this);
     }
 }
