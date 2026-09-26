@@ -42,7 +42,16 @@ public final class DihSpoofPayloadFilter extends ChannelOutboundHandlerAdapter {
         if (DihProtector.isUserBypass(packet)) return false;
         if (module == null || !module.isSpoofClientVanilla()) return false;
         String channel = DihPayloadSupport.payloadChannel(customPayload.payload());
+        if (isLoaderProtocolChannel(channel)) return false;
         return !DihPayloadSupport.isBrandChannel(channel);
+    }
+
+    /**
+     * NeoForge's own connection negotiation (neoforge:*). A NeoForge client can't pass as vanilla: without these it
+     * can't finish joining a NeoForge server or its own singleplayer world, and vanilla servers never ask for them.
+     */
+    public static boolean isLoaderProtocolChannel(String channel) {
+        return channel != null && channel.startsWith("neoforge:");
     }
 
     public static boolean shouldDropForProtector(Packet<?> packet) {

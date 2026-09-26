@@ -67,6 +67,9 @@ public class DihMixinPlugin implements IMixinConfigPlugin {
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         String simpleName = mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1);
+        // Dev bisecting: -Ddih.disableMixins=DihFooMixin,DihBarMixin skips those mixins.
+        String disabled = System.getProperty("dih.disableMixins");
+        if (disabled != null && java.util.Arrays.asList(disabled.split(",")).contains(simpleName)) return false;
         if (SODIUM_MIXINS.contains(simpleName)) return sodiumLoaded;
         if ("DihFluidRendererMixin".equals(simpleName) && sodiumLoaded) return false;
         if ("DihReplayModGuiHandlerMixin".equals(simpleName) || "DihReplayStudioTeamMixin".equals(simpleName)) return replayModLoaded;
