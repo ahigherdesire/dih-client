@@ -1,5 +1,8 @@
 package dihclient.mixin.security;
 
+// Fabric only: targets Fabric API internals (left out of the NeoForge mixin config).
+//? if fabric {
+
 import dihclient.security.DihProtectorModResolver;
 import dihclient.security.DihProtectorTracker;
 import net.minecraft.client.KeyMapping;
@@ -18,3 +21,4 @@ public class DihProtectorKeyMappingRegistryImplMixin {
         if (!mods.isEmpty()) DihProtectorTracker.addModKeybind(keyMapping.getName(), mods.getLast());
     }
 }
+//?}

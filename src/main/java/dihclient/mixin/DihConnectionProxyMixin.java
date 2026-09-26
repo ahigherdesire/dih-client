@@ -7,7 +7,6 @@ import io.netty.channel.ChannelPipeline;
 import io.netty.handler.proxy.ProxyHandler;
 import io.netty.handler.proxy.Socks4ProxyHandler;
 import io.netty.handler.proxy.Socks5ProxyHandler;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.BandwidthDebugMonitor;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.PacketFlow;
@@ -72,7 +71,7 @@ public abstract class DihConnectionProxyMixin {
     }
 
     private static void dih$disableMeteorProxy() {
-        if (!FabricLoader.getInstance().isModLoaded("meteor-client")) return;
+        if (!dihclient.platform.DihLoader.isModLoaded("meteor-client")) return;
         try {
             Class<?> proxiesClass = Class.forName("meteordevelopment.meteorclient.systems.proxies.Proxies");
             Class<?> proxyClass = Class.forName("meteordevelopment.meteorclient.systems.proxies.Proxy");

@@ -5,12 +5,6 @@ import dihclient.api.ApiVersion;
 import dihclient.api.DihAddon;
 import dihclient.util.DihConfig;
 import dihclient.util.DihNotifications;
-import net.fabricmc.loader.api.FabricLoader;
-import net.fabricmc.loader.api.ModContainer;
-import net.fabricmc.loader.api.entrypoint.EntrypointContainer;
-import net.fabricmc.loader.api.metadata.CustomValue;
-import net.fabricmc.loader.api.metadata.ModMetadata;
-import net.fabricmc.loader.api.metadata.Person;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -40,18 +34,9 @@ public final class AddonManager {
 
         DihConfig config = DihConfig.getGlobal();
         List<LoadedAddon> accepted = new ArrayList<>();
-        for (EntrypointContainer<DihAddon> container : FabricLoader.getInstance()
-                .getEntrypointContainers("dih", DihAddon.class)) {
-            ModContainer mod;
-            try {
-                mod = container.getProvider();
-            } catch (Throwable t) {
-                DihClientAddon.LOG.error("[Addons] Failed to inspect an addon entrypoint", t);
-                continue;
-            }
-
-            String modId = mod.getMetadata().getId();
-            AddonReport report = ensureReport(mod.getMetadata());
+        for (Candidate mod : discover()) {
+            String modId = mod.modId();
+            AddonReport report = ensureReport(mod);
             if (isDisabledOnRestart(modId)) {
                 report.markDisabled("Disabled in DIH config. Enable it and restart to load.");
                 continue;
@@ -59,7 +44,7 @@ public final class AddonManager {
 
             DihAddon addon;
             try {
-                addon = container.getEntrypoint();
+                addon = mod.create().get();
             } catch (Throwable t) {
                 report.markFailed("construct", "Failed to construct entrypoint: " + shortError(t));
                 DihClientAddon.LOG.error("[Addons] Failed to construct addon '{}'", modId, t);
@@ -84,7 +69,7 @@ public final class AddonManager {
                     DihClientAddon.LOG.info("[Addons] Addon '{}' built against API v{} (current v{}); loading.",
                             modId, declared, ApiVersion.CURRENT);
                 }
-                applyMetadata(addon, mod.getMetadata());
+                applyMetadata(addon, mod);
                 report.copyRuntimeMetadata(addon);
                 accepted.add(new LoadedAddon(modId, addon));
             } catch (AbstractMethodError e) {
@@ -179,33 +164,75 @@ public final class AddonManager {
         }
     }
 
-    private static AddonReport ensureReport(ModMetadata meta) {
-        String modId = meta.getId();
+    /** An addon entrypoint and its mod's metadata; {@code color} is the "dih:color" value ("r,g,b") or null. */
+    private record Candidate(String modId, String name, String version, String authors, String color,
+                             java.util.function.Supplier<DihAddon> create) {}
+
+    /**
+     * Fabric: "dih" entrypoints in fabric.mod.json. NeoForge: {@code META-INF/services/dihclient.api.DihAddon}
+     * service entries in a mod jar.
+     */
+    private static List<Candidate> discover() {
+        List<Candidate> out = new ArrayList<>();
+        //? if fabric {
+        for (var container : net.fabricmc.loader.api.FabricLoader.getInstance()
+                .getEntrypointContainers("dih", DihAddon.class)) {
+            try {
+                var meta = container.getProvider().getMetadata();
+                var color = meta.containsCustomValue("dih:color") ? meta.getCustomValue("dih:color") : null;
+                out.add(new Candidate(meta.getId(), meta.getName(), meta.getVersion().getFriendlyString(),
+                    meta.getAuthors().stream().map(net.fabricmc.loader.api.metadata.Person::getName)
+                        .collect(Collectors.joining(", ")),
+                    color != null && color.getType() == net.fabricmc.loader.api.metadata.CustomValue.CvType.STRING
+                        ? color.getAsString() : null,
+                    container::getEntrypoint));
+            } catch (Throwable t) {
+                DihClientAddon.LOG.error("[Addons] Failed to inspect an addon entrypoint", t);
+            }
+        }
+        //?} else {
+        /*for (var provider : java.util.ServiceLoader.load(DihAddon.class, AddonManager.class.getClassLoader()).stream().toList()) {
+            try {
+                java.nio.file.Path source = java.nio.file.Path.of(
+                    provider.type().getProtectionDomain().getCodeSource().getLocation().toURI());
+                net.neoforged.neoforgespi.language.IModInfo info = null;
+                for (var file : net.neoforged.fml.ModList.get().getModFiles()) {
+                    if (source.equals(file.getFile().getFilePath()) && !file.getMods().isEmpty()) info = file.getMods().getFirst();
+                }
+                String id = info != null ? info.getModId() : provider.type().getName();
+                out.add(new Candidate(id, info != null ? info.getDisplayName() : id,
+                    info != null ? info.getVersion().toString() : "", "", null, provider::get));
+            } catch (Throwable t) {
+                DihClientAddon.LOG.error("[Addons] Failed to inspect an addon service entry", t);
+            }
+        }
+        *///?}
+        return out;
+    }
+
+    private static AddonReport ensureReport(Candidate meta) {
+        String modId = meta.modId();
         AddonReport existing = REPORTS.get(modId);
         if (existing != null) return existing;
         AddonReport report = new AddonReport(
             modId,
-            meta.getName() == null || meta.getName().isBlank() ? modId : meta.getName(),
-            meta.getVersion().getFriendlyString(),
-            meta.getAuthors().stream().map(Person::getName).collect(Collectors.joining(", ")),
+            meta.name() == null || meta.name().isBlank() ? modId : meta.name(),
+            meta.version(),
+            meta.authors(),
             metadataColor(meta, 0xFFAA66FF)
         );
         REPORTS.put(modId, report);
         return report;
     }
 
-    private static void applyMetadata(DihAddon addon, ModMetadata meta) {
-        addon.name = meta.getName();
-        addon.authors = meta.getAuthors().stream().map(Person::getName).collect(Collectors.joining(", "));
+    private static void applyMetadata(DihAddon addon, Candidate meta) {
+        addon.name = meta.name();
+        addon.authors = meta.authors();
         addon.color = metadataColor(meta, addon.color);
     }
 
-    private static int metadataColor(ModMetadata meta, int fallback) {
-        CustomValue color = meta.containsCustomValue("dih:color") ? meta.getCustomValue("dih:color") : null;
-        if (color != null && color.getType() == CustomValue.CvType.STRING) {
-            return parseColor(color.getAsString(), fallback);
-        }
-        return fallback;
+    private static int metadataColor(Candidate meta, int fallback) {
+        return meta.color() != null ? parseColor(meta.color(), fallback) : fallback;
     }
 
     private static int parseColor(String raw, int fallback) {
@@ -287,7 +314,7 @@ public final class AddonManager {
     }
 
     public static File modsFolder() {
-        return FabricLoader.getInstance().getGameDir().resolve("mods").toFile();
+        return dihclient.platform.DihLoader.gameDir().resolve("mods").toFile();
     }
 
     public static boolean isDisabledOnRestart(String addonId) {

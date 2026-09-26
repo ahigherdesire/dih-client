@@ -1,4 +1,10 @@
-package net.minecraft.client.renderer.rendertype;
+package dihclient.render.mc;
+
+import net.minecraft.client.renderer.rendertype.LayeringTransform;
+//? if <26.3
+import net.minecraft.client.renderer.rendertype.OutputTarget;
+import net.minecraft.client.renderer.rendertype.RenderSetup;
+import net.minecraft.client.renderer.rendertype.RenderType;
 
 import com.mojang.blaze3d.PrimitiveTopology;
 import com.mojang.blaze3d.pipeline.BlendFunction;

@@ -1,6 +1,6 @@
 package dihclient.mixin;
 
-import net.fabricmc.loader.api.FabricLoader;
+import dihclient.platform.DihLoader;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -47,17 +47,16 @@ public class DihMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public void onLoad(String mixinPackage) {
-        FabricLoader loader = FabricLoader.getInstance();
-        sodiumLoaded = loader.isModLoaded("sodium");
-        indigoLoaded = loader.isModLoaded("fabric-renderer-indigo");
-        opsecLoaded = loader.isModLoaded("opsec");
-        exploitPreventerLoaded = loader.isModLoaded("exploitpreventer");
-        replayModLoaded = loader.isModLoaded("replaymod");
-        flashbackLoaded = loader.isModLoaded("flashback");
-        essentialLoaded = loader.isModLoaded("essential")
-            || loader.isModLoaded("essential-container")
-            || loader.isModLoaded("essential-loader");
-        lithiumLoaded = loader.isModLoaded("lithium");
+        sodiumLoaded = DihLoader.isModLoaded("sodium");
+        indigoLoaded = DihLoader.isModLoaded("fabric-renderer-indigo");
+        opsecLoaded = DihLoader.isModLoaded("opsec");
+        exploitPreventerLoaded = DihLoader.isModLoaded("exploitpreventer");
+        replayModLoaded = DihLoader.isModLoaded("replaymod");
+        flashbackLoaded = DihLoader.isModLoaded("flashback");
+        essentialLoaded = DihLoader.isModLoaded("essential")
+            || DihLoader.isModLoaded("essential-container")
+            || DihLoader.isModLoaded("essential-loader");
+        lithiumLoaded = DihLoader.isModLoaded("lithium");
     }
 
     @Override

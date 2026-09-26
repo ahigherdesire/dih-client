@@ -52,7 +52,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.ARGB;
-import net.fabricmc.loader.api.FabricLoader;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -91,10 +90,10 @@ public class DihTitleScreen extends Screen {
     private final CompactTheme theme = new CompactTheme();
     private final List<MenuButton> buttons = new ArrayList<>();
     private final String modCountText = createModCountText();
-    private final boolean modMenuLoaded = FabricLoader.getInstance().isModLoaded("modmenu");
-    private final boolean essentialLoaded = FabricLoader.getInstance().isModLoaded("essential");
-    private final boolean replayModLoaded = FabricLoader.getInstance().isModLoaded("replaymod");
-    private final boolean flashbackLoaded = FabricLoader.getInstance().isModLoaded("flashback");
+    private final boolean modMenuLoaded = dihclient.platform.DihLoader.isModLoaded("modmenu");
+    private final boolean essentialLoaded = dihclient.platform.DihLoader.isModLoaded("essential");
+    private final boolean replayModLoaded = dihclient.platform.DihLoader.isModLoaded("replaymod");
+    private final boolean flashbackLoaded = dihclient.platform.DihLoader.isModLoaded("flashback");
     private List<MeteorCreditLine> meteorCredits = List.of();
     private boolean meteorCreditsLoadFailed;
     private int cachedServerCount = -1;
@@ -836,7 +835,7 @@ public class DihTitleScreen extends Screen {
 
     private List<MeteorCreditLine> getMeteorCredits() {
         if (!meteorCredits.isEmpty() || meteorCreditsLoadFailed) return meteorCredits;
-        if (!FabricLoader.getInstance().isModLoaded("meteor-client")) return meteorCredits;
+        if (!dihclient.platform.DihLoader.isModLoaded("meteor-client")) return meteorCredits;
 
         try {
             Class<?> addonManagerClass = Class.forName("meteordevelopment.meteorclient.addons.AddonManager");
@@ -903,7 +902,7 @@ public class DihTitleScreen extends Screen {
     }
 
     private static String createModCountText() {
-        int modCount = FabricLoader.getInstance().getAllMods().size();
+        int modCount = dihclient.platform.DihLoader.modIds().size();
         return modCount + (modCount == 1 ? " Mod" : " Mods");
     }
 

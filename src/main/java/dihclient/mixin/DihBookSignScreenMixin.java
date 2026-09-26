@@ -16,7 +16,6 @@ import dihclient.util.DihPacketLoggerOverlay;
 import dihclient.util.DihQueueEditorOverlay;
 import dihclient.util.DihSharedState;
 import dihclient.util.DihSpecialGuiActions;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.BookSignScreen;
@@ -127,7 +126,7 @@ public abstract class DihBookSignScreenMixin extends Screen implements DihSpecia
         manager.register(launcherOverlay);
 
         Screen screen = (Screen) (Object) this;
-        ScreenEvents.afterExtract(screen).register((scrn, drawContext, mouseX, mouseY, tickDelta) -> {
+        dihclient.platform.DihPlatform.afterScreenExtract(screen, (scrn, drawContext, mouseX, mouseY, tickDelta) -> {
             if (dih$isDihActive()) {
                 DihOverlayManager.get().renderAll(drawContext, mouseX, mouseY, tickDelta);
             }

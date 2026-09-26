@@ -14,9 +14,8 @@ import baritone.api.utils.interfaces.IGoalRenderPos;
 import baritone.pathing.path.PathExecutor;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.rendertype.DihRenderTypes;
+import dihclient.render.mc.DihRenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -33,7 +32,7 @@ import java.util.List;
  * <p>{@code baritone.utils.IRenderer} is a no-op on this port (the immediate-mode Tesselator
  * stack it used is gone), so Baritone's own {@code PathRenderer} draws nothing. This class reads
  * the same state through the public Baritone API and draws it through
- * {@link LevelRenderEvents#COLLECT_SUBMITS} with the see-through line/fill render types the rest of
+ * {@link dihclient.platform.DihPlatform#onCollectSubmits} with the see-through line/fill render types the rest of
  * the client already uses.
  *
  * <p>What it draws, honouring the usual Baritone settings ({@code renderPath}, {@code renderGoal},
@@ -67,7 +66,7 @@ public final class DihBaritonePathRenderer {
     public static synchronized void initialize() {
         if (installed) return;
         installed = true;
-        LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
+        dihclient.platform.DihPlatform.onCollectSubmits(context -> {
             try {
                 if (PackHideState.isHardLocked()) return;
                 Minecraft mc = Minecraft.getInstance();

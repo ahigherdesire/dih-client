@@ -271,7 +271,7 @@ public final class DihCraftingHelper {
             getEnabledFeatures(mc),
             mc.getResourceManager(),
             mc.getConnection() != null ? mc.getConnection().registryAccess() : mc.level.registryAccess(),
-            net.fabricmc.loader.api.FabricLoader.getInstance().getAllMods().size(),
+            dihclient.platform.DihLoader.modIds().size(),
             mc.getConnection()
         );
     }

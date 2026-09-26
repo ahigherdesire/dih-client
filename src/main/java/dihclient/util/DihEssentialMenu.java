@@ -15,7 +15,7 @@ public final class DihEssentialMenu {
     }
 
     public static boolean isAvailable() {
-        return net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("essential");
+        return dihclient.platform.DihLoader.isModLoaded("essential");
     }
 
     public static void openSocial() {

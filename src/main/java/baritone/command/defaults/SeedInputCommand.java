@@ -121,7 +121,7 @@ public class SeedInputCommand extends Command {
         if (!ClientStructureFinder.hasSeed()) {
             logDirect("No seed stored for " + where + ".");
             logDirect("Usage:  #seedinput <seed>   (numbers or text, like the world-creation screen)", ChatFormatting.GRAY);
-            if (!net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("seedcrackerx")) {
+            if (!dihclient.platform.DihLoader.isModLoaded("seedcrackerx")) {
                 logDirect("Or install SeedCrackerX — its seed gets filled in here automatically.", ChatFormatting.GRAY);
             }
             return;

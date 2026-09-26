@@ -2,7 +2,6 @@ package dihclient.util;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import net.fabricmc.loader.api.FabricLoader;
 
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -59,8 +58,7 @@ public final class DihAttest {
         try {
             Path jar = jarPath;
             if (jar == null) {
-                jar = FabricLoader.getInstance().getModContainer("dih")
-                    .flatMap(container -> container.getOrigin().getPaths().stream().findFirst())
+                jar = dihclient.platform.DihLoader.modPath("dih")
                     .filter(path -> path.toString().toLowerCase(java.util.Locale.ROOT).endsWith(".jar"))
                     .filter(Files::isRegularFile)
                     .orElse(null);

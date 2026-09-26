@@ -1,5 +1,8 @@
 package dihclient.mixin.indigo;
 
+// Fabric only: targets Fabric API internals (left out of the NeoForge mixin config).
+//? if fabric {
+
 import dihclient.modules.ModuleRenderUtil;
 import net.fabricmc.fabric.api.client.renderer.v1.mesh.MutableQuadView;
 import net.minecraft.client.renderer.block.BlockAndTintGetter;
@@ -62,3 +65,4 @@ public abstract class DihIndigoAltModelBlockRendererMixin {
         }
     }
 }
+//?}

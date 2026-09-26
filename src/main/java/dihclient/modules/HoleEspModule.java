@@ -10,8 +10,7 @@ import dihclient.util.DihPerf;
 import dihclient.util.DihWorldGeometry;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
-import net.minecraft.client.renderer.rendertype.DihRenderTypes;
+import dihclient.render.mc.DihRenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -171,7 +170,7 @@ public final class HoleEspModule extends Module implements DihHoleScanner.Subscr
     private static synchronized void installRenderHook() {
         if (renderHookInstalled) return;
         renderHookInstalled = true;
-        LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
+        dihclient.platform.DihPlatform.onCollectSubmits(context -> {
             try {
 
                 HoleEspModule module = instance();

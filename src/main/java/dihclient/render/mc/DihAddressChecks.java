@@ -1,4 +1,8 @@
-package net.minecraft.client.multiplayer.resolver;
+package dihclient.render.mc;
+
+import net.minecraft.client.multiplayer.resolver.AddressCheck;
+import net.minecraft.client.multiplayer.resolver.ResolvedServerAddress;
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
 
 import com.google.common.collect.ImmutableList;
 

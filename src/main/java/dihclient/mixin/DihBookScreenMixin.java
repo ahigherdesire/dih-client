@@ -33,7 +33,6 @@ import net.minecraft.client.gui.screens.inventory.LecternScreen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 
 @Mixin(BookViewScreen.class)
 public abstract class DihBookScreenMixin extends Screen implements DihSpecialGuiActions {
@@ -130,7 +129,7 @@ public abstract class DihBookScreenMixin extends Screen implements DihSpecialGui
         manager.register(launcherOverlay);
 
         Screen screen = (Screen) (Object) this;
-        ScreenEvents.afterExtract(screen).register((scrn, drawContext, mouseX, mouseY, tickDelta) -> {
+        dihclient.platform.DihPlatform.afterScreenExtract(screen, (scrn, drawContext, mouseX, mouseY, tickDelta) -> {
             if (yang$isDihActive()) {
                 DihOverlayManager.get().renderAll(drawContext, mouseX, mouseY, tickDelta);
             }

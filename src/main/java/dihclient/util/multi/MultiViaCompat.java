@@ -1,6 +1,5 @@
 package dihclient.util.multi;
 
-import net.fabricmc.loader.api.FabricLoader;
 
 import java.lang.reflect.Method;
 import java.util.Locale;
@@ -13,7 +12,7 @@ final class MultiViaCompat {
     }
 
     static Target captureSelectedTarget() {
-        if (!FabricLoader.getInstance().isModLoaded("viafabricplus")) return new Target(false, null, "Native");
+        if (!dihclient.platform.DihLoader.isModLoaded("viafabricplus")) return new Target(false, null, "Native");
         try {
             Class<?> apiClass = Class.forName("com.viaversion.viafabricplus.ViaFabricPlus");
             Object api = apiClass.getMethod("getImpl").invoke(null);
@@ -26,7 +25,7 @@ final class MultiViaCompat {
     }
 
     static Target captureServerTarget(net.minecraft.client.multiplayer.ServerData serverData) {
-        if (serverData == null || !FabricLoader.getInstance().isModLoaded("viafabricplus")) {
+        if (serverData == null || !dihclient.platform.DihLoader.isModLoaded("viafabricplus")) {
             return new Target(false, null, "Native");
         }
         try {

@@ -1,7 +1,6 @@
 package dihclient;
 
 import com.mojang.logging.LogUtils;
-import net.fabricmc.loader.api.FabricLoader;
 import org.slf4j.Logger;
 
 public final class DihClientAddon {
@@ -10,7 +9,7 @@ public final class DihClientAddon {
 
     public static final boolean DEBUG = false;
 
-    public static final java.io.File FOLDER = FabricLoader.getInstance().getConfigDir().resolve("dih").toFile();
+    public static final java.io.File FOLDER = dihclient.platform.DihLoader.configDir().resolve("dih").toFile();
 
     static {
         FOLDER.mkdirs();

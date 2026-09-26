@@ -6,7 +6,6 @@ import dihclient.modules.PackHideState;
 import com.mojang.blaze3d.platform.NativeImage;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.fabricmc.fabric.api.client.rendering.v1.LivingEntityRenderLayerRegistrationCallback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.model.geom.ModelPart;
@@ -21,7 +20,7 @@ import net.minecraft.client.renderer.entity.player.AvatarRenderer;
 import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.client.renderer.rendertype.RenderTypes;
-import net.minecraft.client.renderer.rendertype.DihRenderTypes;
+import dihclient.render.mc.DihRenderTypes;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.core.component.DataComponents;
@@ -67,11 +66,10 @@ public final class DihFemaleBodyRenderer {
     public static void initialize() {
         if (initialized) return;
         initialized = true;
-        LivingEntityRenderLayerRegistrationCallback.EVENT.register((entityType, renderer, helper, context) -> {
-            if (!(renderer instanceof AvatarRenderer<?> avatarRenderer)) return;
+        dihclient.platform.DihPlatform.addAvatarLayer((avatarRenderer, context) -> {
             PlayerModel playerModel = avatarRenderer.getModel();
             MAIN_MODELS.add(playerModel);
-            helper.register(new FemaleBodyLayer(avatarRenderer, context.getEquipmentRenderer()));
+            return new FemaleBodyLayer(avatarRenderer, context.getEquipmentRenderer());
         });
     }
 

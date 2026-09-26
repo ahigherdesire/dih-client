@@ -1,8 +1,6 @@
 package dihclient.security;
 
 import dihclient.DihClientAddon;
-import net.fabricmc.loader.api.FabricLoader;
-import net.fabricmc.loader.api.ModContainer;
 import net.minecraft.resources.Identifier;
 
 import java.util.HashSet;
@@ -48,8 +46,8 @@ public final class DihProtectorTracker {
     public static void bootstrap() {
         if (!BOOTSTRAPPED.compareAndSet(false, true)) return;
         try {
-            for (ModContainer mod : FabricLoader.getInstance().getAllMods()) {
-                String normalized = normalizeModId(mod.getMetadata().getId());
+            for (String modId : dihclient.platform.DihLoader.modIds()) {
+                String normalized = normalizeModId(modId);
                 if (normalized == null) continue;
                 if (CORE_IDS.contains(normalized)) continue;
                 if (normalized.startsWith("fabric-") || normalized.startsWith("fabric_")) {

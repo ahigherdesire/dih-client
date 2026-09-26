@@ -1,4 +1,7 @@
-package net.minecraft.client.renderer.rendertype;
+package dihclient.render.mc;
+
+import net.minecraft.client.renderer.rendertype.RenderSetup;
+import net.minecraft.client.renderer.rendertype.RenderType;
 
 import com.mojang.blaze3d.pipeline.RenderPipeline;
 import net.minecraft.resources.Identifier;
@@ -15,8 +18,8 @@ public final class DihChamsRenderTypes {
 
     public static Identifier textureOf(RenderSetup setup) {
         try {
-            RenderSetup.TextureBinding binding = setup.textures.get("Sampler0");
-            return binding == null ? null : binding.location();
+            Object binding = ((dihclient.mixin.accessor.DihRenderSetupAccessor) (Object) setup).dih$textures().get("Sampler0");
+            return binding == null ? null : ((dihclient.mixin.accessor.DihTextureBindingAccessor) binding).dih$location();
         } catch (Throwable t) {
             return null;
         }
