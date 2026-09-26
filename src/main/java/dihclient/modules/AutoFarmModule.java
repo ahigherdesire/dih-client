@@ -29,14 +29,12 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.item.AxeItem;
-import net.minecraft.world.item.HoeItem;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.ShearsItem;
-import net.minecraft.world.item.ShovelItem;
 import net.minecraft.world.item.context.BlockPlaceContext;
 import net.minecraft.world.item.enchantment.EnchantmentHelper;
 import net.minecraft.world.item.enchantment.Enchantments;
@@ -1786,9 +1784,9 @@ public final class AutoFarmModule extends Module implements DihSilentAim.Owner {
             return true;
         }
 
-        if (item instanceof HoeItem) return hoeWouldFire(ray);
-        if (item instanceof AxeItem) return axeWouldFire(ray.getBlockPos());
-        if (item instanceof ShovelItem) return shovelWouldFire(ray);
+        if (main.is(ItemTags.HOES)) return hoeWouldFire(ray);
+        if (main.is(ItemTags.AXES)) return axeWouldFire(ray.getBlockPos());
+        if (main.is(ItemTags.SHOVELS)) return shovelWouldFire(ray);
         if (item instanceof ShearsItem) return shearsWouldFire(ray.getBlockPos());
 
         return item.getClass() != Item.class && !(item instanceof net.minecraft.world.item.MaceItem);
@@ -2169,7 +2167,7 @@ public final class AutoFarmModule extends Module implements DihSilentAim.Owner {
     }
 
     private static boolean isHoe(ItemStack stack) {
-        return stack.getItem() instanceof HoeItem;
+        return stack.is(ItemTags.HOES);
     }
 
     private net.minecraft.core.Holder<net.minecraft.world.item.enchantment.Enchantment> fortuneHolder;
