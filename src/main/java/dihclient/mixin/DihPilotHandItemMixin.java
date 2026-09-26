@@ -18,8 +18,12 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Mixin(ItemInHandRenderer.class)
+/** POV pilot: the piloted bot's arm (owner, skin, sleeves, swing) in first person. */
 public class DihPilotHandItemMixin {
 
+    // The arm's owner, skin and swing come from the player on 26.2. 26.3 draws the arm from a PlayerRenderState
+    // extracted elsewhere, so there the bot's items and swing are swapped in DihPilotHandStateMixin only.
+    //? if <26.3 {
     private static AbstractClientPlayer dih$armOwner(AbstractClientPlayer fallback) {
         Player bot = DihRemoteView.firstPersonPlayer(MultiPilot.pilotedBot());
         return bot instanceof AbstractClientPlayer clientBot ? clientBot : fallback;
@@ -81,22 +85,6 @@ public class DihPilotHandItemMixin {
         return dih$armOwner(player).isInvisible();
     }
 
-    @Redirect(method = "tick",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getMainHandItem()Lnet/minecraft/world/item/ItemStack;"),
-        require = 0)
-    private ItemStack dih$tickMain(LocalPlayer player) {
-        Player bot = DihRemoteView.firstPersonPlayer(MultiPilot.pilotedBot());
-        return bot != null ? bot.getMainHandItem() : player.getMainHandItem();
-    }
-
-    @Redirect(method = "tick",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getOffhandItem()Lnet/minecraft/world/item/ItemStack;"),
-        require = 0)
-    private ItemStack dih$tickOff(LocalPlayer player) {
-        Player bot = DihRemoteView.firstPersonPlayer(MultiPilot.pilotedBot());
-        return bot != null ? bot.getOffhandItem() : player.getOffhandItem();
-    }
-
     @Redirect(method = "submitHandsWithItems",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getAttackAnim(F)F"),
         require = 0)
@@ -104,44 +92,5 @@ public class DihPilotHandItemMixin {
         Player bot = DihRemoteView.firstPersonPlayer(MultiPilot.pilotedBot());
         return bot != null ? bot.getAttackAnim(partialTicks) : player.getAttackAnim(partialTicks);
     }
-
-    @Redirect(method = "evaluateWhichHandsToRender",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getMainHandItem()Lnet/minecraft/world/item/ItemStack;"),
-        require = 0)
-    private static ItemStack dih$evalMain(LocalPlayer player) {
-        Player bot = DihRemoteView.firstPersonPlayer(MultiPilot.pilotedBot());
-        return bot != null ? bot.getMainHandItem() : player.getMainHandItem();
-    }
-
-    @Redirect(method = "evaluateWhichHandsToRender",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getOffhandItem()Lnet/minecraft/world/item/ItemStack;"),
-        require = 0)
-    private static ItemStack dih$evalOff(LocalPlayer player) {
-        Player bot = DihRemoteView.firstPersonPlayer(MultiPilot.pilotedBot());
-        return bot != null ? bot.getOffhandItem() : player.getOffhandItem();
-    }
-
-    @Redirect(method = "evaluateWhichHandsToRender",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;isUsingItem()Z"),
-        require = 0)
-    private static boolean dih$evalUsing(LocalPlayer player) {
-        Player bot = DihRemoteView.firstPersonPlayer(MultiPilot.pilotedBot());
-        return bot != null ? bot.isUsingItem() : player.isUsingItem();
-    }
-
-    @Redirect(method = "selectionUsingItemWhileHoldingBowLike",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getUsedItemHand()Lnet/minecraft/world/InteractionHand;"),
-        require = 0)
-    private static InteractionHand dih$bowHand(LocalPlayer player) {
-        Player bot = DihRemoteView.firstPersonPlayer(MultiPilot.pilotedBot());
-        return bot != null ? bot.getUsedItemHand() : player.getUsedItemHand();
-    }
-
-    @Redirect(method = "selectionUsingItemWhileHoldingBowLike",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;getOffhandItem()Lnet/minecraft/world/item/ItemStack;"),
-        require = 0)
-    private static ItemStack dih$bowOff(LocalPlayer player) {
-        Player bot = DihRemoteView.firstPersonPlayer(MultiPilot.pilotedBot());
-        return bot != null ? bot.getOffhandItem() : player.getOffhandItem();
-    }
+    //?}
 }

@@ -89,6 +89,8 @@ public final class StructureStyle {
         if (p.contains("igloo"))           return new StructureStyle("Igloo",           0xB3E5FC, SHAPE_CIRCLE, 14, false).icon(ITEM + "snowball.png", 16);
         if (p.contains("trail_ruins"))     return new StructureStyle("Trail Ruins",     0xA1887F, SHAPE_CIRCLE, 16, false).icon(ITEM + "brush.png", 16);
         if (p.contains("ruined_portal"))   return new StructureStyle("Ruined Portal",   0x8E24AA, SHAPE_SQUARE, 12, false).icon(ITEM + "flint_and_steel.png", 16);
+        // 26.3: one per biome (abandoned_camp_forest, abandoned_camp_taiga, ...).
+        if (p.contains("abandoned_camp"))  return new StructureStyle("Abandoned Camp",  0x8D6E63, SHAPE_CIRCLE, 12, false).icon(ITEM + "campfire.png", 16);
         if (p.contains("shipwreck"))       return new StructureStyle("Shipwreck",       0x8D6E63, SHAPE_SQUARE, 12, false).icon(ITEM + "oak_boat.png", 16);
         if (p.contains("ocean_ruin"))      return new StructureStyle("Ocean Ruin",      0x26C6DA, SHAPE_SQUARE, 12, false).icon(ITEM + "prismarine_shard.png", 16);
         if (p.contains("buried_treasure")) return new StructureStyle("Buried Treasure", 0xFFD700, SHAPE_SQUARE, 8, false).icon(DECO + "red_x.png", 8);

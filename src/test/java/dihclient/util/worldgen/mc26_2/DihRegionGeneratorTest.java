@@ -27,6 +27,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 final class DihRegionGeneratorTest {
+    // OreSim terrain regeneration is 26.2-only for now.
+    //? if <26.3 {
 
     private static final long SEED = 1234567890123456789L;
 
@@ -243,4 +245,5 @@ final class DihRegionGeneratorTest {
         Map<Long, ChunkAccess> chunks = new DihRegionGenerator(context).generate(-3, 5, size);
         return new HashMap<>(countOres(chunks, -3, 5, size));
     }
+    //?}
 }
