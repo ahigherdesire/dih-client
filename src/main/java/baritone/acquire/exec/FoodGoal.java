@@ -4,86 +4,90 @@ import baritone.acquire.model.InventorySnapshot;
 import baritone.acquire.model.Plan;
 import baritone.acquire.planner.AcquirePlanner;
 
-import java.util.Collections;
-import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.Set;
 
 /**
- * {@code #acquire food} and the food detour: plan each safe vanilla food and take the cheapest complete
- * plan. Pure apart from the planner it is given, so it is unit-tested.
+ * "Some food": the food whose complete plan costs least per food point. Used by {@code #acquire food}
+ * and by the food detour {@link AcquireProcess} runs when health is low and no food is held. Pure (the
+ * planner is), so it is unit-tested.
  */
-final class FoodGoal {
+public final class FoodGoal {
 
-    /** Safe foods worth fetching, with their food points. Golden food, stews that need rare parts and anything risky are left out. */
-    static final Map<String, Integer> CANDIDATES = candidates();
+    /** The goal word: {@code #acquire food}. */
+    public static final String WORD = "food";
+    /** Everything else a user might type for it (5.1-beta.2 accepted all of these). */
+    private static final Set<String> WORDS = Set.of(WORD, "foods", "any_food", "any food", "something to eat", "minecraft:food");
 
-    private static final Set<String> WORDS = Set.of("food", "foods", "any_food", "any food", "something to eat", "minecraft:food");
+    /** A food worth getting, with its vanilla food points. */
+    public record Candidate(String item, int nutrition) {
+    }
+
+    /** Safe foods, roughly best first; ties in cost go to the earlier one. */
+    public static final List<Candidate> CANDIDATES = List.of(
+            new Candidate("minecraft:cooked_beef", 8),
+            new Candidate("minecraft:cooked_porkchop", 8),
+            new Candidate("minecraft:cooked_mutton", 6),
+            new Candidate("minecraft:cooked_chicken", 6),
+            new Candidate("minecraft:bread", 5),
+            new Candidate("minecraft:baked_potato", 5),
+            new Candidate("minecraft:cooked_cod", 5),
+            new Candidate("minecraft:cooked_salmon", 6),
+            new Candidate("minecraft:beef", 3),
+            new Candidate("minecraft:porkchop", 3),
+            new Candidate("minecraft:mutton", 2),
+            new Candidate("minecraft:apple", 4),
+            new Candidate("minecraft:carrot", 3),
+            new Candidate("minecraft:potato", 1),
+            new Candidate("minecraft:sweet_berries", 2),
+            new Candidate("minecraft:melon_slice", 2),
+            new Candidate("minecraft:glow_berries", 2),
+            new Candidate("minecraft:dried_kelp", 1));
 
     /**
-     * @param item  the food
-     * @param count how many to have in the inventory when done (what is held plus {@code extra})
-     * @param plan  the plan for {@code count}
-     * @param extra how many more that is
+     * The chosen food.
+     *
+     * @param extra how many more to get
+     * @param count the inventory count to plan for (held + extra)
      */
-    record Choice(String item, int count, Plan plan, int extra) {
+    public record Choice(String item, int extra, int count, Plan plan) {
     }
 
     private FoodGoal() {
     }
 
-    /** Whether the user asked for food in general rather than an item. */
-    static boolean isFoodWord(String text) {
+    public static boolean isFoodWord(String text) {
         return text != null && WORDS.contains(text.trim().toLowerCase(Locale.ROOT));
     }
 
+    /** How many of a food with {@code nutrition} points make up {@code points}. */
+    static int countFor(int points, int nutrition) {
+        return Math.max(1, (points + nutrition - 1) / Math.max(1, nutrition));
+    }
+
     /**
-     * The cheapest food to get: {@code items} more of it when above 0, else enough for {@code points}
-     * food points. Never one of {@code exclude}. Null when no candidate has a complete plan.
+     * Plans every candidate not in {@code exclude} and returns the complete plan with the lowest cost per
+     * food point gained, or null when none is complete.
+     *
+     * @param points food points to get; each candidate gets {@link #countFor} of itself
+     * @param items  when above 0, get this many items of the chosen food instead
      */
-    static Choice choose(AcquirePlanner planner, InventorySnapshot inventory, int points, int items, Set<String> exclude) {
+    public static Choice choose(AcquirePlanner planner, InventorySnapshot inventory, int points, int items, Set<String> exclude) {
         Choice best = null;
-        for (Map.Entry<String, Integer> candidate : CANDIDATES.entrySet()) {
-            String item = candidate.getKey();
-            if (exclude.contains(item)) continue;
-            int extra = items > 0 ? items : ceilDiv(Math.max(1, points), candidate.getValue());
-            int count = inventory.count(item) + extra;
-            Plan plan = planner.plan(item, count, inventory);
-            if (!plan.complete() || plan.steps().isEmpty()) continue;
-            if (best == null || cheaper(plan, best.plan())) best = new Choice(item, count, plan, extra);
+        double bestCost = Double.POSITIVE_INFINITY;
+        for (Candidate c : CANDIDATES) {
+            if (exclude != null && exclude.contains(c.item())) continue;
+            int extra = items > 0 ? items : countFor(points, c.nutrition());
+            int count = inventory.count(c.item()) + extra;
+            Plan plan = planner.plan(c.item(), count, inventory);
+            if (!plan.complete() || plan.alreadyDone()) continue;
+            double perPoint = plan.cost() / ((double) extra * c.nutrition());
+            if (perPoint < bestCost) {
+                bestCost = perPoint;
+                best = new Choice(c.item(), extra, count, plan);
+            }
         }
         return best;
-    }
-
-    private static boolean cheaper(Plan a, Plan b) {
-        int byCost = Double.compare(a.cost(), b.cost());
-        return byCost != 0 ? byCost < 0 : a.steps().size() < b.steps().size();
-    }
-
-    private static int ceilDiv(int a, int b) {
-        return (a + b - 1) / b;
-    }
-
-    private static Map<String, Integer> candidates() {
-        Map<String, Integer> m = new LinkedHashMap<>();
-        m.put("minecraft:cooked_beef", 8);
-        m.put("minecraft:cooked_porkchop", 8);
-        m.put("minecraft:cooked_mutton", 6);
-        m.put("minecraft:cooked_chicken", 6);
-        m.put("minecraft:cooked_salmon", 6);
-        m.put("minecraft:cooked_cod", 5);
-        m.put("minecraft:cooked_rabbit", 5);
-        m.put("minecraft:bread", 5);
-        m.put("minecraft:baked_potato", 5);
-        m.put("minecraft:apple", 4);
-        m.put("minecraft:beef", 3);
-        m.put("minecraft:porkchop", 3);
-        m.put("minecraft:carrot", 3);
-        m.put("minecraft:mutton", 2);
-        m.put("minecraft:sweet_berries", 2);
-        m.put("minecraft:melon_slice", 2);
-        m.put("minecraft:dried_kelp", 1);
-        return Collections.unmodifiableMap(m);
     }
 }

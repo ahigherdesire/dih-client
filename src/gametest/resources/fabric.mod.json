@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "dih-acquire-gametest",
+  "version": "1.0.0",
+  "name": "DIH Acquire Game Tests",
+  "environment": "client",
+  "entrypoints": {
+    "fabric-client-gametest": [
+      "baritone.acquire.AcquireSmokeGameTest",
+      "baritone.acquire.AcquireGatherGameTest",
+      "baritone.acquire.exec.AcquireHealingGameTest",
+      "baritone.acquire.exec.AcquireNormalMealGameTest"
+    ]
+  },
+  "depends": {
+    "dih": "*",
+    "fabric-api": "*"
+  }
+}

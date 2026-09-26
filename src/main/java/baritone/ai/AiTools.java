@@ -232,6 +232,13 @@ public final class AiTools {
         return brain.onGameThread(() -> planAcquire(control, request), "Planning timed out.");
     }
 
+    /** The survival rule in the system prompt. Health and food show in every situation report and tool result. */
+    static String healthGuide(int healHealth) {
+        return "HEALTH COMES FIRST: if health is " + healHealth + "/20 or less, or food 6/20 or less, run_command \"eat\" "
+                + "before anything else (healing needs food 18+); with no food, use the acquire tool with item \"food\". "
+                + "A running acquire eats and fetches food by itself.";
+    }
+
     /** The system-prompt section on {@code acquire} and {@code plan_item}. */
     static String acquireGuide(boolean followUpsOn) {
         StringBuilder sb = new StringBuilder("GETTING ITEMS:\n");

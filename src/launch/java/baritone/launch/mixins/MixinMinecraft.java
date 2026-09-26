@@ -70,16 +70,19 @@ public class MixinMinecraft {
     // (it now calls Gui.screen()), so the old GETFIELD injection point vanished. This is THE hook
     // that drives Baritone every tick — with it unbound, all processes (mine, follow, goto, farm,
     // explore, elytra…) would still print their start message but never actually run, because the
-    // tick loop never reached them. Re-anchor to the call of Minecraft.handleKeybinds(): it is the
-    // same program point (right before vanilla processes input, and well before LocalPlayer.tick()
-    // ticks the ClientInput we override), it occurs exactly once in tick(), and slicing from the
-    // missTime store keeps it in the original region. Keep this required (no require = 0): if it
-    // ever drifts again it must fail loudly, not silently disable all of Baritone like this did.
+    // tick loop never reached them. Re-anchor to the first Gui.overlay() call after the missTime
+    // store: it is right before vanilla's "overlay == null && screen == null" check that guards
+    // handleKeybinds(), and well before LocalPlayer.tick() ticks the ClientInput we override. Do not
+    // anchor on handleKeybinds() itself: it only runs with no screen open (or while pathing, see
+    // passEvents), so Baritone would stop ticking whenever a furnace, chest or chat screen is open.
+    // Keep this required (no require = 0): if it ever drifts again it must fail loudly, not silently
+    // disable all of Baritone.
     @Inject(
             method = "tick",
             at = @At(
                     value = "INVOKE",
-                    target = "Lnet/minecraft/client/Minecraft;handleKeybinds()V"
+                    target = "Lnet/minecraft/client/gui/Gui;overlay()Lnet/minecraft/client/gui/screens/Overlay;",
+                    ordinal = 0
             ),
             slice = @Slice(
                     from = @At(

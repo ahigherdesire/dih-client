@@ -16,9 +16,9 @@ final class HealingPolicyTest {
     static final FoodChoice.Food BREAD = new FoodChoice.Food("minecraft:bread", 5, 6f, false);
     static final FoodChoice.Food STEAK = new FoodChoice.Food("minecraft:cooked_beef", 8, 12.8f, false);
     static final FoodChoice.Food BERRIES = new FoodChoice.Food("minecraft:sweet_berries", 2, 0.4f, false);
-    static final FoodChoice.Food GAPPLE = new FoodChoice.Food(FoodChoice.GOLDEN_APPLE, 4, 9.6f, true);
-    static final FoodChoice.Food NOTCH = new FoodChoice.Food(FoodChoice.ENCHANTED_GOLDEN_APPLE, 4, 9.6f, true);
-    static final FoodChoice.Food FLESH = new FoodChoice.Food("minecraft:rotten_flesh", 4, 0.8f, false);
+    static final FoodChoice.Food GAPPLE = new FoodChoice.Food("minecraft:golden_apple", 4, 9.6f, false);
+    static final FoodChoice.Food NOTCH = new FoodChoice.Food("minecraft:enchanted_golden_apple", 4, 9.6f, false);
+    static final FoodChoice.Food FLESH = new FoodChoice.Food("minecraft:rotten_flesh", 4, 0.8f, true);
     static final FoodChoice.Food CHORUS = new FoodChoice.Food("minecraft:chorus_fruit", 4, 2.4f, true);
 
     @Test
@@ -38,14 +38,6 @@ final class HealingPolicyTest {
         assertTrue(HealthPolicy.wantsFood(20, 6, 12, false));
         assertFalse(HealthPolicy.wantsFood(13, 7, 12, false));
         assertFalse(HealthPolicy.wantsFood(4, 2, 12, true));
-    }
-
-    @Test
-    void detourFetchesWhatTheBarMissesButAtLeastTen() {
-        assertEquals(20, HealthPolicy.detourPoints(0));
-        assertEquals(14, HealthPolicy.detourPoints(6));
-        assertEquals(10, HealthPolicy.detourPoints(19));
-        assertEquals(10, HealthPolicy.detourPoints(20));
     }
 
     @Test
@@ -81,7 +73,8 @@ final class HealingPolicyTest {
         assertFalse(FoodChoice.hasSafeFood(List.of(BREAD, FLESH, GAPPLE), needed));
         assertTrue(FoodChoice.hasSafeFood(List.of(BREAD), Set.of()));
         assertEquals(BREAD, FoodChoice.choose(List.of(BREAD, FLESH), 10, true, needed), "an emergency may eat what the plan needs");
-        assertEquals(FLESH, FoodChoice.choose(List.of(FLESH), 10, true, Set.of()));
+        assertNull(FoodChoice.choose(List.of(FLESH), 10, true, Set.of()), "harmful food waits for starving");
+        assertEquals(FLESH, FoodChoice.choose(List.of(FLESH), HealthPolicy.STARVING_FOOD, false, Set.of()));
     }
 
     @Test

@@ -1,25 +1,29 @@
 package baritone.acquire.exec;
 
 /**
- * When {@code #acquire} (and {@code #eat}) should eat, and when it should go and get food. Pure, so the
- * thresholds are unit-tested; health is in half-hearts (20 = full), food in food points (20 = full).
+ * When to eat and when to go and get food. Pure (health and food as plain numbers) so it is unit-tested.
+ *
+ * <p>Healing in vanilla: natural regeneration only runs while the food level is at least
+ * {@link #REGEN_FOOD}, so "heal" mostly means keeping food up while hurt. Golden apples heal directly
+ * (Regeneration and Absorption) and can be eaten at full food; they are kept for emergencies.
+ * Health is in half-hearts (20 = full), food in food points (20 = full).
  */
-final class HealthPolicy {
+public final class HealthPolicy {
 
-    /** At or below this much food: eat even at full health (sprinting stops at 6). */
-    static final int HUNGRY_FOOD = 6;
-    /** Natural regeneration needs this much food. */
-    static final int REGEN_FOOD = 18;
-    static final int MAX_FOOD = 20;
-    /** A food detour gets at least this many food points' worth, however full the bar is. */
-    static final int MIN_DETOUR_POINTS = 10;
+    public static final int MAX_FOOD = 20;
+    /** Natural regeneration needs at least this much food. */
+    public static final int REGEN_FOOD = 18;
+    /** At or below this, eat whatever the health. At 6 and below you can't sprint either. */
+    public static final int HUNGRY_FOOD = 6;
+    /** At or below this, harmful food (rotten flesh, ...) is allowed when nothing else is held. */
+    public static final int STARVING_FOOD = 3;
 
-    enum Need {
-        /** Nothing to eat for. */
+    public enum Need {
+        /** Nothing to do. */
         NONE,
-        /** Hurt and too hungry to regenerate, or hungry: eat ordinary food. */
+        /** Eat a normal meal. */
         EAT,
-        /** Health at the emergency line: a golden apple first, and food the plan needs is fair game. */
+        /** Health at or below the emergency threshold: a golden apple even at full food, any food otherwise. */
         EMERGENCY
     }
 
@@ -27,30 +31,42 @@ final class HealthPolicy {
     }
 
     /**
-     * What eating would do for the player now. Absorption hearts count towards the emergency line, so
-     * a golden apple already eaten does not trigger another.
+     * Whether to eat now.
+     * <ul>
+     *   <li>{@link Need#EMERGENCY} when hurt and health plus absorption is at or below {@code emergencyHealth}
+     *       (the absorption a golden apple just gave counts, so a second one isn't eaten straight after);</li>
+     *   <li>{@link Need#EAT} when food is at or below {@link #HUNGRY_FOOD}, or when hurt with food below
+     *       {@link #REGEN_FOOD} (no regeneration until it is topped up);</li>
+     *   <li>{@link Need#NONE} otherwise.</li>
+     * </ul>
+     * A dead player (health 0) needs nothing.
      */
-    static Need need(float health, float absorption, float maxHealth, int food, int emergencyHealth) {
-        if (health + absorption <= emergencyHealth) return Need.EMERGENCY;
+    public static Need need(float health, float absorption, float maxHealth, int food, int emergencyHealth) {
+        if (health <= 0) return Need.NONE;
+        boolean hurt = health < maxHealth;
+        if (hurt && health + Math.max(0, absorption) <= emergencyHealth) return Need.EMERGENCY;
         if (food <= HUNGRY_FOOD) return Need.EAT;
-        if (health < maxHealth && food < REGEN_FOOD) return Need.EAT;
+        if (hurt && food < REGEN_FOOD) return Need.EAT;
         return Need.NONE;
     }
 
-    /** With nothing safe to eat: whether to fetch food before carrying on (health at the line, or hungry). */
-    static boolean wantsFood(float health, int food, int healHealth, boolean hasSafeFood) {
-        return !hasSafeFood && (health <= healHealth || food <= HUNGRY_FOOD);
+    /**
+     * Whether a food detour is wanted: health at or below {@code healHealth} or food at or below
+     * {@link #HUNGRY_FOOD}, with no safe food held.
+     */
+    public static boolean wantsFood(float health, int food, int healHealth, boolean safeFoodHeld) {
+        if (safeFoodHeld || health <= 0) return false;
+        return health <= healHealth || food <= HUNGRY_FOOD;
     }
 
-    /** Food points a detour fetches: what the bar is missing, at least {@link #MIN_DETOUR_POINTS}. */
-    static int detourPoints(int food) {
-        return Math.max(MIN_DETOUR_POINTS, MAX_FOOD - Math.max(0, Math.min(MAX_FOOD, food)));
+    /** Food points worth getting on a detour: the missing points plus a spare meal, between 10 and 20. */
+    public static int detourPoints(int food) {
+        return Math.max(10, Math.min(MAX_FOOD, MAX_FOOD - food + 8));
     }
 
-    /** "3.5 hearts" for chat. */
-    static String hearts(float health) {
-        float hearts = Math.max(0, Math.round(health)) / 2f;
-        String n = hearts == (int) hearts ? Integer.toString((int) hearts) : Float.toString(hearts);
-        return n + (hearts == 1 ? " heart" : " hearts");
+    /** "6 hearts" or "4.5 hearts". */
+    public static String hearts(float health) {
+        float h = Math.max(0, Math.round(health)) / 2.0F;
+        return (h == Math.floor(h) ? String.valueOf((int) h) : String.valueOf(h)) + (h == 1 ? " heart" : " hearts");
     }
 }

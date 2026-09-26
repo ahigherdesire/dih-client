@@ -149,6 +149,17 @@ tasks.test {
     useJUnitPlatform()
 }
 
+// Run acquire scenarios against an integrated singleplayer server, separately from JUnit.
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = "dih-acquire-gametest"
+        enableGameTests = false
+        enableClientGameTests = true
+        eula = true
+    }
+}
+
 val generatedDihResourcesDir = layout.buildDirectory.dir("generated/resources/dih/main")
 
 data class SourceFile(val path: String, val text: String)
@@ -187,6 +198,10 @@ sourceSets {
         runtimeClasspath += main.compileClasspath + main.runtimeClasspath + main.output + api.output
     }
     main.runtimeClasspath += launch.output
+}
+
+sourceSets.named("gametest") {
+    runtimeClasspath += sourceSets["launch"].output + sourceSets["api"].output
 }
 
 val generateVanillaUiAssets by tasks.registering {

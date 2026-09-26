@@ -89,7 +89,9 @@ final class FoodGoalTest {
         FoodGoal.Choice choice = FoodGoal.choose(planner(world(8, 8)), new InventorySnapshot(Map.of(COAL, 8)), 14, 0, Set.of());
         assertNotNull(choice);
         assertTrue(choice.plan().complete());
-        int points = FoodGoal.CANDIDATES.get(choice.item());
+        int points = FoodGoal.CANDIDATES.stream()
+                .filter(candidate -> candidate.item().equals(choice.item()))
+                .findFirst().orElseThrow().nutrition();
         assertTrue(choice.extra() * points >= 14, choice.toString());
         assertTrue((choice.extra() - 1) * points < 14, "no more than it needs: " + choice);
         assertEquals(choice.extra(), choice.count(), "none held yet");
@@ -115,8 +117,9 @@ final class FoodGoalTest {
 
     @Test
     void candidatesAreSafeToEat() {
-        for (String id : FoodGoal.CANDIDATES.keySet()) {
-            assertTrue(FoodChoice.safe(new FoodChoice.Food(id, FoodGoal.CANDIDATES.get(id), 1f, false), Set.of()), id);
+        for (FoodGoal.Candidate candidate : FoodGoal.CANDIDATES) {
+            assertFalse(FoodChoice.HARMFUL.contains(candidate.item()), candidate.item());
+            assertFalse(FoodChoice.GOLDEN.contains(candidate.item()), candidate.item());
         }
     }
 }

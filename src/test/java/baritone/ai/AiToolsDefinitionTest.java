@@ -84,6 +84,17 @@ final class AiToolsDefinitionTest {
     }
 
     @Test
+    void healthComesFirstInThePromptAndTheAcquireTool() {
+        String rule = AiTools.healthGuide(12);
+        assertTrue(rule.startsWith("HEALTH COMES FIRST"), rule);
+        assertTrue(rule.contains("12/20") && rule.contains("run_command \"eat\""), rule);
+        assertTrue(rule.contains("item \"food\""), rule);
+        JsonObject item = functionsByName().get("acquire").getAsJsonObject("parameters")
+                .getAsJsonObject("properties").getAsJsonObject("item");
+        assertTrue(item.get("description").getAsString().contains("\"food\""));
+    }
+
+    @Test
     void survivesAJsonRoundTrip() {
         JsonArray tools = AiTools.definitions();
         assertEquals(tools, JsonParser.parseString(tools.toString()));
