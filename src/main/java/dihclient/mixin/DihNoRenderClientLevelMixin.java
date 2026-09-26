@@ -17,8 +17,13 @@ public abstract class DihNoRenderClientLevelMixin {
         if (NoRenderState.noBlockBreakParticles()) ci.cancel();
     }
 
+    //? if >=26.3 {
+    /*@Inject(method = "addBreakingBlockEffects", at = @At("HEAD"), cancellable = true, require = 0)
+    private void dih$noBreakingParticles(BlockPos pos, Direction direction, boolean sound, CallbackInfo ci) {
+    *///?} else {
     @Inject(method = "addBreakingBlockEffect", at = @At("HEAD"), cancellable = true, require = 0)
     private void dih$noBreakingParticles(BlockPos pos, Direction direction, CallbackInfo ci) {
+    //?}
         if (NoRenderState.noBlockBreakParticles()) ci.cancel();
     }
 }

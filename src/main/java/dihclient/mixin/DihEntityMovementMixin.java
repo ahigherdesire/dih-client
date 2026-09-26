@@ -27,7 +27,8 @@ public class DihEntityMovementMixin {
     )
     private float dih$antiBounceRestitution(Block block) {
         Entity entity = (Entity) (Object) this;
-        if (block instanceof SlimeBlock && ModuleMovementUtil.shouldCancelNoFallBounce(entity)) {
+        if ((block instanceof SlimeBlock || block instanceof net.minecraft.world.level.block.BedBlock)
+            && ModuleMovementUtil.shouldCancelNoFallBounce(entity)) {
             return 0.0F;
         }
         return block.getBounceRestitution();

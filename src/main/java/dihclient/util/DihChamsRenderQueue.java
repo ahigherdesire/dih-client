@@ -4,7 +4,6 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.renderer.rendertype.RenderType;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -31,13 +30,13 @@ public final class DihChamsRenderQueue {
     public static void submitBody(Model<?> model, Object state, PoseStack.Pose pose,
                                   RenderType visibleType, RenderType occludedType,
                                   int light, int overlay, int visibleColor, int occludedColor,
-                                  TextureAtlasSprite sprite) {
+                                  Object sprite) {
         BODIES.add(new BodySubmit(model, state, pose, visibleType, occludedType,
             light, overlay, visibleColor, occludedColor, sprite));
     }
 
     public static void submitLayer(Model<?> model, Object state, PoseStack.Pose pose, RenderType type,
-                                   int light, int overlay, int color, TextureAtlasSprite sprite) {
+                                   int light, int overlay, int color, Object sprite) {
         LAYERS.add(new ModelSubmit(model, state, pose, type, light, overlay, color, sprite));
     }
 
@@ -71,13 +70,13 @@ public final class DihChamsRenderQueue {
     @SuppressWarnings({"rawtypes", "unchecked"})
     private static void draw(DihBufferSource buffers, PoseStack framePose, Model<?> model, Object state,
                              PoseStack.Pose modelPose, RenderType type, int light, int overlay, int color,
-                             TextureAtlasSprite sprite) {
+                             Object sprite) {
         framePose.pushPose();
         try {
 
             framePose.mulPose(modelPose.pose());
             VertexConsumer consumer = buffers.getBuffer(type);
-            if (sprite != null) consumer = sprite.wrap(consumer);
+            consumer = DihRender.wrapUv(sprite, consumer);
 
             Model rawModel = model;
             rawModel.setupAnim(state);
@@ -90,10 +89,10 @@ public final class DihChamsRenderQueue {
     private record BodySubmit(Model<?> model, Object state, PoseStack.Pose pose,
                               RenderType visibleType, RenderType occludedType,
                               int light, int overlay, int visibleColor, int occludedColor,
-                              TextureAtlasSprite sprite) {
+                              Object sprite) {
     }
 
     private record ModelSubmit(Model<?> model, Object state, PoseStack.Pose pose, RenderType type,
-                               int light, int overlay, int color, TextureAtlasSprite sprite) {
+                               int light, int overlay, int color, Object sprite) {
     }
 }

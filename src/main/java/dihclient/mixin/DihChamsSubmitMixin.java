@@ -18,8 +18,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class DihChamsSubmitMixin {
     @Inject(method = "submitModel", at = @At("HEAD"), cancellable = true, require = 0)
     private void dih$chamsModel(Model model, Object object, PoseStack pose, RenderType type, int light, int overlay,
+                                   //? if >=26.3 {
+                                   /*int tint, net.minecraft.client.renderer.texture.UvMapping sprite, int outlineColor,
+                                   *///?} else {
                                    int tint, TextureAtlasSprite sprite, int outlineColor,
-                                   ModelFeatureRenderer.CrumblingOverlay crumbling, CallbackInfo ci) {
+                                   ModelFeatureRenderer.CrumblingOverlay crumbling,
+                                   //?}
+                                   CallbackInfo ci) {
         if (!DihChamsContext.active()) return;
 
         if (!DihChamsContext.claimBody()) {

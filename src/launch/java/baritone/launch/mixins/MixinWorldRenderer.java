@@ -48,6 +48,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(LevelRenderer.class)
 public class MixinWorldRenderer {
 
+    //? if >=26.3 {
+    /*@Inject(method = "render(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;ZLnet/minecraft/client/renderer/state/level/CameraRenderState;Lcom/mojang/renderpearl/api/buffers/GpuBufferSlice;Lorg/joml/Vector4f;ZZ)V", at = @At("RETURN"))
+    private void baritone$renderPass(final GraphicsResourceAllocator allocator, final boolean renderBlockOutline,
+                                     final CameraRenderState cameraState, final GpuBufferSlice fog, final Vector4f fogColor,
+                                     final boolean renderSky, final boolean renderWeather, final CallbackInfo ci) {
+        final DeltaTracker deltaTracker = net.minecraft.client.Minecraft.getInstance().getDeltaTracker();
+        if (cameraState == null || cameraState.pos == null) return;
+        final Matrix4fc positionMatrix = cameraState.viewRotationMatrix;
+    *///?} else {
     @Inject(
             method = "render(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;Lnet/minecraft/client/DeltaTracker;ZLnet/minecraft/client/renderer/state/level/CameraRenderState;Lorg/joml/Matrix4fc;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lorg/joml/Vector4f;Z)V",
             at = @At("RETURN")
@@ -57,6 +66,7 @@ public class MixinWorldRenderer {
                                      final Matrix4fc positionMatrix, final GpuBufferSlice fog, final Vector4f fogColor,
                                      final boolean renderSky, final CallbackInfo ci) {
         if (cameraState == null || cameraState.pos == null) return;
+    //?}
         BaritoneRenderBuffer.begin();
         try {
             float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(false);

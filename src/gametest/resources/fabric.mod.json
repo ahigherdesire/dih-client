@@ -6,6 +6,7 @@
   "environment": "client",
   "entrypoints": {
     "fabric-client-gametest": [
+      "dihclient.MixinAuditGameTest",
       "baritone.acquire.AcquireSmokeGameTest",
       "baritone.acquire.AcquireGatherGameTest",
       "baritone.acquire.exec.AcquireHealingGameTest",

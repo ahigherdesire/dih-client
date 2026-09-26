@@ -19,6 +19,21 @@ import net.minecraft.client.renderer.state.level.CameraRenderState;
 
 @Mixin(LevelRenderer.class)
 public class DihLevelRendererTracerMixin {
+    //? if >=26.3 {
+    /*@Inject(method = "render(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;ZLnet/minecraft/client/renderer/state/level/CameraRenderState;Lcom/mojang/renderpearl/api/buffers/GpuBufferSlice;Lorg/joml/Vector4f;ZZ)V", at = @At("HEAD"))
+    private void dih$beginDelayedOverlays(GraphicsResourceAllocator allocator, boolean renderBlockOutline,
+        CameraRenderState cameraState, GpuBufferSlice fog, Vector4f fogColor, boolean shouldRenderSky,
+        boolean renderWeather, CallbackInfo ci) {
+        DihChamsRenderQueue.clear();
+    }
+
+    @Inject(method = "render(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;ZLnet/minecraft/client/renderer/state/level/CameraRenderState;Lcom/mojang/renderpearl/api/buffers/GpuBufferSlice;Lorg/joml/Vector4f;ZZ)V", at = @At("RETURN"))
+    private void dih$drawTracers(GraphicsResourceAllocator allocator, boolean renderBlockOutline,
+        CameraRenderState cameraState, GpuBufferSlice fog, Vector4f fogColor, boolean shouldRenderSky,
+        boolean renderWeather, CallbackInfo ci) {
+        dih$flushOverlays(cameraState.viewRotationMatrix);
+    }
+    *///?} else {
     @Inject(
         method = "render(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;Lnet/minecraft/client/DeltaTracker;ZLnet/minecraft/client/renderer/state/level/CameraRenderState;Lorg/joml/Matrix4fc;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lorg/joml/Vector4f;Z)V",
         at = @At("HEAD"))
@@ -39,7 +54,12 @@ public class DihLevelRendererTracerMixin {
         CameraRenderState cameraState, Matrix4fc positionMatrix,
         GpuBufferSlice gpuBufferSlice, Vector4f vector4f,
         boolean shouldRenderSky, CallbackInfo ci) {
+        dih$flushOverlays(positionMatrix);
+    }
+    //?}
 
+    @org.spongepowered.asm.mixin.Unique
+    private static void dih$flushOverlays(Matrix4fc positionMatrix) {
         boolean chams = DihChamsRenderQueue.hasPending();
         boolean tracers = ModuleWorldRenderer.hasPendingTracers();
         boolean esp = ModuleWorldRenderer.hasPendingEspWork();

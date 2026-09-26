@@ -663,7 +663,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
         }
     }
 
-    @Inject(method = "slotClicked", at = @At("HEAD"), require = 0)
+    @Inject(method = "slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ContainerInput;)V", at = @At("HEAD"), require = 0)
     private void dih$captureCursorClickOriginBefore(Slot slot, int slotId, int button, ContainerInput actionType, CallbackInfo ci) {
         dih$cursorClickBeforeCarried = ItemStack.EMPTY;
         dih$cursorClickBeforeSlot = ItemStack.EMPTY;
@@ -678,7 +678,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
         }
     }
 
-    @Inject(method = "slotClicked", at = @At("TAIL"), require = 0)
+    @Inject(method = "slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ContainerInput;)V", at = @At("TAIL"), require = 0)
     private void dih$captureCursorClickOriginAfter(Slot slot, int slotId, int button, ContainerInput actionType, CallbackInfo ci) {
         if (MC.player == null || MC.player.containerMenu == null) return;
         if (slotId != dih$cursorClickBeforeSlotId || button != dih$cursorClickBeforeButton || actionType != dih$cursorClickBeforeInput) return;

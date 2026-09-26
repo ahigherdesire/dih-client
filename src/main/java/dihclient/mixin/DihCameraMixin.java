@@ -71,7 +71,13 @@ public abstract class DihCameraMixin {
     }
 
     @Inject(method = "extractRenderState", at = @At("TAIL"))
-    private void dih$disableSmartCull(CameraRenderState cameraState, float cameraEntityPartialTicks, CallbackInfo ci) {
+    private void dih$disableSmartCull(CameraRenderState cameraState,
+                                      //? if >=26.3 {
+                                      /*net.minecraft.client.DeltaTracker deltaTracker,
+                                      *///?} else {
+                                      float cameraEntityPartialTicks,
+                                      //?}
+                                      CallbackInfo ci) {
         if (ModuleRenderUtil.shouldBypassOcclusionCulling()) {
             cameraState.smartCull = false;
         }
