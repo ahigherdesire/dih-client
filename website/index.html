@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>DIH Client · Minecraft 26.2 and 26.3 client for Fabric and NeoForge</title>
-<meta name="description" content="Free, open-source client for Minecraft 26.2 and 26.3 on Fabric and NeoForge: 76 modules, tick-synced macros, Baritone built in and a seed map that runs real worldgen.">
+<title>DIH Client · Minecraft 26.2 and 26.3 client for Fabric, NeoForge and Forge</title>
+<meta name="description" content="Free, open-source client for Minecraft 26.2 and 26.3 on Fabric, NeoForge and Forge: 76 modules, tick-synced macros, Baritone built in and a seed map that runs real worldgen.">
 <meta name="theme-color" content="#08080a">
 <meta name="color-scheme" content="dark">
 <link rel="icon" href="assets/icon.svg" type="image/svg+xml">
@@ -13,7 +13,7 @@
 <meta property="og:type" content="website">
 <meta property="og:site_name" content="DIH Client">
 <meta property="og:title" content="DIH Client">
-<meta property="og:description" content="76 modules, tick-synced macros, Baritone built in and a real seed map. Fabric and NeoForge, MC 26.2 and 26.3.">
+<meta property="og:description" content="76 modules, tick-synced macros, Baritone built in and a real seed map. Fabric, NeoForge and Forge, MC 26.2 and 26.3.">
 <meta property="og:image" content="https://raw.githubusercontent.com/ahigherdesire/dih-client-site/main/assets/og.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
@@ -23,7 +23,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Kanit:ital,wght@1,800;1,900&display=swap" rel="stylesheet">
 <script src="assets/boot.js?v=37529cf4"></script>
 <link rel="stylesheet" href="assets/style.css?v=89629ea8">
-<script src="assets/release.js?v=9c08ceff"></script>
+<script src="assets/release.js?v=9369b0c6"></script>
 <script defer src="assets/modules.js?v=d9f384fb"></script>
 <script defer src="assets/app.js?v=78e48f9c"></script>
 </head>
@@ -87,7 +87,7 @@
       </a>
     </div>
     <p class="fine mono">Free and open source · GPL-3.0 · needs Fabric API<span id="dl-count" hidden> · <b>0</b> downloads</span></p>
-    <p class="fine mono">On Minecraft 26.3 or NeoForge? <a href="#beta">Get the 5.1 beta</a></p>
+    <p class="fine mono">On Minecraft 26.3, NeoForge or Forge? <a href="#beta">Get the 5.1 beta</a></p>
   </div>
 
   <p class="actionbar mono" id="actionbar" aria-hidden="true"></p>
@@ -181,8 +181,28 @@
           <small class="mono" data-dl-sub>Beta 3 · <span data-release="beta3_neo263.size">20.1 MB</span></small>
         </span>
       </a>
+      <a class="dl dl-beta" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.1-beta.3/DIH-Client-5.1-beta.3-26.2-forge.jar" data-release="beta3_forge262.download" data-dl>
+        <span class="dl-icon" aria-hidden="true">
+          <svg class="dl-arrow" viewBox="0 0 16 16"><path d="M8 2.5v8m0 0L4.8 7.3M8 10.5l3.2-3.2M3 13.5h10"/></svg>
+          <svg class="dl-check" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg>
+        </span>
+        <span class="dl-text">
+          <b>Forge <span data-release="beta3_forge262.mc">26.2</span></b>
+          <small class="mono" data-dl-sub>Beta 3 · <span data-release="beta3_forge262.size">20.8 MB</span></small>
+        </span>
+      </a>
+      <a class="dl dl-beta" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.1-beta.3/DIH-Client-5.1-beta.3-26.3-forge.jar" data-release="beta3_forge263.download" data-dl>
+        <span class="dl-icon" aria-hidden="true">
+          <svg class="dl-arrow" viewBox="0 0 16 16"><path d="M8 2.5v8m0 0L4.8 7.3M8 10.5l3.2-3.2M3 13.5h10"/></svg>
+          <svg class="dl-check" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg>
+        </span>
+        <span class="dl-text">
+          <b>Forge <span data-release="beta3_forge263.mc">26.3</span></b>
+          <small class="mono" data-dl-sub>Beta 3 · <span data-release="beta3_forge263.size">20.7 MB</span></small>
+        </span>
+      </a>
     </div>
-    <p class="fine mono">Pre-releases. Try them in a singleplayer world first. On 26.3, OreSim is off for now. NeoForge builds are new. <a href="https://github.com/ahigherdesire/dih-client/releases/tag/v5.1-beta.2" data-release="beta.download">Beta 2</a> is still up.</p>
+    <p class="fine mono">Pre-releases. Try them in a singleplayer world first. On 26.3, OreSim is off for now. NeoForge and Forge builds are new. <a href="https://github.com/ahigherdesire/dih-client/releases/tag/v5.1-beta.2" data-release="beta.download">Beta 2</a> is still up.</p>
   </div>
   <figure class="acq mono" aria-label="#acquire iron_pickaxe running">
     <div class="acq-head">
@@ -206,7 +226,7 @@
 <section class="section" id="install" aria-labelledby="itl">
   <h2 id="itl">Install</h2>
   <ol class="steps">
-    <li><b>1</b><span>Install <a href="https://fabricmc.net/use/installer/" rel="noopener">Fabric Loader</a> 0.19.3+ and <a href="https://modrinth.com/mod/fabric-api" rel="noopener">Fabric API</a> (or <a href="https://neoforged.net/" rel="noopener">NeoForge</a> for the NeoForge beta). Java 25.</span></li>
+    <li><b>1</b><span>Install <a href="https://fabricmc.net/use/installer/" rel="noopener">Fabric Loader</a> 0.19.3+ and <a href="https://modrinth.com/mod/fabric-api" rel="noopener">Fabric API</a> (or <a href="https://neoforged.net/" rel="noopener">NeoForge</a> / <a href="https://files.minecraftforge.net/" rel="noopener">Forge</a> for those betas). Java 25.</span></li>
     <li><b>2</b><span>Put <a href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0.1/DIH-Client-5.0.1-26.2.jar" data-release="download">DIH Client</a> and <a href="https://modrinth.com/mod/journeymap" data-release="journeymap" rel="noopener">JourneyMap</a> in your <code>mods</code> folder.</span></li>
     <li><b>3</b><span>In game, <kbd>Right Shift</kbd> opens modules. <code>.help</code> and <code>#help</code> list commands.</span></li>
   </ol>
@@ -239,6 +259,16 @@
     <span class="checksum-label">SHA-256 · <span data-release="beta3_neo263.file">DIH-Client-5.1-beta.3-26.3-neoforge.jar</span></span>
     <code data-release="beta3_neo263.sha256">6a8eb1a751e8f9f66e30c6c37430cba71cbe058c6a7e1c63baafd1ac45e406b1</code>
     <button type="button" class="linkish" data-copy="beta3_neo263.sha256">Copy</button>
+  </div>
+  <div class="checksum mono">
+    <span class="checksum-label">SHA-256 · <span data-release="beta3_forge262.file">DIH-Client-5.1-beta.3-26.2-forge.jar</span></span>
+    <code data-release="beta3_forge262.sha256">a2854c2f1c193bbde8877ebf3af6a0f6d76bb476fedcaec4c11e4440bf667cf0</code>
+    <button type="button" class="linkish" data-copy="beta3_forge262.sha256">Copy</button>
+  </div>
+  <div class="checksum mono">
+    <span class="checksum-label">SHA-256 · <span data-release="beta3_forge263.file">DIH-Client-5.1-beta.3-26.3-forge.jar</span></span>
+    <code data-release="beta3_forge263.sha256">53eb72322d8835c70be7f0a6b7420af282e3182902825f7affb0e299fbbea705</code>
+    <button type="button" class="linkish" data-copy="beta3_forge263.sha256">Copy</button>
   </div>
 </section>
 
