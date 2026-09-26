@@ -15,6 +15,27 @@
     if (el.tagName === 'A') el.href = val;
     else el.textContent = val;
   });
+  // ------------------------------------------------------------ download count
+  // Total jar downloads across every release, from GitHub's API (60 requests an hour per visitor,
+  // so it is cached for the tab). Stays hidden if the request fails.
+  const dlCount = $('#dl-count');
+  if (dlCount && R.repo) {
+    const show = n => { dlCount.querySelector('b').textContent = n.toLocaleString('en-US'); dlCount.hidden = false; };
+    let cached = null;
+    try { cached = sessionStorage.getItem('dih-downloads'); } catch (e) {}
+    if (cached) show(+cached);
+    else {
+      fetch(R.repo.replace('https://github.com/', 'https://api.github.com/repos/') + '/releases?per_page=100')
+        .then(r => r.ok ? r.json() : Promise.reject(r.status))
+        .then(rels => {
+          const n = rels.reduce((t, r) => t + r.assets.reduce((u, a) => u + (/\.jar$/.test(a.name) ? a.download_count : 0), 0), 0);
+          try { sessionStorage.setItem('dih-downloads', n); } catch (e) {}
+          show(n);
+        })
+        .catch(() => {});
+    }
+  }
+
   document.querySelectorAll('[data-copy]').forEach(btn => {
     btn.addEventListener('click', async () => {
       const code = btn.parentElement.querySelector('code');

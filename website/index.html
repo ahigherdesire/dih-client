@@ -22,10 +22,10 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Kanit:ital,wght@1,800;1,900&display=swap" rel="stylesheet">
 <script src="assets/boot.js?v=37529cf4"></script>
-<link rel="stylesheet" href="assets/style.css?v=4462638c">
-<script src="assets/release.js?v=03c0ed4a"></script>
+<link rel="stylesheet" href="assets/style.css?v=c0378dc0">
+<script src="assets/release.js?v=4a25b2f5"></script>
 <script defer src="assets/modules.js?v=d9f384fb"></script>
-<script defer src="assets/app.js?v=d4ddf22c"></script>
+<script defer src="assets/app.js?v=78e48f9c"></script>
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -42,7 +42,7 @@
     <a href="#install">Install</a>
     <a href="https://github.com/ahigherdesire/dih-client" data-release="repo" rel="noopener">GitHub</a>
   </nav>
-  <a class="bar-dl" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0/DIH-Client-5.0-26.2.jar" data-release="download">
+  <a class="bar-dl" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0.1/DIH-Client-5.0.1-26.2.jar" data-release="download">
     <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8m0 0L4.8 7.3M8 10.5l3.2-3.2M3 13.5h10"/></svg>
     Download
   </a>
@@ -71,13 +71,13 @@
     </h1>
     <p class="lede">76 modules, tick-synced macros, Baritone built in, and a seed map that runs real worldgen.</p>
     <div class="cta">
-      <a class="dl" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0/DIH-Client-5.0-26.2.jar" data-release="download" data-dl>
+      <a class="dl" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0.1/DIH-Client-5.0.1-26.2.jar" data-release="download" data-dl>
         <span class="dl-icon" aria-hidden="true">
           <svg class="dl-arrow" viewBox="0 0 16 16"><path d="M8 2.5v8m0 0L4.8 7.3M8 10.5l3.2-3.2M3 13.5h10"/></svg>
           <svg class="dl-check" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg>
         </span>
         <span class="dl-text">
-          <b>Download <span data-release="version">5.0</span></b>
+          <b>Download <span data-release="version">5.0.1</span></b>
           <small class="mono" data-dl-sub>Fabric <span data-release="mc">26.2</span> · <span data-release="size">20.8 MB</span></small>
         </span>
       </a>
@@ -86,7 +86,7 @@
         <span data-release="beta.label">5.1 beta</span>
       </a>
     </div>
-    <p class="fine mono">Free and open source · GPL-3.0 · needs Fabric API</p>
+    <p class="fine mono">Free and open source · GPL-3.0 · needs Fabric API<span id="dl-count" hidden> · <b>0</b> downloads</span></p>
   </div>
 
   <p class="actionbar mono" id="actionbar" aria-hidden="true"></p>
@@ -129,7 +129,7 @@
 
 <section class="section beta" id="beta" aria-labelledby="btitle">
   <div class="beta-copy">
-    <p class="kicker mono"><span class="chip">BETA</span> <span data-release="beta.version">5.1-beta.2</span></p>
+    <p class="kicker mono"><span class="chip">BETA</span> <span data-release="beta3.version">5.1-beta.3</span></p>
     <h2 id="btitle">Name an item.<br>It gets it.</h2>
     <p><code>#acquire iron_pickaxe</code> works out the whole chain: trees, tools, ore, a furnace, mobs if it needs them. Then it runs it, and re-plans when something goes wrong.</p>
     <ul class="ticks">
@@ -146,12 +146,22 @@
           <svg class="dl-check" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg>
         </span>
         <span class="dl-text">
-          <b>Download beta</b>
+          <b>Download Beta 2</b>
           <small class="mono" data-dl-sub><span data-release="beta.version">5.1-beta.2</span> · <span data-release="beta.size">20.8 MB</span></small>
         </span>
       </a>
+      <a class="dl dl-beta" href="https://github.com/ahigherdesire/dih-client/releases/download/v5.1-beta.3/DIH-Client-5.1-beta.3-26.2.jar" data-release="beta3.download" data-dl>
+        <span class="dl-icon" aria-hidden="true">
+          <svg class="dl-arrow" viewBox="0 0 16 16"><path d="M8 2.5v8m0 0L4.8 7.3M8 10.5l3.2-3.2M3 13.5h10"/></svg>
+          <svg class="dl-check" viewBox="0 0 16 16"><path d="m3.5 8.5 3 3 6-7"/></svg>
+        </span>
+        <span class="dl-text">
+          <b>Download Beta 3</b>
+          <small class="mono" data-dl-sub><span data-release="beta3.version">5.1-beta.3</span> · <span data-release="beta3.size">20.8 MB</span></small>
+        </span>
+      </a>
     </div>
-    <p class="fine mono">Not play-tested yet. Try it in a singleplayer world first.</p>
+    <p class="fine mono">Pre-releases. Try them in a singleplayer world first.</p>
   </div>
   <figure class="acq mono" aria-label="#acquire iron_pickaxe running">
     <div class="acq-head">
@@ -176,18 +186,23 @@
   <h2 id="itl">Install</h2>
   <ol class="steps">
     <li><b>1</b><span>Install <a href="https://fabricmc.net/use/installer/" rel="noopener">Fabric Loader</a> 0.19.3+ and <a href="https://modrinth.com/mod/fabric-api" rel="noopener">Fabric API</a>. Java 25.</span></li>
-    <li><b>2</b><span>Put <a href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0/DIH-Client-5.0-26.2.jar" data-release="download">DIH Client</a> and <a href="https://modrinth.com/mod/journeymap" data-release="journeymap" rel="noopener">JourneyMap</a> in your <code>mods</code> folder.</span></li>
+    <li><b>2</b><span>Put <a href="https://github.com/ahigherdesire/dih-client/releases/download/v5.0.1/DIH-Client-5.0.1-26.2.jar" data-release="download">DIH Client</a> and <a href="https://modrinth.com/mod/journeymap" data-release="journeymap" rel="noopener">JourneyMap</a> in your <code>mods</code> folder.</span></li>
     <li><b>3</b><span>In game, <kbd>Right Shift</kbd> opens modules. <code>.help</code> and <code>#help</code> list commands.</span></li>
   </ol>
   <div class="checksum mono">
-    <span class="checksum-label">SHA-256 · <span data-release="file">DIH-Client-5.0-26.2.jar</span></span>
-    <code data-release="sha256">2c2e62f56554bfcde706104dc30a72cd6d362fcdb5a640b7ee3e6cd53a70b148</code>
+    <span class="checksum-label">SHA-256 · <span data-release="file">DIH-Client-5.0.1-26.2.jar</span></span>
+    <code data-release="sha256">7a10cdb8168856611e9d5f255f4e6331e7de3e63108c348a0da5c50d56fbd2a2</code>
     <button type="button" class="linkish" data-copy="sha256">Copy</button>
   </div>
   <div class="checksum mono">
     <span class="checksum-label">SHA-256 · <span data-release="beta.file">DIH-Client-5.1-beta.2-26.2.jar</span></span>
     <code data-release="beta.sha256">…</code>
     <button type="button" class="linkish" data-copy="beta.sha256">Copy</button>
+  </div>
+  <div class="checksum mono">
+    <span class="checksum-label">SHA-256 · <span data-release="beta3.file">DIH-Client-5.1-beta.3-26.2.jar</span></span>
+    <code data-release="beta3.sha256">e553d76b6a285250027f00de8cbd3bf222c08188ea7e47834ccd5b9ccbea7f45</code>
+    <button type="button" class="linkish" data-copy="beta3.sha256">Copy</button>
   </div>
 </section>
 

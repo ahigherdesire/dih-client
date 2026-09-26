@@ -78,6 +78,7 @@ figure { margin: 0; }
   color: #1a1204; background: var(--amber);
 }
 .fine { margin: 14px 0 0; font-size: 11.5px; color: var(--mute); }
+.fine b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
 
 /* ---------------------------------------------------------------- top bar */
 .bar {
@@ -388,7 +389,7 @@ figure { margin: 0; }
 .term-lines .caret::after { content: "▍"; color: var(--blue-hi); animation: blink 1s steps(2) infinite; }
 
 /* ---------------------------------------------------------------- beta */
-.beta { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr); gap: clamp(32px, 5vw, 64px); align-items: center; isolation: isolate; }
+.beta { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, .8fr); gap: clamp(32px, 5vw, 64px); align-items: center; isolation: isolate; }
 .beta::before {
   content: ""; position: absolute; z-index: -1; inset: 20% 0 -10% 40%; pointer-events: none;
   background: radial-gradient(50% 50% at 50% 50%, rgba(251, 191, 36, .1), transparent 70%);
