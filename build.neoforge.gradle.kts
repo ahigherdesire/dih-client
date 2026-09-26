@@ -66,6 +66,7 @@ neoForge {
             gameDirectory = rootProject.file("run/neoforge-$mcVersion")
             // -PdihAudit: apply every mixin on the first tick, log the result and quit (see DihNeoForgeMod).
             if (project.hasProperty("dihAudit")) systemProperty("dih.auditAndExit", "true")
+            providers.gradleProperty("dihDisableMixins").orNull?.let { systemProperty("dih.disableMixins", it) }
         }
     }
 }

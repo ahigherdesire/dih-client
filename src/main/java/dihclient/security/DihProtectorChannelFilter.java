@@ -59,7 +59,7 @@ public final class DihProtectorChannelFilter {
         if (id == null) return PASS;
 
         if (DihProtector.isVanillaMode()) {
-            return DROP;
+            return DihSpoofPayloadFilter.isLoaderProtocolChannel(id.toString()) ? PASS : DROP;
         }
 
         String namespace = id.getNamespace();
