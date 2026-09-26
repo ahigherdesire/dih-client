@@ -2,9 +2,11 @@ package dihclient.security;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+//? if fabric {
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import net.fabricmc.loader.api.metadata.ModDependency;
+//?}
 
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -46,6 +48,7 @@ public final class DihProtectorModResolver {
         stack.push(modId);
         queued.add(modId);
 
+        //? if fabric {
         while (!stack.isEmpty()) {
             Optional<ModContainer> optional = FabricLoader.getInstance().getModContainer(stack.pop());
             if (optional.isEmpty()) continue;
@@ -64,6 +67,7 @@ public final class DihProtectorModResolver {
                 if (queued.add(dependencyId)) stack.push(dependencyId);
             }
         }
+        //?}
         dependencies.remove(modId);
         return dependencies;
     }
@@ -123,6 +127,10 @@ public final class DihProtectorModResolver {
 
     private static String rootModId(String modId) {
         if (modId == null || modId.isBlank()) return null;
+        //? if neoforge {
+        /*return modId; // NeoForge has no nested (jar-in-jar) mod containers to walk up
+        *///?}
+        //? if fabric {
         Optional<ModContainer> optional = FabricLoader.getInstance().getModContainer(modId);
         if (optional.isEmpty()) return modId;
         ModContainer current = optional.get();
@@ -132,6 +140,7 @@ public final class DihProtectorModResolver {
             parent = current.getContainingMod();
         }
         return current.getMetadata().getId();
+        //?}
     }
 
     private static boolean isCore(String modId) {

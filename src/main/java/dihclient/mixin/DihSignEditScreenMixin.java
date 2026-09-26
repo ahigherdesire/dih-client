@@ -42,7 +42,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 
 @Mixin(AbstractSignEditScreen.class)
 public abstract class DihSignEditScreenMixin extends Screen implements DihSpecialGuiActions, DihSignEditAccess {
@@ -191,7 +190,7 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
         manager.register(launcherOverlay);
 
         Screen screen = (Screen) (Object) this;
-        ScreenEvents.afterExtract(screen).register((scrn, drawContext, mouseX, mouseY, tickDelta) -> {
+        dihclient.platform.DihPlatform.afterScreenExtract(screen, (scrn, drawContext, mouseX, mouseY, tickDelta) -> {
             if (yang$isDihActive()) {
                 DihOverlayManager.get().renderAll(drawContext, mouseX, mouseY, tickDelta);
             }

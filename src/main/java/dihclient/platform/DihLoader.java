@@ -1,0 +1,94 @@
+package dihclient.platform;
+
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Mod-loader queries (Fabric Loader or NeoForge's FML). No Minecraft types, so mixin plugins can call it before the
+ * game's classes load. Client events are in {@link DihPlatform}.
+ */
+public final class DihLoader {
+
+    private DihLoader() {
+    }
+
+    /** "fabric" or "neoforge". */
+    public static String loaderName() {
+        //? if neoforge {
+        /*return "neoforge";
+        *///?} else {
+        return "fabric";
+        //?}
+    }
+
+    /** Whether a mod with this id is loaded. Safe from mixin plugins, before mods are constructed. */
+    public static boolean isModLoaded(String id) {
+        //? if neoforge {
+        /*net.neoforged.fml.ModList mods = net.neoforged.fml.ModList.get();
+        if (mods != null) return mods.isLoaded(id);
+        net.neoforged.fml.loading.FMLLoader loader = net.neoforged.fml.loading.FMLLoader.getCurrentOrNull();
+        return loader != null && loader.getLoadingModList().getModFileById(id) != null;
+        *///?} else {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded(id);
+        //?}
+    }
+
+    public static Path configDir() {
+        //? if neoforge {
+        /*return net.neoforged.fml.loading.FMLPaths.CONFIGDIR.get();
+        *///?} else {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getConfigDir();
+        //?}
+    }
+
+    public static Path gameDir() {
+        //? if neoforge {
+        /*return net.neoforged.fml.loading.FMLPaths.GAMEDIR.get();
+        *///?} else {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getGameDir();
+        //?}
+    }
+
+    public static boolean isDevelopment() {
+        //? if neoforge {
+        /*return !net.neoforged.fml.loading.FMLEnvironment.isProduction();
+        *///?} else {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().isDevelopmentEnvironment();
+        //?}
+    }
+
+    /** A loaded mod's version string. */
+    public static Optional<String> modVersion(String id) {
+        //? if neoforge {
+        /*return net.neoforged.fml.ModList.get().getModContainerById(id)
+            .map(c -> c.getModInfo().getVersion().toString());
+        *///?} else {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(id)
+            .map(m -> m.getMetadata().getVersion().getFriendlyString());
+        //?}
+    }
+
+    /** The jar (or directory) a loaded mod was loaded from. */
+    public static Optional<Path> modPath(String id) {
+        //? if neoforge {
+        /*var file = net.neoforged.fml.ModList.get().getModFileById(id);
+        return file == null ? Optional.empty() : Optional.of(file.getFile().getFilePath());
+        *///?} else {
+        return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer(id)
+            .flatMap(c -> c.getOrigin().getPaths().stream().findFirst());
+        //?}
+    }
+
+    /** Ids of every loaded mod. */
+    public static List<String> modIds() {
+        List<String> ids = new ArrayList<>();
+        //? if neoforge {
+        /*for (var mod : net.neoforged.fml.ModList.get().getMods()) ids.add(mod.getModId());
+        *///?} else {
+        for (var mod : net.fabricmc.loader.api.FabricLoader.getInstance().getAllMods()) ids.add(mod.getMetadata().getId());
+        //?}
+        return ids;
+    }
+}

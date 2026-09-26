@@ -627,6 +627,8 @@ val generateDihPacketSchemas by tasks.registering {
 
 val shippedResourceExtensions = setOf("png", "mcmeta", "ttf", "json", "ogg", "fsh", "vsh", "svg", "bin")
 val shippedResourceRootFiles = setOf("fabric.mod.json", "dih.mixins.json", "dih-baritone.mixins.json")
+// Other loaders' metadata: packaged by their own builds (build.<loader>.gradle.kts), excluded from this jar.
+val otherLoaderResourceFiles = setOf("META-INF/neoforge.mods.toml", "META-INF/mods.toml")
 
 val verifyShippedResources by tasks.registering {
     group = "verification"
@@ -638,6 +640,7 @@ val verifyShippedResources by tasks.registering {
         val offenders = resourceRoot.walkTopDown().filter { it.isFile }.mapNotNull { file ->
             val relative = file.relativeTo(resourceRoot).invariantSeparatorsPath
             when {
+                relative in otherLoaderResourceFiles -> null
                 !relative.contains('/') ->
                     if (relative in shippedResourceRootFiles) null
                     else "$relative  (unexpected file at the resources root)"
@@ -675,6 +678,7 @@ tasks {
         filteringCharset = "UTF-8"
 
         exclude("addon-template.mixins.json")
+        exclude("META-INF/neoforge.mods.toml")
         exclude("assets/template/**")
 
         filesMatching("fabric.mod.json") {

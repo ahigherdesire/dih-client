@@ -1,7 +1,6 @@
 package dihclient.security;
 
 import dihclient.util.DihConfig;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.network.protocol.Packet;
 
 import java.util.Collections;
@@ -32,9 +31,8 @@ public final class DihProtector {
         boolean opsec = false;
         boolean exploitPreventer = false;
         try {
-            FabricLoader loader = FabricLoader.getInstance();
-            opsec = loader.isModLoaded(OPSEC_MOD_ID);
-            exploitPreventer = loader.isModLoaded(EXPLOIT_PREVENTER_MOD_ID);
+            opsec = dihclient.platform.DihLoader.isModLoaded(OPSEC_MOD_ID);
+            exploitPreventer = dihclient.platform.DihLoader.isModLoaded(EXPLOIT_PREVENTER_MOD_ID);
         } catch (Throwable ignored) {  }
         OPSEC_PRESENT = opsec;
         EXPLOIT_PREVENTER_PRESENT = exploitPreventer;

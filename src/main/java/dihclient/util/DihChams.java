@@ -1,7 +1,7 @@
 package dihclient.util;
 
 import dihclient.mixin.DihRenderTypeStateAccessor;
-import net.minecraft.client.renderer.rendertype.DihChamsRenderTypes;
+import dihclient.render.mc.DihChamsRenderTypes;
 import net.minecraft.client.renderer.rendertype.RenderSetup;
 import net.minecraft.client.renderer.rendertype.RenderType;
 import net.minecraft.resources.Identifier;

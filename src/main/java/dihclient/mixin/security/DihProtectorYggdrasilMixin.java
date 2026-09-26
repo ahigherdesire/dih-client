@@ -1,5 +1,8 @@
 package dihclient.mixin.security;
 
+// Fabric only: NeoForge loads authlib outside the transformable layer (DihProtectorTelemetryMixin covers it there).
+//? if fabric {
+
 import dihclient.security.DihProtector;
 import com.mojang.authlib.minecraft.TelemetrySession;
 //? if >=26.3 {
@@ -28,3 +31,4 @@ public class DihProtectorYggdrasilMixin {
         }
     }
 }
+//?}

@@ -18,16 +18,16 @@ import dihclient.util.DihOverlayManager;
 import dihclient.util.DihSvgHudLogo;
 import dihclient.util.DihWindowBranding;
 import dihclient.util.DihSharedState;
+import dihclient.platform.DihPlatform;
+//? if fabric {
 import net.fabricmc.api.ClientModInitializer;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
-import net.fabricmc.fabric.api.client.item.v1.ItemTooltipCallback;
-import net.fabricmc.fabric.api.client.networking.v1.ClientConfigurationConnectionEvents;
-import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
-import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
-import net.minecraft.server.packs.PackType;
+//?}
 
+//? if fabric {
 public final class DihClientMod implements ClientModInitializer {
+//?} else {
+/*public final class DihClientMod {
+*///?}
 
     private static void runSafe(String where, Runnable action) {
         try {
@@ -47,6 +47,7 @@ public final class DihClientMod implements ClientModInitializer {
         DihClientAddon.LOG.warn("[Dih] tick '{}' failed; isolated to protect the client", where, t);
     }
 
+    //? if fabric
     @Override
     @SuppressWarnings("deprecation")
     public void onInitializeClient() {
@@ -85,20 +86,12 @@ public final class DihClientMod implements ClientModInitializer {
 
         dihclient.addons.AddonManager.init();
 
-        ResourceManagerHelper.get(PackType.CLIENT_RESOURCES).registerReloadListener(new net.fabricmc.fabric.api.resource.SimpleSynchronousResourceReloadListener() {
-            @Override
-            public net.minecraft.resources.Identifier getFabricId() {
-                return net.minecraft.resources.Identifier.fromNamespaceAndPath("dihclient", "ui_assets");
-            }
-
-            @Override
-            public void onResourceManagerReload(net.minecraft.server.packs.resources.ResourceManager manager) {
-                UiText.onClientResourceReload();
-                DihSvgHudLogo.clear();
-            }
+        DihPlatform.onClientResourceReload("ui_assets", () -> {
+            UiText.onClientResourceReload();
+            DihSvgHudLogo.clear();
         });
 
-        ClientTickEvents.END_CLIENT_TICK.register(client -> {
+        dihclient.platform.DihPlatform.onEndClientTick(client -> {
 
             try {
                 if (dihclient.util.DihBlockNbtCapture.hasTickWork()) {
@@ -168,14 +161,14 @@ public final class DihClientMod implements ClientModInitializer {
                 logTickError("mmAutoJoin", t);
             }
         });
-        ClientTickEvents.END_LEVEL_TICK.register(level ->
+        DihPlatform.onEndLevelTick(level ->
             runSafe("lan.levelTick", () -> DihLANSync.getInstance().onLevelTick(level.getGameTime())));
-        ClientConfigurationConnectionEvents.INIT.register((listener, client) -> {
+        DihPlatform.onConfigurationInit(listener -> {
             runSafe("cfg.hideMenuOverlays", () -> DihModule.get().hideMenuOverlays());
             runSafe("cfg.configStarted", () -> DihModule.get().onConfigurationConnectionStarted());
             runSafe("cfg.joinMacro", () -> DihJoinMacroController.onConfigurationInit(listener));
         });
-        ClientConfigurationConnectionEvents.DISCONNECT.register((listener, client) -> {
+        DihPlatform.onConfigurationDisconnect(() -> {
             runSafe("cfg.remoteView", () -> dihclient.util.DihRemoteView.stop(false));
             runSafe("cfg.persist", dihclient.util.DihConfig::enqueuePendingSaveNow);
             runSafe("cfg.pacedTp", () -> dihclient.util.multi.PacketTeleportController.cancelAll("connection changed"));
@@ -187,7 +180,7 @@ public final class DihClientMod implements ClientModInitializer {
             runSafe("cfg.onGameLeft", () -> DihModule.get().onGameLeft());
             runSafe("cfg.joinMacro", DihJoinMacroController::onConfigurationDisconnect);
         });
-        ClientPlayConnectionEvents.JOIN.register((handler, sender, client) -> {
+        DihPlatform.onPlayJoin(client -> {
             runSafe("join.pacedTp", () -> dihclient.util.multi.PacketTeleportController.cancelAll("connection changed"));
 
             runSafe("join.movementGrace", dihclient.modules.DihJoinGrace::onJoin);
@@ -201,7 +194,7 @@ public final class DihClientMod implements ClientModInitializer {
             runSafe("join.updateNotice", dihclient.util.DihUpdateChecker::announceOnJoin);
             runSafe("join.acquireKnowledge", baritone.acquire.knowledge.VanillaKnowledge::preload);
         });
-        ClientPlayConnectionEvents.DISCONNECT.register((handler, client) -> {
+        DihPlatform.onPlayDisconnect(() -> {
             runSafe("leave.seedMap", baritone.command.defaults.SeedMapCommand::onDisconnect);
             runSafe("leave.remoteView", () -> dihclient.util.DihRemoteView.stop(false));
             runSafe("leave.persist", dihclient.util.DihConfig::enqueuePendingSaveNow);
@@ -222,14 +215,14 @@ public final class DihClientMod implements ClientModInitializer {
             runSafe("leave.onGameLeft", () -> DihModule.get().onGameLeft());
             runSafe("leave.lagWatchdog", dihclient.util.DihLagWatchdog::reset);
         });
-        ItemTooltipCallback.EVENT.register((stack, tooltipContext, tooltipType, lines) -> {
+        DihPlatform.onItemTooltip((stack, lines) -> {
 
             DihItemNbtSanity.scrubUnsafeTooltipLines(lines);
             DihItemNbtSanity.trimTooltipLines(lines);
             DihModule.get().appendTooltip(stack, lines);
         });
 
-        ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+        DihPlatform.onClientStopping(client -> {
 
             if (!dihclient.util.DihLiteVariant.enabled()) {
                 dihclient.util.mm.MatchmakingManager.get().shutdownLeave();
@@ -237,6 +230,8 @@ public final class DihClientMod implements ClientModInitializer {
 
             dihclient.util.DihConfig.flushPendingSaves(2000L);
         });
+        // NeoForge closes the mod's class loader before JVM shutdown hooks run; there the stopping event above is it.
+        //? if fabric {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 
             if (!dihclient.util.DihLiteVariant.enabled()) {
@@ -244,5 +239,6 @@ public final class DihClientMod implements ClientModInitializer {
             }
             dihclient.util.DihConfig.flushPendingSaves(2000L);
         }, "mm-shutdown-leave"));
+        //?}
     }
 }

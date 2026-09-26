@@ -15,12 +15,11 @@ import dihclient.util.oresim.DihOreGhostModels;
 import dihclient.util.oresim.DihOreSimEngine;
 import dihclient.util.oresim.DihOreSimOre;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.font.TextRenderable;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.rendertype.DihRenderTypes;
+import dihclient.render.mc.DihRenderTypes;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.core.BlockPos;
@@ -236,7 +235,7 @@ public final class ModuleWorldRenderer {
     static void initialize() {
         if (initialized) return;
         initialized = true;
-        LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
+        dihclient.platform.DihPlatform.onCollectSubmits(context -> {
 
             pendingTracerLines = List.of();
             pendingWaypointFrame = WaypointSnapshot.empty();

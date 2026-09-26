@@ -56,7 +56,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.KeyEvent;
 import org.spongepowered.asm.mixin.Shadow;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 
 @Mixin(AbstractContainerScreen.class)
 public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> extends Screen {
@@ -121,7 +120,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
     private void yang$init(CallbackInfo ci) {
 
         Screen screen = (Screen)(Object)this;
-        ScreenEvents.afterExtract(screen).register((scrn, drawContext, mouseX, mouseY, tickDelta) -> {
+        dihclient.platform.DihPlatform.afterScreenExtract(screen, (scrn, drawContext, mouseX, mouseY, tickDelta) -> {
             if (!isDihActive()) return;
             try {
                 DihOverlayManager.get().renderAll(drawContext, mouseX, mouseY, tickDelta);

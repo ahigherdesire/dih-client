@@ -1,4 +1,10 @@
-package net.minecraft.client.multiplayer.resolver;
+package dihclient.render.mc;
+
+import net.minecraft.client.multiplayer.resolver.ServerAddress;
+
+import net.minecraft.client.multiplayer.resolver.ResolvedServerAddress;
+
+import net.minecraft.client.multiplayer.resolver.AddressCheck;
 
 import org.junit.jupiter.api.Test;
 

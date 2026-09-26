@@ -1,6 +1,7 @@
 package dihclient.security;
 
 import dihclient.DihClientAddon;
+//? if fabric
 import net.fabricmc.fabric.impl.networking.RegistrationPayload;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
@@ -102,6 +103,7 @@ public final class DihProtectorChannelFilter {
     }
 
     private static Verdict filterRegister(CustomPacketPayload payload) {
+        //? if fabric {
         if (payload instanceof RegistrationPayload registrationPayload) {
             List<Identifier> kept = keepWhitelisted(registrationPayload.channels(), DihProtectorTracker::isWhitelistedChannel);
             if (kept.size() == registrationPayload.channels().size()) return PASS;
@@ -109,6 +111,7 @@ public final class DihProtectorChannelFilter {
             return new Verdict(Verdict.Kind.REPLACE,
                 new ServerboundCustomPayloadPacket(new RegistrationPayload(registrationPayload.type(), kept)));
         }
+        //?}
 
         List<Identifier> channels = extractChannels(payload);
         if (channels == null) {

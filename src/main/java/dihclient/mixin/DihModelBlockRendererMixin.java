@@ -98,7 +98,12 @@ public class DihModelBlockRendererMixin {
     }
 
     @Inject(method = "shouldRenderFace", at = @At("RETURN"), cancellable = true)
+    //? if neoforge {
+    /*// NeoForge's shouldRenderFace also takes the block's own position.
+    private void dih$xrayFaces(BlockAndTintGetter level, BlockPos pos, BlockState state, Direction direction, BlockPos neighborPos, CallbackInfoReturnable<Boolean> cir) {
+    *///?} else {
     private void dih$xrayFaces(BlockAndTintGetter level, BlockState state, Direction direction, BlockPos neighborPos, CallbackInfoReturnable<Boolean> cir) {
+    //?}
         if (!ModuleRenderUtil.hasXrayRenderWork()) return;
         BlockPos originalPos = neighborPos.relative(direction.getOpposite());
         cir.setReturnValue(ModuleRenderUtil.modifyXrayFace(level, state, direction, originalPos, cir.getReturnValue()));

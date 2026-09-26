@@ -6,7 +6,6 @@ import dihclient.modules.PackHideState;
 import dihclient.util.DihJoinMacroController;
 import dihclient.util.DihMacroManager;
 import java.util.Locale;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -88,7 +87,7 @@ public abstract class DihSelectWorldScreenMixin extends Screen implements DihExt
         dih$macroButton.visible = true;
         dih$macroButton.active = true;
 
-        if (!FabricLoader.getInstance().isModLoaded("replaymod")) {
+        if (!dihclient.platform.DihLoader.isModLoaded("replaymod")) {
             dih$recordButton.visible = false;
             dih$recordButton.active = false;
             return;
@@ -117,7 +116,7 @@ public abstract class DihSelectWorldScreenMixin extends Screen implements DihExt
 
     @Unique
     private boolean dih$isReplayRecordButton(AbstractWidget widget) {
-        if (!FabricLoader.getInstance().isModLoaded("replaymod")) return false;
+        if (!dihclient.platform.DihLoader.isModLoaded("replaymod")) return false;
         String className = widget.getClass().getName().toLowerCase(Locale.ROOT);
         String normalizedLabel = widget.getMessage().getString().toLowerCase(Locale.ROOT).replace(" ", "").replace("_", "").replace(".", "");
         return className.contains("replaymod")

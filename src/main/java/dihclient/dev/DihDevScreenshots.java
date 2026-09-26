@@ -1,7 +1,6 @@
 package dihclient.dev;
 
 import dihclient.gui.screen.DihModuleScreen;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 import net.minecraft.client.gui.screens.Screen;
@@ -20,7 +19,7 @@ public final class DihDevScreenshots {
 
     public static void registerIfRequested() {
         if (!Boolean.getBoolean("dih.dev.screenshots")) return;
-        ClientTickEvents.END_CLIENT_TICK.register(DihDevScreenshots::tick);
+        dihclient.platform.DihPlatform.onEndClientTick(DihDevScreenshots::tick);
     }
 
     private static void tick(Minecraft mc) {
