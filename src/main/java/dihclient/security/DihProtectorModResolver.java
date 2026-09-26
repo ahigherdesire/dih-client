@@ -127,8 +127,8 @@ public final class DihProtectorModResolver {
 
     private static String rootModId(String modId) {
         if (modId == null || modId.isBlank()) return null;
-        //? if neoforge {
-        /*return modId; // NeoForge has no nested (jar-in-jar) mod containers to walk up
+        //? if !fabric {
+        /*return modId; // NeoForge/Forge has no nested (jar-in-jar) mod containers to walk up
         *///?}
         //? if fabric {
         Optional<ModContainer> optional = FabricLoader.getInstance().getModContainer(modId);

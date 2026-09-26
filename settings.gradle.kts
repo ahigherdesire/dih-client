@@ -9,6 +9,10 @@ pluginManagement {
             url = uri("https://maven.kikugie.dev/releases")
         }
         maven {
+            name = "Forge"
+            url = uri("https://maven.minecraftforge.net/")
+        }
+        maven {
             name = "NeoForged"
             url = uri("https://maven.neoforged.net/releases")
         }
@@ -28,8 +32,8 @@ stonecutter {
         fun match(version: String, vararg loaders: String) {
             for (loader in loaders) version("$version-$loader", version).buildscript("build.$loader.gradle.kts")
         }
-        match("26.2", "fabric", "neoforge")
-        match("26.3", "fabric", "neoforge")
+        match("26.2", "fabric", "neoforge", "forge")
+        match("26.3", "fabric", "neoforge", "forge")
         // The version the committed sources are written for (its //? blocks are the uncommented ones).
         vcsVersion = "26.2-fabric"
     }

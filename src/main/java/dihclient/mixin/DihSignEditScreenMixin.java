@@ -328,6 +328,7 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
 
     @Override
     public String[] dih$getSignLines() {
-        return messages == null ? new String[]{"", "", "", ""} : messages.clone();
+        // Arrays.copyOf, not clone(): Forge's Mixin fails on array clone() calls in mixin methods.
+        return messages == null ? new String[]{"", "", "", ""} : java.util.Arrays.copyOf(messages, messages.length);
     }
 }

@@ -1,0 +1,35 @@
+modLoader = "javafml"
+loaderVersion = "[65,)"
+license = "GPL-3.0-or-later"
+issueTrackerURL = "https://github.com/ahigherdesire/dih-client/issues"
+
+[[mods]]
+modId = "dih"
+version = "${version}"
+displayName = "DIH Client"
+authors = "ahigherdesire"
+credits = "Melonik, simeonvartik, AutismDevelopment contributors"
+description = "DIH Client is an elite packet, macro, and duping toolkit built for players who want total control."
+logoFile = "assets/dihclient/icon.png"
+displayURL = "https://github.com/ahigherdesire/dih-client"
+
+[[dependencies.dih]]
+modId = "forge"
+mandatory = true
+versionRange = "[${forge_version},)"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.dih]]
+modId = "minecraft"
+mandatory = true
+versionRange = "[${mc_version}]"
+ordering = "NONE"
+side = "CLIENT"
+
+[[dependencies.dih]]
+modId = "journeymap"
+mandatory = false
+versionRange = "*"
+ordering = "NONE"
+side = "CLIENT"

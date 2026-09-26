@@ -125,7 +125,7 @@ tasks {
         filteringCharset = "UTF-8"
         filesMatching("META-INF/neoforge.mods.toml") { expand(propertyMap) }
 
-        exclude("fabric.mod.json", "addon-template.mixins.json", "assets/template/**")
+        exclude("fabric.mod.json", "META-INF/mods.toml", "addon-template.mixins.json", "assets/template/**")
     }
 
     // Mixin classes that are Fabric-only (their sources compile to nothing here) come out of the mixin configs.

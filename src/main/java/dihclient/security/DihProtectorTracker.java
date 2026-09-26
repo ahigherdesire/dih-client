@@ -58,9 +58,11 @@ public final class DihProtectorTracker {
             }
             ALWAYS_ALLOWED_CHANNEL_NAMESPACES.add("fabric");
             ALWAYS_ALLOWED_CHANNEL_NAMESPACES.add("fabric-api");
-            // NeoForge's channel negotiation (neoforge:register, neoforge:network, ...): a NeoForge client that drops
-            // these can't finish joining any world, singleplayer included.
+            // NeoForge's and Forge's channel negotiation (neoforge:*, forge:*, fml:*): a client that drops these can't
+            // finish joining any world, singleplayer included.
             ALWAYS_ALLOWED_CHANNEL_NAMESPACES.add("neoforge");
+            ALWAYS_ALLOWED_CHANNEL_NAMESPACES.add("forge");
+            ALWAYS_ALLOWED_CHANNEL_NAMESPACES.add("fml");
             ALWAYS_ALLOWED_CHANNEL_NAMESPACES.addAll(INTEROP_ALLOWED);
             for (String id : INTEROP_ALLOWED) addDefaultAllowedMod(id);
             seedDefaultAllowedMods();

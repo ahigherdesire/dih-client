@@ -6,6 +6,7 @@
   "client": [
     "DihPlatformHooksMixin",
     "DihPlatformStartMixin",
+    "DihForgeSubmitMixin",
     "DihScreenFontMixin",
     "accessor.DihFontAccessor",
     "accessor.DihRenderSetupAccessor",

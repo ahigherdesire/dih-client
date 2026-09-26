@@ -27,3 +27,14 @@ deps.replaymod = "26.2-2.6.27"
 deps.neoforge = "26.3.0.22-beta"
 deps.lithium = "mc26.3-0.26.1-fabric"
 deps.replaymod = "26.2-2.6.27"
+
+# Forge builds: like NeoForge, the same compile-only compat jars.
+[forge."26.2"]
+deps.forge = "26.2-65.1.3"
+deps.lithium = "mc26.2-0.25.0-fabric"
+deps.replaymod = "26.2-2.6.27"
+
+[forge."26.3"]
+deps.forge = "26.3-66.0.4"
+deps.lithium = "mc26.3-0.26.1-fabric"
+deps.replaymod = "26.2-2.6.27"
