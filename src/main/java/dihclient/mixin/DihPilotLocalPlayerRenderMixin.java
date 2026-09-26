@@ -18,6 +18,9 @@ public class DihPilotLocalPlayerRenderMixin {
     @Inject(method = "isEntityVisible", at = @At("HEAD"), cancellable = true)
     private void dih$useBotObservedEntityPosition(Entity entity, Frustum frustum,
                                                      double cameraX, double cameraY, double cameraZ,
+                                                     //? if >=26.3 {
+                                                     /*float partialTick, long frame,
+                                                     *///?}
                                                      CallbackInfoReturnable<Boolean> cir) {
         Boolean visible = MultiPilot.isEntityVisibleFromTruth(entity, frustum, cameraX, cameraY, cameraZ);
         if (visible != null) cir.setReturnValue(visible);

@@ -9,7 +9,11 @@ import org.spongepowered.asm.mixin.injection.At;
 
 @Mixin(LivingEntity.class)
 public abstract class DihViewmodelSwingMixin {
+    //? if >=26.3 {
+    /*@ModifyExpressionValue(method = "getModifiedSwingDuration",
+    *///?} else {
     @ModifyExpressionValue(method = "getCurrentSwingDuration",
+    //?}
         at = @At(value = "INVOKE", target = "Lnet/minecraft/world/item/component/SwingAnimation;duration()I"),
         require = 0)
     private int dih$swingDuration(int duration) {

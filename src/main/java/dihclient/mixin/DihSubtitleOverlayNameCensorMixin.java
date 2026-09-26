@@ -11,7 +11,11 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 public class DihSubtitleOverlayNameCensorMixin {
     @ModifyArg(
         method = "onPlaySound",
+        //? if >=26.3 {
+        /*at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/SubtitleOverlay$Subtitle;<init>(Lnet/minecraft/network/chat/Component;FLnet/minecraft/world/phys/Vec3;Z)V"),
+        *///?} else {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/components/SubtitleOverlay$Subtitle;<init>(Lnet/minecraft/network/chat/Component;FLnet/minecraft/world/phys/Vec3;)V"),
+        //?}
         index = 0,
         require = 0
     )

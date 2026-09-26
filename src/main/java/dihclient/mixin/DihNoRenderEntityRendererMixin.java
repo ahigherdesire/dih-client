@@ -16,6 +16,9 @@ public abstract class DihNoRenderEntityRendererMixin {
 
     @Inject(method = "shouldRender", at = @At("HEAD"), cancellable = true, require = 0)
     private void dih$hideEntity(Entity entity, Frustum frustum, double camX, double camY, double camZ,
+                                   //? if >=26.3 {
+                                   /*float partialTick,
+                                   *///?}
                                    CallbackInfoReturnable<Boolean> cir) {
         if (entity == null) return;
         if (NoRenderState.noFallingBlocks() && entity instanceof FallingBlockEntity) {

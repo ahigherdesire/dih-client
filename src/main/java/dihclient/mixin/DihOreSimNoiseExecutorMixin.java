@@ -11,6 +11,8 @@ import java.util.concurrent.Executor;
 
 @Mixin(NoiseBasedChunkGenerator.class)
 public abstract class DihOreSimNoiseExecutorMixin {
+    // OreSim terrain regeneration is 26.2-only for now; the mixin stays empty on 26.3.
+    //? if <26.3 {
     @Unique
     private static final Executor DIH$DIRECT_EXECUTOR = Runnable::run;
 
@@ -31,4 +33,5 @@ public abstract class DihOreSimNoiseExecutorMixin {
         if (DihOreSimGenerationScope.isActive()) return DIH$DIRECT_EXECUTOR;
         return vanillaExecutor;
     }
+    //?}
 }

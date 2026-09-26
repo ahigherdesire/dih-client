@@ -24,6 +24,7 @@
     "DihSkyboxSkyMixin",
     "DihSkyboxCloudMixin",
     "DihNoRenderTimeMixin",
+    "DihNoRenderClockInstanceMixin",
     "DihNoRenderWorldBorderMixin",
     "DihNoRenderBlockBreakMixin",
     "DihNoRenderBeaconMixin",

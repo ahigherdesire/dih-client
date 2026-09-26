@@ -50,7 +50,21 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
 
     @Shadow @Final protected SignBlockEntity sign;
     @Shadow @Final private String[] messages;
+    //? if >=26.3 {
+    /*@Shadow @Final private net.minecraft.world.level.block.entity.SignTextSlot slot;
+
+    @Unique
+    private boolean dih$front() {
+        return slot == net.minecraft.world.level.block.entity.SignTextSlot.FRONT;
+    }
+    *///?} else {
     @Shadow @Final private boolean isFrontText;
+
+    @Unique
+    private boolean dih$front() {
+        return isFrontText;
+    }
+    //?}
 
     @Unique private DihLauncherOverlay launcherOverlay;
     @Unique private DihLANSyncOverlay lanSyncOverlay;
@@ -294,7 +308,7 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
         DihSharedState.get().setForceNextSignUpdatePacket(true);
         MC.getConnection().send(DihPackets.signUpdate(
             sign.getBlockPos(),
-            isFrontText,
+            dih$front(),
             messages[0],
             messages[1],
             messages[2],
@@ -310,7 +324,7 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
 
     @Override
     public boolean dih$isFrontText() {
-        return isFrontText;
+        return dih$front();
     }
 
     @Override

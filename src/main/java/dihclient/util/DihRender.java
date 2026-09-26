@@ -99,6 +99,19 @@ public final class DihRender {
         //?}
     }
 
+    /**
+     * {@code consumer} mapped into a texture region: {@code uv} is the {@code TextureAtlasSprite} a model was
+     * submitted with on 26.2, or the {@code UvMapping} on 26.3; null leaves it unmapped.
+     */
+    public static com.mojang.blaze3d.vertex.VertexConsumer wrapUv(@Nullable Object uv,
+                                                                  com.mojang.blaze3d.vertex.VertexConsumer consumer) {
+        //? if >=26.3 {
+        /*return uv instanceof net.minecraft.client.renderer.texture.UvMapping mapping ? mapping.wrap(consumer) : consumer;
+        *///?} else {
+        return uv instanceof net.minecraft.client.renderer.texture.TextureAtlasSprite sprite ? sprite.wrap(consumer) : consumer;
+        //?}
+    }
+
     /** Submits a model with a tint {@code color} and outline, no sprite override or crumbling. */
     public static <S> void submitModel(OrderedSubmitNodeCollector collector, Model<? super S> model, S state, PoseStack pose,
                                        RenderType type, int light, int overlay, int color, int outlineColor) {
