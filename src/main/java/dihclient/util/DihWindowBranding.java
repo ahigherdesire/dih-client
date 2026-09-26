@@ -5,9 +5,16 @@ import com.mojang.blaze3d.platform.MacosUtil;
 import com.mojang.blaze3d.platform.NativeImage;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.Minecraft;
+//? if >=26.3 {
+/*import org.lwjgl.sdl.SDLPixels;
+import org.lwjgl.sdl.SDLSurface;
+import org.lwjgl.sdl.SDLVideo;
+import org.lwjgl.sdl.SDL_Surface;
+*///?} else {
 import org.lwjgl.glfw.GLFW;
 import org.lwjgl.glfw.GLFWImage;
 import org.lwjgl.system.MemoryStack;
+//?}
 import org.lwjgl.system.MemoryUtil;
 
 import java.io.IOException;
@@ -85,6 +92,35 @@ public final class DihWindowBranding {
             }
         }
 
+        //? if >=26.3 {
+        /*return applySdlIcon(windowHandle);
+        *///?} else {
+        return applyGlfwIcon(windowHandle);
+        //?}
+    }
+
+    //? if >=26.3 {
+    /*/^* SDL3 (26.3+): one large icon; SDL scales it for the title bar and taskbar. ^/
+    private static boolean applySdlIcon(long windowHandle) {
+        ByteBuffer pixels = null;
+        SDL_Surface surface = null;
+        try (InputStream stream = openIconStream("icon_256x256.png");
+             NativeImage image = NativeImage.read(stream)) {
+            int w = image.getWidth();
+            int h = image.getHeight();
+            pixels = MemoryUtil.memAlloc(w * h * 4);
+            pixels.asIntBuffer().put(image.getPixelsABGR());
+            surface = SDLSurface.SDL_CreateSurfaceFrom(w, h, SDLPixels.SDL_PIXELFORMAT_ABGR8888, pixels, w * 4);
+            return surface != null && SDLVideo.SDL_SetWindowIcon(windowHandle, surface);
+        } catch (Throwable ignored) {
+            return false;
+        } finally {
+            if (surface != null) SDLSurface.SDL_DestroySurface(surface);
+            if (pixels != null) MemoryUtil.memFree(pixels);
+        }
+    }
+    *///?} else {
+    private static boolean applyGlfwIcon(long windowHandle) {
         List<ByteBuffer> allocatedBuffers = new ArrayList<>(ICON_SIZES.length);
         try (MemoryStack stack = MemoryStack.stackPush()) {
             GLFWImage.Buffer icons = GLFWImage.malloc(ICON_SIZES.length, stack);
@@ -111,6 +147,7 @@ public final class DihWindowBranding {
             allocatedBuffers.forEach(MemoryUtil::memFree);
         }
     }
+    //?}
 
     private static InputStream openIconStream(String fileName) throws IOException {
         InputStream stream = DihWindowBranding.class.getClassLoader().getResourceAsStream(ICON_ROOT + fileName);

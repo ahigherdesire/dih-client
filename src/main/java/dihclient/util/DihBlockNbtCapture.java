@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.screen.DihOverlayHostScreen;
 import dihclient.modules.Module;
 import dihclient.modules.ModuleRegistry;
@@ -21,7 +22,6 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -278,11 +278,10 @@ public final class DihBlockNbtCapture {
 
     private static boolean modifiersDown(Minecraft mc) {
         if (mc == null || mc.getWindow() == null) return false;
-        long window = mc.getWindow().handle();
-        boolean control = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS
-            || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_CONTROL) == GLFW.GLFW_PRESS;
-        boolean shift = GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
-            || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
+        boolean control = DihKeys.isKeyDown(InputConstants.KEY_LCONTROL)
+            || DihKeys.isKeyDown(InputConstants.KEY_RCONTROL);
+        boolean shift = DihKeys.isKeyDown(InputConstants.KEY_LSHIFT)
+            || DihKeys.isKeyDown(InputConstants.KEY_RSHIFT);
         return shortcutDown(control, shift);
     }
 

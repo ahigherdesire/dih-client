@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.direct.DirectLayout;
 import dihclient.gui.vanillaui.components.CompactListRenderer;
 import dihclient.gui.vanillaui.components.CompactOverlayButton;
@@ -17,7 +18,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -244,7 +244,7 @@ public class DihItemNbtInspectOverlay extends DihOverlayBase {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!visible) return false;
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if (keyCode == InputConstants.KEY_ESCAPE) {
             close();
             return true;
         }

@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
 import dihclient.gui.vanillaui.UiContexts;
@@ -26,7 +27,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import org.lwjgl.glfw.GLFW;
 
 public final class DihAdminItemOptionScreen extends DihScreen {
     private static final CompactTheme THEME = new CompactTheme();
@@ -222,26 +222,26 @@ public final class DihAdminItemOptionScreen extends DihScreen {
 
     @Override
     public boolean keyPressed(KeyEvent input) {
-        boolean ctrl = (input.modifiers() & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_SUPER)) != 0;
-        boolean shift = (input.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0;
-        if (mode == Mode.FULL_NBT && ctrl && input.key() == GLFW.GLFW_KEY_S) {
+        boolean ctrl = (input.modifiers() & (InputConstants.MOD_CONTROL | InputConstants.MOD_SUPER)) != 0;
+        boolean shift = (input.modifiers() & InputConstants.MOD_SHIFT) != 0;
+        if (mode == Mode.FULL_NBT && ctrl && input.key() == InputConstants.KEY_S) {
             save();
             return true;
         }
-        if (mode == Mode.FULL_NBT && ctrl && shift && input.key() == GLFW.GLFW_KEY_F) {
+        if (mode == Mode.FULL_NBT && ctrl && shift && input.key() == InputConstants.KEY_F) {
             formatFullNbt();
             return true;
         }
         if (mode == Mode.FULL_NBT && ctrl
-            && (input.key() == GLFW.GLFW_KEY_ENTER || input.key() == GLFW.GLFW_KEY_KP_ENTER)) {
+            && (input.key() == InputConstants.KEY_RETURN || input.key() == InputConstants.KEY_NUMPADENTER)) {
             validateFullNbt();
             return true;
         }
-        if (mode == Mode.FULL_NBT && input.key() == GLFW.GLFW_KEY_TAB && editor.isFocused()) {
+        if (mode == Mode.FULL_NBT && input.key() == InputConstants.KEY_TAB && editor.isFocused()) {
             editor.insertText("  ");
             return true;
         }
-        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (input.key() == InputConstants.KEY_ESCAPE) {
             onClose();
             return true;
         }

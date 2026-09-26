@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.screen.DihForceOpPreviewScreen;
 import dihclient.gui.screen.DihAdminItemOptionScreen;
 import dihclient.gui.screen.DihAdminItemStructuredScreen;
@@ -30,7 +31,6 @@ import net.minecraft.client.gui.screens.inventory.InventoryScreen;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -1035,74 +1035,74 @@ public final class DihAdminToolsOverlay extends DihOverlayBase {
         BuiltinModules.AdminToolsModule module = adminTools();
         if (module == null) return false;
         if (bindingOption != null) {
-            module.setValue(bindingOption.id(), Integer.toString(keyCode == GLFW.GLFW_KEY_ESCAPE || keyCode == GLFW.GLFW_KEY_BACKSPACE || keyCode == GLFW.GLFW_KEY_DELETE ? -1 : keyCode));
+            module.setValue(bindingOption.id(), Integer.toString(keyCode == InputConstants.KEY_ESCAPE || keyCode == InputConstants.KEY_BACKSPACE || keyCode == InputConstants.KEY_DELETE ? -1 : keyCode));
             bindingOption = null;
             return true;
         }
         if (editing != null) {
-            boolean ctrl = (modifiers & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_SUPER)) != 0;
-            boolean shift = (modifiers & GLFW.GLFW_MOD_SHIFT) != 0;
-            if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+            boolean ctrl = (modifiers & (InputConstants.MOD_CONTROL | InputConstants.MOD_SUPER)) != 0;
+            boolean shift = (modifiers & InputConstants.MOD_SHIFT) != 0;
+            if (keyCode == InputConstants.KEY_ESCAPE) {
                 finishEditing(true);
                 return true;
             }
-            if (ctrl && keyCode == GLFW.GLFW_KEY_A) {
+            if (ctrl && keyCode == InputConstants.KEY_A) {
                 editing.selectAll();
                 return true;
             }
-            if (ctrl && keyCode == GLFW.GLFW_KEY_C) {
+            if (ctrl && keyCode == InputConstants.KEY_C) {
                 copyEditingSelection();
                 return true;
             }
-            if (ctrl && keyCode == GLFW.GLFW_KEY_X) {
+            if (ctrl && keyCode == InputConstants.KEY_X) {
                 copyEditingSelection();
                 deleteEditingSelection();
                 return true;
             }
-            if (ctrl && keyCode == GLFW.GLFW_KEY_V) {
+            if (ctrl && keyCode == InputConstants.KEY_V) {
                 pasteEditingClipboard();
                 return true;
             }
-            if (keyCode == GLFW.GLFW_KEY_ENTER || keyCode == GLFW.GLFW_KEY_KP_ENTER) {
+            if (keyCode == InputConstants.KEY_RETURN || keyCode == InputConstants.KEY_NUMPADENTER) {
                 finishEditing(true);
                 return true;
             }
-            if (keyCode == GLFW.GLFW_KEY_BACKSPACE && deleteEditingSelection()) {
+            if (keyCode == InputConstants.KEY_BACKSPACE && deleteEditingSelection()) {
                 return true;
             }
-            if (keyCode == GLFW.GLFW_KEY_BACKSPACE && editing.cursor > 0) {
+            if (keyCode == InputConstants.KEY_BACKSPACE && editing.cursor > 0) {
                 editing.text = editing.text.substring(0, editing.cursor - 1) + editing.text.substring(editing.cursor);
                 editing.cursor--;
                 editing.clearSelection();
                 return true;
             }
-            if (keyCode == GLFW.GLFW_KEY_DELETE && deleteEditingSelection()) {
+            if (keyCode == InputConstants.KEY_DELETE && deleteEditingSelection()) {
                 return true;
             }
-            if (keyCode == GLFW.GLFW_KEY_DELETE && editing.cursor < editing.text.length()) {
+            if (keyCode == InputConstants.KEY_DELETE && editing.cursor < editing.text.length()) {
                 editing.text = editing.text.substring(0, editing.cursor) + editing.text.substring(editing.cursor + 1);
                 editing.clearSelection();
                 return true;
             }
-            if (keyCode == GLFW.GLFW_KEY_LEFT) {
+            if (keyCode == InputConstants.KEY_LEFT) {
                 moveEditingCursor(Math.max(0, editing.cursor - 1), shift);
                 return true;
             }
-            if (keyCode == GLFW.GLFW_KEY_RIGHT) {
+            if (keyCode == InputConstants.KEY_RIGHT) {
                 moveEditingCursor(Math.min(editing.text.length(), editing.cursor + 1), shift);
                 return true;
             }
-            if (keyCode == GLFW.GLFW_KEY_HOME) {
+            if (keyCode == InputConstants.KEY_HOME) {
                 moveEditingCursor(0, shift);
                 return true;
             }
-            if (keyCode == GLFW.GLFW_KEY_END) {
+            if (keyCode == InputConstants.KEY_END) {
                 moveEditingCursor(editing.text.length(), shift);
                 return true;
             }
             return true;
         }
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE && dropdown != null) {
+        if (keyCode == InputConstants.KEY_ESCAPE && dropdown != null) {
             clearDropdown();
             return true;
         }

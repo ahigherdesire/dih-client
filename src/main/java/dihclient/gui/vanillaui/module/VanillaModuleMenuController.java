@@ -1,5 +1,6 @@
 package dihclient.gui.vanillaui.module;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
 import dihclient.gui.vanillaui.UiContexts;
@@ -52,7 +53,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.resources.Identifier;
 import net.minecraft.network.protocol.Packet;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -1155,8 +1155,8 @@ public final class VanillaModuleMenuController {
     private void handleMacroPickerKey(int key) {
         if (macroPicker == null) return;
         switch (key) {
-            case GLFW.GLFW_KEY_ESCAPE -> clearMacroPicker();
-            case GLFW.GLFW_KEY_BACKSPACE -> {
+            case InputConstants.KEY_ESCAPE -> clearMacroPicker();
+            case InputConstants.KEY_BACKSPACE -> {
                 if (!macroPicker.query.isEmpty()) {
                     macroPicker.setQuery(macroPicker.query.substring(0, macroPicker.query.length() - 1));
                 }
@@ -1492,7 +1492,7 @@ public final class VanillaModuleMenuController {
             return true;
         }
 
-        if (key == GLFW.GLFW_KEY_F && (modifiers & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_SUPER)) != 0) {
+        if (key == InputConstants.KEY_F && (modifiers & (InputConstants.MOD_CONTROL | InputConstants.MOD_SUPER)) != 0) {
             focusSearchWindow();
             return true;
         }
@@ -1509,7 +1509,7 @@ public final class VanillaModuleMenuController {
             handleMacroPickerKey(key);
             return true;
         }
-        if (key == GLFW.GLFW_KEY_ESCAPE) {
+        if (key == InputConstants.KEY_ESCAPE) {
             if (dropdown != null) clearDropdown();
             else if (macroPicker != null) clearMacroPicker();
             else if (selectedModule != null) selectedModule = null;
@@ -1519,9 +1519,9 @@ public final class VanillaModuleMenuController {
         if (shouldReserveModifierForMacroEditor(key)) {
             return true;
         }
-        if (key == DihConfig.getGlobal().keybindModuleMenu || key == GLFW.GLFW_KEY_E) {
+        if (key == DihConfig.getGlobal().keybindModuleMenu || key == InputConstants.KEY_E) {
 
-            if (dropdown == null && key >= GLFW.GLFW_KEY_A && key <= GLFW.GLFW_KEY_Z) return false;
+            if (dropdown == null && key >= InputConstants.KEY_A && key <= InputConstants.KEY_Z) return false;
             if (selectedModule != null) selectedModule = null;
             else host.closeMenu();
             return true;
@@ -1532,10 +1532,10 @@ public final class VanillaModuleMenuController {
     private boolean shouldReserveModifierForMacroEditor(int key) {
         int menuBind = DihConfig.getGlobal().keybindModuleMenu;
         if (key != menuBind) return false;
-        if (key != GLFW.GLFW_KEY_LEFT_CONTROL
-            && key != GLFW.GLFW_KEY_RIGHT_CONTROL
-            && key != GLFW.GLFW_KEY_LEFT_SHIFT
-            && key != GLFW.GLFW_KEY_RIGHT_SHIFT) {
+        if (key != InputConstants.KEY_LCONTROL
+            && key != InputConstants.KEY_RCONTROL
+            && key != InputConstants.KEY_LSHIFT
+            && key != InputConstants.KEY_RSHIFT) {
             return false;
         }
         return DihSharedState.get().isMacroEditorVisible();
@@ -1623,42 +1623,42 @@ public final class VanillaModuleMenuController {
 
     private void handleEditingKey(int key, int modifiers) {
         if (editing == null) return;
-        boolean ctrl = (modifiers & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_SUPER)) != 0;
-        boolean shift = (modifiers & GLFW.GLFW_MOD_SHIFT) != 0;
+        boolean ctrl = (modifiers & (InputConstants.MOD_CONTROL | InputConstants.MOD_SUPER)) != 0;
+        boolean shift = (modifiers & InputConstants.MOD_SHIFT) != 0;
         switch (key) {
-            case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> finishEditing(true);
-            case GLFW.GLFW_KEY_ESCAPE -> finishEditing(true);
-            case GLFW.GLFW_KEY_A -> {
+            case InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> finishEditing(true);
+            case InputConstants.KEY_ESCAPE -> finishEditing(true);
+            case InputConstants.KEY_A -> {
                 if (ctrl) editing.selectAll();
             }
-            case GLFW.GLFW_KEY_C -> {
+            case InputConstants.KEY_C -> {
                 if (ctrl) copyEditingSelection();
             }
-            case GLFW.GLFW_KEY_X -> {
+            case InputConstants.KEY_X -> {
                 if (ctrl) {
                     copyEditingSelection();
                     deleteEditingSelection();
                 }
             }
-            case GLFW.GLFW_KEY_V -> {
+            case InputConstants.KEY_V -> {
                 if (ctrl) pasteEditingClipboard();
             }
-            case GLFW.GLFW_KEY_BACKSPACE -> {
+            case InputConstants.KEY_BACKSPACE -> {
                 if (!deleteEditingSelection() && editing.cursor > 0) {
                     int from = ctrl ? previousWordBoundary(editing.text, editing.cursor) : editing.cursor - 1;
                     replaceEditingRange(from, editing.cursor, "");
                 }
             }
-            case GLFW.GLFW_KEY_DELETE -> {
+            case InputConstants.KEY_DELETE -> {
                 if (!deleteEditingSelection() && editing.cursor < editing.text.length()) {
                     int to = ctrl ? nextWordBoundary(editing.text, editing.cursor) : editing.cursor + 1;
                     replaceEditingRange(editing.cursor, to, "");
                 }
             }
-            case GLFW.GLFW_KEY_LEFT -> moveEditingCursor(ctrl ? previousWordBoundary(editing.text, editing.cursor) : editing.cursor - 1, shift);
-            case GLFW.GLFW_KEY_RIGHT -> moveEditingCursor(ctrl ? nextWordBoundary(editing.text, editing.cursor) : editing.cursor + 1, shift);
-            case GLFW.GLFW_KEY_HOME -> moveEditingCursor(0, shift);
-            case GLFW.GLFW_KEY_END -> moveEditingCursor(editing.text.length(), shift);
+            case InputConstants.KEY_LEFT -> moveEditingCursor(ctrl ? previousWordBoundary(editing.text, editing.cursor) : editing.cursor - 1, shift);
+            case InputConstants.KEY_RIGHT -> moveEditingCursor(ctrl ? nextWordBoundary(editing.text, editing.cursor) : editing.cursor + 1, shift);
+            case InputConstants.KEY_HOME -> moveEditingCursor(0, shift);
+            case InputConstants.KEY_END -> moveEditingCursor(editing.text.length(), shift);
             default -> {
             }
         }

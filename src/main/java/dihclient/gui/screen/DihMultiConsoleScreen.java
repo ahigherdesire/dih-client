@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.commands.DihCommands;
 import dihclient.gui.multi.MultiChatPresentation;
 import dihclient.gui.multi.MultiMacroPresentation;
@@ -39,7 +40,6 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -908,18 +908,18 @@ public final class DihMultiConsoleScreen extends DihScreen {
             return true;
         }
 
-        if (event.key() == GLFW.GLFW_KEY_C && event.hasControlDown() && chatSel.hasSelection()
+        if (event.key() == InputConstants.KEY_C && event.hasControlDown() && chatSel.hasSelection()
             && (chatInput == null || !chatInput.isFocused())
             && (delayField == null || !delayField.isFocused())) {
             copyChatSelection();
             return true;
         }
 
-        if (event.key() == GLFW.GLFW_KEY_ESCAPE && chatSel.hasSelection()) {
+        if (event.key() == InputConstants.KEY_ESCAPE && chatSel.hasSelection()) {
             chatSel.clear();
             return true;
         }
-        if (isViewing() && event.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (isViewing() && event.key() == InputConstants.KEY_ESCAPE) {
             exitView();
             return true;
         }
@@ -939,14 +939,14 @@ public final class DihMultiConsoleScreen extends DihScreen {
         }
 
         if (isViewing() && !chatFocused && hoveredViewHotbar >= 0
-            && (event.key() == GLFW.GLFW_KEY_U || event.key() == GLFW.GLFW_KEY_I)) {
+            && (event.key() == InputConstants.KEY_U || event.key() == InputConstants.KEY_I)) {
             if (cachedView == null || !cachedView.interactive()) {
                 resultText = cachedView != null && cachedView.synchronizationBlocked()
                     ? "Inventory is waiting for a server update" : "Inventory is synchronizing";
                 resultColor = MUTED;
                 return true;
             }
-            boolean use = event.key() == GLFW.GLFW_KEY_I;
+            boolean use = event.key() == InputConstants.KEY_I;
             if (sharedView) {
                 applyFanout(use ? MultiManager.get().useBotHotbars(sharedIds(), hoveredViewHotbar)
                     : MultiManager.get().selectBotHotbars(sharedIds(), hoveredViewHotbar));
@@ -964,24 +964,24 @@ public final class DihMultiConsoleScreen extends DihScreen {
         if (delayField != null && delayField.keyPressed(event)) return true;
         if (chatInput != null && chatInput.isFocused()) {
             switch (event.key()) {
-                case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
+                case InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> {
                     sendChat();
                     return true;
                 }
-                case GLFW.GLFW_KEY_TAB -> {
+                case InputConstants.KEY_TAB -> {
 
-                    cycleSuggestion((event.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0);
+                    cycleSuggestion((event.modifiers() & InputConstants.MOD_SHIFT) != 0);
                     return true;
                 }
-                case GLFW.GLFW_KEY_UP -> {
+                case InputConstants.KEY_UP -> {
                     recallHistory(-1);
                     return true;
                 }
-                case GLFW.GLFW_KEY_DOWN -> {
+                case InputConstants.KEY_DOWN -> {
                     recallHistory(1);
                     return true;
                 }
-                case GLFW.GLFW_KEY_ESCAPE -> {
+                case InputConstants.KEY_ESCAPE -> {
                     if (!suggestions.isEmpty()) {
                         clearSuggestions();
                         return true;

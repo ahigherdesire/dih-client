@@ -129,8 +129,8 @@ public final class DihConfig implements Cloneable {
     public int hudEdgePadding = 4;
     public boolean hudEditorGrid = true;
 
-    public int keybindLoadGui = org.lwjgl.glfw.GLFW.GLFW_KEY_V;
-    public int keybindModuleMenu = org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_SHIFT;
+    public int keybindLoadGui = com.mojang.blaze3d.platform.InputConstants.KEY_V;
+    public int keybindModuleMenu = com.mojang.blaze3d.platform.InputConstants.KEY_RSHIFT;
     public int keybindFlushQueue = -1;
     public int keybindClearQueue = -1;
     public int keybindToggleLogger = -1;

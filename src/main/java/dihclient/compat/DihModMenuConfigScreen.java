@@ -1,5 +1,6 @@
 package dihclient.compat;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.screen.DihAddonsScreen;
 import dihclient.gui.screen.DihThemeColorScreen;
 import dihclient.gui.vanillaui.UiBounds;
@@ -26,7 +27,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -308,8 +308,8 @@ public class DihModMenuConfigScreen extends Screen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         int mx = DihUiScale.toVirtualInt(event.x());
         int my = DihUiScale.toVirtualInt(event.y());
-        boolean right = event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT;
-        if (!right && event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) return true;
+        boolean right = event.button() == InputConstants.MOUSE_BUTTON_RIGHT;
+        if (!right && event.button() != InputConstants.MOUSE_BUTTON_LEFT) return true;
         if (capturing >= 0) {
             applyCapture(DihBindUtil.encodeMouseButton(event.button()));
             return true;
@@ -367,10 +367,10 @@ public class DihModMenuConfigScreen extends Screen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (capturing >= 0) {
-            applyCapture(event.key() == GLFW.GLFW_KEY_ESCAPE ? -1 : event.key());
+            applyCapture(event.key() == InputConstants.KEY_ESCAPE ? -1 : event.key());
             return true;
         }
-        if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (event.key() == InputConstants.KEY_ESCAPE) {
             if (prefixDropdown != null && prefixDropdown.isOpen()) {
                 prefixDropdown.close();
                 return true;

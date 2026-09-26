@@ -58,7 +58,7 @@ public abstract class DihMouseHandlerMixin {
 
     @Inject(method = "onButton", at = @At("HEAD"))
     private void dih$trackCps(long window, net.minecraft.client.input.MouseButtonInfo button, int action, CallbackInfo ci) {
-        if (action != org.lwjgl.glfw.GLFW.GLFW_PRESS || button == null) return;
+        if (action != com.mojang.blaze3d.platform.InputConstants.PRESS || button == null) return;
         if (minecraft == null || minecraft.gui.screen() != null) return;
         int b = button.button();
         if (b == 0) DihCpsTracker.recordLeft();

@@ -1,5 +1,7 @@
 package dihclient.gui.multi;
 
+import dihclient.util.DihKeys;
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.screen.DihAccountsScreen;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
@@ -38,7 +40,6 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -1829,12 +1830,12 @@ public final class MultiPanel {
 
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
 
-        if (keyCode == GLFW.GLFW_KEY_C && (modifiers & GLFW.GLFW_MOD_CONTROL) != 0
+        if (keyCode == InputConstants.KEY_C && (modifiers & InputConstants.MOD_CONTROL) != 0
             && chatSel.hasSelection() && !chatInput.isFocused()) {
             copyChatSelection();
             return true;
         }
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if (keyCode == InputConstants.KEY_ESCAPE) {
             if (chatSel.hasSelection()) { chatSel.clear(); return true; }
             if (CompactDropdown.closeOpenMenu(frameDropdowns)) return true;
             if (quickEdit >= 0) { closeQuickEditor(); return true; }
@@ -1843,9 +1844,9 @@ public final class MultiPanel {
 
             if (chatInput.isFocused() && !chatSuggests.isEmpty()) { clearChatSuggests(); return true; }
         }
-        if (chatInput.isFocused() && keyCode == GLFW.GLFW_KEY_TAB) {
+        if (chatInput.isFocused() && keyCode == InputConstants.KEY_TAB) {
 
-            applyChatTab((modifiers & GLFW.GLFW_MOD_SHIFT) != 0);
+            applyChatTab((modifiers & InputConstants.MOD_SHIFT) != 0);
             return true;
         }
         DirectRenderContext ctx = ctx(null, lastMx, lastMy);
@@ -2397,16 +2398,14 @@ public final class MultiPanel {
 
     private boolean ctrlDown() {
         if (mc == null || mc.getWindow() == null) return false;
-        long window = mc.getWindow().handle();
-        return GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS
-            || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_CONTROL) == GLFW.GLFW_PRESS;
+        return DihKeys.isKeyDown(InputConstants.KEY_LCONTROL)
+            || DihKeys.isKeyDown(InputConstants.KEY_RCONTROL);
     }
 
     private boolean shiftDown() {
         if (mc == null || mc.getWindow() == null) return false;
-        long window = mc.getWindow().handle();
-        return GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
-            || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
+        return DihKeys.isKeyDown(InputConstants.KEY_LSHIFT)
+            || DihKeys.isKeyDown(InputConstants.KEY_RSHIFT);
     }
 
     private record Hotspot(int x, int y, int w, int h, Runnable action) {

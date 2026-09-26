@@ -1769,7 +1769,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
     public boolean keyPressed(int key, int scancode, int modifiers) {
         if (!visible || collapsed) return false;
         if (lanChatField != null && lanChatField.isFocused()) {
-            if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+            if (key == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) {
                 lanChatField.setFocused(false);
                 return true;
             }

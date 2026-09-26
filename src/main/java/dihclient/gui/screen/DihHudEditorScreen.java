@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContexts;
 import dihclient.gui.vanillaui.UiRenderer;
@@ -17,7 +18,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 public class DihHudEditorScreen extends Screen {
     private static final CompactTheme THEME = new CompactTheme();
@@ -235,7 +235,7 @@ public class DihHudEditorScreen extends Screen {
             return true;
         }
         String hit = DihHudManager.hit(font, mx, my);
-        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
             if (hit != null) {
                 minecraft.gui.setScreen(new DihHudElementSettingsScreen(this, hit));
             } else {
@@ -245,7 +245,7 @@ public class DihHudEditorScreen extends Screen {
             }
             return true;
         }
-        if (event.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && hit != null) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && hit != null) {
             selectedId = hit;
             draggingId = hit;
             DihHudManager.ElementBounds bounds = DihHudManager.bounds(hit, font);
@@ -279,25 +279,25 @@ public class DihHudEditorScreen extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent input) {
-        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (input.key() == InputConstants.KEY_ESCAPE) {
             minecraft.gui.setScreen(parent);
             return true;
         }
-        if (selectedId != null && input.key() == GLFW.GLFW_KEY_DELETE) {
+        if (selectedId != null && input.key() == InputConstants.KEY_DELETE) {
             DihHudManager.setEnabled(selectedId, false);
             return true;
         }
         if (selectedId != null) {
-            int step = (input.modifiers() & GLFW.GLFW_MOD_CONTROL) != 0 ? VISUAL_GRID_SIZE : 1;
+            int step = (input.modifiers() & InputConstants.MOD_CONTROL) != 0 ? VISUAL_GRID_SIZE : 1;
             DihHudManager.ElementBounds bounds = DihHudManager.bounds(selectedId, font);
             int x = bounds.x();
             int y = bounds.y();
             boolean moved = true;
             switch (input.key()) {
-                case GLFW.GLFW_KEY_LEFT -> x -= step;
-                case GLFW.GLFW_KEY_RIGHT -> x += step;
-                case GLFW.GLFW_KEY_UP -> y -= step;
-                case GLFW.GLFW_KEY_DOWN -> y += step;
+                case InputConstants.KEY_LEFT -> x -= step;
+                case InputConstants.KEY_RIGHT -> x += step;
+                case InputConstants.KEY_UP -> y -= step;
+                case InputConstants.KEY_DOWN -> y += step;
                 default -> moved = false;
             }
             if (moved) {

@@ -1,5 +1,6 @@
 package dihclient.modules;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.api.module.KeybindSetting;
@@ -11,7 +12,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import org.lwjgl.glfw.GLFW;
 
 public final class TpClickModule extends Module {
     private static final int COLOR_VALID = 0xFF46D160;
@@ -35,7 +35,7 @@ public final class TpClickModule extends Module {
 
         add(new IntSetting("reach", "Reach", 50, 10, 250, 5)
             .description("Maximum click teleport distance.").build());
-        add(new KeybindSetting("click-key", "Click Key", DihBindUtil.encodeMouseButton(GLFW.GLFW_MOUSE_BUTTON_RIGHT))
+        add(new KeybindSetting("click-key", "Click Key", DihBindUtil.encodeMouseButton(InputConstants.MOUSE_BUTTON_RIGHT))
             .description("Button that teleports you.").build());
         add(new BoolSetting("block-movement", "Block Movement", true)
             .description("Freeze movement keys while teleporting.").build());
@@ -183,14 +183,14 @@ public final class TpClickModule extends Module {
         try {
             return Integer.parseInt(value("click-key"));
         } catch (NumberFormatException ignored) {
-            return DihBindUtil.encodeMouseButton(GLFW.GLFW_MOUSE_BUTTON_RIGHT);
+            return DihBindUtil.encodeMouseButton(InputConstants.MOUSE_BUTTON_RIGHT);
         }
     }
 
     @Override
     public boolean shouldCancelUse(HitResult hitResult, InteractionHand hand) {
         if (MC != null && MC.options != null && MC.options.keyShift.isDown()) return false;
-        return bindCode() == DihBindUtil.encodeMouseButton(GLFW.GLFW_MOUSE_BUTTON_RIGHT) && targetValid;
+        return bindCode() == DihBindUtil.encodeMouseButton(InputConstants.MOUSE_BUTTON_RIGHT) && targetValid;
     }
 
     public AABB highlightBox() {

@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.components.OverlayTopBar;
 import dihclient.gui.vanillaui.direct.DirectUiInsets;
@@ -21,7 +22,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.protocol.Packet;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -505,7 +505,7 @@ public class DihPacketSelectorOverlay extends DihOverlayBase {
 
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!visible) return false;
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if (keyCode == InputConstants.KEY_ESCAPE) {
             if (searchField.isFocused()) {
                 searchField.setFocused(false);
                 return true;

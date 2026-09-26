@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
 import dihclient.gui.vanillaui.UiContexts;
@@ -31,7 +32,6 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -384,7 +384,7 @@ public class DihThemeColorScreen extends Screen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         int mx = DihUiScale.toVirtualInt(event.x());
         int my = DihUiScale.toVirtualInt(event.y());
-        if (event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) return true;
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) return true;
 
         if (picker.mouseClicked(mx, my, event.button())) return true;
 
@@ -418,7 +418,7 @@ public class DihThemeColorScreen extends Screen {
     @Override
     public boolean keyPressed(KeyEvent input) {
         if (picker.keyPressed(input)) return true;
-        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (input.key() == InputConstants.KEY_ESCAPE) {
             onClose();
             return true;
         }
@@ -659,8 +659,8 @@ public class DihThemeColorScreen extends Screen {
         boolean keyPressed(KeyEvent input) {
             if (hexInput == null || !hexInput.isFocused()) return false;
             int key = input.key();
-            if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ENTER || key == org.lwjgl.glfw.GLFW.GLFW_KEY_KP_ENTER
-                || key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+            if (key == com.mojang.blaze3d.platform.InputConstants.KEY_RETURN || key == com.mojang.blaze3d.platform.InputConstants.KEY_NUMPADENTER
+                || key == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) {
                 hexInput.setFocused(false); syncHex();
                 return true;
             }

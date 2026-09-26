@@ -1,5 +1,6 @@
 package dihclient.gui.vanillaui.components;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
 import dihclient.gui.vanillaui.UiRenderer;
@@ -11,7 +12,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.Locale;
 import java.util.function.Consumer;
@@ -187,31 +187,31 @@ public final class ColorPicker {
 
     public boolean keyPressed(int key, int scanCode, int modifiers) {
         if (!open) return false;
-        if (key == GLFW.GLFW_KEY_ESCAPE) {
+        if (key == InputConstants.KEY_ESCAPE) {
             closeCancel();
             return true;
         }
-        if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
+        if (key == InputConstants.KEY_RETURN || key == InputConstants.KEY_NUMPADENTER) {
             if (hexFocused) applyHexText();
             if (onSave != null) onSave.accept(draftArgb());
             open = false;
             return true;
         }
         if (!hexFocused) return true;
-        boolean ctrl = (modifiers & GLFW.GLFW_MOD_CONTROL) != 0;
-        if (ctrl && key == GLFW.GLFW_KEY_C) {
+        boolean ctrl = (modifiers & InputConstants.MOD_CONTROL) != 0;
+        if (ctrl && key == InputConstants.KEY_C) {
             Minecraft.getInstance().keyboardHandler.setClipboard(selectedHexTextOrAll());
             return true;
         }
-        if (ctrl && key == GLFW.GLFW_KEY_V) {
+        if (ctrl && key == InputConstants.KEY_V) {
             pasteHex(Minecraft.getInstance().keyboardHandler.getClipboard(), hasHexSelection());
             return true;
         }
-        if (ctrl && key == GLFW.GLFW_KEY_A) {
+        if (ctrl && key == InputConstants.KEY_A) {
             selectAllHex();
             return true;
         }
-        if (key == GLFW.GLFW_KEY_BACKSPACE && !hexText.isEmpty()) {
+        if (key == InputConstants.KEY_BACKSPACE && !hexText.isEmpty()) {
             if (hasHexSelection()) {
                 replaceSelectedHex("");
             } else if (hexCursor > 0) {
@@ -219,15 +219,15 @@ public final class ColorPicker {
                 hexCursor--;
                 applyHexText();
             }
-        } else if (key == GLFW.GLFW_KEY_DELETE) {
+        } else if (key == InputConstants.KEY_DELETE) {
             if (hasHexSelection()) {
                 replaceSelectedHex("");
             } else if (hexCursor < hexText.length()) {
                 hexText = hexText.substring(0, hexCursor) + hexText.substring(hexCursor + 1);
                 applyHexText();
             }
-        } else if (key == GLFW.GLFW_KEY_HOME || key == GLFW.GLFW_KEY_END || key == GLFW.GLFW_KEY_LEFT || key == GLFW.GLFW_KEY_RIGHT) {
-            boolean shift = (modifiers & GLFW.GLFW_MOD_SHIFT) != 0;
+        } else if (key == InputConstants.KEY_HOME || key == InputConstants.KEY_END || key == InputConstants.KEY_LEFT || key == InputConstants.KEY_RIGHT) {
+            boolean shift = (modifiers & InputConstants.MOD_SHIFT) != 0;
             moveHexCursor(key, shift);
             return true;
         }
@@ -265,10 +265,10 @@ public final class ColorPicker {
         if (shift && hexSelectionAnchor < 0) hexSelectionAnchor = hexCursor;
         if (!shift) clearHexSelection();
         switch (key) {
-            case GLFW.GLFW_KEY_HOME -> hexCursor = 0;
-            case GLFW.GLFW_KEY_END -> hexCursor = hexText.length();
-            case GLFW.GLFW_KEY_LEFT -> hexCursor = Math.max(0, hexCursor - 1);
-            case GLFW.GLFW_KEY_RIGHT -> hexCursor = Math.min(hexText.length(), hexCursor + 1);
+            case InputConstants.KEY_HOME -> hexCursor = 0;
+            case InputConstants.KEY_END -> hexCursor = hexText.length();
+            case InputConstants.KEY_LEFT -> hexCursor = Math.max(0, hexCursor - 1);
+            case InputConstants.KEY_RIGHT -> hexCursor = Math.min(hexText.length(), hexCursor + 1);
             default -> {
             }
         }

@@ -1,6 +1,6 @@
 package dihclient.gui.multi;
 
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 public final class MultiRenameField {
     private static final int MAX = 50;
@@ -40,11 +40,11 @@ public final class MultiRenameField {
     public boolean keyPressed(int keyCode) {
         if (!focused) return false;
         switch (keyCode) {
-            case GLFW.GLFW_KEY_BACKSPACE -> {
+            case InputConstants.KEY_BACKSPACE -> {
                 if (text.length() > 0) text.deleteCharAt(text.length() - 1);
                 return true;
             }
-            case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER, GLFW.GLFW_KEY_ESCAPE -> {
+            case InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER, InputConstants.KEY_ESCAPE -> {
                 focused = false;
                 return true;
             }

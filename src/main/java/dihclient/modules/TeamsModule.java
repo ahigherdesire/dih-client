@@ -1,5 +1,6 @@
 package dihclient.modules;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ColorSetting;
 import dihclient.api.module.KeybindSetting;
@@ -15,7 +16,6 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.EntityHitResult;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
@@ -51,7 +51,7 @@ public final class TeamsModule extends Module {
             .description("Add/remove with key.")
             .build());
         add(new KeybindSetting("quick-add-bind", "Quick Add Key",
-            DihBindUtil.encodeMouseButton(GLFW.GLFW_MOUSE_BUTTON_MIDDLE))
+            DihBindUtil.encodeMouseButton(InputConstants.MOUSE_BUTTON_MIDDLE))
             .visibleWhen(() -> bool("quick-add"))
             .build());
         add(new BoolSetting("esp", "ESP", true).build());

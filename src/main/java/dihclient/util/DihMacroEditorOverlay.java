@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.components.Button;
 import dihclient.gui.vanillaui.components.CompactDropdown;
@@ -155,7 +156,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult.Type;
 import net.minecraft.core.BlockPos;
-import org.lwjgl.glfw.GLFW;
 
 public class DihMacroEditorOverlay extends DihOverlayBase {
    public enum EditorContext {
@@ -1052,24 +1052,22 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
 
    private boolean isControlModifierDown() {
       if (MC == null || MC.getWindow() == null) return false;
-      long handle = MC.getWindow().handle();
-      return GLFW.glfwGetKey(handle, GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS
-         || GLFW.glfwGetKey(handle, GLFW.GLFW_KEY_RIGHT_CONTROL) == GLFW.GLFW_PRESS;
+      return DihKeys.isKeyDown(InputConstants.KEY_LCONTROL)
+         || DihKeys.isKeyDown(InputConstants.KEY_RCONTROL);
    }
 
    private boolean isControlModifierDown(int modifiers) {
-      return (modifiers & GLFW.GLFW_MOD_CONTROL) != 0 || this.isControlModifierDown();
+      return (modifiers & InputConstants.MOD_CONTROL) != 0 || this.isControlModifierDown();
    }
 
    private boolean isShiftModifierDown() {
       if (MC == null || MC.getWindow() == null) return false;
-      long handle = MC.getWindow().handle();
-      return GLFW.glfwGetKey(handle, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
-         || GLFW.glfwGetKey(handle, GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
+      return DihKeys.isKeyDown(InputConstants.KEY_LSHIFT)
+         || DihKeys.isKeyDown(InputConstants.KEY_RSHIFT);
    }
 
    private boolean isShiftModifierDown(int modifiers) {
-      return (modifiers & GLFW.GLFW_MOD_SHIFT) != 0 || this.isShiftModifierDown();
+      return (modifiers & InputConstants.MOD_SHIFT) != 0 || this.isShiftModifierDown();
    }
 
    private static String pluralSteps(int count) {
@@ -5320,7 +5318,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
          }
          if (this.isStepPickerOpen()) {
             if (this.stepPickerSearchField != null && this.stepPickerSearchField.isFocused()) {
-               if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+               if (keyCode == InputConstants.KEY_ESCAPE) {
                   this.stepPickerSearchField.setFocused(false);
                   return true;
                }
@@ -5333,29 +5331,29 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
             return true;
          } else if (!this.hasFocusedEditorField()
             && this.isStepListLockedForRun()
-            && (this.isControlModifierDown(modifiers) && (keyCode == GLFW.GLFW_KEY_C
-               || keyCode == GLFW.GLFW_KEY_V
-               || keyCode == GLFW.GLFW_KEY_X
-               || keyCode == GLFW.GLFW_KEY_Z
-               || keyCode == GLFW.GLFW_KEY_R)
-               || keyCode == GLFW.GLFW_KEY_DELETE
-               || keyCode == GLFW.GLFW_KEY_BACKSPACE)) {
+            && (this.isControlModifierDown(modifiers) && (keyCode == InputConstants.KEY_C
+               || keyCode == InputConstants.KEY_V
+               || keyCode == InputConstants.KEY_X
+               || keyCode == InputConstants.KEY_Z
+               || keyCode == InputConstants.KEY_R)
+               || keyCode == InputConstants.KEY_DELETE
+               || keyCode == InputConstants.KEY_BACKSPACE)) {
             return true;
-         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == GLFW.GLFW_KEY_Z) {
+         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == InputConstants.KEY_Z) {
             this.performUndo();
             return true;
-         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == GLFW.GLFW_KEY_R) {
+         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == InputConstants.KEY_R) {
             this.performRedo();
             return true;
-         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == GLFW.GLFW_KEY_X) {
+         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == InputConstants.KEY_X) {
             this.deleteSelectedSteps();
             return true;
-         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == GLFW.GLFW_KEY_C) {
+         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == InputConstants.KEY_C) {
             return this.copySelectedStepsToClipboard();
-         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == GLFW.GLFW_KEY_V) {
+         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == InputConstants.KEY_V) {
             return this.pasteMacroStepsFromClipboardOrSelection();
          } else if (!this.hasFocusedEditorField()
-            && (keyCode == GLFW.GLFW_KEY_DELETE || keyCode == GLFW.GLFW_KEY_BACKSPACE)
+            && (keyCode == InputConstants.KEY_DELETE || keyCode == InputConstants.KEY_BACKSPACE)
             && this.deleteSelectedSteps()) {
             return true;
          } else if (keyCode == 256) {

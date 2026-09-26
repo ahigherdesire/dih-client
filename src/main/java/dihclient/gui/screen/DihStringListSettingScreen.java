@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContexts;
 import dihclient.gui.vanillaui.UiRenderer;
@@ -28,7 +29,6 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -334,7 +334,7 @@ public class DihStringListSettingScreen extends DihScreen {
     @Override
     public boolean keyPressed(KeyEvent input) {
         ensureFields();
-        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (input.key() == InputConstants.KEY_ESCAPE) {
             if (editingIndex >= 0) {
 
                 if (!entryText().trim().isEmpty()) addEntry();
@@ -344,15 +344,15 @@ public class DihStringListSettingScreen extends DihScreen {
             onClose();
             return true;
         }
-        if (entryField.isFocused() && supportsPlayerSuggestions() && input.key() == GLFW.GLFW_KEY_TAB) {
+        if (entryField.isFocused() && supportsPlayerSuggestions() && input.key() == InputConstants.KEY_TAB) {
             List<String> suggestions = playerSuggestions();
             if (!suggestions.isEmpty()) {
-                suggestionIndex = Math.floorMod(suggestionIndex + ((input.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0 ? -1 : 1), suggestions.size());
+                suggestionIndex = Math.floorMod(suggestionIndex + ((input.modifiers() & InputConstants.MOD_SHIFT) != 0 ? -1 : 1), suggestions.size());
                 setEntryText(applySuggestionToEntry(entryText(), suggestions.get(suggestionIndex)));
             }
             return true;
         }
-        if (input.key() == GLFW.GLFW_KEY_ENTER || input.key() == GLFW.GLFW_KEY_KP_ENTER) {
+        if (input.key() == InputConstants.KEY_RETURN || input.key() == InputConstants.KEY_NUMPADENTER) {
             if (entryField.isFocused()) addEntry();
             return true;
         }
