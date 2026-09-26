@@ -46,9 +46,12 @@ stonecutter parameters {
             replace("com.mojang.authlib.yggdrasil.FriendsService", "com.mojang.authlib.services.FriendsService")
             replace("com.mojang.authlib.yggdrasil.ProfileResult", "com.mojang.authlib.services.ProfileResult")
             replace("InteractionResult.SwingSource.CLIENT", "InteractionResult.SwingSource.PREDICTED")
+            // The first-person hand renderer (its tick/itemUsed logic moved to client.player.FirstPersonHandsAndItems).
+            replace("ItemInHandRenderer", "FirstPersonHandsAndItemsRenderer")
             replace("DataComponents.SWING_ANIMATION", "DataComponents.ATTACK_ANIMATION")
             replace("BedRule.EXPLODES", "BedRule.DESTROY_ON_USE")
             replace(".getVanillaPackResources().getResource(", ".getVanillaPackResources().fullResources().getResource(")
+            replace("setIcon(client.getVanillaPackResources(),", "setIcon(client.getVanillaPackResources().fullResources(),")
             replace("RegistryDataLoader.WORLDGEN_REGISTRIES", "RegistryDataLoader.WORLD_REGISTRIES")
             replace("RegistryLayer.WORLDGEN", "RegistryLayer.WORLD")
         }

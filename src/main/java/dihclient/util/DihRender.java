@@ -54,7 +54,7 @@ public final class DihRender {
      */
     public static void drawFromBuffer(RenderType type, StagedVertexBuffer.ExecuteInfo info) {
         //? if >=26.3 {
-        /*RenderTarget target = Minecraft.getInstance().getMainRenderTarget();
+        /*RenderTarget target = Minecraft.getInstance().gameRenderer.mainRenderTarget();
         try (var pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
                 () -> "DIH " + type, target.getColorTextureView(), Optional.empty(),
                 target.getDepthTextureView(), OptionalDouble.empty())) {

@@ -26,8 +26,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ItemInHandRenderer.class)
 public abstract class DihViewmodelMixin {
+    //? if <26.3 {
     @Shadow
     private ItemStack offHandItem;
+    //?}
 
     @Shadow
     @Final
@@ -36,9 +38,18 @@ public abstract class DihViewmodelMixin {
     @Inject(method = "submitArmWithItem",
         at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", shift = At.Shift.AFTER),
         require = 0)
+    //? if >=26.3 {
+    /*private void dih$handTransforms(net.minecraft.client.renderer.state.level.PlayerRenderState playerState,
+                                       net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState handsState,
+                                       float frameInterp, float xRot, InteractionHand hand,
+                                       float attack, ItemStack itemStack, float inverseArmHeight, PoseStack poseStack,
+                                       SubmitNodeCollector submitNodeCollector, int lightCoords, CallbackInfo ci) {
+        ItemStack offHandItem = handsState.offHandItem;
+    *///?} else {
     private void dih$handTransforms(AbstractClientPlayer player, float frameInterp, float xRot, InteractionHand hand,
                                        float attack, ItemStack itemStack, float inverseArmHeight, PoseStack poseStack,
                                        SubmitNodeCollector submitNodeCollector, int lightCoords, CallbackInfo ci) {
+    //?}
         if (!ViewmodelState.active()) return;
 
         boolean bothHands = hand == InteractionHand.MAIN_HAND && itemStack.has(DataComponents.MAP_ID) && offHandItem.isEmpty();
@@ -105,11 +116,21 @@ public abstract class DihViewmodelMixin {
             target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;applyItemArmTransform(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/entity/HumanoidArm;F)V",
             ordinal = 0, shift = At.Shift.AFTER),
         require = 0)
+    //? if >=26.3 {
+    /*private void dih$blockAnimation(net.minecraft.client.renderer.state.level.PlayerRenderState playerState,
+                                       net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState handsState,
+                                       float frameInterp, float xRot, InteractionHand hand,
+                                       float attack, ItemStack itemStack, float inverseArmHeight, PoseStack poseStack,
+                                       SubmitNodeCollector submitNodeCollector, int lightCoords, CallbackInfo ci) {
+        HumanoidArm mainArm = playerState.avatarRenderState.mainArm;
+    *///?} else {
     private void dih$blockAnimation(AbstractClientPlayer player, float frameInterp, float xRot, InteractionHand hand,
                                        float attack, ItemStack itemStack, float inverseArmHeight, PoseStack poseStack,
                                        SubmitNodeCollector submitNodeCollector, int lightCoords, CallbackInfo ci) {
+        HumanoidArm mainArm = player.getMainArm();
+    //?}
         if (!ViewmodelState.active() || !itemStack.is(ItemTags.SWORDS)) return;
-        HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
+        HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? mainArm : mainArm.getOpposite();
         dih$applyBlockAnimation(poseStack, arm, attack);
     }
 
@@ -119,21 +140,6 @@ public abstract class DihViewmodelMixin {
     private float dih$ignoreBlocking(float equipProgress) {
         if (ViewmodelState.equipOffsetOn() && ViewmodelState.ignoreBlocking()) return 0.0F;
         return equipProgress;
-    }
-
-    @Inject(method = "itemUsed", at = @At("HEAD"), cancellable = true, require = 0)
-    private void dih$ignorePlace(InteractionHand hand, CallbackInfo ci) {
-        if (ViewmodelState.active() && ViewmodelState.ignorePlace()) ci.cancel();
-    }
-
-    @Inject(method = "shouldInstantlyReplaceVisibleItem", at = @At("RETURN"), cancellable = true, require = 0)
-    private void dih$ignoreAmount(ItemStack currentlyVisibleItem, ItemStack expectedItem,
-                                     CallbackInfoReturnable<Boolean> cir) {
-        if (ViewmodelState.active() && !cir.getReturnValueZ()) {
-            cir.setReturnValue(!ViewmodelState.equipOffsetOn()
-                || (currentlyVisibleItem.getCount() == expectedItem.getCount() || ViewmodelState.ignoreAmount())
-                && ItemStack.isSameItemSameComponents(currentlyVisibleItem, expectedItem));
-        }
     }
 
     @ModifyArg(method = "applyItemArmTransform",

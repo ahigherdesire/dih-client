@@ -256,6 +256,7 @@ public final class VanillaKnowledge implements Knowledge {
         final Map<String, JsonObject> recipes = new TreeMap<>();
         final Map<String, JsonObject> lootTables = new HashMap<>();
         final Map<String, JsonObject> tagFiles = new HashMap<>();
+        final Map<String, JsonObject> predicates = new HashMap<>();
         Map<String, String> lang = Map.of();
         Tags itemTags;
         Tags blockTags;
@@ -286,6 +287,8 @@ public final class VanillaKnowledge implements Knowledge {
                         recipes.put(idFromPath(path, "recipe/"), json.getAsJsonObject());
                     } else if (idFromPath(path, "loot_table/") != null) {
                         lootTables.put(idFromPath(path, "loot_table/"), json.getAsJsonObject());
+                    } else if (idFromPath(path, "predicate/") != null) {
+                        predicates.put(idFromPath(path, "predicate/"), json.getAsJsonObject());
                     } else if (idFromPath(path, "tags/") != null) {
                         tagFiles.put(path, json.getAsJsonObject());
                     }
@@ -293,6 +296,7 @@ public final class VanillaKnowledge implements Knowledge {
                     LOGGER.debug("Acquire knowledge: skipping unreadable {}", path, e);
                 }
             }
+            lootTables.replaceAll((id, table) -> LootFormat.normalize(table, predicates));
             itemTags = Tags.parse(tagFiles, "item");
             blockTags = Tags.parse(tagFiles, "block");
         }

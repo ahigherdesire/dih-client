@@ -432,15 +432,27 @@ public final class SeedStructureScanner {
         StructureTemplateManager tm = templates != null ? templates : ctx.structureTemplates();
         HolderSet<Biome> biomes = structure.biomes();
         if (!exact && structure instanceof JigsawStructure) {
+            //? if >=26.3 {
+            /*Structure.GenerationContext gc = new Structure.GenerationContext(ctx.registryAccess(), ctx.generator(),
+                ctx.biomeSource(), ctx.climateSampler(), ctx.randomState(), tm, ctx.seed(), chunk,
+                ctx.heightAccessor(), biomes::contains);
+            *///?} else {
             Structure.GenerationContext gc = new Structure.GenerationContext(ctx.registryAccess(), ctx.generator(),
                 ctx.biomeSource(), ctx.randomState(), tm, ctx.seed(), chunk,
                 ctx.heightAccessor(), biomes::contains);
+            //?}
             Optional<Structure.GenerationStub> stub = structure.findValidGenerationPoint(gc);
             return stub.map(st -> new Placed(holder, null, st.position())).orElse(null);
         }
+        //? if >=26.3 {
+        /*StructureStart start = structure.generate(holder, ctx.dimension(), ctx.registryAccess(), ctx.generator(),
+            ctx.biomeSource(), ctx.climateSampler(), ctx.randomState(), tm, ctx.seed(), chunk, 0,
+            ctx.heightAccessor(), biomes::contains);
+        *///?} else {
         StructureStart start = structure.generate(holder, ctx.dimension(), ctx.registryAccess(), ctx.generator(),
             ctx.biomeSource(), ctx.randomState(), tm, ctx.seed(), chunk, 0,
             ctx.heightAccessor(), biomes::contains);
+        //?}
         return start != null && start.isValid() ? new Placed(holder, start.getBoundingBox(), null) : null;
     }
 

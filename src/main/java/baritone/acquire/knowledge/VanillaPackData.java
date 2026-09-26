@@ -18,7 +18,8 @@ import java.util.Map;
  * bootstrapped game, so it is only tried at runtime.
  */
 final class VanillaPackData {
-    private static final List<String> DIRS = List.of("recipe", "loot_table/blocks", "loot_table/entities", "tags/item", "tags/block");
+    private static final List<String> DIRS = List.of("recipe", "loot_table/blocks", "loot_table/entities", "tags/item", "tags/block",
+            "predicate");
 
     private VanillaPackData() {
     }

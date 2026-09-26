@@ -38,7 +38,9 @@ final class VanillaData {
             "data/minecraft/loot_table/blocks/",
             "data/minecraft/loot_table/entities/",
             "data/minecraft/tags/item/",
-            "data/minecraft/tags/block/");
+            "data/minecraft/tags/block/",
+            // Named loot conditions (26.3 loot tables refer to them by id).
+            "data/minecraft/predicate/");
 
     private VanillaData() {
     }

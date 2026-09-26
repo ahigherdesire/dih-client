@@ -199,7 +199,7 @@ public final class DihSyntheticLevel implements WorldGenLevel {
 
     @Override
     public Holder<Biome> getUncachedNoiseBiome(int quartX, int quartY, int quartZ) {
-        return context.biomeSource().getNoiseBiome(quartX, quartY, quartZ, context.randomState().sampler());
+        return context.noiseBiome(quartX, quartY, quartZ);
     }
 
     @Override
