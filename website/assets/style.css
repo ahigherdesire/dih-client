@@ -80,6 +80,9 @@ figure { margin: 0; }
 .fine { margin: 14px 0 0; font-size: 11.5px; color: var(--mute); }
 .fine b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
 .fine + .fine { margin-top: 4px; }
+.cta.dl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 10px; }
+.dl-grid .dl { width: 100%; }
+@media (max-width: 560px) { .cta.dl-grid { grid-template-columns: 1fr; } }
 .fine a { color: var(--text); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
 
 /* ---------------------------------------------------------------- top bar */

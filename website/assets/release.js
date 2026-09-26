@@ -39,5 +39,24 @@ window.DIH_RELEASE = {
     sha256: "daf5f6624d697f9934479f5e8809c2bf6957dd94cd034edf17410dc05767e5f8",
     download: "https://github.com/ahigherdesire/dih-client/releases/download/v5.1-beta.3/DIH-Client-5.1-beta.3-26.3.jar",
     notes: "https://github.com/ahigherdesire/dih-client/releases/tag/v5.1-beta.3"
+  },
+  /* The same beta for NeoForge (extra assets on the beta 3 release). */
+  beta3_neo262: {
+    version: "5.1-beta.3",
+    mc: "26.2",
+    file: "DIH-Client-5.1-beta.3-26.2-neoforge.jar",
+    size: "20.1 MB",
+    sha256: "4f44376c0c9f84918b027903cf6cdcb1f49cd67b8eae5dbf4443c8b2a2ab7413",
+    download: "https://github.com/ahigherdesire/dih-client/releases/download/v5.1-beta.3/DIH-Client-5.1-beta.3-26.2-neoforge.jar",
+    notes: "https://github.com/ahigherdesire/dih-client/releases/tag/v5.1-beta.3"
+  },
+  beta3_neo263: {
+    version: "5.1-beta.3",
+    mc: "26.3",
+    file: "DIH-Client-5.1-beta.3-26.3-neoforge.jar",
+    size: "20.1 MB",
+    sha256: "6a8eb1a751e8f9f66e30c6c37430cba71cbe058c6a7e1c63baafd1ac45e406b1",
+    download: "https://github.com/ahigherdesire/dih-client/releases/download/v5.1-beta.3/DIH-Client-5.1-beta.3-26.3-neoforge.jar",
+    notes: "https://github.com/ahigherdesire/dih-client/releases/tag/v5.1-beta.3"
   }
 };
