@@ -1,5 +1,6 @@
 package dihclient.util.multi;
 
+import dihclient.util.DihPackets;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
 import net.minecraft.network.protocol.game.ClientboundContainerClosePacket;
@@ -62,7 +63,7 @@ final class MultiWorldCapture {
             respawn = respawnPacket;
             resetWorld();
         } else if (packet instanceof ClientboundLevelChunkWithLightPacket chunk) {
-            long key = ChunkPos.pack(chunk.getX(), chunk.getZ());
+            long key = ChunkPos.pack(DihPackets.chunkX(chunk), DihPackets.chunkZ(chunk));
             chunks.remove(key);
             chunks.put(key, chunk);
             if (chunks.size() > CHUNK_CAP) evictOldest(chunks);
@@ -80,8 +81,8 @@ final class MultiWorldCapture {
 
             if (entitySpawns.containsKey(data.id())) entityData.put(data.id(), data);
         } else if (packet instanceof ClientboundRemoveEntitiesPacket remove) {
-            for (int i = 0; i < remove.getEntityIds().size(); i++) {
-                int id = remove.getEntityIds().getInt(i);
+            for (int i = 0; i < DihPackets.entityIds(remove).size(); i++) {
+                int id = DihPackets.entityIds(remove).getInt(i);
                 entitySpawns.remove(id);
                 entityData.remove(id);
             }

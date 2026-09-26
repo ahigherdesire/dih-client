@@ -200,7 +200,7 @@ public class DihChatField {
                 return handleSubmit();
             }
             if (multiline && enterInsertsNewline) {
-                return field.keyPressed(inputContext(), key, keyInput.scancode(), keyInput.modifiers());
+                return field.keyPressed(inputContext(), key, DihKeys.secondaryCode(keyInput), keyInput.modifiers());
             }
             field.setFocused(false);
             return true;
@@ -214,7 +214,7 @@ public class DihChatField {
             }
         }
 
-        return field.keyPressed(inputContext(), key, keyInput.scancode(), keyInput.modifiers());
+        return field.keyPressed(inputContext(), key, DihKeys.secondaryCode(keyInput), keyInput.modifiers());
     }
 
     public boolean charTyped(CharacterEvent charInput) {

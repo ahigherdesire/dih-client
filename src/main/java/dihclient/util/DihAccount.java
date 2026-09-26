@@ -1,6 +1,5 @@
 package dihclient.util;
 
-import com.mojang.authlib.Environment;
 import com.mojang.util.UndashedUuid;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
@@ -9,7 +8,6 @@ import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import de.florianreuth.waybackauthlib.InvalidCredentialsException;
 import de.florianreuth.waybackauthlib.WaybackAuthLib;
-import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
 
 import dihclient.util.mm.crypto.AtRestSeal;
 
@@ -20,7 +18,6 @@ import java.util.Objects;
 import java.util.UUID;
 
 public class DihAccount {
-    private static final Environment ALTENING_ENVIRONMENT = new Environment("http://sessionserver.thealtening.com", "http://authserver.thealtening.com", "https://api.mojang.com", "The Altening");
     private static final String ALTENING_PASSWORD = "DIH Client";
 
     public String id = UUID.randomUUID().toString();
@@ -205,7 +202,7 @@ public class DihAccount {
             sessionToken = auth.getAccessToken() == null ? "" : auth.getAccessToken();
             boolean ok = DihAccountSessionSwitcher.setSession(
                 new User(auth.getCurrentProfile().name(), auth.getCurrentProfile().id(), sessionToken, Optional.empty(), Optional.empty()),
-                new YggdrasilAuthenticationService(Minecraft.getInstance().getProxy(), ALTENING_ENVIRONMENT)
+                DihAuthServices.theAltening(Minecraft.getInstance().getProxy())
             );
             if (!ok) lastError = DihAccountSessionSwitcher.lastError();
             return ok;
@@ -218,7 +215,7 @@ public class DihAccount {
     }
 
     private WaybackAuthLib createTheAlteningAuth() {
-        WaybackAuthLib auth = new WaybackAuthLib(ALTENING_ENVIRONMENT.servicesHost());
+        WaybackAuthLib auth = new WaybackAuthLib(DihAuthServices.ALTENING_AUTH_HOST);
         auth.setUsername(token);
         auth.setPassword(ALTENING_PASSWORD);
         return auth;

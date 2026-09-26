@@ -1,5 +1,6 @@
 package dihclient.modules;
 
+import dihclient.util.DihPackets;
 import dihclient.DihClientAddon;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
@@ -26,7 +27,6 @@ import net.minecraft.network.protocol.game.ServerboundChatPacket;
 import net.minecraft.network.protocol.game.ServerboundInteractPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.sounds.SoundEvents;
@@ -298,7 +298,7 @@ public final class DihBlinkManager {
             || packet instanceof ServerboundUseItemOnPacket
             || packet instanceof ServerboundUseItemPacket
             || packet instanceof ServerboundInteractPacket
-            || packet instanceof ServerboundSwingPacket;
+            || DihPackets.isSwing(packet);
     }
 
     public static void onPacketProcessFrame() {

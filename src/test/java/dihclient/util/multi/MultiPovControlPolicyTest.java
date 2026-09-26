@@ -1,10 +1,10 @@
 package dihclient.util.multi;
 
+import dihclient.util.DihPackets;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.world.phys.Vec3;
 import org.junit.jupiter.api.Test;
 
@@ -34,7 +34,7 @@ class MultiPovControlPolicyTest {
         List<Packet<?>> packets = MultiPilot.initialBlockPressPackets(pos, Direction.NORTH, 41);
         assertEquals(2, packets.size());
         assertInstanceOf(ServerboundPlayerActionPacket.class, packets.get(0));
-        assertInstanceOf(ServerboundSwingPacket.class, packets.get(1));
+        assertInstanceOf(DihPackets.SWING, packets.get(1));
         ServerboundPlayerActionPacket start = (ServerboundPlayerActionPacket) packets.get(0);
         assertEquals(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, start.getAction());
         assertEquals(pos, start.getPos());

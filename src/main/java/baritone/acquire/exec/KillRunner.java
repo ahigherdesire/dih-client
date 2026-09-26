@@ -1,5 +1,6 @@
 package baritone.acquire.exec;
 
+import dihclient.util.DihEntities;
 import baritone.acquire.model.Step;
 import baritone.acquire.planner.AcquirePlanner;
 import baritone.api.pathing.goals.GoalBlock;
@@ -95,7 +96,7 @@ final class KillRunner extends RunnerBase {
                         x.lookAt(target.getBoundingBox().getCenter(), false);
                         if (++lookTicks >= 2 && player.getAttackStrengthScale(0.5F) >= 0.95F) {
                             ctx.minecraft().gameMode.attack(player, target);
-                            player.swing(InteractionHand.MAIN_HAND);
+                            DihEntities.swing(player, InteractionHand.MAIN_HAND);
                         }
                         return Result.pause();
                     }

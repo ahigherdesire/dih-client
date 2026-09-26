@@ -1,5 +1,7 @@
 package dihclient.mixin;
 
+import dihclient.util.DihPackets;
+import dihclient.util.DihKeys;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Shadow;
@@ -234,7 +236,7 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void yang$keyPressed(KeyEvent input, CallbackInfoReturnable<Boolean> cir) {
         if (!yang$isDihActive()) return;
-        if (DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) {
+        if (DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) {
             cir.setReturnValue(true);
         }
     }
@@ -290,7 +292,7 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
             return;
         }
         DihSharedState.get().setForceNextSignUpdatePacket(true);
-        MC.getConnection().send(new ServerboundSignUpdatePacket(
+        MC.getConnection().send(DihPackets.signUpdate(
             sign.getBlockPos(),
             isFrontText,
             messages[0],

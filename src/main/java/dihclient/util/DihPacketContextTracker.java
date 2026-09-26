@@ -279,9 +279,9 @@ public final class DihPacketContextTracker {
             return;
         }
         if (packet instanceof ServerboundAcceptTeleportationPacket ack) {
-            changes.add("Client acknowledged teleport #" + ack.getId()
-                + (ack.getId() == lastTeleportId ? " (matches pending)" : " (tracked pending " + lastTeleportId + ")"));
-            if (ack.getId() == lastTeleportId) lastTeleportId = -1;
+            changes.add("Client acknowledged teleport #" + DihPackets.teleportId(ack)
+                + (DihPackets.teleportId(ack) == lastTeleportId ? " (matches pending)" : " (tracked pending " + lastTeleportId + ")"));
+            if (DihPackets.teleportId(ack) == lastTeleportId) lastTeleportId = -1;
             return;
         }
 
@@ -306,7 +306,7 @@ public final class DihPacketContextTracker {
             return;
         }
         if (packet instanceof ClientboundLevelChunkWithLightPacket chunk) {
-            changes.add("Load chunk " + chunk.getX() + ", " + chunk.getZ() + " with light");
+            changes.add("Load chunk " + DihPackets.chunkX(chunk) + ", " + DihPackets.chunkZ(chunk) + " with light");
             return;
         }
         if (packet instanceof ClientboundGameEventPacket gameEvent) {

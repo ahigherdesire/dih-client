@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihRender;
 import com.mojang.blaze3d.vertex.QuadInstance;
 import dihclient.modules.GoldenLeverModule;
 import dihclient.modules.ModuleRenderUtil;
@@ -81,14 +82,7 @@ public class DihModelBlockRendererMixin {
         if (alpha <= 0 || alpha >= 255) return quad;
         BakedQuad.MaterialInfo materialInfo = quad.materialInfo();
         if (materialInfo.layer() == ChunkSectionLayer.TRANSLUCENT) return quad;
-        BakedQuad.MaterialInfo translucentInfo = new BakedQuad.MaterialInfo(
-            materialInfo.sprite(),
-            ChunkSectionLayer.TRANSLUCENT,
-            materialInfo.itemRenderType(),
-            materialInfo.tintIndex(),
-            materialInfo.shade(),
-            materialInfo.lightEmission()
-        );
+        BakedQuad.MaterialInfo translucentInfo = DihRender.copyMaterial(materialInfo, ChunkSectionLayer.TRANSLUCENT, materialInfo.tintIndex());
         return new BakedQuad(
             quad.position0(),
             quad.position1(),

@@ -54,7 +54,7 @@ public final class DihModule {
         net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket.class,
         net.minecraft.network.protocol.game.ServerboundClientCommandPacket.class,
         net.minecraft.network.protocol.game.ServerboundContainerClosePacket.class,
-        net.minecraft.network.protocol.game.ServerboundSwingPacket.class,
+        dihclient.util.DihPackets.SWING,
         net.minecraft.network.protocol.game.ServerboundPlayerInputPacket.class,
         net.minecraft.network.protocol.game.ServerboundMovePlayerPacket.class,
         net.minecraft.network.protocol.game.ServerboundMovePlayerPacket.PosRot.class,

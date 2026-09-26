@@ -1,5 +1,6 @@
 package dihclient.modules;
 
+import dihclient.util.DihPackets;
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.api.module.StringListSetting;
@@ -291,16 +292,16 @@ public final class AntiVanishModule extends Module {
         }
         if (packet instanceof ServerboundUseItemOnPacket useOn) {
             lastLocalActionMs = System.currentTimeMillis();
-            if (useOn.getHitResult() != null && useOn.getHitResult().getBlockPos() != null) {
+            if (DihPackets.hitResult(useOn) != null && DihPackets.hitResult(useOn).getBlockPos() != null) {
                 long until = System.currentTimeMillis() + SELF_PLACE_TTL_MS;
-                BlockPos hit = useOn.getHitResult().getBlockPos();
+                BlockPos hit = DihPackets.hitResult(useOn).getBlockPos();
 
-                BlockPos adjacent = hit.relative(useOn.getHitResult().getDirection());
+                BlockPos adjacent = hit.relative(DihPackets.hitResult(useOn).getDirection());
                 selfPlacedBlocks.put(hit.asLong(), until);
                 selfPlacedBlocks.put(adjacent.asLong(), until);
                 String itemPath = "";
-                if (MC.player != null && useOn.getHand() != null) {
-                    Identifier itemId = BuiltInRegistries.ITEM.getKey(MC.player.getItemInHand(useOn.getHand()).getItem());
+                if (MC.player != null && DihPackets.hand(useOn) != null) {
+                    Identifier itemId = BuiltInRegistries.ITEM.getKey(MC.player.getItemInHand(DihPackets.hand(useOn)).getItem());
                     itemPath = AntiVanishHeuristics.path(itemId == null ? "" : itemId.toString());
                 }
                 markSelfMultiBlockFootprint(hit, itemPath, selfPlacedBlocks, until, false);
@@ -311,7 +312,7 @@ public final class AntiVanishModule extends Module {
         String name = packet.getClass().getSimpleName();
         if (name.equals("ServerboundUseItemPacket")
             || name.equals("ServerboundInteractPacket")
-            || name.equals("ServerboundSwingPacket")) {
+            || name.equals(DihPackets.SWING.getSimpleName())) {
             lastLocalActionMs = System.currentTimeMillis();
         }
         return false;
@@ -406,23 +407,21 @@ public final class AntiVanishModule extends Module {
         } else if (packet instanceof ClientboundBlockDestructionPacket destruction) {
             observations.offer(Observation.blockActor(ObservationType.BLOCK_DIG, destruction.getPos(),
                 destruction.getId(), destruction.getProgress()));
-        } else if (packet instanceof ClientboundAnimatePacket animation
-            && (animation.getAction() == ClientboundAnimatePacket.SWING_MAIN_HAND
-                || animation.getAction() == ClientboundAnimatePacket.SWING_OFF_HAND)) {
+        } else if (DihPackets.swingAnimationEntity(packet) >= 0) {
             observations.offer(Observation.entityAction(ObservationType.ENTITY_SWING,
-                animation.getId(), animation.getAction()));
+                DihPackets.swingAnimationEntity(packet), DihPackets.swingAnimationAction(packet)));
         } else if (packet instanceof ClientboundSoundEntityPacket sound) {
             observations.offer(Observation.entitySound(sound.getId(), soundId(sound.getSound().value().location())));
         } else if (packet instanceof ClientboundLevelParticlesPacket particles) {
-            Identifier id = BuiltInRegistries.PARTICLE_TYPE.getKey(particles.getParticle().getType());
-            observations.offer(Observation.position(ObservationType.PARTICLE, particles.getX(), particles.getY(),
-                particles.getZ(), id == null ? "" : id.toString()));
+            Identifier id = BuiltInRegistries.PARTICLE_TYPE.getKey(DihPackets.particle(particles).getType());
+            observations.offer(Observation.position(ObservationType.PARTICLE, DihPackets.x(particles), DihPackets.y(particles),
+                DihPackets.z(particles), id == null ? "" : id.toString()));
         } else if (packet instanceof ClientboundBlockEventPacket blockEvent) {
             Identifier id = BuiltInRegistries.BLOCK.getKey(blockEvent.getBlock());
             observations.offer(Observation.block(ObservationType.BLOCK_EVENT, blockEvent.getPos(),
                 id == null ? "" : id.toString()));
         } else if (packet instanceof ClientboundLevelChunkWithLightPacket chunk) {
-            observations.offer(Observation.chunk(chunk.getX(), chunk.getZ()));
+            observations.offer(Observation.chunk(DihPackets.chunkX(chunk), DihPackets.chunkZ(chunk)));
         }
         return false;
     }

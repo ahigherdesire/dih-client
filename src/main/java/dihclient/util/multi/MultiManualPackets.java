@@ -1,5 +1,6 @@
 package dihclient.util.multi;
 
+import dihclient.util.DihPackets;
 import dihclient.util.DihPacketRegistry;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
@@ -8,7 +9,6 @@ import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerInputPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -24,7 +24,7 @@ public final class MultiManualPackets {
         ServerboundMovePlayerPacket.StatusOnly.class,
         ServerboundPlayerInputPacket.class,
         ServerboundSetCarriedItemPacket.class,
-        ServerboundSwingPacket.class
+        DihPackets.SWING
     );
 
     private MultiManualPackets() {

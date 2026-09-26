@@ -17,6 +17,7 @@
 
 package baritone.process;
 
+import dihclient.util.DihBlocks;
 import baritone.Baritone;
 import baritone.api.BaritoneAPI;
 import baritone.api.pathing.goals.Goal;
@@ -277,7 +278,7 @@ public final class FarmProcess extends BaritoneProcessHelper implements IFarmPro
             }
             if (state.getBlock() instanceof BonemealableBlock) {
                 BonemealableBlock ig = (BonemealableBlock) state.getBlock();
-                if (ig.isValidBonemealTarget(ctx.world(), pos, state) && ig.isBonemealSuccess(ctx.world(), ctx.world().getRandom(), pos, state)) {
+                if (DihBlocks.isValidBonemealTarget(ig, ctx.world(), pos, state) && DihBlocks.isBonemealSuccess(ig, ctx.world(), ctx.world().getRandom(), pos, state)) {
                     bonemealable.add(pos);
                 }
             }

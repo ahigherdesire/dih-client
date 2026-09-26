@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihKeys;
 import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.gui.vanillaui.components.CompactDropdown;
@@ -421,7 +422,7 @@ public class DihHudElementSettingsScreen extends Screen {
     @Override
     public boolean keyPressed(KeyEvent input) {
         if (colorPicker != null) {
-            colorPicker.keyPressed(input.key(), input.scancode(), input.modifiers());
+            colorPicker.keyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers());
             if (!colorPicker.isOpen()) clearColorPicker();
             return true;
         }

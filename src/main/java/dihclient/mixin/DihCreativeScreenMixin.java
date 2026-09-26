@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihKeys;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -94,7 +95,7 @@ public abstract class DihCreativeScreenMixin {
         DihModule module = DihModule.get();
         if (module == null || !module.isActive()) return;
 
-        if (DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) {
+        if (DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) {
             cir.setReturnValue(true);
         }
     }

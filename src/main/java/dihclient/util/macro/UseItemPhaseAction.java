@@ -1,12 +1,12 @@
 package dihclient.util.macro;
 
+import dihclient.util.DihPackets;
 import dihclient.util.DihInventoryClickHelper;
 import dihclient.util.DihInventoryHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.nbt.CompoundTag;
@@ -85,7 +85,10 @@ public class UseItemPhaseAction implements MacroAction {
                     else sendRawUse(mc, h);
                 }
             }
-            case SWING -> mc.getConnection().send(new ServerboundSwingPacket(h));
+            case SWING -> {
+                var swing = DihPackets.swing(h);
+                if (swing != null) mc.getConnection().send(swing);
+            }
         }
     }
 

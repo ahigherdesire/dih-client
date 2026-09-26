@@ -224,7 +224,7 @@ public final class DihExplosionDamage {
     public static boolean inHurtCooldown(LivingEntity target, DamageSource source) {
         if (target == null) return false;
         if (source != null && source.is(DamageTypeTags.BYPASSES_COOLDOWN)) return false;
-        return target.invulnerableTime > HURT_COOLDOWN_GRACE;
+        return DihEntities.invulnerableTime(target) > HURT_COOLDOWN_GRACE;
     }
 
     public record Lethality(boolean killsTarget, boolean killsSelf,

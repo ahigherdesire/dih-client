@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihKeys;
 import com.mojang.blaze3d.platform.InputConstants;
 import java.util.Locale;
 
@@ -614,7 +615,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
             }
         }
 
-        if (DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) {
+        if (DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) {
             cir.setReturnValue(true);
             return;
         }

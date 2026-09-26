@@ -337,7 +337,7 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
                 return new LogCaptureContext(snapshotBlockState(actionPacket.getPos()), null);
             }
             if (packet instanceof ServerboundUseItemOnPacket interactBlockPacket) {
-                return new LogCaptureContext(snapshotBlockState(interactBlockPacket.getHitResult().getBlockPos()), null);
+                return new LogCaptureContext(snapshotBlockState(DihPackets.hitResult(interactBlockPacket).getBlockPos()), null);
             }
             if (packet instanceof ServerboundContainerClosePacket) {
                 return new LogCaptureContext(null, snapshotCurrentScreen());

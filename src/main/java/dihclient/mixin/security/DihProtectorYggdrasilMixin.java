@@ -2,7 +2,11 @@ package dihclient.mixin.security;
 
 import dihclient.security.DihProtector;
 import com.mojang.authlib.minecraft.TelemetrySession;
+//? if >=26.3 {
+/*import com.mojang.authlib.services.MinecraftServicesUserApiService;
+*///?} else {
 import com.mojang.authlib.yggdrasil.YggdrasilUserApiService;
+//?}
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -10,7 +14,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.concurrent.Executor;
 
+//? if >=26.3 {
+/*@Mixin(value = MinecraftServicesUserApiService.class, remap = false)
+*///?} else {
 @Mixin(value = YggdrasilUserApiService.class, remap = false)
+//?}
 public class DihProtectorYggdrasilMixin {
 
     @Inject(method = "newTelemetrySession", at = @At("HEAD"), cancellable = true)

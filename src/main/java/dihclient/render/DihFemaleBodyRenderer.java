@@ -1,5 +1,6 @@
 package dihclient.render;
 
+import dihclient.util.DihRender;
 import dihclient.modules.GoldenLeverModule;
 import dihclient.modules.PackHideState;
 import com.mojang.blaze3d.platform.NativeImage;
@@ -143,16 +144,12 @@ public final class DihFemaleBodyRenderer {
             if (!state.isInvisible) {
                 if (meshes == CROWD_MESHES) {
                     MeshModel crowdMesh = jacketAlpha == JacketAlpha.EMPTY ? meshes.body : meshes.bodyWithJacket;
-                    output.order(0).submitModel(
-                        crowdMesh, state, poseStack, RenderTypes.entityTranslucent(texture), lightCoords,
-                        overlay, -1, null, state.outlineColor, null
-                    );
+                    DihRender.submitModel(output.order(0), crowdMesh, state, poseStack, RenderTypes.entityTranslucent(texture), lightCoords,
+                        overlay, -1, state.outlineColor);
                     return;
                 }
-                output.order(0).submitModel(
-                    meshes.body, state, poseStack, RenderTypes.entitySolid(texture), lightCoords,
-                    overlay, -1, null, state.outlineColor, null
-                );
+                DihRender.submitModel(output.order(0), meshes.body, state, poseStack, RenderTypes.entitySolid(texture), lightCoords,
+                    overlay, -1, state.outlineColor);
                 if (jacketAlpha != JacketAlpha.EMPTY) {
                     RenderType jacketRenderType = switch (jacketAlpha) {
                         case OPAQUE -> RenderTypes.entitySolid(texture);
@@ -160,26 +157,20 @@ public final class DihFemaleBodyRenderer {
                         case TRANSLUCENT, UNKNOWN -> DihRenderTypes.femaleBodyTranslucentCull(texture);
                         case EMPTY -> throw new IllegalStateException("Empty jacket submitted");
                     };
-                    output.order(0).submitModel(
-                        meshes.jacket, state, poseStack, jacketRenderType, lightCoords,
-                        overlay, -1, null, state.outlineColor, null
-                    );
+                    DihRender.submitModel(output.order(0), meshes.jacket, state, poseStack, jacketRenderType, lightCoords,
+                        overlay, -1, state.outlineColor);
                 }
                 return;
             }
 
             MeshModel visibleMesh = jacketAlpha == JacketAlpha.EMPTY ? meshes.body : meshes.bodyWithJacket;
             if (!state.isInvisibleToPlayer) {
-                output.order(0).submitModel(
-                    visibleMesh, state, poseStack,
+                DihRender.submitModel(output.order(0), visibleMesh, state, poseStack,
                     DihRenderTypes.femaleBodyTranslucentCull(texture), lightCoords,
-                    overlay, 0x26FFFFFF, null, state.outlineColor, null
-                );
+                    overlay, 0x26FFFFFF, state.outlineColor);
             } else if (state.appearsGlowing()) {
-                output.order(0).submitModel(
-                    visibleMesh, state, poseStack, RenderTypes.outline(texture), lightCoords,
-                    overlay, -1, null, state.outlineColor, null
-                );
+                DihRender.submitModel(output.order(0), visibleMesh, state, poseStack, RenderTypes.outline(texture), lightCoords,
+                    overlay, -1, state.outlineColor);
             }
         }
 

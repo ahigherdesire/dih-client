@@ -1,5 +1,6 @@
 package dihclient.modules;
 
+import dihclient.util.DihPackets;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundForgetLevelChunkPacket;
@@ -111,7 +112,7 @@ public final class ModuleEspChunkCache {
         } else if (packet instanceof ClientboundSectionBlocksUpdatePacket sectionUpdate) {
             sectionUpdate.runUpdates((pos, state) -> markDirty(pos.getX() >> 4, pos.getZ() >> 4));
         } else if (packet instanceof ClientboundLevelChunkWithLightPacket chunkPacket) {
-            markDirty(chunkPacket.getX(), chunkPacket.getZ());
+            markDirty(DihPackets.chunkX(chunkPacket), DihPackets.chunkZ(chunkPacket));
 
             GENERATION.incrementAndGet();
         } else if (packet instanceof ClientboundForgetLevelChunkPacket forget) {

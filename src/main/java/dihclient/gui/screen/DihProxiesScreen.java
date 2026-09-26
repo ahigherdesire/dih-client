@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihFileDialogs;
 import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.components.CompactOverlayButton;
 import dihclient.gui.vanillaui.direct.DirectLayout;
@@ -29,7 +30,6 @@ import net.minecraft.resources.Identifier;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryUtil;
-import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -437,20 +437,14 @@ public class DihProxiesScreen extends DihScreen {
     private void importFromFile() {
         importChooserOpen = false;
         DihProxyManager manager = DihProxyManager.get();
-        PointerBuffer filters = BufferUtils.createPointerBuffer(1);
-        ByteBuffer txtFilter = MemoryUtil.memASCII("*.txt");
-        filters.put(txtFilter);
-        filters.rewind();
-        String selectedFile = TinyFileDialogs.tinyfd_openFileDialog("Import Proxies", null, filters, null, false);
-        if (selectedFile != null) {
+        DihFileDialogs.openFile("Import Proxies", null, java.util.List.of("txt"), null, selectedFile -> {
             File file = new File(selectedFile);
             if (!manager.startImport(file)) {
                 toast("Proxy import could not start.", WARN);
             } else {
                 watchImport(manager, manager.importStatus().generation());
             }
-        }
-        MemoryUtil.memFree(txtFilter);
+        });
     }
 
     private void importFromClipboard() {

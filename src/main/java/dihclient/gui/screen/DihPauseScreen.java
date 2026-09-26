@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihScreens;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CommonButtons;
@@ -10,6 +11,7 @@ import net.minecraft.client.gui.layouts.FrameLayout;
 import net.minecraft.client.gui.layouts.GridLayout;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
+//? if <26.3
 import net.minecraft.client.gui.screens.MultiplayerOptionsScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.achievement.StatsScreen;
@@ -94,10 +96,15 @@ public class DihPauseScreen extends Screen {
         helper.addChild(iconButtonRow, 2, gridLayout.newCellSettings().alignHorizontallyCenter());
 
         if (this.minecraft.hasSingleplayerServer()) {
-            helper.addChild(openScreenButton(OPTIONS, () -> new OptionsScreen(this, this.minecraft.options, true)));
+            helper.addChild(openScreenButton(OPTIONS, () -> DihScreens.options(this, this.minecraft.options, true)));
+            //? if >=26.3 {
+            /*helper.addChild(openScreenButton(MULTIPLAYER_OPTIONS,
+                () -> new net.minecraft.client.gui.screens.options.OnlineOptionsScreen(this, this.minecraft.options)));
+            *///?} else {
             helper.addChild(openScreenButton(MULTIPLAYER_OPTIONS, () -> new MultiplayerOptionsScreen(this)));
+            //?}
         } else {
-            helper.addChild(Button.builder(OPTIONS, b -> this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, true))).width(204).build(), 2);
+            helper.addChild(Button.builder(OPTIONS, b -> this.minecraft.gui.setScreen(DihScreens.options(this, this.minecraft.options, true))).width(204).build(), 2);
         }
 
         helper.addChild(Button.builder(CommonComponents.disconnectButtonLabel(this.minecraft.isLocalServer()), b -> {

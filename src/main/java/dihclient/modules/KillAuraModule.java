@@ -2,6 +2,7 @@
 
 package dihclient.modules;
 
+import dihclient.util.DihEntities;
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ChoiceSetting;
 import dihclient.api.module.IntSetting;
@@ -1088,8 +1089,12 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
         var piercing = stack.get(DataComponents.PIERCING_WEAPON);
 
         if (piercing != null && !MC.gameMode.isSpectator()) {
+            //? if >=26.3 {
+            /*MC.gameMode.piercingAttack(stack.getAttackAnimation(), piercing);
+            *///?} else {
             MC.gameMode.piercingAttack(piercing);
-            MC.player.swing(InteractionHand.MAIN_HAND);
+            //?}
+            DihEntities.swing(MC.player, InteractionHand.MAIN_HAND);
             dihclient.util.DihCpsTracker.recordLeft();
             queueHitFeedback(target);
             return true;
@@ -1111,7 +1116,7 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
                 MC.player.attack(target);
                 MC.player.resetAttackStrengthTicker();
             }
-            MC.player.swing(InteractionHand.MAIN_HAND);
+            DihEntities.swing(MC.player, InteractionHand.MAIN_HAND);
             dihclient.util.DihCpsTracker.recordLeft();
             queueHitFeedback(target);
             return true;

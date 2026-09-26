@@ -1,5 +1,6 @@
 package dihclient.util.multi;
 
+import dihclient.util.DihPackets;
 import dihclient.modules.Module;
 import dihclient.modules.ModuleRegistry;
 import dihclient.util.DihAutoTool;
@@ -13,7 +14,6 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.tags.ItemTags;
@@ -732,7 +732,7 @@ public final class MultiPovModuleController {
         session.pilotSend(new ServerboundPlayerActionPacket(
             ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, pos,
             direction == null ? Direction.UP : direction, session.nextUseSeq()));
-        if (swing) session.pilotSend(new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
+        if (swing) session.pilotSend(DihPackets.mainHandSwing());
     }
 
     private static void tickNoFall(Minecraft mc, RemotePlayer bot) {
@@ -782,7 +782,8 @@ public final class MultiPovModuleController {
                 session.pilotSend(new ServerboundUseItemOnPacket(
                     InteractionHand.MAIN_HAND, placementHit, session.nextUseSeq()));
             }
-            session.pilotSend(new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
+            var useSwing = DihPackets.useSwing(InteractionHand.MAIN_HAND);
+            if (useSwing != null) session.pilotSend(useSwing);
             noFallUseCooldown = 10;
         } finally {
             session.pilotSelectHotbar(old);

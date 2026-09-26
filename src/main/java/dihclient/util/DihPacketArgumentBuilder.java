@@ -42,7 +42,6 @@ import net.minecraft.network.protocol.game.ServerboundSeenAdvancementsPacket;
 import net.minecraft.network.protocol.game.ServerboundSelectBundleItemPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.network.protocol.game.ServerboundTestInstanceBlockActionPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
@@ -276,9 +275,11 @@ public final class DihPacketArgumentBuilder {
                 requireOnly(args, "slot", "selectedItemIndex", "index");
                 return Result.ok(new ServerboundSelectBundleItemPacket(intArg(args, "slot"), intArg(args, "selectedItemIndex", "index")), "typed constructor");
             }
-            if (packetClass == ServerboundSwingPacket.class) {
+            if (packetClass == DihPackets.SWING) {
                 requireOnly(args, "hand");
-                return Result.ok(new ServerboundSwingPacket(enumArgOrDefault(InteractionHand.class, args, InteractionHand.MAIN_HAND, "hand")), "typed constructor");
+                Packet<?> swing = DihPackets.swing(enumArgOrDefault(InteractionHand.class, args, InteractionHand.MAIN_HAND, "hand"));
+                if (swing == null) return Result.error("This Minecraft version only sends main-hand swings (punches).");
+                return Result.ok(swing, "typed constructor");
             }
             if (packetClass == ServerboundUseItemPacket.class) {
                 requireOnly(args, "hand", "sequence", "yRot", "xRot");
@@ -310,7 +311,7 @@ public final class DihPacketArgumentBuilder {
                 long salt = longArg(args, 0L, "salt");
                 MessageSignature signature = parseMessageSignature(firstArg(args, "signature"));
                 LastSeenMessages.Update lastSeen = parseLastSeenUpdate(firstArg(args, "lastSeenMessages", "lastSeen"));
-                return Result.ok(new ServerboundChatPacket(message, time, salt, signature, lastSeen), "typed constructor");
+                return Result.ok(DihPackets.chat(message, time, salt, signature, lastSeen), "typed constructor");
             }
             if (packetClass == ServerboundChatCommandSignedPacket.class) {
                 requireOnly(args, "command", "timeStamp", "timestamp", "time", "salt", "argumentSignatures", "signatures", "lastSeenMessages", "lastSeen");
@@ -363,7 +364,7 @@ public final class DihPacketArgumentBuilder {
                 BlockPos pos = blockPosArg(args);
                 boolean front = boolArg(args, true, "front", "isFrontText");
                 String[] lines = lines4(args);
-                return Result.ok(new ServerboundSignUpdatePacket(pos, front, lines[0], lines[1], lines[2], lines[3]), "typed constructor");
+                return Result.ok(DihPackets.signUpdate(pos, front, lines[0], lines[1], lines[2], lines[3]), "typed constructor");
             }
             if (packetClass == ServerboundInteractPacket.class) {
                 requireOnly(args, "entityId", "id", "entity", "hand", "location", "pos", "x", "y", "z", "secondary", "usingSecondaryAction");
@@ -519,7 +520,7 @@ public final class DihPacketArgumentBuilder {
                 Vec3 position = firstArg(args, "position", "pos") != null
                     ? parseVec3(firstArg(args, "position", "pos"))
                     : new Vec3(doubleArg(args, currentX(), "x"), doubleArg(args, currentY(), "y"), doubleArg(args, currentZ(), "z"));
-                return Result.ok(new ServerboundMoveVehiclePacket(
+                return Result.ok(DihPackets.moveVehicle(
                     position,
                     floatArg(args, currentYRot(), "yRot", "yaw"),
                     floatArg(args, currentXRot(), "xRot", "pitch"),
@@ -864,7 +865,7 @@ public final class DihPacketArgumentBuilder {
         String name = packetClass.getName();
         if (packetClass == ServerboundUseItemPacket.class) return List.of(prefix + "hand=MAIN_HAND");
         if (packetClass == ServerboundUseItemOnPacket.class) return List.of(prefix + "hand=MAIN_HAND", prefix + "pos=0,64,0 direction=UP");
-        if (packetClass == ServerboundSwingPacket.class) return List.of(prefix + "hand=MAIN_HAND");
+        if (packetClass == DihPackets.SWING) return List.of(prefix + "hand=MAIN_HAND");
         if (packetClass == ServerboundContainerClickPacket.class) return List.of(prefix + "slot=0 input=PICKUP", prefix + "slot=0 input=QUICK_MOVE");
         if (packetClass == ServerboundContainerClosePacket.class) return List.of(prefix + "containerId=current");
         if (packetClass == ServerboundContainerButtonClickPacket.class) return List.of(prefix + "button=0 containerId=current");

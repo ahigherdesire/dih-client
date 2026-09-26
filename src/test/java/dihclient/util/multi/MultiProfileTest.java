@@ -1,5 +1,6 @@
 package dihclient.util.multi;
 
+import dihclient.util.DihPackets;
 import dihclient.util.DihAccount;
 import dihclient.util.DihProxy;
 import net.minecraft.nbt.CompoundTag;
@@ -7,7 +8,6 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.PacketFlow;
 import net.minecraft.network.protocol.game.ServerboundContainerClickPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -162,7 +162,7 @@ class MultiProfileTest {
         profile.customDelayMs = 80;
         profile.sessions.add(new MultiProfile.SessionSpec(MultiProfile.DEFAULT_ACCOUNT_ID, ""));
         profile.packetPolicy.setAutoSwing(true);
-        profile.setQuickAction(0, new MultiQuickAction("Swing", ServerboundSwingPacket.class.getName(), ""));
+        profile.setQuickAction(0, new MultiQuickAction("Swing", DihPackets.SWING.getName(), ""));
 
         MultiProfile decoded = MultiProfile.fromTag(profile.toTag());
         assertEquals("Farm", decoded.name);
@@ -170,7 +170,7 @@ class MultiProfileTest {
         assertEquals(80, decoded.delayMs());
         assertTrue(decoded.packetPolicy.autoSwing());
         assertEquals("Swing", decoded.quickAction(0).name);
-        assertEquals(ServerboundSwingPacket.class.getName(), decoded.quickAction(0).firstPacketClass());
+        assertEquals(DihPackets.SWING.getName(), decoded.quickAction(0).firstPacketClass());
     }
 
     @Test
@@ -227,7 +227,7 @@ class MultiProfileTest {
     @Test
     void migratesEnabledOldSlotsIntoQuickActions() {
         MultiPacketPolicy oldPolicy = new MultiPacketPolicy();
-        oldPolicy.setSlot(0, new MultiPacketPolicy.Slot(ServerboundSwingPacket.class.getName(), true));
+        oldPolicy.setSlot(0, new MultiPacketPolicy.Slot(DihPackets.SWING.getName(), true));
         oldPolicy.setSlot(1, new MultiPacketPolicy.Slot("example.Blocked", false));
 
         CompoundTag tag = new CompoundTag();
@@ -238,7 +238,7 @@ class MultiProfileTest {
 
         MultiProfile decoded = MultiProfile.fromTag(tag);
 
-        assertEquals(ServerboundSwingPacket.class.getName(), decoded.quickAction(0).firstPacketClass());
+        assertEquals(DihPackets.SWING.getName(), decoded.quickAction(0).firstPacketClass());
         assertTrue(decoded.quickAction(1).empty());
     }
 
@@ -246,18 +246,18 @@ class MultiProfileTest {
     void quickActionMultiStepRoundTripsAndMigratesLegacySinglePacket() {
         MultiQuickAction action = new MultiQuickAction();
         action.name = "Combo";
-        action.steps.add(new MultiQuickAction.Step(ServerboundSwingPacket.class.getName(), ""));
-        action.steps.add(new MultiQuickAction.Step(ServerboundSwingPacket.class.getName(), "1"));
+        action.steps.add(new MultiQuickAction.Step(DihPackets.SWING.getName(), ""));
+        action.steps.add(new MultiQuickAction.Step(DihPackets.SWING.getName(), "1"));
         MultiProfile profile = new MultiProfile();
         profile.setQuickAction(0, action);
         MultiProfile decoded = MultiProfile.fromTag(profile.toTag());
         assertEquals("Combo", decoded.quickAction(0).name);
         assertEquals(2, decoded.quickAction(0).packetCount());
-        assertEquals(ServerboundSwingPacket.class.getName(), decoded.quickAction(0).firstPacketClass());
+        assertEquals(DihPackets.SWING.getName(), decoded.quickAction(0).firstPacketClass());
 
         CompoundTag legacy = new CompoundTag();
         legacy.putString("name", "Old");
-        legacy.putString("packet", ServerboundSwingPacket.class.getName());
+        legacy.putString("packet", DihPackets.SWING.getName());
         legacy.putString("args", "");
         net.minecraft.nbt.ListTag actions = new net.minecraft.nbt.ListTag();
         actions.add(legacy);
@@ -267,19 +267,19 @@ class MultiProfileTest {
         profileTag.put("quickActions", actions);
         MultiProfile migrated = MultiProfile.fromTag(profileTag);
         assertEquals(1, migrated.quickAction(0).packetCount());
-        assertEquals(ServerboundSwingPacket.class.getName(), migrated.quickAction(0).firstPacketClass());
+        assertEquals(DihPackets.SWING.getName(), migrated.quickAction(0).firstPacketClass());
     }
 
     @Test
     void quickActionsClearAndResetToDefaults() {
         MultiProfile profile = new MultiProfile();
-        profile.setQuickAction(0, new MultiQuickAction("Swing", ServerboundSwingPacket.class.getName(), ""));
+        profile.setQuickAction(0, new MultiQuickAction("Swing", DihPackets.SWING.getName(), ""));
         assertFalse(profile.quickAction(0).empty());
 
         profile.setQuickAction(0, new MultiQuickAction());
         assertTrue(profile.quickAction(0).empty());
 
-        profile.setQuickAction(1, new MultiQuickAction("Swing", ServerboundSwingPacket.class.getName(), ""));
+        profile.setQuickAction(1, new MultiQuickAction("Swing", DihPackets.SWING.getName(), ""));
         profile.resetQuickActions();
         for (int i = 0; i < MultiProfile.QUICK_ACTIONS; i++) assertTrue(profile.quickAction(i).empty());
     }
@@ -330,7 +330,7 @@ class MultiProfileTest {
 
     @Test
     void manualPacketsRejectWorldAndInventoryDependentTypes() {
-        assertTrue(MultiManualPackets.isSafe(ServerboundSwingPacket.class));
+        assertTrue(MultiManualPackets.isSafe(DihPackets.SWING));
         assertFalse(MultiManualPackets.isSafe(ServerboundContainerClickPacket.class));
     }
 

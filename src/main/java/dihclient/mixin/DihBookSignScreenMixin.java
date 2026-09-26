@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihKeys;
 import dihclient.modules.DihModule;
 import dihclient.util.DihClientMessaging;
 import dihclient.util.DihCustomFilterOverlay;
@@ -186,7 +187,7 @@ public abstract class DihBookSignScreenMixin extends Screen implements DihSpecia
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void dih$keyPressed(KeyEvent input, CallbackInfoReturnable<Boolean> cir) {
         if (!dih$isDihActive()) return;
-        if (DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) {
+        if (DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) {
             cir.setReturnValue(true);
         }
     }

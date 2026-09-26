@@ -2,6 +2,9 @@
 
 package dihclient.modules;
 
+import dihclient.util.DihRender;
+import dihclient.util.DihEntities;
+import dihclient.util.DihPackets;
 import dihclient.api.module.ChoiceSetting;
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ColorSetting;
@@ -4773,10 +4776,10 @@ public final class ScaffoldModule extends Module {
         if (!(module instanceof ScaffoldModule scaffold) || !scaffold.isEnabled()
             || !scaffold.ownsRealClickPipeline()) return;
         PlacementTarget pending = scaffold.grimRealPendingTarget;
-        BlockHitResult hit = use.getHitResult();
+        BlockHitResult hit = DihPackets.hitResult(use);
         if (pending == null || scaffold.grimAttemptState != GrimPlacementAttemptState.ARMED
             || edgeGeneration != scaffold.grimAttemptGeneration
-            || use.getHand() != scaffold.grimAttemptHand
+            || DihPackets.hand(use) != scaffold.grimAttemptHand
             || !grimClickFeasible(hit, pending,
                 scaffold.grimAttemptBuildsPlannedCell)) return;
         synchronized (GRIM_QUEUED_USES) {
@@ -4785,7 +4788,7 @@ public final class ScaffoldModule extends Module {
             if (GRIM_QUEUED_USES.containsKey(lookup)) return;
             int ordinal = scaffold.grimAttemptSubmittedCount++;
             GrimQueuedUse queued = new GrimQueuedUse(
-                scaffold.grimAttemptGeneration, ordinal, use.getHand(),
+                scaffold.grimAttemptGeneration, ordinal, DihPackets.hand(use),
                 pending.placedBlock().immutable(), pending.supportBlock().immutable(),
                 pending.face(), scaffold.grimCommittedClickRotation);
             GRIM_QUEUED_USES.put(
@@ -6569,10 +6572,10 @@ public final class ScaffoldModule extends Module {
         if (!(packet instanceof ServerboundUseItemOnPacket use)) return;
 
         if (queued == null) return;
-        BlockHitResult hit = use.getHitResult();
+        BlockHitResult hit = DihPackets.hitResult(use);
         GRIM_FINAL_USE_WRITES.offer(new GrimFinalUseWrite(
-            use.getSequence(), hit.getBlockPos().immutable(), hit.getDirection(), hit.getLocation(),
-            System.nanoTime(), use.getHand(), queued, DihServerRotationView.snapshot()));
+            DihPackets.sequence(use), hit.getBlockPos().immutable(), hit.getDirection(), hit.getLocation(),
+            System.nanoTime(), DihPackets.hand(use), queued, DihServerRotationView.snapshot()));
     }
 
     public static void onConnectionClosed() {
@@ -10800,8 +10803,8 @@ public final class ScaffoldModule extends Module {
                 if (stack.isEmpty()) return false;
                 InteractionResult itemResult = MC.gameMode.useItem(MC.player, hand);
                 if (itemResult instanceof InteractionResult.Success success) {
-                    if (success.swingSource() == InteractionResult.SwingSource.CLIENT) MC.player.swing(hand);
-                    MC.gameRenderer.itemInHandRenderer.itemUsed(hand);
+                    if (success.swingSource() == InteractionResult.SwingSource.CLIENT) DihEntities.swing(MC.player, hand);
+                    DihRender.itemUsed(hand);
                 }
                 return false;
             }
@@ -10809,14 +10812,14 @@ public final class ScaffoldModule extends Module {
             if (result instanceof InteractionResult.Success success
                 && success.swingSource() != InteractionResult.SwingSource.CLIENT) return true;
 
-            MC.player.swing(hand);
+            DihEntities.swing(MC.player, hand);
             dihclient.util.DihCpsTracker.recordRight();
             dihclient.util.DihScaffoldPlaceRenderer.recordPlacement(target.placedBlock());
             trackSuccessfulPlacement(target.placedBlock(), placementLine, previousFallOff);
             boolean wasStackUsed = !stack.isEmpty()
                 && (stack.getCount() != oldCount || MC.player.hasInfiniteMaterials());
             if (wasStackUsed) {
-                MC.gameRenderer.itemInHandRenderer.itemUsed(hand);
+                DihRender.itemUsed(hand);
             }
             return true;
         } finally {

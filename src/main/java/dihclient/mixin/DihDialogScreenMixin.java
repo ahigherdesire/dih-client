@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihKeys;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -232,7 +233,7 @@ public abstract class DihDialogScreenMixin extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent input) {
-        if (dih$isDihActive() && DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) {
+        if (dih$isDihActive() && DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) {
             return true;
         }
         return super.keyPressed(input);

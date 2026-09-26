@@ -2,6 +2,7 @@
 
 package dihclient.modules;
 
+import dihclient.util.DihBlocks;
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.api.module.RegistryListSetting;
@@ -1228,7 +1229,7 @@ public final class AutoFarmModule extends Module implements DihSilentAim.Owner {
         Block block = state.getBlock();
         if (DihFarmBlocks.isColumnCrop(block) || atMaxAge(state)) return false;
         return block instanceof BonemealableBlock b
-            && b.isValidBonemealTarget(MC.level, pos, state);
+            && DihBlocks.isValidBonemealTarget(b, MC.level, pos, state);
     }
 
     private DihRotationUtil.Rotation solveHarvest(BlockPos cell) {

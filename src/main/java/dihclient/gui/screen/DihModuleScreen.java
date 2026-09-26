@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihKeys;
 import dihclient.util.PacketListCodec;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
@@ -182,9 +183,9 @@ public class DihModuleScreen extends DihScreen {
 
     @Override
     public boolean keyPressed(KeyEvent input) {
-        if (packetSelectorOverlay != null && packetSelectorOverlay.isVisible() && packetSelectorOverlay.keyPressed(input.key(), input.scancode(), input.modifiers())) return true;
-        if (menu != null && !menu.hasTopLayer() && DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) return true;
-        if (menu != null && menu.keyPressed(input.key(), input.scancode(), input.modifiers())) return true;
+        if (packetSelectorOverlay != null && packetSelectorOverlay.isVisible() && packetSelectorOverlay.keyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) return true;
+        if (menu != null && !menu.hasTopLayer() && DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) return true;
+        if (menu != null && menu.keyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) return true;
         if (passMovementKey(input, true)) return false;
         return super.keyPressed(input);
     }

@@ -1,4 +1,5 @@
 package dihclient.modules;
+import dihclient.util.DihRender;
 import dihclient.api.module.*;
 
 import dihclient.mixin.accessor.DihItemStackRenderStateAccessor;
@@ -155,10 +156,16 @@ public final class GoldenLeverModule extends Module {
 
     private static void tintLayer(ItemStackRenderState.LayerRenderState layer) {
         if (layer == null) return;
+        //? if >=26.3 {
+        /*List<BakedQuad> quads = new java.util.ArrayList<>(((dihclient.mixin.accessor.DihItemLayerQuadsAccessor) layer).dih$getQuads().all());
+        quads.replaceAll(GoldenLeverModule::withTintIndex);
+        layer.setQuads(net.minecraft.client.resources.model.geometry.ItemQuads.split(quads));
+        *///?} else {
         List<BakedQuad> quads = layer.prepareQuadList();
         for (int i = 0; i < quads.size(); i++) {
             quads.set(i, withTintIndex(quads.get(i)));
         }
+        //?}
         IntList tints = layer.tintLayers();
         tints.clear();
         tints.add(GOLD_TINT);
@@ -167,14 +174,7 @@ public final class GoldenLeverModule extends Module {
     private static BakedQuad withTintIndex(BakedQuad quad) {
         BakedQuad.MaterialInfo materialInfo = quad.materialInfo();
         if (materialInfo.tintIndex() == 0) return quad;
-        BakedQuad.MaterialInfo tintedInfo = new BakedQuad.MaterialInfo(
-            materialInfo.sprite(),
-            materialInfo.layer(),
-            materialInfo.itemRenderType(),
-            0,
-            materialInfo.shade(),
-            materialInfo.lightEmission()
-        );
+        BakedQuad.MaterialInfo tintedInfo = DihRender.copyMaterial(materialInfo, materialInfo.layer(), 0);
         return new BakedQuad(
             quad.position0(),
             quad.position1(),

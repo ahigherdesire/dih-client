@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihScreens;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.components.UiSizing;
 import dihclient.gui.vanillaui.components.UiText;
@@ -176,7 +177,7 @@ public class DihTitleScreen extends Screen {
             b -> this.minecraft.gui.setScreen(new LanguageSelectScreen(this, this.minecraft.options, this.minecraft.getLanguageManager())), true));
         language.setPosition(this.width / 2 - 124, rowY);
         this.addRenderableWidget(Button.builder(Component.translatable("menu.options"),
-            b -> this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false)))
+            b -> this.minecraft.gui.setScreen(DihScreens.options(this, this.minecraft.options, false)))
             .bounds(this.width / 2 - 100, rowY, 98, 20).build());
         this.addRenderableWidget(Button.builder(Component.translatable("menu.quit"), b -> this.minecraft.stop())
             .bounds(this.width / 2 + 2, rowY, 98, 20).build());
@@ -363,7 +364,7 @@ public class DihTitleScreen extends Screen {
         buttons.add(realms);
 
         MenuButton options = new MenuButton(rowX, rowTop + (rowH + rowGap) * 3, rowW, rowH, Component.translatable("menu.options"), true,
-            () -> this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false))).asMainRow(4);
+            () -> this.minecraft.gui.setScreen(DihScreens.options(this, this.minecraft.options, false))).asMainRow(4);
         buttons.add(options);
 
         MenuButton quit = new MenuButton(rowX, rowTop + (rowH + rowGap) * 4, rowW, rowH, Component.translatable("menu.quit"), true,

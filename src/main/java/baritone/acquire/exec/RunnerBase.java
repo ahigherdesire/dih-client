@@ -1,5 +1,6 @@
 package baritone.acquire.exec;
 
+import dihclient.util.DihEntities;
 import baritone.api.pathing.goals.Goal;
 import baritone.api.pathing.goals.GoalGetToBlock;
 import baritone.api.process.PathingCommand;
@@ -84,7 +85,7 @@ abstract class RunnerBase implements StepRunner {
     /** Right-clicks with the main hand, swinging if the server should see an arm move. */
     protected boolean use(BlockHitResult hit, InteractionHand hand) {
         InteractionResult result = ctx.playerController().processRightClickBlock(ctx.player(), ctx.world(), hand, hit);
-        if (result.consumesAction()) ctx.player().swing(hand);
+        if (result.consumesAction()) DihEntities.swing(ctx.player(), hand);
         return result.consumesAction();
     }
 

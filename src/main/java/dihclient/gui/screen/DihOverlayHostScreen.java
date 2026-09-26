@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihKeys;
 import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContexts;
@@ -173,7 +174,7 @@ public class DihOverlayHostScreen extends Screen {
             return true;
         }
 
-        if (DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) {
+        if (DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) {
             return true;
         }
         if (closeKey && minecraft != null) {

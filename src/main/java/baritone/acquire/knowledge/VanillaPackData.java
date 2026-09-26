@@ -1,5 +1,6 @@
 package baritone.acquire.knowledge;
 
+import net.minecraft.server.packs.PackResources;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.server.packs.VanillaPackResources;
 import net.minecraft.server.packs.repository.ServerPacksSource;
@@ -24,7 +25,12 @@ final class VanillaPackData {
 
     static Map<String, String> read() {
         Map<String, String> out = new HashMap<>();
+        //? if >=26.3 {
+        /*{
+            PackResources pack = ServerPacksSource.createVanillaPackSource().fullResources();
+        *///?} else {
         try (VanillaPackResources pack = ServerPacksSource.createVanillaPackSource()) {
+        //?}
             for (String dir : DIRS) {
                 pack.listResources(PackType.SERVER_DATA, "minecraft", dir, (id, supplier) -> {
                     String path = "data/" + id.getNamespace() + "/" + id.getPath();

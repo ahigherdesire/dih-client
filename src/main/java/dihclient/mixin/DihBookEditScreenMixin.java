@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihKeys;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Invoker;
@@ -188,7 +189,7 @@ public abstract class DihBookEditScreenMixin extends Screen implements DihSpecia
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void yang$keyPressed(KeyEvent input, CallbackInfoReturnable<Boolean> cir) {
         if (!yang$isDihActive()) return;
-        if (DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) {
+        if (DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) {
             cir.setReturnValue(true);
         }
     }

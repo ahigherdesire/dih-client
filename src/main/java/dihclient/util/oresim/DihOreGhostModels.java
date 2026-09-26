@@ -1,5 +1,6 @@
 package dihclient.util.oresim;
 
+import dihclient.util.DihRender;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.block.BlockStateModelSet;
 import net.minecraft.client.renderer.block.dispatch.BlockStateModelPart;
@@ -91,7 +92,7 @@ public final class DihOreGhostModels {
                 data[base + 3] = UVPair.unpackU(uv);
                 data[base + 4] = UVPair.unpackV(uv);
             }
-            Direction facing = quad.materialInfo().shade() ? quad.direction() : null;
+            Direction facing = DihRender.shadeFacing(quad);
             out.add(new Face(cull, facing, data));
         }
     }

@@ -114,7 +114,7 @@ public final class DihDiscordLogin {
             + "&redirect_uri=" + enc(REDIRECT)
             + "&scope=identify"
             + "&prompt=consent";
-        Util.getPlatform().openUri(url);
+        DihLinks.openUri(url);
     }
 
     public static synchronized void signOut() {

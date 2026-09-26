@@ -67,8 +67,8 @@ public class PacketRegenerator {
         });
 
         register(ServerboundUseItemOnPacket.class, (packet, mc) -> {
-            BlockPos targetBlock = packet.getHitResult().getBlockPos();
-            Direction face = packet.getHitResult().getDirection();
+            BlockPos targetBlock = DihPackets.hitResult(packet).getBlockPos();
+            Direction face = DihPackets.hitResult(packet).getDirection();
 
             Vec3 eyePos = mc.player.getEyePosition();
             Vec3 hitPos = new Vec3(
@@ -82,7 +82,7 @@ public class PacketRegenerator {
             );
 
             return new ServerboundUseItemOnPacket(
-                packet.getHand(),
+                DihPackets.hand(packet),
                 newHit,
                 0
             );
@@ -129,7 +129,7 @@ public class PacketRegenerator {
 
         register(ServerboundUseItemPacket.class, (packet, mc) -> {
             return new ServerboundUseItemPacket(
-                packet.getHand(),
+                DihPackets.hand(packet),
                 0,
                 mc.player.getYRot(),
                 mc.player.getXRot()

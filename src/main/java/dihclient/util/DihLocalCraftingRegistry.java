@@ -216,7 +216,10 @@ final class DihLocalCraftingRegistry {
             JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
             Recipe<?> decoded = Recipe.CODEC
                 .parse(registryAccess.createSerializationContext(JsonOps.INSTANCE), root)
-                .getOrThrow(JsonParseException::new);
+                .getOrThrow(JsonParseException::new)
+                //? if >=26.3
+                /*.value()*/
+                ;
             if (!(decoded instanceof CraftingRecipe craftingRecipe)) return List.of();
             return createLocalRecipes(recipeId, craftingRecipe, enabledFeatures, slotContext);
         } catch (IOException | IllegalStateException | JsonParseException ignored) {

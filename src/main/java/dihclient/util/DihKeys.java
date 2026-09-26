@@ -2,6 +2,7 @@ package dihclient.util;
 
 import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.input.KeyEvent;
 //? if >=26.3 {
 /*import org.lwjgl.sdl.SDLMouse;
 *///?} else {
@@ -53,8 +54,24 @@ public final class DihKeys {
         return button - InputConstants.MOUSE_BUTTON_LEFT + 1;
     }
 
+    /**
+     * A key event's second code, the one {@code new KeyEvent(key, code, modifiers)} takes back: the platform
+     * scancode on 26.2, the SDL keycode on 26.3. Pass it along; don't compare it with anything.
+     */
+    public static int secondaryCode(KeyEvent event) {
+        //? if >=26.3 {
+        /*return event.keycode();
+        *///?} else {
+        return event.scancode();
+        //?}
+    }
+
     /** The key's name as the controls screen shows it ("A", "Left Shift"). */
     public static String displayName(int key) {
+        //? if >=26.3 {
+        /*return InputConstants.Type.KEYBOARD.getOrCreate(key).getDisplayName().getString();
+        *///?} else {
         return InputConstants.Type.KEYSYM.getOrCreate(key).getDisplayName().getString();
+        //?}
     }
 }

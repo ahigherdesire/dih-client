@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihRender;
 import dihclient.modules.ViewmodelState;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
@@ -68,20 +69,20 @@ public abstract class DihViewmodelMixin {
     private static void dih$applyTransformations(PoseStack matrices, float tx, float ty, float tz,
                                                     float rx, float ry, float rz) {
         matrices.translate(tx, ty, tz);
-        matrices.mulPose(Axis.XP.rotationDegrees(rx));
-        matrices.mulPose(Axis.YP.rotationDegrees(ry));
-        matrices.mulPose(Axis.ZP.rotationDegrees(rz));
+        DihRender.rotate(matrices, Axis.XP.rotationDegrees(rx));
+        DihRender.rotate(matrices, Axis.YP.rotationDegrees(ry));
+        DihRender.rotate(matrices, Axis.ZP.rotationDegrees(rz));
     }
 
     @Unique
     private static void dih$applySwingOffset(PoseStack m, HumanoidArm arm, float swing) {
         int side = arm == HumanoidArm.RIGHT ? 1 : -1;
         float f = Mth.sin((float) (swing * swing * Math.PI));
-        m.mulPose(Axis.YP.rotationDegrees(side * (45.0f + f * -20.0f)));
+        DihRender.rotate(m, Axis.YP.rotationDegrees(side * (45.0f + f * -20.0f)));
         float g = Mth.sin((float) (Mth.sqrt(swing) * Math.PI));
-        m.mulPose(Axis.ZP.rotationDegrees(side * g * -20.0f));
-        m.mulPose(Axis.XP.rotationDegrees(g * -80.0f));
-        m.mulPose(Axis.YP.rotationDegrees(side * -45.0f));
+        DihRender.rotate(m, Axis.ZP.rotationDegrees(side * g * -20.0f));
+        DihRender.rotate(m, Axis.XP.rotationDegrees(g * -80.0f));
+        DihRender.rotate(m, Axis.YP.rotationDegrees(side * -45.0f));
     }
 
     @Unique
@@ -89,8 +90,8 @@ public abstract class DihViewmodelMixin {
         if (ViewmodelState.blockAnim() == 1) {
             m.translate(arm == HumanoidArm.RIGHT ? -0.1f : 0.1f, 0.1f, 0.0f);
             float g = Mth.sin((float) (Mth.sqrt(swing) * Math.PI));
-            m.mulPose(Axis.ZP.rotationDegrees((arm == HumanoidArm.RIGHT ? 1 : -1) * g * 10.0f));
-            m.mulPose(Axis.XP.rotationDegrees(g * -35.0f));
+            DihRender.rotate(m, Axis.ZP.rotationDegrees((arm == HumanoidArm.RIGHT ? 1 : -1) * g * 10.0f));
+            DihRender.rotate(m, Axis.XP.rotationDegrees(g * -35.0f));
         } else {
             m.translate(arm == HumanoidArm.RIGHT ? -0.1f : 0.1f, ViewmodelState.oneSevenY(), 0.0f);
             dih$applySwingOffset(m, arm, swing * ViewmodelState.oneSevenSwingScale());
