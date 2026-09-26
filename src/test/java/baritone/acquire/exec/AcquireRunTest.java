@@ -138,4 +138,15 @@ final class AcquireRunTest {
         run.advance(inv(Map.of(LOG, 3, PLANKS, 12, STICK, 4, TABLE, 1)));
         assertEquals("acquiring 1 wooden_pickaxe: step 5/6, set up a crafting_table", run.status(inv(Map.of())));
     }
+
+    @Test
+    void resumingAfterAFoodDetourDoesNotCountAsAReplan() {
+        AcquireRun run = new AcquireRun(PICK, 1, woodenPickaxe());
+        run.advance(inv(Map.of()));
+        run.resume(woodenPickaxe());
+        assertEquals(0, run.replans());
+        assertEquals(-1, run.index());
+        run.replace(woodenPickaxe());
+        assertEquals(1, run.replans());
+    }
 }

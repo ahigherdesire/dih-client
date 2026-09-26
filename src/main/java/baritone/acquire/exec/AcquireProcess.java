@@ -315,7 +315,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         if (pendingReplan != null) {
             String reason = pendingReplan;
             pendingReplan = null;
-            if (!replanMain(reason)) return null;
+            if (!replanMain(reason, false)) return null;
         }
 
         // Several steps can finish in one tick (skips, instant checks); the guard bounds a buggy loop.
@@ -403,8 +403,16 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
 
     /** Re-plans the main goal. False (and the run is over) when the budget is used up or no complete plan exists. */
     private boolean replanMain(String reason) {
+        return replanMain(reason, true);
+    }
+
+    /**
+     * @param counts whether this uses up one of {@code acquireMaxReplans}: not for coming back from a
+     *               food detour, which is not a failure
+     */
+    private boolean replanMain(String reason, boolean counts) {
         int max = Baritone.settings().acquireMaxReplans.value;
-        if (run.replans() >= max) {
+        if (counts && run.replans() >= max) {
             finish(AcquireEvent.Kind.FAILED, "Acquire gave up after " + max + " re-plans. Last problem: " + reason + ".");
             return false;
         }
@@ -423,7 +431,8 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             finish(AcquireEvent.Kind.FAILED, "Acquire failed: " + reason + ", and there is no other way: " + String.join("; ", plan.missing()));
             return false;
         }
-        run.replace(plan);
+        if (counts) run.replace(plan);
+        else run.resume(plan);
         runner = null;
         logDirect("Re-planning (" + reason + "): " + plan.steps().size() + " steps.", ChatFormatting.YELLOW);
         return true;

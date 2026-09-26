@@ -207,13 +207,27 @@ public final class DihUpdateChecker {
         return t.startsWith("v") || t.startsWith("V") ? t.substring(1) : t;
     }
 
-    /** Numeric, dot by dot: 5.0.1 > 5.0, 5.10 > 5.9. Non-numeric parts count as 0. */
+    /**
+     * Numeric, dot by dot: 5.0.1 > 5.0, 5.10 > 5.9. A pre-release comes before its release
+     * (5.1-beta.2 < 5.1 < 5.1.1), and pre-releases compare part by part: beta.2 < beta.10, beta < rc.
+     */
     static int compareVersions(String a, String b) {
-        String[] x = a.split("[.-]"), y = b.split("[.-]");
+        String[] x = a.trim().split("-", 2), y = b.trim().split("-", 2);
+        int core = compareParts(x[0].split("\\."), y[0].split("\\."));
+        if (core != 0) return core;
+        boolean preX = x.length > 1, preY = y.length > 1;
+        if (preX != preY) return preX ? -1 : 1;
+        return preX ? compareParts(x[1].split("[.-]"), y[1].split("[.-]")) : 0;
+    }
+
+    /** Part by part; numbers numerically, words alphabetically (a missing part counts as 0). */
+    private static int compareParts(String[] x, String[] y) {
         for (int i = 0; i < Math.max(x.length, y.length); i++) {
-            int p = i < x.length ? leadingInt(x[i]) : 0;
-            int q = i < y.length ? leadingInt(y[i]) : 0;
-            if (p != q) return Integer.compare(p, q);
+            String p = i < x.length ? x[i] : "0", q = i < y.length ? y[i] : "0";
+            boolean numP = !p.isEmpty() && Character.isDigit(p.charAt(0)), numQ = !q.isEmpty() && Character.isDigit(q.charAt(0));
+            int c = numP && numQ ? Integer.compare(leadingInt(p), leadingInt(q))
+                : numP != numQ ? (numP ? -1 : 1) : p.compareToIgnoreCase(q);
+            if (c != 0) return c;
         }
         return 0;
     }

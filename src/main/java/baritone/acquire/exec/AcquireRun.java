@@ -99,6 +99,12 @@ final class AcquireRun {
         replans++;
     }
 
+    /** Swaps in a new plan without counting a re-plan (after a food detour, which is not a failure). */
+    void resume(Plan next) {
+        plan = next;
+        index = -1;
+    }
+
     /** "acquiring 3 iron_ingot: step 4/9, smelt 3 raw_iron into iron_ingot (...) (2/3)". */
     String status(ToIntFunction<String> have) {
         String head = "acquiring " + count + " " + Step.shortId(goal);
