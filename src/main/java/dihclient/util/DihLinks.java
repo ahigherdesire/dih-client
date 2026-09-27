@@ -9,6 +9,8 @@ public final class DihLinks {
     /** Where "Website" buttons go. Points at the releases page until the site has a public URL. */
     public static final String WEBSITE = "https://github.com/ahigherdesire/dih-client/releases";
     public static final String SOURCE = "https://github.com/ahigherdesire/dih-client";
+    /** The "Buy me a coffee" button on the launch donate card. */
+    public static final String DONATE = "https://buymeacoffee.com/ahigherdesire";
 
     private DihLinks() {
     }
