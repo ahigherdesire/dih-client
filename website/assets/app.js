@@ -15,6 +15,55 @@
     if (el.tagName === 'A') el.href = val;
     else el.textContent = val;
   });
+
+  // ------------------------------------------------------------ download pickers
+  // One Minecraft version + loader choice for the whole page (both pickers, the header button, the install
+  // steps and the checksums follow it), remembered per visitor.
+  const C = R.channels || {};
+  const LOADERS = { fabric: 'Fabric', neoforge: 'NeoForge', forge: 'Forge' };
+  const INSTALL = {
+    fabric: () => 'Install <a href="https://fabricmc.net/use/installer/" rel="noopener">Fabric Loader</a> 0.19.3+ and ' +
+      '<a href="https://modrinth.com/mod/fabric-api" rel="noopener">Fabric API</a>. Java 25.',
+    neoforge: mc => 'Install <a href="https://neoforged.net/" rel="noopener">NeoForge</a> ' +
+      (mc === '26.3' ? '26.3.0.22-beta' : '26.2.0.88') + ' or newer. Java 25.',
+    forge: mc => 'Install <a href="https://files.minecraftforge.net/" rel="noopener">Forge</a> ' +
+      (mc === '26.3' ? '26.3-66.0.4' : '26.2-65.1.3') + ' or newer. Java 25.'
+  };
+  const sel = { mc: '26.2', loader: 'fabric' };
+  try {
+    const saved = JSON.parse(localStorage.getItem('dih-pick') || '{}');
+    if (saved.mc in { '26.2': 1, '26.3': 1 }) sel.mc = saved.mc;
+    if (saved.loader in LOADERS) sel.loader = saved.loader;
+  } catch (e) {}
+  const channelOf = el => el.dataset.pickLink || el.dataset.pickSum ||
+    (el.closest('[data-picker]') || {}).dataset?.picker || (el.closest('[data-pick-sum]') || {}).dataset?.pickSum;
+  const buildOf = ch => C[ch] && C[ch].builds[sel.mc + '-' + sel.loader];
+  const urlOf = (ch, b) => R.repo + '/releases/download/' + C[ch].tag + '/' + b.file;
+  function renderPicks() {
+    document.querySelectorAll('[data-pick]').forEach(s => { s.value = sel[s.dataset.pick]; });
+    document.querySelectorAll('[data-pick-link]').forEach(a => {
+      const ch = channelOf(a), b = buildOf(ch);
+      if (b) a.href = urlOf(ch, b);
+      a.classList.toggle('is-off', !b);
+      if (b) a.removeAttribute('aria-disabled'); else a.setAttribute('aria-disabled', 'true');
+    });
+    document.querySelectorAll('[data-pick-text]').forEach(el => {
+      const ch = channelOf(el), b = buildOf(ch), key = el.dataset.pickText;
+      if (!C[ch]) return;
+      if (key === 'version') el.textContent = C[ch].version;
+      else if (key === 'summary') el.textContent = b ? LOADERS[sel.loader] + ' ' + sel.mc + ' · ' + b.size : 'Not built for ' + LOADERS[sel.loader] + ' ' + sel.mc;
+      else el.textContent = b ? b[key] : '—';
+    });
+    document.querySelectorAll('[data-pick-install]').forEach(el => { el.innerHTML = INSTALL[sel.loader](sel.mc); });
+    const jm = (R.journeymap || {})[sel.mc + '-' + sel.loader];
+    document.querySelectorAll('[data-pick-jm]').forEach(a => { if (jm) a.href = jm; });
+  }
+  document.querySelectorAll('[data-pick]').forEach(s => s.addEventListener('change', () => {
+    sel[s.dataset.pick] = s.value;
+    try { localStorage.setItem('dih-pick', JSON.stringify(sel)); } catch (e) {}
+    renderPicks();
+  }));
+  renderPicks();
   // ------------------------------------------------------------ download count
   // Total jar downloads across every release, from GitHub's API (60 requests an hour per visitor,
   // so it is cached for the tab). Stays hidden if the request fails.
@@ -40,7 +89,7 @@
     btn.addEventListener('click', async () => {
       const code = btn.parentElement.querySelector('code');
       try {
-        await navigator.clipboard.writeText(pick(btn.dataset.copy) || code.textContent.trim());
+        await navigator.clipboard.writeText((btn.dataset.copy && pick(btn.dataset.copy)) || code.textContent.trim());
         btn.textContent = 'Copied';
       } catch { btn.textContent = 'Select it'; }
       setTimeout(() => { btn.textContent = 'Copy'; }, 1600);
@@ -49,9 +98,10 @@
   // download buttons: a short "started" state, since the browser gives no feedback of its own
   document.querySelectorAll('[data-dl]').forEach(a => {
     const sub = a.querySelector('[data-dl-sub]');
-    const idle = sub ? sub.innerHTML : '';
-    a.addEventListener('click', () => {
+    a.addEventListener('click', e => {
+      if (a.classList.contains('is-off')) { e.preventDefault(); return; }
       if (a.classList.contains('is-going')) return;
+      const idle = sub ? sub.innerHTML : '';
       a.classList.add('is-going');
       if (sub) sub.textContent = 'Download started';
       setTimeout(() => { a.classList.remove('is-going'); if (sub) sub.innerHTML = idle; }, 2600);

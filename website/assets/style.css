@@ -80,9 +80,34 @@ figure { margin: 0; }
 .fine { margin: 14px 0 0; font-size: 11.5px; color: var(--mute); }
 .fine b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
 .fine + .fine { margin-top: 4px; }
-.cta.dl-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 220px)); gap: 10px; }
-.dl-grid .dl { width: 100%; }
-@media (max-width: 560px) { .cta.dl-grid { grid-template-columns: 1fr; } }
+/* download pickers: Minecraft version + loader dropdowns above the download button */
+.picker-selects { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.select {
+  position: relative; display: inline-flex; align-items: center; height: 40px;
+  border: 1px solid var(--line-2); border-radius: 10px; background: rgba(255,255,255,.04);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  transition: border-color .2s, background-color .2s;
+}
+.select:hover { border-color: rgba(255,255,255,.24); background: rgba(255,255,255,.07); }
+.select:focus-within { border-color: var(--blue-hi); }
+.picker-beta .select:focus-within { border-color: rgba(251, 191, 36, .6); }
+.select-label {
+  position: absolute; left: 12px; pointer-events: none;
+  font-size: 10.5px; font-weight: 500; letter-spacing: .06em; text-transform: uppercase; color: var(--mute);
+}
+.select select {
+  appearance: none; -webkit-appearance: none; height: 100%; margin: 0;
+  padding: 0 34px 0 var(--lw, 80px); border: 0; border-radius: inherit; outline: none;
+  background: transparent; color: var(--fg); font: 500 14px/1 var(--sans); cursor: pointer;
+}
+.select select option { background: var(--bg-2); color: var(--fg); }
+.select::after {
+  content: ""; position: absolute; right: 14px; top: 50%; width: 6px; height: 6px; pointer-events: none;
+  border-right: 1.5px solid var(--text); border-bottom: 1.5px solid var(--text); transform: translateY(-70%) rotate(45deg);
+}
+.dl.is-off { opacity: .45; filter: saturate(.3); cursor: not-allowed; }
+.dl.is-off:hover { transform: none; }
+.sums-note { margin: 18px 0 0; font-size: 11.5px; color: var(--mute); }
 .fine a { color: var(--text); text-decoration: underline; text-decoration-color: var(--line-2); text-underline-offset: 3px; }
 
 /* ---------------------------------------------------------------- top bar */
