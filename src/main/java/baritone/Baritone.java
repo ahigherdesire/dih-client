@@ -58,7 +58,20 @@ public class Baritone implements IBaritone {
     private static final ThreadPoolExecutor threadPool;
 
     static {
-        threadPool = new ThreadPoolExecutor(4, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS, new SynchronousQueue<>());
+        // Daemon workers: NeoForge and Forge don't System.exit after the game loop, so a live worker (the cache
+        // packer) would keep the JVM running after Minecraft has quit.
+        threadPool = new ThreadPoolExecutor(
+                4,
+                Integer.MAX_VALUE,
+                60L,
+                TimeUnit.SECONDS,
+                new SynchronousQueue<>(),
+                runnable -> {
+                    Thread thread = new Thread(runnable, "Baritone-Worker");
+                    thread.setDaemon(true);
+                    return thread;
+                }
+        );
     }
 
     private final Minecraft mc;

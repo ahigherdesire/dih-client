@@ -153,6 +153,17 @@ tasks.test {
     useJUnitPlatform()
 }
 
+// Client game tests (a real client and an integrated server), separately from JUnit.
+fabricApi {
+    configureTests {
+        createSourceSet = true
+        modId = "dih-gametest"
+        enableGameTests = false
+        enableClientGameTests = true
+        eula = true
+    }
+}
+
 val generatedDihResourcesDir = layout.buildDirectory.dir("generated/resources/dih/main")
 
 data class SourceFile(val path: String, val text: String)
@@ -191,6 +202,10 @@ sourceSets {
         runtimeClasspath += main.compileClasspath + main.runtimeClasspath + main.output + api.output
     }
     main.runtimeClasspath += launch.output
+}
+
+sourceSets.named("gametest") {
+    runtimeClasspath += sourceSets["launch"].output + sourceSets["api"].output
 }
 
 val generateVanillaUiAssets by tasks.registering {
