@@ -47,9 +47,11 @@ public final class DihDonateScreen extends Screen {
     private static final String EYEBROW = "SUPPORT DIH";
     private static final String TITLE_TEXT = "Enjoying DIH Client?";
     private static final String[] PARAGRAPHS = {
-        "DIH is free and open source. No paid features, no ads, nothing locked. One person builds it in their spare time.",
+        "DIH is free and open source, with no ads, and every feature ends up free for everyone. One person builds it in their spare time.",
         "If it saved you some grinding, a coffee helps keep the updates coming.",
     };
+    private static final String PERK = "Give $20 or more and you get early previews of new advanced features.";
+    private static final int PERK_PAD = 6;
 
     private static boolean shownThisLaunch;
 
@@ -61,6 +63,8 @@ public final class DihDonateScreen extends Screen {
     private int layoutWidth = -1;
     private int layoutHeight = -1;
     private int wrappedWidth = -1;
+    private int perkWidth = -1;
+    private List<String> perkLines = List.of();
     private List<List<String>> wrapped = List.of();
 
     private DihDonateScreen(Screen parent) {
@@ -149,6 +153,16 @@ public final class DihDonateScreen extends Screen {
                 y += 6;
             }
 
+            List<String> perk = wrappedPerk(innerW - PERK_PAD * 2);
+            int perkH = perk.size() * lineH - 3 + PERK_PAD * 2;
+            UiRenderer.rect(graphics, UiBounds.of(x, y, innerW, perkH), (accent & 0x00FFFFFF) | 0x26000000);
+            UiRenderer.rect(graphics, UiBounds.of(x, y, 2, perkH), accent);
+            int perkY = y + PERK_PAD;
+            for (String line : perk) {
+                UiText.draw(graphics, this.font, line, FONT_LABEL, DihTheme.recolor(TITLE_COLOR, Channel.TEXT), x + PERK_PAD, perkY, false);
+                perkY += lineH;
+            }
+
             UiContext ctx = UiContexts.overlay(graphics, this.font, (int) uiMouseX, (int) uiMouseY);
             boolean coffeeHovered = coffee.contains(uiMouseX, uiMouseY);
             Button.render(ctx, coffee.bounds(), coffee.label, Button.Tone.PRIMARY, coffeeHovered, false);
@@ -183,7 +197,8 @@ public final class DihDonateScreen extends Screen {
         int lineH = UiText.fontHeight(FONT_LABEL) + 3;
         int h = PAD + UiText.fontHeight(FONT_LABEL) + 5 + UiText.fontHeight(FONT_TITLE) + 9;
         for (List<String> paragraph : wrapped(innerWidth())) h += paragraph.size() * lineH + 6;
-        return h + 4 + BUTTON_HEIGHT + PAD;
+        h += wrappedPerk(innerWidth() - PERK_PAD * 2).size() * lineH - 3 + PERK_PAD * 2 + 10;
+        return h + BUTTON_HEIGHT + PAD;
     }
 
     private void layout() {
@@ -212,6 +227,14 @@ public final class DihDonateScreen extends Screen {
         wrapped = List.copyOf(out);
         wrappedWidth = maxWidth;
         return wrapped;
+    }
+
+    private List<String> wrappedPerk(int maxWidth) {
+        if (perkWidth != maxWidth) {
+            perkLines = wrap(PERK, maxWidth);
+            perkWidth = maxWidth;
+        }
+        return perkLines;
     }
 
     private List<String> wrap(String text, int maxWidth) {
