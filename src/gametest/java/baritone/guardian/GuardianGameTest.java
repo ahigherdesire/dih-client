@@ -79,7 +79,7 @@ public final class GuardianGameTest implements FabricClientGameTest {
                 });
                 switch (threat) {
                     case ZOMBIE -> world.getServer().runCommand("/summon minecraft:zombie -6 100 0 {PersistenceRequired:1b}");
-                    case SKELETON -> world.getServer().runCommand("/summon minecraft:skeleton -10 100 0 {PersistenceRequired:1b}");
+                    case SKELETON -> world.getServer().runCommand("/summon minecraft:skeleton -6 100 0 {PersistenceRequired:1b,equipment:{mainhand:{id:\"minecraft:bow\",count:1}}}");
                     case CREEPER -> world.getServer().runCommand("/summon minecraft:creeper -7 100 0 {PersistenceRequired:1b}");
                     case LAVA -> { }
                 }

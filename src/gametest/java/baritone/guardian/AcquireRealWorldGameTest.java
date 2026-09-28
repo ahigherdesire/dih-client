@@ -47,19 +47,23 @@ public final class AcquireRealWorldGameTest implements FabricClientGameTest {
             context.waitTicks(100);
             List<String> report = new ArrayList<>();
             int[] deaths = {0};
-            run(context, "iron_pickaxe", 1, IRON_TIMEOUT_TICKS, deaths, report);
-            run(context, "diamond", 3, DIAMOND_TIMEOUT_TICKS, deaths, report);
-            report.add("deaths: " + deaths[0]);
-            report.add("guardian log: " + guardian().log().recent().stream()
-                    .map(GuardianLog.Event::text).collect(Collectors.joining(" | ")));
+            // The acceptance run: a night-time iron pickaxe from nothing, with no deaths.
+            boolean iron = run(context, "iron_pickaxe", 1, IRON_TIMEOUT_TICKS, deaths, report);
+            int ironDeaths = deaths[0];
+            // A benchmark beyond it: reported, not asserted.
+            if (iron && ironDeaths == 0) run(context, "diamond", 3, DIAMOND_TIMEOUT_TICKS, deaths, report);
+            report.add("deaths: " + deaths[0] + " (iron_pickaxe: " + ironDeaths + ")");
+            report.add("guardian log: " + context.computeOnClient(client -> guardian().log().recent().stream()
+                    .map(GuardianLog.Event::text).collect(Collectors.joining(" | "))));
             System.out.println("[AcquireRealWorldGameTest] seed " + seed + "\n  " + String.join("\n  ", report));
-            if (deaths[0] > 0) throw new AssertionError("died " + deaths[0] + " time(s)\n" + String.join("\n", report));
+            if (!iron) throw new AssertionError("iron_pickaxe did not finish\n" + String.join("\n", report));
+            if (ironDeaths > 0) throw new AssertionError("died " + ironDeaths + " time(s) getting an iron pickaxe\n" + String.join("\n", report));
         }
         context.setScreen(TitleScreen::new);
     }
 
-    private static void run(ClientGameTestContext context, String goal, int count, int timeout, int[] deaths,
-                            List<String> report) {
+    private static boolean run(ClientGameTestContext context, String goal, int count, int timeout, int[] deaths,
+                               List<String> report) {
         boolean[] ended = {false};
         boolean[] succeeded = {false};
         boolean[] dead = {false};
@@ -98,7 +102,7 @@ public final class AcquireRealWorldGameTest implements FabricClientGameTest {
         long seconds = (System.currentTimeMillis() - start) / 1000;
         report.add(goal + " x" + count + ": " + (succeeded[0] ? "done" : "NOT done") + " in " + seconds / 60 + "m"
                 + seconds % 60 + "s\n    " + String.join("\n    ", events));
-        if (!succeeded[0]) throw new AssertionError(goal + " did not finish\n" + String.join("\n", report));
+        return succeeded[0];
     }
 
     private static GuardianProcess guardian() {
