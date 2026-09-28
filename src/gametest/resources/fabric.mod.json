@@ -13,7 +13,8 @@
       "baritone.acquire.exec.AcquireNormalMealGameTest",
       "baritone.guardian.GuardianGameTest",
       "baritone.guardian.AcquireRealWorldGameTest",
-      "dihclient.gui.screen.DonateScreenGameTest"
+      "dihclient.gui.screen.DonateScreenGameTest",
+      "dihclient.trade.TradeGameTest"
     ]
   },
   "depends": {
