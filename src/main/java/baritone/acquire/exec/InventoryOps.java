@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.function.Predicate;
 
 /** The few inventory clicks the executor makes. All of them run on the game thread. */
-final class InventoryOps {
+public final class InventoryOps {
 
     private InventoryOps() {
     }
@@ -33,7 +33,7 @@ final class InventoryOps {
      * none (or it is in the main inventory while a container is open). Prefers an empty hotbar slot,
      * then one holding no tool, so the pickaxe Baritone mines with is not shuffled away.
      */
-    static int toHotbar(IPlayerContext ctx, Predicate<ItemStack> want) {
+    public static int toHotbar(IPlayerContext ctx, Predicate<ItemStack> want) {
         Player player = ctx.player();
         List<ItemStack> main = player.getInventory().getNonEquipmentItems();
         for (int i = 0; i < 9; i++) {

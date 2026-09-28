@@ -9,7 +9,6 @@ import baritone.acquire.model.Plan;
 import baritone.acquire.model.Step;
 import baritone.acquire.planner.AcquirePlanner;
 import baritone.acquire.planner.PlannerOptions;
-import baritone.api.pathing.goals.GoalRunAway;
 import baritone.api.process.IBaritoneProcess;
 import baritone.api.process.PathingCommand;
 import baritone.api.process.PathingCommandType;
@@ -18,13 +17,8 @@ import baritone.utils.BaritoneProcessHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Enemy;
 
 import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -48,7 +42,7 @@ import java.util.function.Supplier;
  *
  * <p><b>Health comes first</b> ({@code acquireHeal}). Every tick, before the step runs, it eats when
  * {@link HealthPolicy} says so (through {@link EatBehavior}, whose pause process holds mining without
- * cancelling it), backs away from a close attacker first at emergency health during a Kill step, and
+ * cancelling it), and
  * with no safe food held and health or food low, runs a food detour: the cheapest {@link FoodGoal}
  * plan, then eat, then re-plan the main goal.
  *
@@ -63,12 +57,6 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     /** Consecutive failed meals before it stops trying to eat for the rest of the acquire. */
     private static final int MAX_EAT_FAILURES = 3;
     private static final int EAT_RETRY_TICKS = 5 * TICKS_PER_SECOND;
-    /** At emergency health in a fight: back away from an attacker this close, for at most this long. */
-    private static final double THREAT_RADIUS = 5;
-    private static final int BACK_OFF_TICKS = 2 * TICKS_PER_SECOND;
-    private static final int BACK_OFF_DISTANCE = 8;
-    /** At emergency health in a fight with nothing to eat, wait this long for regeneration before fighting on. */
-    private static final int REGEN_WAIT_TICKS = 20 * TICKS_PER_SECOND;
 
     private final List<Consumer<AcquireEvent>> listeners = new CopyOnWriteArrayList<>();
     private final StationFinder stations;
@@ -95,8 +83,6 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     private int eatFailures;
     private long ticks;
     private long nextEatTick;
-    private int backOffTicks;
-    private int regenWaitTicks;
 
     public AcquireProcess(Baritone baritone) {
         super(baritone);
@@ -523,25 +509,14 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         HealthPolicy.Need need = HealthPolicy.need(health, player.getAbsorptionAmount(), player.getMaxHealth(), food,
                 s.acquireEmergencyHealth.value);
         boolean emergency = need == HealthPolicy.Need.EMERGENCY;
-        if (!emergency) {
-            backOffTicks = 0;
-            regenWaitTicks = 0;
-        }
         if (need == HealthPolicy.Need.NONE && health > healHealth && food > HealthPolicy.HUNGRY_FOOD) return null;
         if (runner != null && runner.busy()) return null;
         Minecraft mc = ctx.minecraft();
         if (mc.gui.screen() != null && emergency && player.containerMenu != player.inventoryMenu) player.closeContainer();
         if (mc.gui.screen() != null) return null;
 
-        boolean fighting = runner instanceof KillRunner;
-        if (emergency && fighting && backOffTicks < BACK_OFF_TICKS) {
-            Entity threat = nearestThreat(player);
-            if (threat != null) {
-                if (backOffTicks++ == 0) logDirect("Low health (" + HealthPolicy.hearts(health) + "): backing off to eat.", ChatFormatting.YELLOW);
-                return new PathingCommand(new GoalRunAway(BACK_OFF_DISTANCE, threat.blockPosition()), PathingCommandType.REVALIDATE_GOAL_AND_PATH);
-            }
-        }
-
+        // Fighting back, retreating and waiting out low health around mobs belong to the Guardian
+        // (baritone.guardian.GuardianProcess), which pauses this process while it deals with a threat.
         List<FoodChoice.Food> held = Foods.held(player);
         Set<String> needed = neededItems();
         if (need != HealthPolicy.Need.NONE && ticks >= nextEatTick) {
@@ -561,8 +536,6 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             startDetour(health, food, healHealth);
             return null;
         }
-        // Fighting at emergency health with nothing to eat now: hold off while it regenerates.
-        if (emergency && fighting && food >= HealthPolicy.REGEN_FOOD && regenWaitTicks++ < REGEN_WAIT_TICKS) return pause();
         return null;
     }
 
@@ -626,18 +599,6 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         eatingForUs = false;
         eatFailures = 0;
         nextEatTick = 0;
-        backOffTicks = 0;
-        regenWaitTicks = 0;
-    }
-
-    /** The nearest hostile, or mob targeting the player, within {@link #THREAT_RADIUS}. */
-    private Entity nearestThreat(LocalPlayer player) {
-        return ctx.entitiesStream()
-                .filter(e -> e instanceof LivingEntity living && living.isAlive() && e != player)
-                .filter(e -> e instanceof Enemy || e instanceof Mob mob && mob.getTarget() == player)
-                .filter(e -> e.distanceToSqr(player) <= THREAT_RADIUS * THREAT_RADIUS)
-                .min(Comparator.comparingDouble(e -> e.distanceToSqr(player)))
-                .orElse(null);
     }
 
     private EatBehavior eater() {

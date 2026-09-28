@@ -1679,6 +1679,24 @@ public final class Settings {
     public final Setting<Integer> acquireEmergencyHealth = new Setting<>(6);
 
     /**
+     * The Guardian: while any Baritone job runs ({@code #acquire}, {@code #mine}, goals, ...), step in when
+     * something endangers you (lava, a long fall, a creeper, an attacking mob, arrows, drowning, low health), deal
+     * with it, then let the job carry on. It never acts while no job runs.
+     */
+    public final Setting<Boolean> guardianEnabled = new Setting<>(true);
+
+    /**
+     * Health, in half-hearts (10 = 5 hearts), at or below which the Guardian stops fighting and retreats instead.
+     */
+    public final Setting<Integer> guardianFleeHealth = new Setting<>(10);
+
+    /**
+     * Stop the running job and give you control when a player who isn't on your friends list comes within 12
+     * blocks.
+     */
+    public final Setting<Boolean> guardianStopForPlayers = new Setting<>(true);
+
+    /**
      * A map of lowercase setting field names to their respective setting
      */
     public final Map<String, Setting<?>> byLowerName;

@@ -19,6 +19,7 @@ package baritone;
 
 import baritone.acquire.AcquireControl;
 import baritone.acquire.exec.AcquireProcess;
+import baritone.guardian.GuardianProcess;
 import baritone.acquire.exec.EatBehavior;
 import baritone.api.BaritoneAPI;
 import baritone.api.IBaritone;
@@ -99,6 +100,7 @@ public class Baritone implements IBaritone {
     private final MenuClickProcess menuClickProcess;
     private final IElytraProcess elytraProcess;
     private final AcquireProcess acquireProcess;
+    private final GuardianProcess guardianProcess;
 
     private final PathingControlManager pathingControlManager;
     private final SelectionManager selectionManager;
@@ -150,6 +152,7 @@ public class Baritone implements IBaritone {
             this.elytraProcess           = this.registerProcess(ElytraProcess::create);
             this.registerProcess(BackfillProcess::new);
             this.acquireProcess          = this.registerProcess(AcquireProcess::new);
+            this.guardianProcess         = this.registerProcess(GuardianProcess::new);
             this.pathingControlManager.registerProcess(this.eatBehavior.pauser()); // pauses pathing while #eat or #acquire eats
         }
         // #acquire for #ai and other callers. The first Baritone built is the primary one (BaritoneProvider
@@ -248,6 +251,11 @@ public class Baritone implements IBaritone {
 
     public AcquireProcess getAcquireProcess() {
         return this.acquireProcess;
+    }
+
+    /** The Guardian: its status and event log, for UIs and the AI. */
+    public GuardianProcess getGuardianProcess() {
+        return this.guardianProcess;
     }
 
     public EatBehavior getEatBehavior() {
