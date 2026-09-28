@@ -56,6 +56,34 @@ public abstract class DihWindow {
         UiContext ui = UiContexts.overlay(context, Minecraft.getInstance().font, mouseX, mouseY);
         CompactOverlayWindow.render(ui, UiBounds.of(bounds.x, bounds.y, bounds.width, frameHeight), HEADER_HEIGHT, title,
             collapsed, active, mouseY >= bounds.y && mouseY < bounds.y + HEADER_HEIGHT);
+        if (this instanceof IDihOverlay overlay && overlay.supportsPinning()) {
+            renderPinButton(ui, topBarPinBounds(bounds), overlay.isPinned());
+        }
+    }
+
+    /** A small push-pin: filled while pinned, outlined when not. */
+    private static void renderPinButton(UiContext ui, UiBounds pin, boolean pinned) {
+        var graphics = ui.graphics();
+        var colors = ui.theme().colors();
+        int ink = dihclient.gui.vanillaui.components.TopBar.onAccent(colors.accent);
+        boolean hovered = pin.contains(ui.mouseX(), ui.mouseY());
+        UiRenderer.rect(graphics, pin, (colors.accent & 0x00FFFFFF) | 0xF0000000);
+        if (pinned || hovered) {
+            UiRenderer.disc(graphics, pin.x() + pin.width() / 2.0F, pin.y() + pin.height() / 2.0F, 6.0F,
+                pinned ? (ink & 0x00FFFFFF) | 0x50000000 : colors.accentSoft);
+        }
+        int color = pinned || hovered ? ink : (ink & 0x00FFFFFF) | 0xB0000000;
+        int cx = pin.x() + pin.width() / 2;
+        int top = pin.y() + (pin.height() - 9) / 2;
+        UiRenderer.rect(graphics, UiBounds.of(cx - 3, top, 6, 2), color);
+        if (pinned) {
+            UiRenderer.rect(graphics, UiBounds.of(cx - 2, top + 2, 4, 3), color);
+        } else {
+            UiRenderer.rect(graphics, UiBounds.of(cx - 2, top + 2, 1, 3), color);
+            UiRenderer.rect(graphics, UiBounds.of(cx + 1, top + 2, 1, 3), color);
+        }
+        UiRenderer.rect(graphics, UiBounds.of(cx - 4, top + 5, 8, 1), color);
+        UiRenderer.rect(graphics, UiBounds.of(cx - 1, top + 6, 1, 3), color);
     }
 
     protected boolean beginWindowBodyClip(GuiGraphicsExtractor context, DihWindowLayout bounds, boolean collapsed) {
@@ -114,8 +142,14 @@ public abstract class DihWindow {
         return topBarCollapseBounds(bounds).contains((int) mouseX, (int) mouseY);
     }
 
+    public boolean isOverPinButton(double mouseX, double mouseY, DihWindowLayout bounds) {
+        if (!(this instanceof IDihOverlay overlay) || !overlay.supportsPinning() || bounds == null) return false;
+        return topBarPinBounds(bounds).contains((int) mouseX, (int) mouseY);
+    }
+
     protected boolean isOverWindowControl(double mouseX, double mouseY, DihWindowLayout bounds) {
-        return isOverCloseButton(mouseX, mouseY, bounds) || isOverCollapseButton(mouseX, mouseY, bounds);
+        return isOverCloseButton(mouseX, mouseY, bounds) || isOverCollapseButton(mouseX, mouseY, bounds)
+            || isOverPinButton(mouseX, mouseY, bounds);
     }
 
     private boolean isWindowActive() {
@@ -129,6 +163,11 @@ public abstract class DihWindow {
 
     private UiBounds topBarCloseBounds(DihWindowLayout bounds) {
         return OverlayTopBar.closeButton(topBarBounds(bounds), HEADER_HEIGHT);
+    }
+
+    private UiBounds topBarPinBounds(DihWindowLayout bounds) {
+        UiBounds close = topBarCloseBounds(bounds);
+        return UiBounds.of(close.x() - close.width() - 1, close.y(), close.width(), close.height());
     }
 
     private UiBounds topBarCollapseBounds(DihWindowLayout bounds) {

@@ -359,6 +359,7 @@ public final class DihModule {
         if (!PackHideState.isActive() && config != null && config.packetLoggerCapturing) {
             getPacketLoggerOverlay();
         }
+        if (!PackHideState.isActive()) restorePinnedWindows();
 
         if (config.lanSyncEnabled && !PackHideState.isActive() && !DihLANSync.getInstance().isRunning()) {
             DihLANSync.getInstance().start();
@@ -967,6 +968,17 @@ public final class DihModule {
             hydratePassivePayloads(packetLoggerOverlay);
         }
         return packetLoggerOverlay;
+    }
+
+    /** Puts windows that were pinned (and open) when the game last closed back on screen. */
+    private void restorePinnedWindows() {
+        if (DihSharedState.get().isWindowPinned(DihPacketLoggerOverlay.OVERLAY_ID) && DihPacketLoggerOverlay.shouldRestoreSavedVisible()) {
+            DihPacketLoggerOverlay logger = getPacketLoggerOverlay();
+            if (logger != null) {
+                logger.setVisible(true);
+                DihOverlayManager.get().register(logger);
+            }
+        }
     }
 
     public DihPacketLoggerOverlay getPacketLoggerOverlayIfExists() {

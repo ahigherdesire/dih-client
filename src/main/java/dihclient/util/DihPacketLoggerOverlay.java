@@ -50,7 +50,7 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
     private static final int CAP_INVENTORY = 400;
     private static final int CAP_MOVEMENT = 200;
     private static final int CAP_PAYLOAD = 400;
-    private static final String OVERLAY_ID = "DihPacketLoggerOverlay";
+    public static final String OVERLAY_ID = "DihPacketLoggerOverlay";
     private static final long UI_FLUSH_INTERVAL_MS = 500L;
     private static final int BLOCKED_DEFAULTS_VERSION = 2;
     private static final int METADATA_TIME_COLOR = 0xFFB69EA4;
@@ -202,6 +202,11 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
         payloadListeners.load();
         payloadRegistrations.load();
         dirty = true;
+    }
+
+    @Override
+    public boolean supportsPinning() {
+        return true;
     }
 
     public static boolean shouldRestoreSavedVisible() {

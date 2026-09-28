@@ -127,6 +127,7 @@
     "DihChatComponentCensorMixin",
     "DihMultiPovChatMixin",
     "DihChatScreenMixin",
+    "DihChatPinnedWindowsMixin",
     "DihChatSuggestMixin",
     "DihArmorSlotMixin",
     "DihRecipeBookScreenMixin",
