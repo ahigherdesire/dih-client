@@ -24,6 +24,7 @@ import dihclient.modules.TeamsModule;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.FluidTags;
@@ -39,6 +40,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayDeque;
@@ -80,6 +82,11 @@ public final class GuardianProcess extends BaritoneProcessHelper {
     private static final double CLUTCH_HEIGHT = 4;
     /** How far to look for water to put out a fire. */
     private static final int WATER_SEARCH = 8;
+    /** How far to look for cover from a shooter, and how often to look again. */
+    private static final int COVER_RADIUS = 6;
+    private static final int COVER_EVERY = 10;
+    /** Sprint straight at a target this close when the ground between is safe, instead of pathing. */
+    private static final double CHARGE_DISTANCE = 6;
 
     private final GuardianLog log = new GuardianLog();
     private final Deque<BlockPos> crumbs = new ArrayDeque<>();
@@ -101,6 +108,16 @@ public final class GuardianProcess extends BaritoneProcessHelper {
     /** Water placed by a clutch that should be picked back up once landed. */
     private BlockPos clutchWater;
     private int crumbTicks;
+    /** While digging in: where the seal goes (the block the player stood on when it started). */
+    private BlockPos shelterSeal;
+    /** The block being dug for a shelter, to continue rather than restart the dig. */
+    private BlockPos shelterDigging;
+    /** A pit that couldn't be finished here; don't try again at this spot. */
+    private BlockPos shelterFailedAt;
+    private int shelterRestarts;
+    /** The nearest spot hidden from every aiming shooter, recomputed every {@link #COVER_EVERY} ticks while hurt. */
+    private BlockPos coverSpot;
+    private int coverTick = Integer.MIN_VALUE;
 
     public GuardianProcess(Baritone baritone) {
         super(baritone);
@@ -172,10 +189,12 @@ public final class GuardianProcess extends BaritoneProcessHelper {
             anchor = player.blockPosition();
             healthAtStart = player.getHealth();
         }
-        if (d.response() != lastResponse || !d.threat().what().equals(lastWhat)) {
+        // A new line when the response, the threat, or the phase of a shelter (digging, then inside) changes.
+        String what = d.threat().what() + (d.reason().startsWith("sheltering") ? " (inside)" : "");
+        if (d.response() != lastResponse || !what.equals(lastWhat)) {
             log.add(d.reason());
             lastResponse = d.response();
-            lastWhat = d.threat().what();
+            lastWhat = what;
             lookTicks = 0;
         }
         status = capitalize(d.reason());
@@ -192,6 +211,8 @@ public final class GuardianProcess extends BaritoneProcessHelper {
             case SURFACE -> surface();
             case EAT -> eat(player);
             case HAND_BACK -> handBack(d);
+            case SHELTER -> shelter(player);
+            case COVER -> cover(player);
         };
     }
 
@@ -262,6 +283,16 @@ public final class GuardianProcess extends BaritoneProcessHelper {
                 projectile = true;
             }
         }
+        List<Entity> shooters = shooters(player);
+        boolean inCover = !shooters.isEmpty() && hidden(level, player.position(), shooters);
+        boolean hurt = player.getHealth() <= Baritone.settings().guardianFleeHealth.value + ThreatRanking.CROWD_HEALTH_MARGIN;
+        if (shooters.isEmpty() || inCover || !hurt) {
+            coverSpot = null;
+        } else if (player.tickCount - coverTick >= COVER_EVERY) {
+            coverTick = player.tickCount;
+            coverSpot = findCover(player, shooters);
+        }
+        boolean coverNearby = coverSpot != null;
         BlockState at = level.getBlockState(feet);
         boolean inFire = at.is(BlockTags.FIRE) || level.getBlockState(feet.above()).is(BlockTags.FIRE);
         boolean falling = !player.onGround() && !player.isInWater() && !player.isFallFlying()
@@ -272,7 +303,9 @@ public final class GuardianProcess extends BaritoneProcessHelper {
         boolean burning = player.isOnFire() && !player.fireImmune();
         return new Sense(player.isInLava(), inFire, burning, burning && nearestWater(player) != null, falling, predicted, player.getHealth(), player.getAirSupply(),
                 player.getMaxAirSupply(), player.isUnderWater(), food != null, mobs, projectile, stranger,
-                player.getOffhandItem().is(Items.SHIELD), has(player, s -> s.is(Items.WATER_BUCKET)));
+                player.getOffhandItem().is(Items.SHIELD), has(player, s -> s.is(Items.WATER_BUCKET)),
+                shelterSeal != null || canShelter(player), sheltered(player), daylight(level),
+                player.getFoodData().getFoodLevel() >= 18, shelterSeal != null, inCover, coverNearby);
     }
 
     /** The nearest water block within {@link #WATER_SEARCH} blocks the player can stand in, or null. */
@@ -332,12 +365,39 @@ public final class GuardianProcess extends BaritoneProcessHelper {
         lookTicks = 0;
         if (shieldable) holdUse();
         else releaseUse();
-        if (anchor != null && target.blockPosition().distSqr(anchor) > ThreatRanking.CHASE_LIMIT * ThreatRanking.CHASE_LIMIT) {
-            // Beyond the chase limit: hold the ground and let it come.
+        boolean ranged = ThreatRanking.RANGED.contains(typeId(target));
+        double chargeDistance = ranged ? ThreatRanking.RANGED_RADIUS : CHARGE_DISTANCE;
+        if (target.distanceTo(player) <= chargeDistance && player.hasLineOfSight(target) && clearRun(player, target)) {
+            // In sight, flat safe ground between: sprint straight at it. Pathing is too slow to catch a skeleton,
+            // which backs away while it shoots.
+            lookAt(target.getBoundingBox().getCenter());
+            forceMove(false);
+            return pause();
+        }
+        if (!ranged && anchor != null && target.blockPosition().distSqr(anchor) > ThreatRanking.CHASE_LIMIT * ThreatRanking.CHASE_LIMIT) {
+            // Beyond the chase limit: hold the ground and let it come (a shooter never would, so those are chased).
             lookAt(target.getBoundingBox().getCenter());
             return pause();
         }
         return new PathingCommand(new GoalNear(target.blockPosition(), 1), PathingCommandType.REVALIDATE_GOAL_AND_PATH);
+    }
+
+    /** Solid ground, open air and no fluid every half block along the straight line to {@code target}. */
+    private boolean clearRun(LocalPlayer player, Entity target) {
+        Level level = ctx.world();
+        Vec3 from = player.position();
+        Vec3 to = target.position();
+        if (Math.abs(to.y - from.y) > 1.1) return false;
+        double length = from.distanceTo(to);
+        for (double t = 0.5; t < length; t += 0.5) {
+            Vec3 at = from.lerp(to, t / length);
+            BlockPos feet = BlockPos.containing(at.x, from.y + 0.1, at.z);
+            if (!solid(level, feet.below()) || solid(level, feet) || solid(level, feet.above())) return false;
+            if (!level.getFluidState(feet).isEmpty() || !level.getFluidState(feet.below()).isEmpty()) return false;
+            BlockState ground = level.getBlockState(feet.below());
+            if (ground.is(net.minecraft.world.level.block.Blocks.MAGMA_BLOCK) || ground.is(BlockTags.FIRE)) return false;
+        }
+        return true;
     }
 
     private PathingCommand runFrom(Entity threat, double distance) {
@@ -495,6 +555,188 @@ public final class GuardianProcess extends BaritoneProcessHelper {
         return pause();
     }
 
+    // ---------------------------------------------------------------- cover
+
+    /** Stays out of sight (eating if hurt and able), or goes to the nearest hidden spot. */
+    private PathingCommand cover(LocalPlayer player) {
+        releaseUse();
+        List<Entity> shooters = shooters(player);
+        if (shooters.isEmpty() || hidden(ctx.world(), player.position(), shooters)) {
+            if (player.getHealth() < player.getMaxHealth() && FoodChoice.choose(Foods.held(player),
+                    player.getFoodData().getFoodLevel(), false, Set.of()) != null) return eat(player);
+            return pause();
+        }
+        if (coverSpot == null) return pause();
+        return new PathingCommand(new GoalBlock(coverSpot), PathingCommandType.REVALIDATE_GOAL_AND_PATH);
+    }
+
+    /** Ranged mobs aiming at something within {@link ThreatRanking#RANGED_RADIUS}. */
+    private List<Entity> shooters(LocalPlayer player) {
+        List<Entity> out = new ArrayList<>();
+        for (Entity e : ctx.entitiesStream().toList()) {
+            if (!(e instanceof net.minecraft.world.entity.Mob mob) || !e.isAlive() || !mob.isAggressive()) continue;
+            if (!ThreatRanking.RANGED.contains(typeId(e)) || e.distanceTo(player) > ThreatRanking.RANGED_RADIUS) continue;
+            out.add(e);
+        }
+        return out;
+    }
+
+    /** Whether a player standing at {@code feet} is out of every shooter's sight (both eye and chest height). */
+    private static boolean hidden(Level level, Vec3 feet, List<Entity> shooters) {
+        for (Entity shooter : shooters) {
+            Vec3 eye = shooter.getEyePosition();
+            for (double height : new double[]{0.9, 1.6}) {
+                Vec3 target = feet.add(0, height, 0);
+                var hit = level.clip(new net.minecraft.world.level.ClipContext(eye, target,
+                        net.minecraft.world.level.ClipContext.Block.COLLIDER, net.minecraft.world.level.ClipContext.Fluid.NONE, shooter));
+                if (hit.getType() == net.minecraft.world.phys.HitResult.Type.MISS) return false;
+            }
+        }
+        return true;
+    }
+
+    /** The nearest safe standing spot within {@link #COVER_RADIUS} that no shooter can see, or null. */
+    private BlockPos findCover(LocalPlayer player, List<Entity> shooters) {
+        Level level = ctx.world();
+        BlockPos feet = player.blockPosition();
+        BlockPos best = null;
+        double bestDist = Double.MAX_VALUE;
+        for (BlockPos pos : BlockPos.betweenClosed(feet.offset(-COVER_RADIUS, -1, -COVER_RADIUS), feet.offset(COVER_RADIUS, 1, COVER_RADIUS))) {
+            double dist = pos.distSqr(feet);
+            if (dist >= bestDist || dist > COVER_RADIUS * COVER_RADIUS) continue;
+            if (!safeToStand(level, pos)) continue;
+            if (!hidden(level, Vec3.atBottomCenterOf(pos), shooters)) continue;
+            best = pos.immutable();
+            bestDist = dist;
+        }
+        return best;
+    }
+
+    // ---------------------------------------------------------------- shelter
+
+    /** Blocks to seal a pit with: common junk, never anything a plan or a station would want. */
+    private static final Set<net.minecraft.world.item.Item> SHELTER_BLOCKS = Set.of(Items.DIRT, Items.COARSE_DIRT,
+            Items.COBBLESTONE, Items.COBBLED_DEEPSLATE, Items.NETHERRACK, Items.ANDESITE, Items.DIORITE, Items.GRANITE,
+            Items.TUFF, Items.STONE, Items.DEEPSLATE, Items.BLACKSTONE, Items.SANDSTONE, Items.END_STONE);
+    private static final int SHELTER_DEPTH = 3;
+    /** Times a pit may be restarted after being knocked off it before giving up on digging in here. */
+    private static final int SHELTER_RESTARTS = 4;
+
+    /** Digs straight down {@link #SHELTER_DEPTH} blocks, seals the top, then waits (eating if it can). */
+    private PathingCommand shelter(LocalPlayer player) {
+        Level level = ctx.world();
+        var gameMode = ctx.minecraft().gameMode;
+        if (sheltered(player)) {
+            shelterSeal = null;
+            shelterDigging = null;
+            shelterRestarts = 0;
+            if (player.getHealth() < player.getMaxHealth() && FoodChoice.choose(Foods.held(player),
+                    player.getFoodData().getFoodLevel(), false, Set.of()) != null) return eat(player);
+            return pause();
+        }
+        releaseUse();
+        BlockPos feet = player.blockPosition();
+        if (shelterSeal == null) shelterSeal = feet.below();
+        int depth = shelterSeal.getY() + 1 - feet.getY();
+        boolean offColumn = feet.getX() != shelterSeal.getX() || feet.getZ() != shelterSeal.getZ();
+        if (depth < 0 || depth > SHELTER_DEPTH || offColumn) {
+            // Knocked sideways (or still sliding) before the pit was deep enough: start again where we stand.
+            if (++shelterRestarts > SHELTER_RESTARTS) return giveUpShelter(feet, "kept getting pushed out of the pit");
+            shelterSeal = null;
+            shelterDigging = null;
+            return pause();
+        }
+        if (depth < SHELTER_DEPTH) {
+            BlockPos below = feet.below();
+            if (!player.onGround() || !solid(level, below)) return pause();
+            selectDigTool(player);
+            baritone.getLookBehavior().updateTarget(new Rotation(player.getYRot(), 90), true);
+            if (!below.equals(shelterDigging)) {
+                gameMode.startDestroyBlock(below, Direction.UP);
+                shelterDigging = below;
+            } else {
+                gameMode.continueDestroyBlock(below, Direction.UP);
+            }
+            player.swing(InteractionHand.MAIN_HAND);
+            return pause();
+        }
+        if (!level.getBlockState(shelterSeal).canBeReplaced()) return giveUpShelter(feet, "the pit is open to the side");
+        int slot = InventoryOps.toHotbar(ctx, stack -> SHELTER_BLOCKS.contains(stack.getItem()));
+        if (slot < 0) return giveUpShelter(feet, "nothing to seal it with");
+        player.getInventory().setSelectedSlot(slot);
+        for (Direction side : Direction.Plane.HORIZONTAL) {
+            BlockPos wall = shelterSeal.relative(side);
+            if (!solid(level, wall)) continue;
+            Direction face = side.getOpposite();
+            Vec3 hit = Vec3.atCenterOf(wall).add(face.getStepX() * 0.5, 0, face.getStepZ() * 0.5);
+            lookAt(hit);
+            gameMode.useItemOn(player, InteractionHand.MAIN_HAND, new BlockHitResult(hit, face, wall, false));
+            player.swing(InteractionHand.MAIN_HAND);
+            return pause();
+        }
+        return giveUpShelter(feet, "no wall to seal against");
+    }
+
+    private PathingCommand giveUpShelter(BlockPos feet, String why) {
+        log.add("could not dig in: " + why);
+        shelterFailedAt = feet;
+        shelterRestarts = 0;
+        shelterSeal = null;
+        shelterDigging = null;
+        return pause();
+    }
+
+    /** In a 1x1 pit with solid blocks on all sides at feet and head height, and overhead. */
+    private boolean sheltered(LocalPlayer player) {
+        Level level = ctx.world();
+        BlockPos feet = player.blockPosition();
+        BlockPos head = feet.above();
+        if (!player.onGround() || !solid(level, head.above())) return false;
+        for (Direction side : Direction.Plane.HORIZONTAL) {
+            if (!solid(level, feet.relative(side)) || !solid(level, head.relative(side))) return false;
+        }
+        return true;
+    }
+
+    /**
+     * Whether a pit can be dug here: a pickaxe and a sealing block held, and {@link #SHELTER_DEPTH} diggable solid
+     * blocks below with solid walls and a solid floor (no falling into a cave or lava).
+     */
+    private boolean canShelter(LocalPlayer player) {
+        if (!player.onGround() || player.isInWater() || player.isInLava()) return false;
+        BlockPos feet = player.blockPosition();
+        if (shelterFailedAt != null && shelterFailedAt.closerThan(feet, 3)) return false;
+        if (!has(player, stack -> stack.is(ItemTags.PICKAXES))) return false;
+        if (!has(player, stack -> SHELTER_BLOCKS.contains(stack.getItem()))) return false;
+        Level level = ctx.world();
+        for (int down = 1; down <= SHELTER_DEPTH; down++) {
+            BlockPos pos = feet.below(down);
+            BlockState state = level.getBlockState(pos);
+            float hardness = state.getDestroySpeed(level, pos);
+            if (!solid(level, pos) || hardness < 0 || hardness > 5 || state.hasBlockEntity()) return false;
+            for (Direction side : Direction.Plane.HORIZONTAL) {
+                if (!solid(level, pos.relative(side))) return false;
+            }
+        }
+        return solid(level, feet.below(SHELTER_DEPTH + 1));
+    }
+
+    private static boolean solid(Level level, BlockPos pos) {
+        BlockState state = level.getBlockState(pos);
+        return !state.getCollisionShape(level, pos).isEmpty() && state.getFluidState().isEmpty();
+    }
+
+    private static boolean daylight(Level level) {
+        if (level.dimension() != Level.OVERWORLD) return true;
+        long time = level.getOverworldClockTime() % 24000L;
+        return time < 12500 || time > 23500;
+    }
+
+    private void selectDigTool(LocalPlayer player) {
+        int slot = InventoryOps.toHotbar(ctx, s -> s.is(ItemTags.PICKAXES) && best(player, ItemTags.PICKAXES) == s);
+        if (slot >= 0) player.getInventory().setSelectedSlot(slot);
+    }
+
     private PathingCommand handBack(Decision d) {
         log.add(d.reason());
         logDirect("Guardian: " + d.reason() + ".");
@@ -522,11 +764,14 @@ public final class GuardianProcess extends BaritoneProcessHelper {
         anchor = null;
         lastResponse = null;
         lastWhat = null;
+        shelterSeal = null;
+        shelterDigging = null;
+        shelterRestarts = 0;
         status = "Guarding";
     }
 
     private static String summary(Response r, String what) {
-        String w = ThreatRanking.shortId(what);
+        String w = ThreatRanking.shortId(what == null ? null : what.replace(" (inside)", ""));
         return switch (r) {
             case ESCAPE_HAZARD -> "escaped " + w;
             case EXTINGUISH -> "put out the fire";
@@ -538,6 +783,8 @@ public final class GuardianProcess extends BaritoneProcessHelper {
             case SURFACE -> "surfaced for air";
             case EAT -> "ate";
             case HAND_BACK -> "handed back";
+            case SHELTER -> "sheltered from " + w;
+            case COVER -> "hid from " + w;
         };
     }
 

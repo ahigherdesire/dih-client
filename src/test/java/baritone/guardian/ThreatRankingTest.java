@@ -20,7 +20,9 @@ final class ThreatRankingTest {
 
     /** A calm sense: full health, dry, standing, alone. Tests change one thing at a time. */
     private static final class S {
-        boolean lava, fire, burning, water, falling, underwater, canEat, projectile, shield, bucket;
+        boolean lava, fire, burning, water, falling, underwater, canEat, projectile, shield, bucket, canShelter, sheltered,
+            inCover, coverNearby, digging;
+        boolean daylight = true, canRegen = true;
         double fall, stranger = Double.POSITIVE_INFINITY;
         float health = 20;
         int air = 300;
@@ -28,7 +30,7 @@ final class ThreatRankingTest {
 
         Sense build() {
             return new Sense(lava, fire, burning, water, falling, fall, health, air, 300, underwater, canEat, mobs, projectile, stranger,
-                    shield, bucket);
+                    shield, bucket, canShelter, sheltered, daylight, canRegen, digging, inCover, coverNearby);
         }
     }
 
@@ -145,9 +147,12 @@ final class ThreatRankingTest {
     @Test
     void hostilesOutsideTheChaseLimitAreNotChased() {
         S s = new S();
-        s.mobs.add(new Mob(1, "minecraft:skeleton", 6, ThreatRanking.CHASE_LIMIT + ThreatRanking.HOSTILE_RADIUS + 1,
+        s.mobs.add(new Mob(1, "minecraft:zombie", 6, ThreatRanking.CHASE_LIMIT + ThreatRanking.HOSTILE_RADIUS + 1,
                 true, false, false, false));
         assertNull(ThreatRanking.decide(s.build(), CONFIG));
+        s.mobs.set(0, new Mob(1, "minecraft:skeleton", 6, ThreatRanking.CHASE_LIMIT + ThreatRanking.RANGED_RADIUS + 1,
+                true, false, false, false));
+        assertNull(ThreatRanking.decide(s.build(), CONFIG), "a shooter's longer reach still has a limit");
     }
 
     @Test
@@ -177,6 +182,97 @@ final class ThreatRankingTest {
         s.mobs.set(0, zombie(1, 3));
         s.health = CONFIG.fleeHealth();
         assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response(), "melee mobs can still be outrun");
+    }
+
+    /** From real night runs: fighting or fleeing a crowd in the open lost 17 HP; a sealed pit loses none. */
+    @Test
+    void hurtOrOutnumberedDigsInWhenItCan() {
+        S s = new S();
+        s.canShelter = true;
+        s.health = CONFIG.fleeHealth();
+        s.mobs.add(zombie(1, 5));
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response());
+        s.mobs.set(0, zombie(1, 2));
+        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response(), "too close to start digging");
+        s.digging = true;
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "but a started pit is finished");
+        s.digging = false;
+        s.mobs.set(0, zombie(1, 5));
+        s.mobs.set(0, new Mob(1, "minecraft:skeleton", 6, 6, true, false, false, false));
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "cover beats trading arrows when hurt");
+        s.health = CONFIG.fleeHealth() + 2;
+        s.mobs.add(zombie(2, 4));
+        s.mobs.add(zombie(3, 5));
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "outnumbered");
+        s.health = 20;
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "healthy: fight, even outnumbered");
+    }
+
+    @Test
+    void shelteredStaysUntilHealedAndDaylight() {
+        S s = new S();
+        s.sheltered = true;
+        s.daylight = false;
+        s.health = 20;
+        s.mobs.add(zombie(1, 3));
+        s.mobs.add(creeper(2, 3, false));
+        Decision night = ThreatRanking.decide(s.build(), CONFIG);
+        assertEquals(Response.SHELTER, night.response(), "mobs waiting outside at night");
+        assertTrue(night.reason().contains("daylight"), night.reason());
+        s.mobs.clear();
+        s.mobs.add(new Mob(1, "minecraft:zombie", 12, 12, false, false, false, false));
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(),
+            "a zombie wandering 12 blocks away at night is still waiting for us");
+        s.mobs.set(0, zombie(1, 3));
+        s.daylight = true;
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "day and healthy: deal with it");
+        s.mobs.clear();
+        s.health = ThreatRanking.RECOVERED_HEALTH - 2;
+        Decision healing = ThreatRanking.decide(s.build(), CONFIG);
+        assertEquals(Response.SHELTER, healing.response(), "nothing outside, but still healing");
+        assertTrue(healing.reason().contains("healed"), healing.reason());
+        s.canRegen = false;
+        assertNull(ThreatRanking.decide(s.build(), CONFIG), "no food and no regeneration: waiting would not help");
+        s.canRegen = true;
+        s.health = ThreatRanking.RECOVERED_HEALTH;
+        assertNull(ThreatRanking.decide(s.build(), CONFIG), "healed and alone: the job carries on");
+    }
+
+    private static Mob aimingSkeleton(int id, double distance) {
+        return new Mob(id, "minecraft:skeleton", distance, distance, true, false, false, false);
+    }
+
+    /** From game-test deaths: standing still to eat while a skeleton 9-15 blocks away kept shooting. */
+    @Test
+    void aimingSkeletonsCountFromFurtherAway() {
+        S s = new S();
+        s.mobs.add(aimingSkeleton(1, 13));
+        assertEquals(Kind.HOSTILE, ThreatRanking.decide(s.build(), CONFIG).threat().kind());
+        s.mobs.set(0, new Mob(1, "minecraft:skeleton", 13, 13, false, false, false, false));
+        assertNull(ThreatRanking.decide(s.build(), CONFIG), "not aiming yet: not a threat at 13 blocks");
+        s.mobs.set(0, zombie(1, 13));
+        assertNull(ThreatRanking.decide(s.build(), CONFIG), "a zombie at 13 blocks is still too far to matter");
+    }
+
+    @Test
+    void hurtUnderFireTakesCoverThenHealsThere() {
+        S s = new S();
+        s.health = CONFIG.fleeHealth() - 2;
+        s.canEat = true;
+        s.mobs.add(aimingSkeleton(1, 12));
+        s.coverNearby = true;
+        Decision exposed = ThreatRanking.decide(s.build(), CONFIG);
+        assertEquals(Response.COVER, exposed.response());
+        assertTrue(exposed.reason().contains("taking cover"), exposed.reason());
+        s.inCover = true;
+        Decision hidden = ThreatRanking.decide(s.build(), CONFIG);
+        assertEquals(Response.COVER, hidden.response(), "stay hidden and eat");
+        assertTrue(hidden.reason().contains("healing"), hidden.reason());
+        s.inCover = false;
+        s.coverNearby = false;
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "nowhere to hide: charge it");
+        s.canShelter = true;
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "a pit beats both");
     }
 
     @Test

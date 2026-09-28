@@ -53,11 +53,20 @@ public final class ThreatRanking {
         /** Eat. */
         EAT,
         /** Stop the job and give control back to the player. */
-        HAND_BACK
+        HAND_BACK,
+        /**
+         * Dig a 1x1 pit three blocks down and seal the top, then wait there until healed (and, while mobs wait
+         * outside, until daylight). What a player does on a bad night with no armour.
+         */
+        SHELTER,
+        /** Get out of a shooter's line of sight (behind a block or a tree), and heal there. */
+        COVER
     }
 
     public static final double CREEPER_RADIUS = 4;
     public static final double HOSTILE_RADIUS = 8;
+    /** A mob that shoots counts once it is aiming this close (a skeleton's bow reaches about 15 blocks). */
+    public static final double RANGED_RADIUS = 16;
     /** Mobs that are not neutral count as threats this close even before they show aggression. */
     public static final double CLOSE_RADIUS = 4;
     public static final double PROJECTILE_RADIUS = 8;
@@ -71,6 +80,10 @@ public final class ThreatRanking {
     public static final double CROWD_RADIUS = 6;
     /** Outnumbered, the Guardian retreats while health is at or below the flee threshold plus this margin. */
     public static final int CROWD_HEALTH_MARGIN = 4;
+    /** Stay sheltered until health is back to at least this (half-hearts). */
+    public static final int RECOVERED_HEALTH = 16;
+    /** Start a pit only while every attacker is further than this: hits knock the player off the column. */
+    public static final double SHELTER_CLEARANCE = 3;
 
     /**
      * A nearby mob.
@@ -102,11 +115,20 @@ public final class ThreatRanking {
      * @param canEat            safe food is held and can be eaten now
      * @param projectileIncoming a projectile within {@link #PROJECTILE_RADIUS} is flying toward the player
      * @param nearestStranger   distance to the nearest player who is not a friend, or infinity
+     * @param canShelter        a pit can be dug here (pickaxe and a block to seal it held, solid ground below)
+     * @param sheltered         standing in a sealed pit: solid all round and overhead
+     * @param daylight          overworld daytime, when zombies and skeletons burn (always true in other dimensions)
+     * @param canRegen          the food bar is high enough for health to come back on its own
+     * @param digging           a pit is already being dug
+     * @param inCover           no aiming ranged mob can see the player
+     * @param coverNearby       a spot out of every aiming ranged mob's sight is a few steps away
      */
     public record Sense(boolean inLava, boolean inFire, boolean burning, boolean waterNearby, boolean falling, double predictedFall,
                         float health, int air, int maxAir, boolean underwater, boolean canEat,
                         List<Mob> mobs, boolean projectileIncoming, double nearestStranger,
-                        boolean hasShield, boolean hasWaterBucket) {
+                        boolean hasShield, boolean hasWaterBucket,
+                        boolean canShelter, boolean sheltered, boolean daylight, boolean canRegen, boolean digging,
+                        boolean inCover, boolean coverNearby) {
     }
 
     /**
@@ -138,15 +160,16 @@ public final class ThreatRanking {
         for (Mob mob : s.mobs()) {
             if (mob.creeper()) {
                 if (mob.distance() <= CREEPER_RADIUS) out.add(new Threat(Kind.CREEPER, mob.id(), mob.type(), mob.distance()));
-            } else if (hostile(mob)) {
+            } else if (hostile(mob) || lurking(mob, s)) {
                 out.add(new Threat(Kind.HOSTILE, mob.id(), mob.type(), mob.distance()));
             }
         }
         if (s.projectileIncoming()) out.add(new Threat(Kind.PROJECTILE, -1, "an incoming shot", 0));
         if (s.underwater() && s.maxAir() > 0 && s.air() < s.maxAir() / 3)
             out.add(new Threat(Kind.DROWNING, -1, "low air", 0));
-        if (s.health() > 0 && s.health() <= c.fleeHealth() && s.canEat())
-            out.add(new Threat(Kind.LOW_HEALTH, -1, "low health", 0));
+        boolean lowHealth = s.health() <= c.fleeHealth() && s.canEat()
+            || s.sheltered() && s.health() < RECOVERED_HEALTH && (s.canEat() || s.canRegen());
+        if (s.health() > 0 && lowHealth) out.add(new Threat(Kind.LOW_HEALTH, -1, "low health", 0));
         if (c.stopForPlayers() && s.nearestStranger() <= PLAYER_RADIUS)
             out.add(new Threat(Kind.PLAYER_NEAR, -1, "a player", s.nearestStranger()));
         out.sort(Comparator.comparing(Threat::kind).thenComparingDouble(Threat::distance));
@@ -155,9 +178,15 @@ public final class ThreatRanking {
 
     /** Whether a non-creeper mob counts as a hostile threat: close, targeting the player and within chase range. */
     static boolean hostile(Mob mob) {
-        if (mob.distance() > HOSTILE_RADIUS) return false;
-        if (mob.distanceFromAnchor() > CHASE_LIMIT + HOSTILE_RADIUS) return false;
+        double radius = mob.ranged() && mob.aggressive() ? RANGED_RADIUS : HOSTILE_RADIUS;
+        if (mob.distance() > radius) return false;
+        if (mob.distanceFromAnchor() > CHASE_LIMIT + radius) return false;
         return mob.aggressive() || !mob.neutral() && mob.distance() <= CLOSE_RADIUS;
+    }
+
+    /** Sheltered at night, any hostile mob nearby is waiting for the player to come out: stay in. */
+    static boolean lurking(Mob mob, Sense s) {
+        return s.sheltered() && !s.daylight() && !mob.neutral() && mob.distance() <= RANGED_RADIUS;
     }
 
     /** The response to the most urgent threat that has one, or null when there is nothing to do. */
@@ -166,7 +195,7 @@ public final class ThreatRanking {
         long crowd = s.mobs().stream().filter(m -> !m.creeper() && hostile(m) && m.distance() <= CROWD_RADIUS).count();
         for (Threat t : threats) {
             Response r = respond(t, s, c, crowd);
-            if (r != null) return new Decision(t, r, reason(t, r));
+            if (r != null) return new Decision(t, r, reason(t, r, s));
         }
         return null;
     }
@@ -178,23 +207,39 @@ public final class ThreatRanking {
             // Nothing breaks a fall without a bucket; the next threat decides instead.
             case FALLING -> s.hasWaterBucket() ? Response.WATER_CLUTCH : null;
             case CREEPER -> {
+                if (s.sheltered()) yield Response.SHELTER;
                 Mob creeper = mob(s, t.mobId());
                 // A hit knocks it back and resets the fuse; once it hisses, get out of range.
                 yield creeper != null && !creeper.swelling() && healthy ? Response.FIGHT : Response.BACK_OFF;
             }
             case HOSTILE -> {
+                // Sealed in: nothing outside can reach; wait for health, and for daylight to deal with the waiting mobs.
+                if (s.sheltered() && (s.health() < RECOVERED_HEALTH || !s.daylight())) yield Response.SHELTER;
                 Mob attacker = mob(s, t.mobId());
-                // Arrows outrange a retreat: the way out of a skeleton is through it.
-                if (attacker != null && attacker.ranged()) yield Response.FIGHT;
-                if (!healthy) yield Response.RETREAT;
-                if (crowd >= CROWD && s.health() <= c.fleeHealth() + CROWD_HEALTH_MARGIN) yield Response.RETREAT;
-                yield Response.FIGHT;
+                boolean outnumbered = crowd >= CROWD && s.health() <= c.fleeHealth() + CROWD_HEALTH_MARGIN;
+                if (healthy && !outnumbered) yield Response.FIGHT;
+                if (s.canShelter() && (s.digging() || nearestAttacker(s) > SHELTER_CLEARANCE)) yield Response.SHELTER;
+                if (attacker != null && attacker.ranged()) {
+                    // Arrows outrange a retreat. Hurt: get out of sight and heal; with nowhere to hide, go through it.
+                    if (s.inCover() && (s.canEat() || s.canRegen())) yield Response.COVER;
+                    if (!s.inCover() && s.coverNearby()) yield Response.COVER;
+                    yield Response.FIGHT;
+                }
+                yield Response.RETREAT;
             }
             case PROJECTILE -> s.hasShield() ? Response.SHIELD : null;
             case DROWNING -> Response.SURFACE;
-            case LOW_HEALTH -> Response.EAT;
+            case LOW_HEALTH -> s.sheltered() ? Response.SHELTER : Response.EAT;
             case PLAYER_NEAR -> Response.HAND_BACK;
         };
+    }
+
+    private static double nearestAttacker(Sense s) {
+        double nearest = Double.POSITIVE_INFINITY;
+        for (Mob m : s.mobs()) {
+            if (m.creeper() || hostile(m)) nearest = Math.min(nearest, m.distance());
+        }
+        return nearest;
     }
 
     private static Mob mob(Sense s, int id) {
@@ -202,7 +247,7 @@ public final class ThreatRanking {
         return null;
     }
 
-    private static String reason(Threat t, Response r) {
+    private static String reason(Threat t, Response r, Sense s) {
         String what = shortId(t.what());
         return switch (r) {
             case ESCAPE_HAZARD -> "in " + what + ": stepping out";
@@ -215,6 +260,12 @@ public final class ThreatRanking {
             case SURFACE -> "running out of air: swimming up";
             case EAT -> "low health: eating";
             case HAND_BACK -> what + " " + Math.round(t.distance()) + " blocks away: stopping, you have control";
+            case COVER -> s.inCover()
+                ? "out of " + what + "'s sight: healing"
+                : what + " at " + Math.round(t.distance()) + " blocks, health low: taking cover";
+            case SHELTER -> s.sheltered()
+                ? "sheltering from " + what + " until " + (s.health() < RECOVERED_HEALTH ? "healed" : "daylight")
+                : what + " at " + Math.round(t.distance()) + " blocks, health low: digging in";
         };
     }
 
