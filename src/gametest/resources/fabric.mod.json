@@ -9,7 +9,8 @@
       "baritone.acquire.AcquireSmokeGameTest",
       "baritone.acquire.AcquireGatherGameTest",
       "baritone.acquire.exec.AcquireHealingGameTest",
-      "baritone.acquire.exec.AcquireNormalMealGameTest"
+      "baritone.acquire.exec.AcquireNormalMealGameTest",
+      "dihclient.gui.screen.DonateScreenGameTest"
     ]
   },
   "depends": {
