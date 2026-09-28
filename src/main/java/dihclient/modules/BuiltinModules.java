@@ -208,6 +208,7 @@ public final class BuiltinModules {
         ModuleRegistry.register(new OffhandInteractModule());
         ModuleRegistry.register(new SpamModule());
         ModuleRegistry.register(new PayAllModule());
+        ModuleRegistry.register(new AutoTradeModule());
         ModuleRegistry.register(new BookBotModule());
         ModuleRegistry.register(new PacketCancellerModule());
         ModuleRegistry.register(new AutoReconnectModule());
