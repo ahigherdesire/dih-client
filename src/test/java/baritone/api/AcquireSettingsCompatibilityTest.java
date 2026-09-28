@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -26,5 +27,8 @@ final class AcquireSettingsCompatibilityTest {
         assertFalse(settings.acquirePlaceStations.value);
         assertFalse(settings.acquireKillMobs.value);
         assertTrue(settings.acquireGearUp.value);
+        assertTrue(settings.guardianEnabled.value);
+        assertEquals(10, settings.guardianFleeHealth.value);
+        assertTrue(settings.guardianStopForPlayers.value);
     }
 }
