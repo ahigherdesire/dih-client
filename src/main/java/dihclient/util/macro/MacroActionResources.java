@@ -35,7 +35,8 @@ public final class MacroActionResources {
             || action instanceof RestoreGuiAction
             || action instanceof DesyncAction
             || action instanceof NbtBookAction
-            || action instanceof CustomMenuAction) {
+            || action instanceof CustomMenuAction
+            || action instanceof TradeAction) {
             resources.add(SharedClientResource.GUI);
             resources.add(SharedClientResource.NETWORK);
         }

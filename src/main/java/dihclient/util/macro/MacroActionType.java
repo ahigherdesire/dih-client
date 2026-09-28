@@ -98,5 +98,6 @@ public enum MacroActionType {
     IF,
     FLOW,
     LABEL,
-    MULTI
+    MULTI,
+    TRADE
 }

@@ -92,6 +92,7 @@ final class MultiMacroSupport {
             case TOGGLE_MODULE, FAKE_GAMEMODE, FPS, SPING, BUNDLE_DUPE_V2, REPORT -> new Note(Level.UNSUPPORTED,
                 "client-only / advanced feature not available to a headless bot");
             case MULTI -> new Note(Level.UNSUPPORTED, "orchestrates other bots from the main client");
+            case TRADE -> new Note(Level.UNSUPPORTED, "reads the client trade screen, which a headless bot doesn't have");
         };
     }
 
