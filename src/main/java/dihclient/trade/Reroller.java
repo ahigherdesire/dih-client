@@ -63,6 +63,8 @@ public final class Reroller {
     private int rerolls;
     private int placeTries;
     private MerchantBuyer buyer;
+    /** Set once a purchase has started on the open screen. */
+    private boolean buying;
     private String status = "opening trades";
     private String locked;
 
@@ -148,6 +150,7 @@ public final class Reroller {
                     phase = Phase.READ;
                     ticks = 0;
                     buyer = new MerchantBuyer(rule, budget, TradeOffers.profession(villager), 0, 1);
+                    buying = false;
                     return State.WORKING;
                 }
                 if (player.distanceTo(villager) > REACH) return fail("the villager moved out of reach");
@@ -165,13 +168,17 @@ public final class Reroller {
                     if (ticks > OPEN_TIMEOUT) return fail("the villager sent no offers");
                     return State.WORKING;
                 }
-                if (menu.getTraderXp() > 0) return fail("someone has traded with this villager, so its trades are fixed");
-                boolean match = TradeOffers.from(menu.getOffers()).stream().anyMatch(o -> rule.matches(o, TradeOffers.profession(villager)));
+                // Checked only before buying: the purchase that locks the trades gives the villager xp itself.
+                if (!buying && menu.getTraderXp() > 0) {
+                    return fail("someone has traded with this villager (" + menu.getTraderXp() + " xp), so its trades are fixed");
+                }
+                boolean match = buying || TradeOffers.from(menu.getOffers()).stream().anyMatch(o -> rule.matches(o, TradeOffers.profession(villager)));
                 if (!match) {
                     phase = Phase.CLOSE;
                     ticks = 0;
                     return State.WORKING;
                 }
+                buying = true;
                 MerchantBuyer.State s = buyer.tick(mc);
                 status = "locking: " + buyer.status();
                 if (s == MerchantBuyer.State.WORKING) return State.WORKING;

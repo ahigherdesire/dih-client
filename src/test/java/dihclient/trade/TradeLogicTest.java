@@ -190,4 +190,12 @@ final class TradeLogicTest {
         assertEquals("bread – 1e", villager("f", 0, 0, item(0, "bread", 1), item(1, "cake", 3)).label());
         assertNull(villager("e", 0, 0).label());
     }
+
+    @Test
+    void purchaseConfirmationWaitsLongerOnLaggierServers() {
+        assertEquals(4, MerchantBuyer.settleTicksFor(0));
+        assertEquals(8, MerchantBuyer.settleTicksFor(100));
+        assertTrue(MerchantBuyer.settleTicksFor(300) > MerchantBuyer.settleTicksFor(100));
+        assertEquals(MerchantBuyer.SERVER_TIMEOUT / 2, MerchantBuyer.settleTicksFor(10_000));
+    }
 }

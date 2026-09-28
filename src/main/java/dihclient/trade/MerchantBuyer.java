@@ -15,7 +15,8 @@ import java.util.List;
  * <ol>
  *   <li>select the offer (as clicking it in the list does), then wait for the server to fill the result slot;</li>
  *   <li>pick up one result (a plain click, so exactly one trade happens) and put it in an empty inventory slot;</li>
- *   <li>wait for the server's slot update (the container state id changes) before counting the purchase.</li>
+ *   <li>wait a round trip (the server only answers a click when it disagrees with it) and count the purchase if the
+ *   bought item is still where it was put.</li>
  * </ol>
  * Call {@link #tick} every client tick until it returns something other than {@link State#WORKING}.
  */
@@ -41,6 +42,7 @@ public final class MerchantBuyer {
     private int ticks;
     private TradeOffer pending;
     private int stateBefore;
+    private int placedSlot = -1;
     private String status = "reading offers";
     private TradeBudget.Verdict lastVerdict;
     private final StringBuilder boughtText = new StringBuilder();
@@ -126,14 +128,17 @@ public final class MerchantBuyer {
                 int slot = emptyInventorySlot(menu);
                 if (slot < 0) return fail("inventory full");
                 stateBefore = menu.getStateId();
+                placedSlot = slot;
                 mc.gameMode.handleContainerInput(menu.containerId, slot, 0, ContainerInput.PICKUP, player);
                 phase = Phase.CONFIRM;
                 ticks = 0;
             }
             case CONFIRM -> {
-                // The server answers every click with a slot update carrying a new state id.
-                if (menu.getStateId() == stateBefore || !menu.getCarried().isEmpty()) {
-                    if (ticks > SERVER_TIMEOUT) return fail("no reply from the server");
+                // A click the server agrees with gets no reply, so give it one round trip to undo the trade.
+                if (menu.getStateId() == stateBefore && ticks < settleTicks(mc)) return State.WORKING;
+                ItemStack placed = menu.getSlot(placedSlot).getItem();
+                if (!menu.getCarried().isEmpty() || !pending.resultId().equals(TradeOffers.id(placed))) {
+                    if (ticks > SERVER_TIMEOUT) return fail("the server undid the trade");
                     return State.WORKING;
                 }
                 spent += pending.emeraldPrice();
@@ -180,6 +185,20 @@ public final class MerchantBuyer {
             if (id.equals(TradeOffers.id(stack))) n += stack.getCount();
         }
         return n;
+    }
+
+    /** Ticks for a click to reach the server and a correction to come back: two pings plus a margin. */
+    static int settleTicks(Minecraft mc) {
+        int latencyMs = 0;
+        if (mc.getConnection() != null && mc.player != null) {
+            var info = mc.getConnection().getPlayerInfo(mc.player.getUUID());
+            if (info != null) latencyMs = Math.max(0, info.getLatency());
+        }
+        return settleTicksFor(latencyMs);
+    }
+
+    static int settleTicksFor(int latencyMs) {
+        return Math.min(SERVER_TIMEOUT / 2, 4 + (latencyMs * 2 + 49) / 50);
     }
 
     private static int emptyInventorySlot(MerchantMenu menu) {
