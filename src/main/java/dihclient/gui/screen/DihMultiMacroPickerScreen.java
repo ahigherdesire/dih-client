@@ -10,6 +10,7 @@ import dihclient.gui.vanillaui.components.UiTone;
 import dihclient.util.DihMacro;
 import dihclient.util.DihMacroEditorOverlay;
 import dihclient.util.DihMacroManager;
+import dihclient.util.MacroFolderView;
 import dihclient.util.DihOverlayManager;
 import dihclient.util.DihTheme;
 import dihclient.util.DihTheme.Channel;
@@ -57,7 +58,7 @@ public final class DihMultiMacroPickerScreen extends DihScreen {
     private int scrollbarGrab;
     private long cachedNamesRevision = Long.MIN_VALUE;
     private String cachedNamesSearch = "";
-    private List<String> cachedNames = List.of();
+    private List<Entry> cachedNames = List.of();
     private boolean searchDirty;
 
     public DihMultiMacroPickerScreen(Screen parent, String currentName, Consumer<String> onPick) {
@@ -100,14 +101,20 @@ public final class DihMultiMacroPickerScreen extends DihScreen {
         buttons.add(CompactOverlayButton.create(screenWidth() - MARGIN - 10 - 60 - 6 - 92, 22, 92, 18,
             Component.literal("New Macro"), b -> openMacroEditor(null)).setVariant(CompactOverlayButton.Variant.PRIMARY));
 
-        List<String> names = filteredNames();
+        List<Entry> names = filteredNames();
         int total = 1 + names.size();
         int viewport = rowsBottom() - rowsTop();
         int visible = Math.max(1, viewport / ROW_HEIGHT);
         scrollOffset = Math.max(0, Math.min(scrollOffset, Math.max(0, total - visible)));
         int y = rowsTop();
         for (int i = scrollOffset; i < total && y + ROW_HEIGHT <= rowsBottom(); i++) {
-            String name = i == 0 ? null : names.get(i - 1);
+            Entry entry = i == 0 ? null : names.get(i - 1);
+            if (entry != null && entry.heading()) {
+                rows.add(new Row(entry.name(), y, null, null, true));
+                y += ROW_HEIGHT;
+                continue;
+            }
+            String name = entry == null ? null : entry.name();
             CompactOverlayButton edit = null;
             CompactOverlayButton delete = null;
             if (name != null) {
@@ -119,7 +126,7 @@ public final class DihMultiMacroPickerScreen extends DihScreen {
                     Component.literal(arming ? "Sure?" : "Delete"),
                     b -> onDelete(macroName)).setVariant(CompactOverlayButton.Variant.DANGER);
             }
-            rows.add(new Row(name, y, delete, edit));
+            rows.add(new Row(name, y, delete, edit, false));
             y += ROW_HEIGHT;
         }
     }
@@ -166,14 +173,19 @@ public final class DihMultiMacroPickerScreen extends DihScreen {
         if (minecraft != null) minecraft.gui.setScreen(parent);
     }
 
-    private List<String> filteredNames() {
+    /** Macro names, with a heading entry before each folder's macros. */
+    private List<Entry> filteredNames() {
         String query = search.toLowerCase(Locale.ROOT);
         long revision = DihMacroManager.get().getRevision();
         if (revision == cachedNamesRevision && query.equals(cachedNamesSearch)) return cachedNames;
-        List<String> out = new ArrayList<>();
+        List<DihMacro> macros = new ArrayList<>();
         for (DihMacro macro : DihMacroManager.get().getAll()) {
-            if (macro == null || macro.name == null) continue;
-            if (query.isEmpty() || macro.name.toLowerCase(Locale.ROOT).contains(query)) out.add(macro.name);
+            if (macro != null && macro.name != null) macros.add(macro);
+        }
+        List<Entry> out = new ArrayList<>();
+        for (MacroFolderView.Row row : MacroFolderView.build(macros, query, java.util.Set.of())) {
+            if (row instanceof MacroFolderView.FolderRow folder) out.add(new Entry(folder.folder() + "  (" + folder.count() + ")", true));
+            else if (row instanceof MacroFolderView.MacroRow macro) out.add(new Entry(macro.macro().name, false));
         }
         cachedNamesRevision = revision;
         cachedNamesSearch = query;
@@ -203,6 +215,7 @@ public final class DihMultiMacroPickerScreen extends DihScreen {
                 if (row.edit() != null && CompactOverlayButton.fireIfHit(row.edit(), virtualEvent.x(), virtualEvent.y(), virtualEvent.button())) return true;
             }
             for (Row row : rows) {
+                if (row.heading()) continue;
                 if (virtualEvent.x() >= rowX() && virtualEvent.x() < rowRight() && virtualEvent.y() >= row.y() && virtualEvent.y() < row.y() + ROW_FRAME_H) {
                     pendingDelete = "";
                     pick(row.name() == null ? "" : row.name());
@@ -274,6 +287,10 @@ public final class DihMultiMacroPickerScreen extends DihScreen {
     }
 
     private void renderRow(GuiGraphicsExtractor graphics, Row row) {
+        if (row.heading()) {
+            drawFitted(graphics, row.name(), rowX() + 4, row.y() + 5, Math.max(20, rowRight() - rowX() - 8), themeMuted());
+            return;
+        }
         boolean none = row.name() == null;
         boolean selected = none ? currentName.isBlank() : currentName.equals(row.name());
         int fill = selected ? themeSelected() : DihTheme.recolor(PANEL_BG_SOFT, Channel.BUTTON);
@@ -348,6 +365,13 @@ public final class DihMultiMacroPickerScreen extends DihScreen {
         return DihTheme.recolor(SUCCESS, Channel.SUCCESS);
     }
 
-    private record Row(String name, int y, CompactOverlayButton delete, CompactOverlayButton edit) {
+    private static int themeMuted() {
+        return DihTheme.recolor(MUTED, Channel.TEXT);
+    }
+
+    private record Entry(String name, boolean heading) {
+    }
+
+    private record Row(String name, int y, CompactOverlayButton delete, CompactOverlayButton edit, boolean heading) {
     }
 }
