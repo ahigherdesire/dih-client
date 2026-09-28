@@ -50,7 +50,7 @@ public final class DihDonateScreen extends Screen {
         "DIH is free and open source, with no ads, and every feature ends up free for everyone. One person builds it in their spare time.",
         "If it saved you some grinding, a coffee helps keep the updates coming.",
     };
-    private static final String PERK = "Give $20 or more and you get early previews of new advanced features.";
+    private static final String PERK = "Give $20 or more and get previews of new advanced features 1–2 weeks early.";
     private static final int PERK_PAD = 6;
 
     private static boolean shownThisLaunch;
