@@ -165,7 +165,13 @@ public final class TradeGameTest implements FabricClientGameTest {
             context.takeScreenshot("autotrade-reroll");
             String status = context.computeOnClient(client -> ((dihclient.modules.AutoTradeModule) ModuleRegistry.get("auto-trade")).status());
             System.out.println("[TradeGameTest] reroll: " + status);
-            if (!status.startsWith("locked")) throw new AssertionError("reroll ended: " + status + "\n" + String.join("\n", CHAT));
+            if (!status.startsWith("locked")) {
+                String server = world.getServer().computeOnServer(minecraftServer -> minecraftServer.overworld()
+                        .getEntitiesOfClass(Villager.class, new net.minecraft.world.phys.AABB(-8, 95, -8, 8, 105, 8)).stream()
+                        .map(v -> v.getVillagerData() + " xp=" + v.getVillagerXp() + " offers=" + v.getOffers().size())
+                        .toList().toString());
+                throw new AssertionError("reroll ended: " + status + "\nserver villagers: " + server + "\n" + String.join("\n", CHAT));
+            }
             context.runOnClient(client -> {
                 if (count(client, Items.ENCHANTED_BOOK) != 1) throw new AssertionError("locking should buy exactly one book");
             });
