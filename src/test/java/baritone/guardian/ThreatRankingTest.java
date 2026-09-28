@@ -163,6 +163,22 @@ final class ThreatRankingTest {
         assertEquals(Response.BACK_OFF, ThreatRanking.decide(s.build(), CONFIG).response(), "never trade hits with a creeper when low");
     }
 
+    /** From a real night run: retreating from a skeleton at 3 blocks cost 12 HP. Arrows outrange a retreat. */
+    @Test
+    void rangedAttackersAreFoughtNotFled() {
+        S s = new S();
+        s.health = CONFIG.fleeHealth() - 2;
+        s.mobs.add(new Mob(1, "minecraft:skeleton", 3, 3, true, false, false, false));
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response());
+        s.mobs.add(zombie(2, 4));
+        s.mobs.add(zombie(3, 5));
+        s.health = CONFIG.fleeHealth() + 2;
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "outnumbered, but the nearest is a skeleton");
+        s.mobs.set(0, zombie(1, 3));
+        s.health = CONFIG.fleeHealth();
+        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response(), "melee mobs can still be outrun");
+    }
+
     @Test
     void outnumberedRetreatsSooner() {
         S s = new S();

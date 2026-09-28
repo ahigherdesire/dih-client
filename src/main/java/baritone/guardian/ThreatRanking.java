@@ -83,7 +83,14 @@ public final class ThreatRanking {
      */
     public record Mob(int id, String type, double distance, double distanceFromAnchor, boolean aggressive,
                       boolean neutral, boolean creeper, boolean swelling) {
+        /** Shoots from range: running away only gives it free shots. */
+        public boolean ranged() {
+            return RANGED.contains(type);
+        }
     }
+
+    static final java.util.Set<String> RANGED = java.util.Set.of("minecraft:skeleton", "minecraft:stray", "minecraft:bogged",
+        "minecraft:pillager", "minecraft:blaze", "minecraft:witch");
 
     /**
      * Everything the ranking looks at, as plain values.
@@ -176,6 +183,9 @@ public final class ThreatRanking {
                 yield creeper != null && !creeper.swelling() && healthy ? Response.FIGHT : Response.BACK_OFF;
             }
             case HOSTILE -> {
+                Mob attacker = mob(s, t.mobId());
+                // Arrows outrange a retreat: the way out of a skeleton is through it.
+                if (attacker != null && attacker.ranged()) yield Response.FIGHT;
                 if (!healthy) yield Response.RETREAT;
                 if (crowd >= CROWD && s.health() <= c.fleeHealth() + CROWD_HEALTH_MARGIN) yield Response.RETREAT;
                 yield Response.FIGHT;
