@@ -23,7 +23,7 @@ public final class GuardianGameTest implements FabricClientGameTest {
     private static final int TIMEOUT_TICKS = 6 * 60 * 20;
     private static final int COBBLESTONE = 16;
 
-    private enum Threat { ZOMBIE, SKELETON, CREEPER, LAVA }
+    private enum Threat { ZOMBIE, SKELETON, CREEPER, LAVA, CROWD }
 
     @Override
     public void runTest(ClientGameTestContext context) {
@@ -54,6 +54,16 @@ public final class GuardianGameTest implements FabricClientGameTest {
                     "/give @p minecraft:bread 8")) {
                 world.getServer().runCommand(command);
             }
+            if (threat == Threat.CROWD) {
+                // Hurt, at night, three zombies closing in: dig in, heal, wait for the sun to deal with them.
+                world.getServer().runCommand("/execute in minecraft:overworld run fill -24 95 -24 24 99 24 minecraft:dirt");
+                world.getServer().runCommand("/give @p minecraft:dirt 16");
+                world.getServer().runCommand("/clear @p minecraft:bread");
+                // A player already low: dig in at first sight rather than trading hits first.
+                context.runOnClient(client -> Baritone.settings().guardianFleeHealth.value = 14);
+                context.waitTicks(80); // past the spawn invulnerability, or the damage doesn't land
+                world.getServer().runCommand("/damage @p 12");
+            }
             if (threat == Threat.LAVA) {
                 // A one-block lava hole (how people step into lava), and a pond to put the fire out in.
                 world.getServer().runCommand("/execute in minecraft:overworld run setblock 0 98 0 minecraft:smooth_stone");
@@ -63,7 +73,7 @@ public final class GuardianGameTest implements FabricClientGameTest {
                 world.getServer().runCommand("/tp @p 0 99 0");
             }
             context.waitFor(client -> client.player.getInventory().getNonEquipmentItems().stream()
-                    .anyMatch(stack -> stack.is(Items.BREAD)));
+                    .anyMatch(stack -> stack.is(threat == Threat.CROWD ? Items.DIRT : Items.BREAD)));
             try {
                 context.runOnClient(client -> {
                     guardian().log().clear();
@@ -82,6 +92,32 @@ public final class GuardianGameTest implements FabricClientGameTest {
                     case SKELETON -> world.getServer().runCommand("/summon minecraft:skeleton -6 100 0 {PersistenceRequired:1b,equipment:{mainhand:{id:\"minecraft:bow\",count:1}}}");
                     case CREEPER -> world.getServer().runCommand("/summon minecraft:creeper -7 100 0 {PersistenceRequired:1b}");
                     case LAVA -> { }
+                    case CROWD -> {
+                        world.getServer().runCommand("/summon minecraft:zombie -10 100 0 {PersistenceRequired:1b}");
+                        world.getServer().runCommand("/summon minecraft:zombie 0 100 10 {PersistenceRequired:1b}");
+                        world.getServer().runCommand("/summon minecraft:zombie 0 100 -10 {PersistenceRequired:1b}");
+                    }
+                }
+                if (threat == Threat.CROWD) {
+                    context.waitFor(client -> guardian().log().recent().stream().anyMatch(e -> e.text().contains("sheltering")), 30 * 20);
+                    context.takeScreenshot("guardian-crowd-sheltered");
+                    for (int second = 0; second < 10; second++) {
+                        context.waitTicks(20);
+                        events.add("t+" + second + "s " + context.computeOnClient(client -> {
+                            if (client.player == null) return "no player";
+                            var pos = client.player.blockPosition();
+                            var level = client.level;
+                            return "at " + pos.toShortString() + " hp " + Math.round(client.player.getHealth())
+                                    + " ground " + client.player.onGround()
+                                    + " above " + level.getBlockState(pos.above(2)).getBlock().getName().getString()
+                                    + " head N/S/E/W " + level.getBlockState(pos.above().north()).isAir()
+                                    + "/" + level.getBlockState(pos.above().south()).isAir()
+                                    + "/" + level.getBlockState(pos.above().east()).isAir()
+                                    + "/" + level.getBlockState(pos.above().west()).isAir()
+                                    + " status " + guardian().status();
+                        }));
+                    }
+                    world.getServer().runCommand("/time set 1000");
                 }
                 context.waitFor(client -> {
                     if (client.player == null || client.player.isDeadOrDying()) died[0] = true;
@@ -91,6 +127,7 @@ public final class GuardianGameTest implements FabricClientGameTest {
                 context.runOnClient(client -> {
                     AcquireControl acquire = AcquireControl.get();
                     if (acquire != null) acquire.stop();
+                    Baritone.settings().guardianFleeHealth.value = Baritone.settings().guardianFleeHealth.defaultValue;
                     events.add("guardian log: " + guardian().log().recent().stream()
                             .map(GuardianLog.Event::text).collect(Collectors.joining(" | ")));
                 });
@@ -102,7 +139,7 @@ public final class GuardianGameTest implements FabricClientGameTest {
             if (!succeeded[0]) throw new AssertionError(label + ": the acquire did not finish\n" + trail);
             String log = context.computeOnClient(client -> guardian().log().recent().stream()
                     .map(GuardianLog.Event::text).collect(Collectors.joining("\n")));
-            String expected = threat == Threat.LAVA ? "lava" : label;
+            String expected = threat == Threat.LAVA ? "lava" : threat == Threat.CROWD ? "digging in" : label;
             if (!log.contains(expected)) throw new AssertionError(label + ": the Guardian never dealt with it\n" + trail);
         }
     }
