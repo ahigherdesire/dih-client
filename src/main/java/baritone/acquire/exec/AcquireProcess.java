@@ -340,10 +340,11 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
                     Step step = active().current();
                     runner = null;
                     active().markProgress();
-                    if (Baritone.settings().acquireGearUp.value && GearEquip.tick(ctx)) return pause();
                     if (!(step instanceof Step.PlaceStation) && !(step instanceof Step.RetrieveStation)
                             && have(step.item()) < step.untilCount()) {
                         if (!replan(step.describe() + " ended with " + have(step.item()) + "/" + step.untilCount())) return idle();
+                    } else if (Baritone.settings().acquireGearUp.value && GearEquip.tick(ctx)) {
+                        return pause();
                     }
                 }
                 case FAILED -> {

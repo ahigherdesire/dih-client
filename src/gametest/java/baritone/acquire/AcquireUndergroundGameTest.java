@@ -7,6 +7,8 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.gui.screens.TitleScreen;
+import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
@@ -29,6 +31,8 @@ public final class AcquireUndergroundGameTest implements FabricClientGameTest {
         String label = nearlyBrokenTool ? "tool-break" : "far-underground-iron";
         List<String> events = new ArrayList<>();
         boolean[] ended = {false};
+        boolean[] succeeded = {false};
+        String[] planText = {""};
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
             context.waitFor(client -> client.player != null && client.level != null);
             world.getServer().runCommand("/difficulty normal");
@@ -58,15 +62,16 @@ public final class AcquireUndergroundGameTest implements FabricClientGameTest {
                     AcquireControl acquire = AcquireControl.get();
                     acquire.addListener(event -> {
                         events.add(event.kind() + " " + event.message());
+                        if (event.kind() == AcquireControl.AcquireEvent.Kind.DONE) succeeded[0] = true;
                         if (event.kind() == AcquireControl.AcquireEvent.Kind.DONE
                                 || event.kind() == AcquireControl.AcquireEvent.Kind.FAILED) ended[0] = true;
                     });
                     String goal = nearlyBrokenTool ? "cobblestone" : "iron_pickaxe";
-                    events.add("plan:\n" + acquire.plan(goal, nearlyBrokenTool ? 12 : 1));
+                    planText[0] = acquire.plan(goal, nearlyBrokenTool ? 12 : 1);
+                    events.add("plan:\n" + planText[0]);
                     events.add("start: " + acquire.start(goal, nearlyBrokenTool ? 12 : 1));
                 });
-                context.waitFor(client -> ended[0] || held(client, nearlyBrokenTool) >= (nearlyBrokenTool ? 12 : 1),
-                        TIMEOUT_TICKS);
+                context.waitFor(client -> ended[0], TIMEOUT_TICKS);
             } finally {
                 context.runOnClient(client -> {
                     AcquireControl acquire = AcquireControl.get();
@@ -76,10 +81,21 @@ public final class AcquireUndergroundGameTest implements FabricClientGameTest {
                 context.takeScreenshot("acquire-" + label);
                 System.out.println("[AcquireUndergroundGameTest] " + label + "\n  " + String.join("\n  ", events));
             }
-            int[] result = {0};
-            context.runOnClient(client -> result[0] = held(client, nearlyBrokenTool));
-            if (result[0] < (nearlyBrokenTool ? 12 : 1))
-                throw new AssertionError(label + " ended short: " + result[0] + "\n" + String.join("\n", events));
+            context.runOnClient(client -> {
+                int result = held(client, nearlyBrokenTool);
+                if (!succeeded[0] || result < (nearlyBrokenTool ? 12 : 1))
+                    throw new AssertionError(label + " ended short: " + result + "\n" + String.join("\n", events));
+                if (nearlyBrokenTool) return;
+                if (countItem(client, Items.CRAFTING_TABLE) < 1)
+                    throw new AssertionError("The crafting table was left behind\n" + String.join("\n", events));
+                if (countItem(client, Items.STONE_SWORD) < 1)
+                    throw new AssertionError("The underground plan never supplied a stone sword\n" + String.join("\n", events));
+                if (planText[0].contains("craft 1 iron_helmet")
+                        && !client.player.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET))
+                    throw new AssertionError("Planned iron helmet was not worn\n" + String.join("\n", events));
+                if (planText[0].contains("craft 1 shield") && !client.player.getOffhandItem().is(Items.SHIELD))
+                    throw new AssertionError("Planned shield was not equipped\n" + String.join("\n", events));
+            });
         }
     }
 
@@ -88,5 +104,10 @@ public final class AcquireUndergroundGameTest implements FabricClientGameTest {
         return client.player.getInventory().getNonEquipmentItems().stream()
                 .filter(stack -> stack.is(cobblestone ? Items.COBBLESTONE : Items.IRON_PICKAXE))
                 .mapToInt(stack -> stack.getCount()).sum();
+    }
+
+    private static int countItem(net.minecraft.client.Minecraft client, Item item) {
+        return client.player.getInventory().getNonEquipmentItems().stream()
+                .filter(stack -> stack.is(item)).mapToInt(stack -> stack.getCount()).sum();
     }
 }

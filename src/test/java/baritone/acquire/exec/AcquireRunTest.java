@@ -163,4 +163,17 @@ final class AcquireRunTest {
         run.markProgress();
         assertTrue(run.expectedFreeAvailable());
     }
+
+    @Test
+    void retrievesAPlacedTableEvenAfterTheGoalIsAlreadyHeld() {
+        Plan plan = new Plan(PICK, 1, List.of(
+                new Step.PlaceStation(TABLE),
+                craft(PICK, 1, 1, true, 1, PLANKS, 3),
+                new Step.RetrieveStation(TABLE)
+        ), List.of(), 1);
+        AcquireRun run = new AcquireRun(PICK, 1, plan);
+        assertEquals(0, run.advance(inv(Map.of())));
+        assertEquals(2, run.advance(inv(Map.of(PICK, 1))));
+        assertTrue(run.current() instanceof Step.RetrieveStation);
+    }
 }
