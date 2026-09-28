@@ -37,11 +37,19 @@ final class MineRunner extends RunnerBase {
             cancel();
             return full;
         }
+        if (ExecContext.needsTool(step.tool())) {
+            int slot = InventoryOps.toHotbar(ctx, stack -> x.toolMatcher(step.tool()).test(stack)
+                    && (!stack.isDamageableItem() || stack.getMaxDamage() - stack.getDamageValue()
+                    > Math.ceil(stack.getMaxDamage() * 0.10)));
+            if (slot < 0) {
+                cancel();
+                return Result.failed("the " + ExecContext.describeTool(step.tool())
+                        + " is worn below 10%; need a replacement before mining");
+            }
+            ctx.player().getInventory().setSelectedSlot(slot);
+        }
         if (!started) {
             // Baritone only switches between tools already on the hotbar.
-            if (ExecContext.needsTool(step.tool()) && InventoryOps.toHotbar(ctx, x.toolMatcher(step.tool())) < 0) {
-                return Result.failed("can't move the " + ExecContext.describeTool(step.tool()) + " to the hotbar (close the open screen)");
-            }
             try {
                 mine.mineByName(0, step.blocks().toArray(new String[0]));
             } catch (IllegalArgumentException e) {

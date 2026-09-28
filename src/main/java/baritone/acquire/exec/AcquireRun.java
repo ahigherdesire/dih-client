@@ -16,6 +16,7 @@ final class AcquireRun {
     private Plan plan;
     private int index = -1;
     private int replans;
+    private int expectedRetries;
 
     AcquireRun(String goal, int count, Plan plan) {
         this.goal = goal;
@@ -36,6 +37,15 @@ final class AcquireRun {
         return replans;
     }
 
+    boolean expectedFreeAvailable() { return expectedRetries < 2; }
+
+    void resumeExpected(Plan next) {
+        resume(next);
+        expectedRetries++;
+    }
+
+    void markProgress() { expectedRetries = 0; }
+
     int stepCount() {
         return plan.steps().size();
     }
@@ -54,7 +64,8 @@ final class AcquireRun {
         List<Step> steps = plan.steps();
         for (int i = index + 1; i < steps.size(); i++) {
             Step step = steps.get(i);
-            boolean work = step instanceof Step.PlaceStation ps ? stationNeeded(i, ps.station(), have) : !met(step, have);
+            boolean work = step instanceof Step.PlaceStation ps ? stationNeeded(i, ps.station(), have)
+                    : step instanceof Step.RetrieveStation || !met(step, have);
             if (work) {
                 index = i;
                 return i;
@@ -85,7 +96,8 @@ final class AcquireRun {
     }
 
     static boolean met(Step step, ToIntFunction<String> have) {
-        return !(step instanceof Step.PlaceStation) && have.applyAsInt(step.item()) >= step.untilCount();
+        return !(step instanceof Step.PlaceStation) && !(step instanceof Step.RetrieveStation)
+                && have.applyAsInt(step.item()) >= step.untilCount();
     }
 
     boolean goalMet(ToIntFunction<String> have) {
@@ -111,7 +123,7 @@ final class AcquireRun {
         Step step = current();
         if (step == null) return head;
         String line = head + ": step " + (index + 1) + "/" + stepCount() + ", " + step.describe();
-        if (!(step instanceof Step.PlaceStation)) {
+        if (!(step instanceof Step.PlaceStation) && !(step instanceof Step.RetrieveStation)) {
             line += " (" + have.applyAsInt(step.item()) + "/" + step.untilCount() + ")";
         }
         return line;

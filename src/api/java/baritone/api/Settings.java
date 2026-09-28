@@ -1632,6 +1632,9 @@ public final class Settings {
      */
     public final Setting<Boolean> acquireKillMobs = new Setting<>(true);
 
+    /** Plan a stone sword before ore trips and affordable iron armor and shield after obtaining iron. */
+    public final Setting<Boolean> acquireGearUp = new Setting<>(true);
+
     /**
      * How far, in blocks, {@code #acquire} looks for an existing crafting table or furnace before it
      * places its own.

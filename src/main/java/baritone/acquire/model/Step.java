@@ -8,7 +8,7 @@ import java.util.List;
  * the finish line: if the inventory already has it, the step is skipped; if the step ends short, the
  * executor re-plans from the real inventory.
  */
-public sealed interface Step permits Step.Mine, Step.Craft, Step.Smelt, Step.Kill, Step.PlaceStation {
+public sealed interface Step permits Step.Mine, Step.Craft, Step.Smelt, Step.Kill, Step.PlaceStation, Step.RetrieveStation {
 
     /** The item this step produces. For {@link PlaceStation} it is the station block's item. */
     String item();
@@ -101,6 +101,12 @@ public sealed interface Step permits Step.Mine, Step.Craft, Step.Smelt, Step.Kil
         }
     }
 
+    /** Break and pick up a station placed by this acquire before leaving the current work area. */
+    record RetrieveStation(String station) implements Step {
+        @Override public String item() { return station; }
+        @Override public int untilCount() { return 0; }
+        @Override public String describe() { return "retrieve " + shortId(station); }
+    }
     static String shortId(String id) {
         return id.startsWith("minecraft:") ? id.substring("minecraft:".length()) : id;
     }

@@ -78,6 +78,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     private AcquireRun run;
     private StepRunner runner;
     private int stepTicks;
+    private int stepTimeoutTicks;
     private boolean waitingForRespawn;
     private LocalPlayer lastPlayer;
 
@@ -269,7 +270,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     static PlannerOptions options() {
         Settings s = Baritone.settings();
         return new PlannerOptions(s.acquirePlaceStations.value, s.acquireKillMobs.value,
-                PlannerOptions.DEFAULT.maxDepth(), PlannerOptions.DEFAULT.maxSteps());
+                PlannerOptions.DEFAULT.maxDepth(), PlannerOptions.DEFAULT.maxSteps(), s.acquireGearUp.value);
     }
 
     // ---------------------------------------------------------------- IBaritoneProcess
@@ -312,6 +313,8 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         if (eatingForUs || eater().isBusy()) return pause();
         PathingCommand heal = heal(player);
         if (heal != null) return heal;
+        if (Baritone.settings().acquireGearUp.value && (runner == null || !runner.busy()) && GearEquip.tick(ctx))
+            return pause();
         if (pendingReplan != null) {
             String reason = pendingReplan;
             pendingReplan = null;
@@ -321,7 +324,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         // Several steps can finish in one tick (skips, instant checks); the guard bounds a buggy loop.
         for (int guard = 0; guard < 16; guard++) {
             if (runner == null && !startNextStep()) return idle();
-            if (++stepTicks > Baritone.settings().acquireStepTimeoutSeconds.value * TICKS_PER_SECOND) {
+            if (++stepTicks > stepTimeoutTicks) {
                 AcquireRun active = active();
                 Step step = active.current();
                 cancelRunner();
@@ -336,7 +339,10 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
                 case DONE -> {
                     Step step = active().current();
                     runner = null;
-                    if (!(step instanceof Step.PlaceStation) && have(step.item()) < step.untilCount()) {
+                    active().markProgress();
+                    if (Baritone.settings().acquireGearUp.value && GearEquip.tick(ctx)) return pause();
+                    if (!(step instanceof Step.PlaceStation) && !(step instanceof Step.RetrieveStation)
+                            && have(step.item()) < step.untilCount()) {
                         if (!replan(step.describe() + " ended with " + have(step.item()) + "/" + step.untilCount())) return idle();
                     }
                 }
@@ -377,6 +383,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         Step step = active.current();
         runner = createRunner(step);
         stepTicks = 0;
+        stepTimeoutTicks = timeoutFor(step);
         String line = (active == detour ? "Food step " : "Step ") + (index + 1) + "/" + active.stepCount() + ": " + step.describe();
         logDirect(line);
         fire(AcquireEvent.Kind.STEP, line);
@@ -390,7 +397,27 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             case Step.Smelt smelt -> new SmeltRunner(exec, smelt);
             case Step.Kill kill -> new KillRunner(exec, kill);
             case Step.PlaceStation station -> new StationRunner(exec, station);
+            case Step.RetrieveStation station -> new RetrieveStationRunner(exec, station);
         };
+    }
+
+    private int timeoutFor(Step step) {
+        BaritoneWorldView world = new BaritoneWorldView(ctx, stations, Baritone.settings().acquireStationRadius.value);
+        double distance = 0;
+        double depth = 0;
+        if (step instanceof Step.Mine mine) {
+            distance = Double.POSITIVE_INFINITY;
+            for (String block : mine.blocks()) {
+                double candidate = world.distanceToBlock(block);
+                if (candidate < distance) {
+                    distance = candidate;
+                    depth = world.verticalDistanceToBlock(block);
+                }
+            }
+        } else if (step instanceof Step.Kill kill) {
+            distance = world.distanceToEntity(kill.entity());
+        }
+        return StepTimeout.ticks(step, distance, depth, Baritone.settings().acquireStepTimeoutSeconds.value);
     }
 
     /**
@@ -398,7 +425,12 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
      * the acquire ended (re-plan budget used up, no complete plan), or the food detour was dropped.
      */
     private boolean replan(String reason) {
-        return detour != null ? replanDetour(reason) : replanMain(reason);
+        if (detour != null) return replanDetour(reason);
+        Step step = run.current();
+        boolean expected = step instanceof Step.RetrieveStation
+                || reason != null && (reason.contains("worn below 10%") || reason.contains("tool broke"));
+        boolean free = expected && run.expectedFreeAvailable();
+        return replanMain(reason, !free, free);
     }
 
     /** Re-plans the main goal. False (and the run is over) when the budget is used up or no complete plan exists. */
@@ -411,6 +443,10 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
      *               food detour, which is not a failure
      */
     private boolean replanMain(String reason, boolean counts) {
+        return replanMain(reason, counts, false);
+    }
+
+    private boolean replanMain(String reason, boolean counts, boolean expected) {
         int max = Baritone.settings().acquireMaxReplans.value;
         if (counts && run.replans() >= max) {
             finish(AcquireEvent.Kind.FAILED, "Acquire gave up after " + max + " re-plans. Last problem: " + reason + ".");
@@ -432,6 +468,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             return false;
         }
         if (counts) run.replace(plan);
+        else if (expected) run.resumeExpected(plan);
         else run.resume(plan);
         runner = null;
         logDirect("Re-planning (" + reason + "): " + plan.steps().size() + " steps.", ChatFormatting.YELLOW);

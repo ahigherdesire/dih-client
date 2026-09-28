@@ -8,6 +8,7 @@
     "fabric-client-gametest": [
       "baritone.acquire.AcquireSmokeGameTest",
       "baritone.acquire.AcquireGatherGameTest",
+      "baritone.acquire.AcquireUndergroundGameTest",
       "baritone.acquire.exec.AcquireHealingGameTest",
       "baritone.acquire.exec.AcquireNormalMealGameTest",
       "dihclient.gui.screen.DonateScreenGameTest"

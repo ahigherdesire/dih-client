@@ -4,6 +4,7 @@ import baritone.acquire.model.InventorySnapshot;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
@@ -15,7 +16,8 @@ import java.util.function.Predicate;
 
 /**
  * Reads the player's main inventory (36 slots: hotbar 0-8, then 9-35) and offhand as namespaced item
- * ids. Armour and the crafting grid are not counted. This is the same view the planner plans from and
+ * ids. Worn armour is counted so equipping planned gear does not make its completed step appear short.
+ * The crafting grid is not counted. This is the same view the planner plans from and
  * the executor checks {@code untilCount} against.
  */
 public final class InventoryReader {
@@ -39,10 +41,15 @@ public final class InventoryReader {
 
     public static InventorySnapshot snapshot(Player player) {
         Map<String, Integer> counts = new HashMap<>();
+        Map<String, Integer> remainingUses = new HashMap<>();
         for (ItemStack stack : stacks(player)) {
-            if (!stack.isEmpty()) counts.merge(idOf(stack), stack.getCount(), Integer::sum);
+            if (stack.isEmpty()) continue;
+            String id = idOf(stack);
+            counts.merge(id, stack.getCount(), Integer::sum);
+            if (stack.isDamageableItem())
+                remainingUses.merge(id, Math.max(0, stack.getMaxDamage() - stack.getDamageValue()), Integer::sum);
         }
-        return new InventorySnapshot(counts);
+        return new InventorySnapshot(counts, remainingUses);
     }
 
     /** Count of {@code id} in the main inventory and offhand. */
@@ -60,6 +67,8 @@ public final class InventoryReader {
     static List<ItemStack> stacks(Player player) {
         List<ItemStack> all = new ArrayList<>(player.getInventory().getNonEquipmentItems());
         all.add(player.getOffhandItem());
+        for (EquipmentSlot slot : List.of(EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET))
+            all.add(player.getItemBySlot(slot));
         return all;
     }
 

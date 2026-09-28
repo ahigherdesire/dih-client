@@ -35,6 +35,9 @@ final class FakeKnowledge implements Knowledge {
     static final String IRON_BLOCK = "minecraft:iron_block";
     static final String COAL = "minecraft:coal";
     static final String IRON_PICKAXE = "minecraft:iron_pickaxe";
+    static final String STONE_SWORD = "minecraft:stone_sword";
+    static final String SHIELD = "minecraft:shield";
+    static final String IRON_HELMET = "minecraft:iron_helmet";
     static final String TORCH = "minecraft:torch";
     static final String STRING = "minecraft:string";
     static final String FLINT = "minecraft:flint";
@@ -59,6 +62,7 @@ final class FakeKnowledge implements Knowledge {
         craft(WOODEN_PICKAXE, 1, true, ing(PLANKS, 3), ing(STICK, 2));
         mine(COBBLESTONE, "minecraft:stone", 1.0, PICK_1);
         craft(STONE_PICKAXE, 1, true, ing(COBBLESTONE, 3), ing(STICK, 2));
+        craft(STONE_SWORD, 1, true, ing(COBBLESTONE, 2), ing(STICK, 1));
         craft(FURNACE, 1, true, ing(COBBLESTONE, 8));
         mine(RAW_IRON, "minecraft:iron_ore", 1.0, PICK_2);
         mine(RAW_IRON, "minecraft:deepslate_iron_ore", 1.0, PICK_2);
@@ -68,6 +72,8 @@ final class FakeKnowledge implements Knowledge {
         craft(IRON_BLOCK, 1, true, ing(IRON_INGOT, 9));
         mine(COAL, "minecraft:coal_ore", 1.0, PICK_1);
         craft(IRON_PICKAXE, 1, true, ing(IRON_INGOT, 3), ing(STICK, 2));
+        craft(SHIELD, 1, true, ing(PLANKS, 6), ing(IRON_INGOT, 1));
+        craft(IRON_HELMET, 1, true, ing(IRON_INGOT, 5));
         craft(TORCH, 4, false, ing(COAL, 1), ing(STICK, 1));
         add(new KillSource("minecraft:spider", STRING, 1.0, false));
         mine(FLINT, "minecraft:gravel", 0.1, new ToolReq("shovel", 0, false));

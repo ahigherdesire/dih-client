@@ -12,6 +12,7 @@ import baritone.acquire.model.SmeltSource;
 import baritone.acquire.model.Source;
 import baritone.acquire.model.Step;
 import baritone.acquire.model.ToolReq;
+import baritone.acquire.model.ToolDurability;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -30,6 +31,7 @@ import static baritone.acquire.planner.PlannerCosts.BREAK_TICKS;
 import static baritone.acquire.planner.PlannerCosts.CRAFT_TICKS;
 import static baritone.acquire.planner.PlannerCosts.KILL_TICKS;
 import static baritone.acquire.planner.PlannerCosts.STATION_TICKS;
+import static baritone.acquire.planner.PlannerCosts.RETRIEVE_TICKS;
 import static baritone.acquire.planner.PlannerCosts.UNKNOWN_DISTANCE;
 import static baritone.acquire.planner.PlannerCosts.UNKNOWN_PLACED_DISTANCE;
 import static baritone.acquire.planner.PlannerCosts.travel;
@@ -55,7 +57,7 @@ import static baritone.acquire.planner.PlannerCosts.travel;
  *   <li>A Smelt burns {@code fuelCount} of one fuel item, which is never a tool, a station block, the
  *       smelt input or an item being planned. Held fuel is used when it is cheap to replace; a lava bucket
  *       is never obtained as fuel. Blast furnaces and smokers burn fuel twice as fast.</li>
- *   <li>Tools are never consumed and durability is ignored; if one breaks, re-plan.</li>
+ *   <li>Tool uses are budgeted with a digging allowance; spare tools are planned before a long mine.</li>
  * </ul>
  */
 public final class AcquirePlanner {
@@ -176,6 +178,8 @@ public final class AcquirePlanner {
         Plan run(int count) {
             PlanState s = new PlanState(start.copy());
             boolean ok = obtain(s, goal, count);
+            if (ok && options.gearUp()) addAffordableIronGear(s, count);
+            if (ok) retrieveStations(s);
             List<String> missing = new ArrayList<>(s.missing);
             if (!ok && missing.isEmpty()) missing.add("no known way to get " + goal);
             PlanReplay replay = new PlanReplay(knowledge, world, start);
@@ -271,10 +275,9 @@ public final class AcquirePlanner {
         // ---- the four ways to get an item ----
 
         private boolean mine(PlanState s, MineOption m, int need) {
+            if (options.gearUp() && undergroundOre(m) && !hasSword(s)
+                    && !obtain(s, "minecraft:stone_sword", 1)) return false;
             ToolReq tool = m.tool();
-            if (gates(tool) && !holdsTool(s, tool) && !obtainTool(s, tool.type(), tool.minTier())) return false;
-            s.inv.add(m.item(), need);
-            // Already mining these blocks earlier in the plan: take the extra on that trip instead of walking back.
             int prev = findEarlier(s, st -> st instanceof Step.Mine e && e.item().equals(m.item())
                     && e.blocks().equals(m.blocks()) && e.tool().equals(tool));
             if (prev >= 0) {
@@ -282,16 +285,56 @@ public final class AcquirePlanner {
                 Step.Mine old = (Step.Mine) e.step();
                 int gained = e.gained() + need;
                 int blocks = actions(gained, m.dropsPerBlock());
-                s.steps.set(prev, new PlanState.Entry(
-                        new Step.Mine(m.blocks(), m.item(), old.untilCount() + need, tool, blocks), gained));
-                s.addCost((blocks - old.expectedBlocks()) * BREAK_TICKS);
-                return true;
+                int extra = blocks - old.expectedBlocks();
+                // A replacement crafted now cannot retroactively supply an earlier mining step.
+                if (availableToolUses(s, tool) >= ToolDurability.budget(extra)) {
+                    if (!budgetTool(s, tool, extra)) return false;
+                    s.inv.add(m.item(), need);
+                    s.steps.set(prev, new PlanState.Entry(
+                            new Step.Mine(m.blocks(), m.item(), old.untilCount() + need, tool, blocks), gained));
+                    s.addCost(extra * BREAK_TICKS);
+                    return true;
+                }
             }
             int blocks = actions(need, m.dropsPerBlock());
+            if (!budgetTool(s, tool, blocks)) return false;
+            s.inv.add(m.item(), need);
             s.addCost(travel(m.distance()) + blocks * BREAK_TICKS);
             return emit(s, new Step.Mine(m.blocks(), m.item(), s.inv.count(m.item()), tool, blocks), need, true);
         }
 
+        private boolean undergroundOre(MineOption mine) {
+            return mine.blocks().stream().anyMatch(block -> block.endsWith("_ore") || block.contains("deepslate"));
+        }
+
+        private boolean hasSword(PlanState s) {
+            return List.of("stone_sword", "iron_sword", "diamond_sword", "netherite_sword")
+                    .stream().anyMatch(name -> s.inv.count("minecraft:" + name) > 0);
+        }
+
+        private void addAffordableIronGear(PlanState s, int goalCount) {
+            boolean ironPlanned = s.steps.stream().anyMatch(entry ->
+                    entry.step() instanceof Step.Mine mine && mine.item().equals("minecraft:raw_iron")
+                    || entry.step() instanceof Step.Smelt smelt && smelt.item().equals("minecraft:iron_ingot"));
+            if (!ironPlanned) return;
+            double cap = s.cost * 2;
+            s.reserve(goal, goalCount);
+            try {
+                for (String gear : List.of("shield", "iron_helmet", "iron_chestplate", "iron_leggings", "iron_boots")) {
+                    String id = "minecraft:" + gear;
+                    if (!knowledge.isItem(id) || s.inv.count(id) > 0) continue;
+                    PlanState trial = s.copy();
+                    trial.limit = Math.min(trial.limit, cap);
+                    try {
+                        if (obtain(trial, id, 1) && trial.cost <= cap) s.become(trial);
+                    } catch (PlanState.OverBudget ignored) {
+                        // Gear is optional when obtaining it would more than double the plan cost.
+                    }
+                }
+            } finally {
+                s.release(goal, goalCount);
+            }
+        }
         private boolean kill(PlanState s, KillOption k, int need) {
             KillSource src = k.source();
             s.inv.add(src.output(), need);
@@ -425,29 +468,59 @@ public final class AcquirePlanner {
             return tool != null && tool.required() && tool.type() != null;
         }
 
-        private boolean holdsTool(PlanState s, ToolReq tool) {
-            for (String t : tools(tool.type(), tool.minTier())) if (s.inv.count(t) > 0) return true;
-            return false;
+        private int availableToolUses(PlanState s, ToolReq tool) {
+            if (!gates(tool)) return Integer.MAX_VALUE;
+            int total = 0;
+            for (String id : tools(tool.type(), tool.minTier())) {
+                int max = ToolDurability.maxUses(id);
+                if (max <= 0) return Integer.MAX_VALUE;
+                int reserve = (int) Math.ceil(max * 0.10) * s.inv.count(id);
+                total += Math.max(0, s.inv.remainingUses(id) - s.usedDurability.getOrDefault(id, 0) - reserve);
+            }
+            return total;
         }
 
-        /** Obtains the cheapest tool of {@code type} with tier >= {@code minTier}. */
-        private boolean obtainTool(PlanState s, String type, int minTier) {
-            // Needing a tier-k tool while already planning one of tier <= k is a cycle (iron pick for cobblestone).
+        /** Plans enough replacement tools before the mine and reserves their estimated uses. */
+        private boolean budgetTool(PlanState s, ToolReq tool, int blocks) {
+            if (!gates(tool)) return true;
+            int needed = ToolDurability.budget(blocks);
+            int available = availableToolUses(s, tool);
+            if (available < needed && !obtainTool(s, tool.type(), tool.minTier(), needed - available)) return false;
+            if (availableToolUses(s, tool) < needed) return s.fail("not enough durability for " + blocks + " blocks");
+            for (String id : tools(tool.type(), tool.minTier())) {
+                int max = ToolDurability.maxUses(id);
+                if (max <= 0) return true;
+                int reserve = (int) Math.ceil(max * 0.10) * s.inv.count(id);
+                int usable = Math.max(0, s.inv.remainingUses(id) - s.usedDurability.getOrDefault(id, 0) - reserve);
+                int spent = Math.min(needed, usable);
+                if (spent > 0) s.usedDurability.merge(id, spent, Integer::sum);
+                needed -= spent;
+                if (needed == 0) return true;
+            }
+            return needed == 0;
+        }
+
+        /** Obtains the cheapest tool capacity of {@code type} with tier >= {@code minTier}. */
+        private boolean obtainTool(PlanState s, String type, int minTier, int missingUses) {
             for (ToolNeed n : toolStack)
                 if (n.type().equals(type) && n.minTier() <= minTier)
                     return s.fail("needs a " + type + " to make a " + type);
             List<String> candidates = new ArrayList<>();
-            for (String t : tools(type, minTier)) if (!stack.contains(t)) candidates.add(t);
+            for (String t : tools(type, minTier)) if (!stack.contains(t) && ToolDurability.maxUses(t) > 0) candidates.add(t);
             if (candidates.isEmpty())
                 return s.fail("no known way to get a " + type + (minTier > 0 ? " of tier " + minTier + "+" : ""));
             toolStack.add(new ToolNeed(type, minTier));
             try {
-                return cheapest(s, candidates, (t, tool) -> obtain(t, tool, 1)) >= 0;
+                return cheapest(s, candidates, (t, id) -> {
+                    int max = ToolDurability.maxUses(id);
+                    int usable = max - (int) Math.ceil(max * 0.10);
+                    int copies = Math.max(1, (missingUses + usable - 1) / usable);
+                    return obtain(t, id, t.inv.count(id) + copies);
+                }) >= 0;
             } finally {
                 toolStack.remove(toolStack.size() - 1);
             }
         }
-
         private List<String> tools(String type, int minTier) {
             return toolCache.computeIfAbsent(type + '#' + minTier, key -> {
                 List<String> t = knowledge.toolsOf(type, minTier);
@@ -458,7 +531,7 @@ public final class AcquirePlanner {
         /** Makes sure the station can be set up later: nearby, already placed, or its item obtained and held back. */
         private boolean prepareStation(PlanState s, String station) {
             if (s.ready.contains(station) || s.pending.contains(station)) return true;
-            if (world.stationNearby(station)) {
+            if (!s.moved && world.stationNearby(station)) {
                 s.ready.add(station);
                 return true;
             }
@@ -476,20 +549,36 @@ public final class AcquirePlanner {
             if (s.pending.remove(station)) {
                 s.consume(station, 1);
                 s.ready.add(station);
+                s.owned.add(station);
             }
             s.active.add(station);
             s.addCost(STATION_TICKS);
             return emit(s, new Step.PlaceStation(station), 0, false);
         }
 
+        private void retrieveStations(PlanState s) {
+            for (String station : List.copyOf(s.owned)) {
+                s.steps.add(new PlanState.Entry(new Step.RetrieveStation(station), 0));
+                s.inv.add(station, 1);
+                s.addCost(RETRIEVE_TICKS);
+                s.ready.remove(station);
+                s.active.remove(station);
+                s.owned.remove(station);
+            }
+        }
+
         private boolean emit(PlanState s, Step step, int gained, boolean moves) {
+            if (moves) {
+                retrieveStations(s);
+                s.active.clear();
+                s.ready.clear();
+                s.moved = true;
+            }
             s.steps.add(new PlanState.Entry(step, gained));
-            if (moves) s.active.clear();
             if (s.steps.size() > options.maxSteps())
                 return s.fail("the plan needs more than " + options.maxSteps() + " steps");
             return true;
         }
-
         private int findEarlier(PlanState s, Predicate<Step> match) {
             for (int i = 0; i < s.steps.size(); i++) if (match.test(s.steps.get(i).step())) return i;
             return -1;

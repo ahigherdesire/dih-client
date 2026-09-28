@@ -149,4 +149,18 @@ final class AcquireRunTest {
         run.replace(woodenPickaxe());
         assertEquals(1, run.replans());
     }
+
+    @Test
+    void expectedRecoveryDoesNotSpendTheFailureBudgetUntilItRepeats() {
+        AcquireRun run = new AcquireRun(PICK, 1, woodenPickaxe());
+        assertTrue(run.expectedFreeAvailable());
+        run.resumeExpected(woodenPickaxe());
+        run.resumeExpected(woodenPickaxe());
+        assertEquals(0, run.replans());
+        assertFalse(run.expectedFreeAvailable());
+        run.replace(woodenPickaxe());
+        assertEquals(1, run.replans());
+        run.markProgress();
+        assertTrue(run.expectedFreeAvailable());
+    }
 }

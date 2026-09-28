@@ -37,6 +37,7 @@ public final class BaritoneWorldView implements WorldView {
     private final StationFinder stations;
     private final int stationRadius;
     private final Map<String, Double> blocks = new HashMap<>();
+    private final Map<String, Double> vertical = new HashMap<>();
     private final Map<String, Double> entities = new HashMap<>();
     private final Map<String, Boolean> stationCache = new HashMap<>();
 
@@ -49,6 +50,11 @@ public final class BaritoneWorldView implements WorldView {
     @Override
     public double distanceToBlock(String block) {
         return onGameThread(() -> blocks.computeIfAbsent(block, this::scanBlock));
+    }
+
+    double verticalDistanceToBlock(String block) {
+        distanceToBlock(block);
+        return vertical.getOrDefault(block, 0.0);
     }
 
     @Override
@@ -66,19 +72,29 @@ public final class BaritoneWorldView implements WorldView {
         if (block == null || ctx.player() == null || ctx.world() == null) return Double.POSITIVE_INFINITY;
         Vec3 from = ctx.player().position();
         double best = Double.POSITIVE_INFINITY;
+        double depth = 0;
         for (BlockPos pos : BaritoneAPI.getProvider().getWorldScanner().scanChunkRadius(
                 ctx, new BlockOptionalMetaLookup(block), SCAN_MAX, -1, SCAN_CHUNKS)) {
-            best = Math.min(best, Vec3.atCenterOf(pos).distanceTo(from));
+            double distance = Vec3.atCenterOf(pos).distanceTo(from);
+            if (distance < best) {
+                best = distance;
+                depth = Math.abs(pos.getY() - from.y);
+            }
         }
         if (CachedChunk.BLOCKS_TO_KEEP_TRACK_OF.contains(block)) {
             IWorldData data = ctx.worldData();
             if (data != null) {
                 BlockPos feet = ctx.playerFeet();
                 for (BlockPos pos : data.getCachedWorld().getLocationsOf(BlockUtils.blockToString(block), SCAN_MAX, feet.getX(), feet.getZ(), 2)) {
-                    best = Math.min(best, Vec3.atCenterOf(pos).distanceTo(from));
+                    double distance = Vec3.atCenterOf(pos).distanceTo(from);
+                    if (distance < best) {
+                        best = distance;
+                        depth = Math.abs(pos.getY() - from.y);
+                    }
                 }
             }
         }
+        vertical.put(id, depth);
         return best;
     }
 

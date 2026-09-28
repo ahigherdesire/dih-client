@@ -22,6 +22,8 @@ public final class PlannerCosts {
     public static final double KILL_TICKS = 100;
     /** Setting up (or walking back to) a crafting table or furnace. */
     public static final double STATION_TICKS = 20;
+    /** Break and pick up a station already placed by this acquire. */
+    public static final double RETRIEVE_TICKS = 12;
     // Smelting costs the recipe's cookTicks per item.
 
     private PlannerCosts() {

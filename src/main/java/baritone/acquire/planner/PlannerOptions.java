@@ -6,6 +6,10 @@ package baritone.acquire.planner;
  * @param maxDepth           recursion limit for sub-goals
  * @param maxSteps           give up (with a "missing" reason) past this many steps
  */
-public record PlannerOptions(boolean allowPlaceStations, boolean allowKill, int maxDepth, int maxSteps) {
-    public static final PlannerOptions DEFAULT = new PlannerOptions(true, true, 24, 200);
+public record PlannerOptions(boolean allowPlaceStations, boolean allowKill, int maxDepth, int maxSteps, boolean gearUp) {
+    public PlannerOptions(boolean allowPlaceStations, boolean allowKill, int maxDepth, int maxSteps) {
+        this(allowPlaceStations, allowKill, maxDepth, maxSteps, true);
+    }
+
+    public static final PlannerOptions DEFAULT = new PlannerOptions(true, true, 24, 200, true);
 }

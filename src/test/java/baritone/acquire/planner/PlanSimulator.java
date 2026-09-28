@@ -52,6 +52,8 @@ final class PlanSimulator {
         Map<String, Integer> crafted = new HashMap<>();
         Set<String> placed = new HashSet<>();
         Set<String> setUp = new HashSet<>();
+        Set<String> owned = new HashSet<>();
+        boolean moved = false;
         List<Step> steps = plan.steps();
         for (int i = 0; i < steps.size(); i++) {
             Step step = steps.get(i);
@@ -69,12 +71,16 @@ final class PlanSimulator {
                     inv.put(m.item(), m.untilCount());
                     mined.merge(m.item(), gained, Integer::sum);
                     setUp.clear();
+                    placed.clear();
+                    moved = true;
                 }
                 case Step.Kill k -> {
                     int gained = k.untilCount() - count(inv, k.item());
                     assertTrue(gained > 0, at + ": nothing to kill for");
                     inv.put(k.item(), k.untilCount());
                     setUp.clear();
+                    placed.clear();
+                    moved = true;
                 }
                 case Step.Craft c -> {
                     CraftSource r = c.recipe();
@@ -104,9 +110,18 @@ final class PlanSimulator {
                     assertEquals(s.untilCount(), count(inv, r.output()), at + ": untilCount");
                 }
                 case Step.PlaceStation p -> {
-                    if (!placed.contains(p.station()) && !world.stationNearby(p.station())) take(inv, p.station(), 1, at);
+                    if (!placed.contains(p.station()) && (moved || !world.stationNearby(p.station()))) {
+                        take(inv, p.station(), 1, at);
+                        owned.add(p.station());
+                    }
                     placed.add(p.station());
                     setUp.add(p.station());
+                }
+                case Step.RetrieveStation r -> {
+                    assertTrue(owned.remove(r.station()), at + ": station was not placed by this plan");
+                    inv.merge(r.station(), 1, Integer::sum);
+                    placed.remove(r.station());
+                    setUp.remove(r.station());
                 }
             }
         }
