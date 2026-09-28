@@ -14,7 +14,8 @@
       "baritone.guardian.GuardianGameTest",
       "baritone.guardian.AcquireRealWorldGameTest",
       "dihclient.gui.screen.DonateScreenGameTest",
-      "dihclient.trade.TradeGameTest"
+      "dihclient.trade.TradeGameTest",
+      "dihclient.gui.UiWinsGameTest"
     ]
   },
   "depends": {
