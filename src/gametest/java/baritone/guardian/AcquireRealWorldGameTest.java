@@ -44,6 +44,7 @@ public final class AcquireRealWorldGameTest implements FabricClientGameTest {
                 .create()) {
             context.waitFor(client -> client.player != null && client.level != null);
             world.getServer().runCommand("/time set 13000");
+            context.runOnClient(client -> guardian().log().clear());
             context.waitTicks(100);
             List<String> report = new ArrayList<>();
             int[] deaths = {0};

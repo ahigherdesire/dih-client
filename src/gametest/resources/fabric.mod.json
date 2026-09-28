@@ -12,10 +12,11 @@
       "baritone.acquire.exec.AcquireHealingGameTest",
       "baritone.acquire.exec.AcquireNormalMealGameTest",
       "baritone.guardian.GuardianGameTest",
-      "baritone.guardian.AcquireRealWorldGameTest",
       "dihclient.gui.screen.DonateScreenGameTest",
       "dihclient.trade.TradeGameTest",
-      "dihclient.gui.UiWinsGameTest"
+      "dihclient.gui.UiWinsGameTest",
+      "dihclient.gui.PaletteTourGameTest",
+      "baritone.guardian.AcquireRealWorldGameTest"
     ]
   },
   "depends": {
