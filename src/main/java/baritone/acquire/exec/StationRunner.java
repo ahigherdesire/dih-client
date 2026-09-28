@@ -94,7 +94,7 @@ final class StationRunner extends RunnerBase {
                     } else {
                         return Result.failed("can't get the " + name() + " onto the hotbar");
                     }
-                    if (!findSpot()) return Result.failed("no free spot on solid ground next to you to place a " + name());
+                    if (!findSpot()) return Result.failed("no free spot next to you to place a " + name());
                     state = State.LOOK;
                     ticks = 0;
                 }
@@ -126,46 +126,58 @@ final class StationRunner extends RunnerBase {
     }
 
     /**
-     * An air (or replaceable) block next to the player with a solid, non-interactive floor, not inside the
-     * player or a mob, whose floor top face the player can see. Sets {@link #placeAt}, the hit and rotation.
+     * Where the station goes: an air (or replaceable) block near the player, not inside the player or a mob, placed
+     * against a sturdy, non-interactive face the player can see. A floor is preferred; underground a wall or ceiling
+     * face will do, and in a shaft dug straight down the space above the head is the only free spot. Sets
+     * {@link #placeAt}, the hit and rotation.
      */
     private boolean findSpot() {
-        Level level = ctx.world();
-        BlockPos feet = ctx.playerFeet();
-        AABB self = ctx.player().getBoundingBox();
-        double reach = x.reach() - 0.3;
-        for (int r = 1; r <= 2; r++) {
-            for (int dy : new int[]{0, -1, 1}) {
-                for (int dx = -r; dx <= r; dx++) {
-                    for (int dz = -r; dz <= r; dz++) {
-                        if (Math.max(Math.abs(dx), Math.abs(dz)) != r) continue;
-                        BlockPos pos = feet.offset(dx, dy, dz);
-                        BlockState here = level.getBlockState(pos);
-                        if (!here.isAir() && !(here.canBeReplaced() && here.getFluidState().isEmpty())) continue;
-                        BlockPos floor = pos.below();
-                        BlockState under = level.getBlockState(floor);
-                        if (!under.isFaceSturdy(level, floor, Direction.UP)) continue;
-                        if (under.hasBlockEntity() || under.getMenuProvider(level, floor) != null) continue;
-                        AABB box = new AABB(pos);
-                        if (self.intersects(box)) continue;
-                        if (!level.getEntities(ctx.player(), box, e -> !(e instanceof ItemEntity) && !e.isSpectator()).isEmpty()) continue;
-                        Vec3 face = new Vec3(floor.getX() + 0.5, floor.getY() + 1.0, floor.getZ() + 0.5);
-                        if (ctx.playerHead().distanceTo(face) > reach) continue;
-                        Rotation rot = RotationUtils.calcRotationFromVec3d(ctx.playerHead(), face, ctx.playerRotations());
-                        HitResult hit = RayTraceUtils.rayTraceTowards(ctx.player(), rot, x.reach());
-                        if (!(hit instanceof BlockHitResult blockHit) || hit.getType() != HitResult.Type.BLOCK) continue;
-                        boolean onFloor = blockHit.getBlockPos().equals(floor) && blockHit.getDirection() == Direction.UP;
-                        boolean onSpot = blockHit.getBlockPos().equals(pos); // e.g. short grass, which the placement replaces
-                        if (!onFloor && !onSpot) continue;
-                        placeAt = pos.immutable();
-                        placeHit = blockHit;
-                        placeRot = rot;
-                        return true;
+        for (Direction support : SUPPORTS) {
+            for (int r = 1; r <= 2; r++) {
+                for (int dy : new int[]{0, -1, 1}) {
+                    for (int dx = -r; dx <= r; dx++) {
+                        for (int dz = -r; dz <= r; dz++) {
+                            if (Math.max(Math.abs(dx), Math.abs(dz)) == r && trySpot(dx, dy, dz, support)) return true;
+                        }
                     }
                 }
             }
+            if (trySpot(0, 2, 0, support)) return true;
         }
         return false;
+    }
+
+    /** Faces to place against, most natural first: the floor, then walls, then the ceiling. */
+    private static final Direction[] SUPPORTS = {
+        Direction.DOWN, Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST, Direction.UP
+    };
+
+    /** Whether the block at feet + (dx, dy, dz) can take the station against its {@code side} neighbour. */
+    private boolean trySpot(int dx, int dy, int dz, Direction side) {
+        Level level = ctx.world();
+        BlockPos pos = ctx.playerFeet().offset(dx, dy, dz);
+        BlockState here = level.getBlockState(pos);
+        if (!here.isAir() && !(here.canBeReplaced() && here.getFluidState().isEmpty())) return false;
+        BlockPos support = pos.relative(side);
+        Direction face = side.getOpposite();
+        BlockState against = level.getBlockState(support);
+        if (!against.isFaceSturdy(level, support, face)) return false;
+        if (against.hasBlockEntity() || against.getMenuProvider(level, support) != null) return false;
+        AABB box = new AABB(pos);
+        if (ctx.player().getBoundingBox().intersects(box)) return false;
+        if (!level.getEntities(ctx.player(), box, e -> !(e instanceof ItemEntity) && !e.isSpectator()).isEmpty()) return false;
+        Vec3 aim = Vec3.atCenterOf(support).add(face.getStepX() * 0.5, face.getStepY() * 0.5, face.getStepZ() * 0.5);
+        if (ctx.playerHead().distanceTo(aim) > x.reach() - 0.3) return false;
+        Rotation rot = RotationUtils.calcRotationFromVec3d(ctx.playerHead(), aim, ctx.playerRotations());
+        HitResult hit = RayTraceUtils.rayTraceTowards(ctx.player(), rot, x.reach());
+        if (!(hit instanceof BlockHitResult blockHit) || hit.getType() != HitResult.Type.BLOCK) return false;
+        boolean onFace = blockHit.getBlockPos().equals(support) && blockHit.getDirection() == face;
+        boolean onSpot = blockHit.getBlockPos().equals(pos); // e.g. short grass, which the placement replaces
+        if (!onFace && !onSpot) return false;
+        placeAt = pos.immutable();
+        placeHit = blockHit;
+        placeRot = rot;
+        return true;
     }
 
     private String name() {
