@@ -892,6 +892,9 @@ public class DihOverlayManager {
 
     public boolean handleKeyPressed(int keyCode, int scanCode, int modifiers) {
         if (PackHideState.isActive()) return false;
+        if (dihclient.palette.DihCommandPalette.isShortcut(keyCode, modifiers) && dihclient.palette.DihCommandPalette.openFromKey()) {
+            return true;
+        }
         for (int i = overlays.size() - 1; i >= 0; i--) {
             IDihOverlay overlay = overlays.get(i);
             if (isOverlayInteractive(overlay) && overlay.wantsKeyboardCapture()) {

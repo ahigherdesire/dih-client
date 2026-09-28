@@ -32,7 +32,8 @@ public final class DihBindUtil {
             int button = decodeMouseButton(bindCode);
             return isAllowedMouseButton(button) && GLFW.glfwGetMouseButton(handle, button) == GLFW.GLFW_PRESS;
         }
-        return GLFW.glfwGetKey(handle, bindCode) == GLFW.GLFW_PRESS;
+        // Same GLFW check, through Minecraft's wrapper so simulated input (game tests) reaches DIH binds too.
+        return com.mojang.blaze3d.platform.InputConstants.isKeyDown(client.getWindow(), bindCode);
     }
 
     public static String getBindName(int bindCode) {

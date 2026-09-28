@@ -183,6 +183,8 @@ public class DihModuleScreen extends DihScreen {
 
     @Override
     public boolean keyPressed(KeyEvent input) {
+        if (!blocksGlobalKeybinds() && dihclient.palette.DihCommandPalette.isShortcut(input.key(), input.modifiers())
+            && dihclient.palette.DihCommandPalette.openFromKey()) return true;
         if (packetSelectorOverlay != null && packetSelectorOverlay.isVisible() && packetSelectorOverlay.keyPressed(input.key(), input.scancode(), input.modifiers())) return true;
         if (menu != null && !menu.hasTopLayer() && DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) return true;
         if (menu != null && menu.keyPressed(input.key(), input.scancode(), input.modifiers())) return true;

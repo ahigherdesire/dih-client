@@ -140,6 +140,12 @@ public final class DihConfig implements Cloneable {
     public int keybindToggleLogger = -1;
     public int keybindToggleSend = -1;
     public int keybindToggleDelay = -1;
+    /** Opens the command palette; a printable key needs Ctrl held (so the default is Ctrl+K). */
+    public int keybindCommandPalette = org.lwjgl.glfw.GLFW.GLFW_KEY_K;
+    /** Palette entries run most recently (action ids, newest first), which rank higher next time. */
+    public List<String> paletteRecent = new ArrayList<>();
+    /** The first-run tour version this player has seen; below {@code DihTour.TOUR_VERSION} shows it. */
+    public int tourCompletedVersion = 0;
 
     public boolean keybindInsideGui = false;
 
@@ -486,6 +492,7 @@ public final class DihConfig implements Cloneable {
         if (windowLayouts == null) windowLayouts = new LinkedHashMap<>();
         windowLayouts.values().removeIf(java.util.Objects::isNull);
         if (collapsedMacroFolders == null) collapsedMacroFolders = new ArrayList<>();
+        if (paletteRecent == null) paletteRecent = new ArrayList<>();
         uiTextScale = DihUiScale.normalizeTextScale(uiTextScale);
         if (moduleCategoryOrder == null) moduleCategoryOrder = new LinkedHashMap<>();
         if (hudElements == null) hudElements = new LinkedHashMap<>();
