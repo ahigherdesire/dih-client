@@ -201,7 +201,14 @@ sourceSets {
 }
 
 sourceSets.named("gametest") {
+    compileClasspath += sourceSets["api"].output
     runtimeClasspath += sourceSets["launch"].output + sourceSets["api"].output
+}
+
+// Unit tests can check Baritone settings (e.g. that older settings files still load).
+sourceSets.named("test") {
+    compileClasspath += sourceSets["api"].output
+    runtimeClasspath += sourceSets["api"].output
 }
 
 val generateVanillaUiAssets by tasks.registering {

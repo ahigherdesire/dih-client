@@ -209,6 +209,7 @@ final class AcquirePlannerTest {
         assertFalse(plan.complete());
         assertTrue(plan.missing().contains("no crafting table nearby and placing stations is off"));
     }
+
     @Test
     void sixtyFourTorches() {
         Plan plan = planner().plan(TORCH, 64, InventorySnapshot.empty());
@@ -355,6 +356,7 @@ final class AcquirePlannerTest {
         assertTrue(lines.get(0).startsWith("1. mine "), lines.get(0));
         assertEquals("already have 1 stick", AcquirePlanner.explain(planner().plan(STICK, 1, inv(STICK, 1))));
     }
+
     @Test
     void carriesCraftingTableAcrossDistantMiningLegs() {
         Plan plan = planner().plan(IRON_PICKAXE, 1, InventorySnapshot.empty());
@@ -379,6 +381,7 @@ final class AcquirePlannerTest {
         assertTrue(replacements > 0,
                 "one wooden pickaxe has only 59 uses, before pathing allowance:\n" + AcquirePlanner.explain(plan));
     }
+
     @Test
     void plansReplacementForARealNearlyBrokenPickaxe() {
         InventorySnapshot start = new InventorySnapshot(Map.of(WOODEN_PICKAXE, 1), Map.of(WOODEN_PICKAXE, 4));

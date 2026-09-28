@@ -335,6 +335,7 @@ public final class AcquirePlanner {
                 s.release(goal, goalCount);
             }
         }
+
         private boolean kill(PlanState s, KillOption k, int need) {
             KillSource src = k.source();
             s.inv.add(src.output(), need);
@@ -523,6 +524,7 @@ public final class AcquirePlanner {
                 toolStack.remove(toolStack.size() - 1);
             }
         }
+
         private List<String> tools(String type, int minTier) {
             return toolCache.computeIfAbsent(type + '#' + minTier, key -> {
                 List<String> t = knowledge.toolsOf(type, minTier);
@@ -581,6 +583,7 @@ public final class AcquirePlanner {
                 return s.fail("the plan needs more than " + options.maxSteps() + " steps");
             return true;
         }
+
         private int findEarlier(PlanState s, Predicate<Step> match) {
             for (int i = 0; i < s.steps.size(); i++) if (match.test(s.steps.get(i).step())) return i;
             return -1;

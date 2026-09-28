@@ -1,7 +1,6 @@
 package baritone.acquire;
 
 import baritone.Baritone;
-import baritone.api.BaritoneAPI;
 import dihclient.util.DihConfig;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;

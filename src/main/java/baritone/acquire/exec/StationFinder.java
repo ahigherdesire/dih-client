@@ -82,6 +82,7 @@ final class StationFinder {
         Set<BlockPos> own = placed.get(key(station));
         if (own != null) own.remove(pos);
     }
+
     void remember(String station, BlockPos pos) {
         placed.computeIfAbsent(key(station), k -> new LinkedHashSet<>()).add(pos.immutable());
     }

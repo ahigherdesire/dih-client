@@ -107,6 +107,7 @@ public sealed interface Step permits Step.Mine, Step.Craft, Step.Smelt, Step.Kil
         @Override public int untilCount() { return 0; }
         @Override public String describe() { return "retrieve " + shortId(station); }
     }
+
     static String shortId(String id) {
         return id.startsWith("minecraft:") ? id.substring("minecraft:".length()) : id;
     }
