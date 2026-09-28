@@ -79,6 +79,7 @@ public class DihKeybindOverlay extends DihOverlayBase {
         entries.add(new KeybindEntry("Toggle Logger", "Shows or hides the packet logger overlay", () -> getConfig().keybindToggleLogger, v -> getConfig().keybindToggleLogger = v));
         entries.add(new KeybindEntry("Toggle Send", "Turns packet sending on or off", () -> getConfig().keybindToggleSend, v -> getConfig().keybindToggleSend = v));
         entries.add(new KeybindEntry("Toggle Delay", "Turns packet delay on or off", () -> getConfig().keybindToggleDelay, v -> getConfig().keybindToggleDelay = v));
+        entries.add(new KeybindEntry("Command Palette", "Ctrl + this key opens search-everything (keys like F6 work on their own)", () -> getConfig().keybindCommandPalette, v -> getConfig().keybindCommandPalette = v));
 
         buildUi();
     }
@@ -172,6 +173,9 @@ public class DihKeybindOverlay extends DihOverlayBase {
         ));
 
         windowNode.content().add(new PrefixRowNode());
+
+        windowNode.content().add(new DirectUiButton("Replay tour", DirectUiButton.Variant.SECONDARY,
+            () -> dihclient.gui.screen.DihTour.replay(MC.gui.screen())).setGrowX(true).setButtonHeight(chooserButtonHeight()));
 
         rowNodes.clear();
         for (int i = 0; i < entries.size(); i++) {

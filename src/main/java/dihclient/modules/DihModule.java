@@ -71,6 +71,7 @@ public final class DihModule {
     private boolean toggleLoggerKeyPressed;
     private boolean toggleSendKeyPressed;
     private boolean toggleDelayKeyPressed;
+    private boolean paletteKeyPressed;
     private boolean moduleMenuKeyPressed;
     private final java.util.Map<String, Boolean> macroKeyStates = new java.util.HashMap<>();
     private List<DihMacro> cachedKeyboundMacros = List.of();
@@ -292,6 +293,8 @@ public final class DihModule {
         } else {
             autoSendTickCounter = 0;
         }
+
+        dihclient.gui.screen.DihTour.tickInWorld(MC);
 
         if (DihInputGate.canRunDihKeybinds()) {
             tickKeybinds();
@@ -1669,6 +1672,13 @@ public final class DihModule {
             moduleMenuKeyPressed = pressed;
         }
 
+        if (cfg.keybindCommandPalette != -1) {
+            boolean pressed = isBindPressed(cfg.keybindCommandPalette)
+                && (!dihclient.palette.DihCommandPalette.needsCtrl(cfg.keybindCommandPalette) || isCtrlDown());
+            if (pressed && !paletteKeyPressed && MC.gui.screen() == null) dihclient.palette.DihCommandPalette.openFromKey();
+            paletteKeyPressed = pressed;
+        }
+
         if (PackHideState.isActive()) {
             loadGuiKeyPressed = false;
             flushQueueKeyPressed = false;
@@ -1779,6 +1789,10 @@ public final class DihModule {
 
     private boolean isAnyTextFieldFocused() {
         return DihOverlayManager.get().isAnyTextFieldFocused();
+    }
+
+    private boolean isCtrlDown() {
+        return isBindPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_CONTROL) || isBindPressed(org.lwjgl.glfw.GLFW.GLFW_KEY_RIGHT_CONTROL);
     }
 
     private boolean isBindPressed(int bindCode) {

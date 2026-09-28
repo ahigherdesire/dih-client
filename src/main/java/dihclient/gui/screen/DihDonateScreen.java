@@ -82,7 +82,8 @@ public final class DihDonateScreen extends Screen {
         return new DihDonateScreen(title);
     }
 
-    private static boolean automated() {
+    /** Game tests, the audit run and dev capture tools: no welcome cards in those. */
+    public static boolean automated() {
         return System.getProperty("fabric.client.gametest") != null
             || Boolean.getBoolean("dih.auditAndExit")
             || Boolean.getBoolean("dih.dev.showcase")
@@ -96,7 +97,7 @@ public final class DihDonateScreen extends Screen {
 
     @Override
     public void onClose() {
-        this.minecraft.gui.setScreen(parent);
+        this.minecraft.gui.setScreen(DihTour.after(parent));
     }
 
     @Override public boolean isPauseScreen() { return false; }

@@ -69,6 +69,7 @@ public class DihModMenuConfigScreen extends Screen {
         keybinds.add(new Keybind("Toggle Logger", () -> cfg.keybindToggleLogger, v -> { cfg.keybindToggleLogger = v; cfg.save(); }));
         keybinds.add(new Keybind("Toggle Send", () -> cfg.keybindToggleSend, v -> { cfg.keybindToggleSend = v; cfg.save(); }));
         keybinds.add(new Keybind("Toggle Delay", () -> cfg.keybindToggleDelay, v -> { cfg.keybindToggleDelay = v; cfg.save(); }));
+        keybinds.add(new Keybind("Command Palette (Ctrl+)", () -> cfg.keybindCommandPalette, v -> { cfg.keybindCommandPalette = v; cfg.save(); }));
     }
 
     @Override
@@ -173,6 +174,7 @@ public class DihModMenuConfigScreen extends Screen {
 
         for (int i = 0; i < keybinds.size(); i++) out.add(keybindRow(i));
 
+        out.add(actionRow("Replay Tour", () -> dihclient.gui.screen.DihTour.replay(this)));
         out.add(actionRow("Theme Color", () -> this.minecraft.gui.setScreen(new DihThemeColorScreen(this))));
         out.add(actionRow("Addons", () -> this.minecraft.gui.setScreen(new DihAddonsScreen(this))));
         out.add(splitRow("Website", () -> DihLinks.open(DihLinks.WEBSITE),
