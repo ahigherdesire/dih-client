@@ -65,11 +65,14 @@ public final class Reroller {
     private MerchantBuyer buyer;
     /** Set once a purchase has started on the open screen. */
     private boolean buying;
+    /** Where the player stood when the reroll started: somewhere to step back to, clear of the workstation. */
+    private final BlockPos standAt;
     private String status = "opening trades";
     private String locked;
 
     private Reroller(Villager villager, BlockPos workstation, Item item, Holder<VillagerProfession> profession,
-                     TradeRule rule, TradeBudget budget) {
+                     TradeRule rule, TradeBudget budget, BlockPos standAt) {
+        this.standAt = standAt;
         this.villager = villager;
         this.workstation = workstation;
         this.workstationItem = item;
@@ -98,7 +101,7 @@ public final class Reroller {
         BlockPos station = findWorkstation(mc, target, profession);
         if (station == null) throw new IllegalStateException("no workstation for its job within 4 blocks of it");
         Item item = mc.level.getBlockState(station).getBlock().asItem();
-        return new Reroller(target, station, item, profession, rule, budget);
+        return new Reroller(target, station, item, profession, rule, budget, player.blockPosition());
     }
 
     private static BlockPos findWorkstation(Minecraft mc, Villager villager, Holder<VillagerProfession> profession) {
@@ -247,6 +250,14 @@ public final class Reroller {
                 if (!mc.level.getBlockState(workstation).isAir()) {
                     phase = Phase.WAIT_GAIN;
                     ticks = 0;
+                    return State.WORKING;
+                }
+                if (player.getBoundingBox().intersects(new net.minecraft.world.phys.AABB(workstation))) {
+                    // Picking the workstation up walked us into its spot; nothing can be placed inside the player.
+                    if (ticks % 20 == 1) BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess()
+                            .setGoalAndPath(new GoalBlock(standAt));
+                    if (ticks > COLLECT_TIMEOUT) return fail("couldn't step out of the workstation spot");
+                    status = "reroll " + rerolls + ": stepping back";
                     return State.WORKING;
                 }
                 if (player.getEyePosition().distanceTo(Vec3.atCenterOf(workstation)) > REACH + 0.5) {
