@@ -1,7 +1,11 @@
 package baritone.acquire.knowledge;
 
+import baritone.acquire.model.InventorySnapshot;
 import baritone.acquire.model.MineSource;
+import baritone.acquire.model.Step;
 import baritone.acquire.model.ToolReq;
+import baritone.acquire.planner.AcquirePlanner;
+import baritone.acquire.planner.PlannerOptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -60,5 +64,14 @@ final class VanillaKnowledgeRuntimeTest {
         assertTrue(VanillaData.looksComplete(pack), "pack fallback found " + pack.size() + " files");
         assertTrue(pack.containsKey("data/minecraft/recipe/stick.json"));
         assertTrue(pack.containsKey("data/minecraft/loot_table/blocks/stone.json"));
+    }
+
+    @Test void emptyInventoryPlansSurviveRealToolDurability() {
+        AcquirePlanner planner = new AcquirePlanner(knowledge, WorldView.UNKNOWN, PlannerOptions.DEFAULT);
+        for (String goal : new String[]{"minecraft:iron_pickaxe", "minecraft:diamond"}) {
+            var plan = planner.plan(goal, goal.endsWith("diamond") ? 3 : 1, InventorySnapshot.empty());
+            assertTrue(plan.complete(), () -> goal + ": " + plan.missing() + "\n" + AcquirePlanner.explain(plan));
+            assertTrue(plan.steps().stream().anyMatch(step -> step instanceof Step.Mine), goal);
+        }
     }
 }

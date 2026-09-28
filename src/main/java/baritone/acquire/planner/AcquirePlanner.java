@@ -472,6 +472,7 @@ public final class AcquirePlanner {
             if (!gates(tool)) return Integer.MAX_VALUE;
             int total = 0;
             for (String id : tools(tool.type(), tool.minTier())) {
+                if (s.inv.count(id) <= 0) continue;
                 int max = ToolDurability.maxUses(id);
                 if (max <= 0) return Integer.MAX_VALUE;
                 int reserve = (int) Math.ceil(max * 0.10) * s.inv.count(id);
@@ -488,6 +489,7 @@ public final class AcquirePlanner {
             if (available < needed && !obtainTool(s, tool.type(), tool.minTier(), needed - available)) return false;
             if (availableToolUses(s, tool) < needed) return s.fail("not enough durability for " + blocks + " blocks");
             for (String id : tools(tool.type(), tool.minTier())) {
+                if (s.inv.count(id) <= 0) continue;
                 int max = ToolDurability.maxUses(id);
                 if (max <= 0) return true;
                 int reserve = (int) Math.ceil(max * 0.10) * s.inv.count(id);

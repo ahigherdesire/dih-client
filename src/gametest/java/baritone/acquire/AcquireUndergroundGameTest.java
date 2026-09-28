@@ -50,6 +50,7 @@ public final class AcquireUndergroundGameTest implements FabricClientGameTest {
             } else {
                 world.getServer().runCommand("/execute in minecraft:overworld run fill 36 80 -4 53 99 4 minecraft:stone");
                 world.getServer().runCommand("/execute in minecraft:overworld run fill 42 86 -2 53 86 2 minecraft:iron_ore");
+                world.getServer().runCommand("/execute in minecraft:overworld run fill 42 87 3 53 87 3 minecraft:coal_ore");
             }
             context.waitTicks(20);
             int[] oldMax = {0};
@@ -93,6 +94,9 @@ public final class AcquireUndergroundGameTest implements FabricClientGameTest {
                 if (planText[0].contains("craft 1 iron_helmet")
                         && !client.player.getItemBySlot(EquipmentSlot.HEAD).is(Items.IRON_HELMET))
                     throw new AssertionError("Planned iron helmet was not worn\n" + String.join("\n", events));
+                if (planText[0].contains("craft 1 iron_boots")
+                        && !client.player.getItemBySlot(EquipmentSlot.FEET).is(Items.IRON_BOOTS))
+                    throw new AssertionError("Planned iron boots were not worn\n" + String.join("\n", events));
                 if (planText[0].contains("craft 1 shield") && !client.player.getOffhandItem().is(Items.SHIELD))
                     throw new AssertionError("Planned shield was not equipped\n" + String.join("\n", events));
             });
