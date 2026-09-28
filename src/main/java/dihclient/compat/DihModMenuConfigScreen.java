@@ -155,11 +155,15 @@ public class DihModMenuConfigScreen extends Screen {
         out.add(toggleRow("Auto Probe Plugins", () -> cfg.autoProbePlugins, v -> { cfg.autoProbePlugins = v; cfg.save(); }));
         out.add(toggleRow("InfiniChat", () -> cfg.infiniChat, v -> { cfg.infiniChat = v; cfg.save(); }));
         out.add(toggleRow("Stop On Leave", () -> cfg.stopMacroOnLeave, v -> { cfg.stopMacroOnLeave = v; cfg.save(); }));
+        out.add(toggleRow("Chat Feedback", () -> cfg.moduleToggleChat, v -> { cfg.moduleToggleChat = v; cfg.save(); }));
         out.add(toggleRow("Update Check", () -> cfg.updateCheck, v -> { cfg.updateCheck = v; cfg.save(); }));
 
         out.add(cycleRow("Overlay Scale", DihUiScale.getOverlayScaleLabel(),
             () -> DihUiScale.setOverlayScaleMultiplier(DihUiScale.nextOverlayScaleMultiplier()),
             () -> DihUiScale.setOverlayScaleMultiplier(DihUiScale.previousOverlayScaleMultiplier())));
+        out.add(cycleRow("Text Size", DihUiScale.formatTextScale(DihUiScale.getTextScale()),
+            () -> DihUiScale.setTextScale(DihUiScale.nextTextScale(DihUiScale.getTextScale())),
+            () -> DihUiScale.setTextScale(DihUiScale.previousTextScale(DihUiScale.getTextScale()))));
 
         List<String> prefixes = new ArrayList<>(DihCompatManager.COMMAND_PREFIX_CHOICES);
         if (DihCompatManager.isMeteorAvailable()) prefixes.remove(".");

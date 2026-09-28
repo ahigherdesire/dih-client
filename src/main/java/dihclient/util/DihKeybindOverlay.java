@@ -111,7 +111,32 @@ public class DihKeybindOverlay extends DihOverlayBase {
             ));
         }
 
-        windowNode.content().add(new ScaleRowNode());
+        windowNode.content().add(new ScaleRowNode(
+            "Overlay Scale",
+            "Scales every Dih overlay/window. Left-click increases, right-click decreases. 1x is default; 1.5x/2x are for 4K/high-DPI screens.",
+            DihUiScale::getOverlayScaleMultiplier,
+            DihUiScale::formatOverlayScale,
+            up -> DihUiScale.setOverlayScaleMultiplier(up ? DihUiScale.nextOverlayScaleMultiplier() : DihUiScale.previousOverlayScaleMultiplier())));
+        windowNode.content().add(new ScaleRowNode(
+            "Text Size",
+            "Makes Dih text bigger or smaller (80%-150%); windows grow with it so nothing is cut off. Left-click increases, right-click decreases.",
+            DihUiScale::getTextScale,
+            DihUiScale::formatTextScale,
+            up -> {
+                double current = DihUiScale.getTextScale();
+                DihUiScale.setTextScale(up ? DihUiScale.nextTextScale(current) : DihUiScale.previousTextScale(current));
+            }));
+
+        windowNode.content().add(new ToggleRowNode(
+            "Chat Feedback",
+            "Say in chat when a module is turned on or off. Pop-up toasts are not affected.",
+            () -> getConfig().moduleToggleChat,
+            v -> {
+                DihConfig config = getConfig();
+                config.moduleToggleChat = v;
+                config.save();
+            }
+        ));
 
         windowNode.content().add(new ToggleRowNode(
             "Auto Probe",
@@ -722,14 +747,19 @@ public class DihKeybindOverlay extends DihOverlayBase {
         }
     }
 
+    /** A label and a button that steps a scale up (left-click) or down (right-click). */
     private final class ScaleRowNode extends DirectFormRow {
         private final DirectUiLabel labelNode;
         private final DirectUiButton scaleButton;
-        private final String tooltip = "Scales every Dih overlay/window. Left-click increases, right-click decreases. 1x is default; 1.5x/2x are for 4K/high-DPI screens.";
+        private final String tooltip;
+        private final java.util.function.DoubleSupplier value;
+        private final java.util.function.DoubleFunction<String> format;
+        private final java.util.function.Consumer<Boolean> step;
 
-        private ScaleRowNode() {
+        private ScaleRowNode(String label, String tooltip, java.util.function.DoubleSupplier value,
+                             java.util.function.DoubleFunction<String> format, java.util.function.Consumer<Boolean> step) {
             super(
-                new DirectUiLabel("Overlay Scale", UiTone.BODY).setTrimToBounds(true),
+                new DirectUiLabel(label, UiTone.BODY).setTrimToBounds(true),
                 new DirectUiButton("1x", DirectUiButton.Variant.SECONDARY, null)
                     .setPreferredWidth(bindButtonWidth())
                     .setMinWidth(bindButtonWidth())
@@ -739,10 +769,14 @@ public class DihKeybindOverlay extends DihOverlayBase {
                     .setConnectedEdges(dihclient.gui.vanillaui.components.ConnectedButton.FULL)
                     .setTextYOffset(0)
             );
+            this.tooltip = tooltip;
+            this.value = value;
+            this.format = format;
+            this.step = step;
             this.labelNode = (DirectUiLabel) labelNode();
             this.scaleButton = (DirectUiButton) controlNode();
             this.scaleButton.setOnPress(() -> {
-                DihUiScale.setOverlayScaleMultiplier(DihUiScale.nextOverlayScaleMultiplier());
+                step.accept(true);
                 surface.invalidateLayout();
             });
             this.height = ROW_HEIGHT;
@@ -765,8 +799,8 @@ public class DihKeybindOverlay extends DihOverlayBase {
 
         @Override
         public void render(DirectRenderContext context) {
-            double scale = DihUiScale.getOverlayScaleMultiplier();
-            scaleButton.setText(DihUiScale.formatOverlayScale(scale));
+            double scale = value.getAsDouble();
+            scaleButton.setText(format.apply(scale));
             scaleButton.setVariant(scale > 1.0 ? DirectUiButton.Variant.PRIMARY : DirectUiButton.Variant.SECONDARY);
             super.render(context);
             if (labelNode.contains(context.mouseX(), context.mouseY())) {
@@ -779,9 +813,7 @@ public class DihKeybindOverlay extends DihOverlayBase {
         @Override
         public boolean mouseClicked(DirectRenderContext context, float mouseX, float mouseY, int button) {
             if ((button == 0 || button == 1) && scaleButton.contains(mouseX, mouseY)) {
-                DihUiScale.setOverlayScaleMultiplier(button == 1
-                    ? DihUiScale.previousOverlayScaleMultiplier()
-                    : DihUiScale.nextOverlayScaleMultiplier());
+                step.accept(button == 0);
                 surface.invalidateLayout();
                 return true;
             }
