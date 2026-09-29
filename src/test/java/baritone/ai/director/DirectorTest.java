@@ -139,6 +139,13 @@ final class DirectorTest {
     }
 
     @Test
+    void theSmartDirectorPlansBeatingTheGameAsOneBeatStage() {
+        String prompt = LlmDirector.systemPrompt(baritone.ai.tool.ToolRegistry.standard(), "", 10);
+        assertTrue(prompt.contains("beat_stage (") || prompt.contains("beat_stage:") || prompt.contains("- beat_stage"), "listed as a job tool");
+        assertTrue(prompt.contains("beat the game") && prompt.contains("#beat campaign"), "and when to use it");
+    }
+
+    @Test
     void aDangerousStepWaitsForThePlayer() {
         FakeLlm model = new FakeLlm().plan("""
                 {"summary":"ask","steps":[{"tool":"whisper","args":{"player":"Alex","message":"hi"},"reason":"asked to"}]}""");

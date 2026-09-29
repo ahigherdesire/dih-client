@@ -4,7 +4,9 @@ import baritone.Baritone;
 import baritone.acquire.AcquireControl;
 import baritone.acquire.knowledge.Knowledge;
 import baritone.acquire.knowledge.VanillaKnowledge;
+import baritone.acquire.model.Goal;
 import baritone.acquire.model.InventorySnapshot;
+import baritone.acquire.model.Location;
 import baritone.acquire.model.Plan;
 import baritone.acquire.model.Step;
 import baritone.acquire.planner.AcquirePlanner;
@@ -97,6 +99,12 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     }
 
     @Override
+    public String startGoal(Goal goal) {
+        if (goal instanceof Goal.ItemGoal item) return start(item.item(), item.count());
+        return onGameThread(() -> startGoal0(goal));
+    }
+
+    @Override
     public String plan(String itemText, int count) {
         return onGameThread(() -> plan0(itemText, count));
     }
@@ -148,19 +156,35 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         } else {
             item = resolve(k, itemText);
             want = count;
-            plan = newPlan(k, item, count);
+            plan = newPlan(k, new Goal.ItemGoal(item, count));
             if (plan.alreadyDone()) return "You already have " + count + " " + Step.shortId(item) + ".";
             if (!plan.complete()) {
                 throw new IllegalArgumentException("Can't get " + count + " " + Step.shortId(item) + ": " + String.join("; ", plan.missing()));
             }
         }
+        return begin(k, new Goal.ItemGoal(item, want), plan, food);
+    }
+
+    /** A goal that isn't an item. Its label never counts as held, so the run walks its steps (and stops honestly). */
+    private String startGoal0(Goal goal) {
+        if (ctx.player() == null || ctx.world() == null) throw new IllegalArgumentException("Join a world first.");
+        Knowledge k = knowledge();
+        Plan plan = newPlan(k, goal);
+        if (plan.alreadyDone()) return "Already done: " + goal.label() + ".";
+        if (!plan.complete()) throw new IllegalArgumentException("Can't plan " + goal.label() + ": " + String.join("; ", plan.missing()));
+        return begin(k, goal, plan, false);
+    }
+
+    private String begin(Knowledge k, Goal goal, Plan plan, boolean food) {
+        String item = goal.label();
+        int want = goal.count();
         if (run != null) finish(AcquireEvent.Kind.STOPPED, "Stopped acquiring " + run.count + " " + Step.shortId(run.goal) + ".");
         // Starting a task replaces whatever Baritone was doing, like every other Baritone command.
         if (baritone.getPathingControlManager().mostRecentInControl().isPresent()) baritone.getPathingBehavior().cancelEverything();
 
         stations.newRun();
         exec = new ExecContext(baritone, k, stations, this::neededItems);
-        run = new AcquireRun(item, want, plan);
+        run = new AcquireRun(goal, plan);
         runner = null;
         waitingForRespawn = false;
         lastPlayer = ctx.player();
@@ -184,7 +208,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             return String.join("\n", lines);
         }
         String item = resolve(k, itemText);
-        Plan plan = newPlan(k, item, count);
+        Plan plan = newPlan(k, new Goal.ItemGoal(item, count));
         String name = count + " " + Step.shortId(item);
         if (plan.alreadyDone()) return "You already have " + name + ".";
         List<String> lines = new ArrayList<>();
@@ -243,17 +267,23 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         });
     }
 
-    private Plan newPlan(Knowledge k, String item, int count) {
+    private Plan newPlan(Knowledge k, Goal goal) {
         InventorySnapshot inventory = InventoryReader.snapshot(ctx.player());
         BaritoneWorldView world = new BaritoneWorldView(ctx, stations, Baritone.settings().acquireStationRadius.value);
         try {
-            return new AcquirePlanner(k, world, options()).plan(item, count, inventory);
+            return new AcquirePlanner(k, world, options()).plan(goal, inventory, here());
         } catch (RuntimeException | LinkageError e) {
-            throw new IllegalArgumentException("Couldn't plan " + Step.shortId(item) + ": " + e, e);
+            throw new IllegalArgumentException("Couldn't plan " + Step.shortId(goal.label()) + ": " + e, e);
         }
     }
 
-    static PlannerOptions options() {
+    /** The dimension the player is in, for the planner. */
+    Location here() {
+        return BaritoneWorldView.dimension(ctx.world());
+    }
+
+    /** The planner options from the Baritone settings. */
+    public static PlannerOptions options() {
         Settings s = Baritone.settings();
         return new PlannerOptions(s.acquirePlaceStations.value, s.acquireKillMobs.value,
                 PlannerOptions.DEFAULT.maxDepth(), PlannerOptions.DEFAULT.maxSteps(), s.acquireGearUp.value);
@@ -451,7 +481,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         }
         Plan plan;
         try {
-            plan = newPlan(knowledge(), run.goal, run.count);
+            plan = newPlan(knowledge(), run.target);
         } catch (IllegalArgumentException e) {
             finish(AcquireEvent.Kind.FAILED, "Acquire failed: " + reason + ", and " + e.getMessage());
             return false;
@@ -481,7 +511,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             problem = "gave up after " + max + " re-plans";
         } else {
             try {
-                plan = newPlan(knowledge(), detour.goal, detour.count);
+                plan = newPlan(knowledge(), detour.target);
                 if (plan.alreadyDone()) {
                     endDetour("Got " + have(detour.goal) + " " + Step.shortId(detour.goal) + ".");
                     return false;

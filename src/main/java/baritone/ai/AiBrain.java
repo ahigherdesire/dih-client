@@ -143,7 +143,8 @@ public final class AiBrain implements Helper {
         this.memories.setWorld(currentWorldKey());
     }
 
-    private static String currentWorldKey() {
+    /** The key of the world or server being played, as memories and #beat campaigns are filed under. */
+    public static String currentWorldKey() {
         Minecraft mc = Minecraft.getInstance();
         try {
             if (mc.getSingleplayerServer() != null) {

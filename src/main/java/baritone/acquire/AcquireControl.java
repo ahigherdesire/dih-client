@@ -1,5 +1,7 @@
 package baritone.acquire;
 
+import baritone.acquire.model.Goal;
+
 import java.util.function.Consumer;
 
 /**
@@ -20,6 +22,15 @@ public interface AcquireControl {
 
     /** Plans without doing anything and returns the numbered steps (or why it can't), one per line. */
     String plan(String itemText, int count);
+
+    /**
+     * Starts a goal that may not be an item: being somewhere, or the dragon dead ({@code #beat} phases). Same
+     * contract as {@link #start}. The run stops at the first step that has no runner yet.
+     */
+    default String startGoal(Goal goal) {
+        if (goal instanceof Goal.ItemGoal item) return start(item.item(), item.count());
+        throw new IllegalArgumentException("#acquire can't do " + goal.label() + " here.");
+    }
 
     /** Stops the current acquire, if any. */
     void stop();

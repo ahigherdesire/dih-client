@@ -1,6 +1,7 @@
 package baritone.acquire.exec;
 
 import baritone.acquire.knowledge.WorldView;
+import baritone.acquire.model.Location;
 import baritone.api.BaritoneAPI;
 import baritone.api.cache.IWorldData;
 import baritone.api.utils.BlockOptionalMetaLookup;
@@ -27,6 +28,18 @@ import java.util.function.Supplier;
  * Reads the world on the game thread; a call from another thread waits for the game thread.
  */
 public final class BaritoneWorldView implements WorldView {
+
+    /** The dimension of {@code level} as a plan location (the Overworld for anything unknown or modded). */
+    public static Location dimension(net.minecraft.world.level.Level level) {
+        if (level == null) return Location.OVERWORLD;
+        String path = level.dimension().identifier().getPath();
+        return switch (path) {
+            case "the_nether" -> Location.NETHER;
+            case "the_end" -> Location.END;
+            default -> Location.OVERWORLD;
+        };
+    }
+
 
     /** Chunk radius of the loaded-chunk scan (about 80 blocks). */
     private static final int SCAN_CHUNKS = 6;

@@ -100,6 +100,7 @@ public class Baritone implements IBaritone {
     private final MenuClickProcess menuClickProcess;
     private final IElytraProcess elytraProcess;
     private final AcquireProcess acquireProcess;
+    private baritone.beat.BeatCampaign beatCampaign;
     private final GuardianProcess guardianProcess;
 
     private final PathingControlManager pathingControlManager;
@@ -154,6 +155,8 @@ public class Baritone implements IBaritone {
             this.acquireProcess          = this.registerProcess(AcquireProcess::new);
             this.guardianProcess         = this.registerProcess(GuardianProcess::new);
             this.pathingControlManager.registerProcess(this.eatBehavior.pauser()); // pauses pathing while #eat or #acquire eats
+            // #beat drives #acquire phase by phase, so it comes after the processes.
+            this.beatCampaign = this.registerBehavior(baritone.beat.BeatCampaign::new);
         }
         // #acquire for #ai and other callers. The first Baritone built is the primary one (BaritoneProvider
         // creates it before any other), so only that one is registered.
@@ -247,6 +250,11 @@ public class Baritone implements IBaritone {
 
     public MenuClickProcess getMenuClickProcess() {
         return this.menuClickProcess;
+    }
+
+    /** {@code #beat}: the campaign that beats the game. */
+    public baritone.beat.BeatCampaign getBeatCampaign() {
+        return this.beatCampaign;
     }
 
     public AcquireProcess getAcquireProcess() {

@@ -1,5 +1,6 @@
 package baritone.acquire.exec;
 
+import baritone.acquire.model.Goal;
 import baritone.acquire.model.Plan;
 import baritone.acquire.model.Step;
 
@@ -13,14 +14,21 @@ import java.util.function.ToIntFunction;
 final class AcquireRun {
     final String goal;
     final int count;
+    /** What is being planned: {@link #goal} is its label. */
+    final Goal target;
     private Plan plan;
     private int index = -1;
     private int replans;
     private int expectedRetries;
 
     AcquireRun(String goal, int count, Plan plan) {
-        this.goal = goal;
-        this.count = count;
+        this(new Goal.ItemGoal(goal, count), plan);
+    }
+
+    AcquireRun(Goal target, Plan plan) {
+        this.target = target;
+        this.goal = target.label();
+        this.count = target.count();
         this.plan = plan;
     }
 

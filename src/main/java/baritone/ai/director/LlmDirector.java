@@ -252,6 +252,8 @@ public final class LlmDirector extends RunLoop {
                 .append("cover by itself while jobs run; don't plan fights it already handles.\n");
         sb.append("- Prefer one big tool over many small ones: acquire over mining and crafting by hand, gear_up for a set ")
                 .append("of tools and armour.\n");
+        sb.append("- To beat the game or kill the ender dragon, plan one beat_stage step (action start): it runs the whole ")
+                .append("saved #beat campaign phase by phase. When it stops, beat_stage status says where and why.\n");
         sb.append("- Never use / (server) commands. run_command runs the mod's # commands only.\n");
         sb.append("- Tools marked [asks first] pause the run until the player confirms: use them only when the objective ")
                 .append("needs them.\n");

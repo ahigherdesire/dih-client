@@ -114,6 +114,22 @@ final class JobTools {
                         .build())
                 .handler(JobTools::gearUp)
                 .build());
+
+        registry.register(AiTool.builder("beat_stage", ToolCategory.JOB)
+                .summary("Beat the game (#beat): start or resume the campaign, stop it, or see its phase and plan.")
+                .description("Beat the game as a saved campaign of 8 phases: gear, a nether portal, blaze rods, pearls, "
+                        + "eyes of ender, the stronghold, the End, the dragon. start begins (or carries on with this world's "
+                        + "saved campaign) and runs until a phase finishes the game or stops with a reason; status gives "
+                        + "\"Phase 3/8: blaze rods 4/7\"; plan lists every phase's steps; resume continues after a stop.")
+                .schema(ToolSchema.builder()
+                        .enumOf("action", "What to do.", "start", "resume", "stop", "status", "plan").defaultsTo("status")
+                        .build())
+                .handler((ctx, args) -> switch (args.string("action")) {
+                    case "start" -> CommandTool.start(ctx, "beat", "beat");
+                    case "resume" -> CommandTool.start(ctx, "beat", "beat resume");
+                    default -> CommandTool.run(ctx, "beat " + args.string("action"));
+                })
+                .build());
     }
 
     /** {@code #goto} for "x y z", "x z", a Y level or a block id. */

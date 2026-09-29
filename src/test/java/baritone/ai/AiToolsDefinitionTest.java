@@ -40,7 +40,7 @@ final class AiToolsDefinitionTest {
         assertEquals(
                 List.of("run_command", "acquire", "plan_item", "find", "say", "look_around", "wait", "remember",
                         "load_tools", "list_tools", "goto", "goto_structure", "explore", "farm", "flee_to_safety", "stop",
-                        "build_schematic", "gear_up"),
+                        "build_schematic", "gear_up", "beat_stage"),
                 List.copyOf(functionsByName().keySet()));
     }
 

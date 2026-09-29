@@ -28,6 +28,9 @@ public final class BasicRules {
             "^(?:go to|goto|find|take me to|travel to|head to|walk to) (?:a |an |the )?(?:nearest |closest )?(.+)$");
     private static final Pattern FOLLOW = Pattern.compile("^follow ([A-Za-z0-9_]{1,16})$", Pattern.CASE_INSENSITIVE);
     private static final Pattern FARM = Pattern.compile("^farm(?: .*)?$");
+    private static final Pattern BEAT = Pattern.compile(
+            "^(?:beat|finish|complete|win) (?:the game|minecraft|the ender dragon|the dragon)(?: for me)?$"
+                    + "|^(?:kill|defeat|slay) (?:the )?(?:ender )?dragon$");
     private static final Pattern GET = Pattern.compile(
             "^(?:get|gather|collect|acquire|make|craft|obtain|fetch|grab|mine|smelt) (?:me )?(.+)$");
     private static final Pattern ARTICLE = Pattern.compile("^(?:a|an|some|the) ");
@@ -46,6 +49,11 @@ public final class BasicRules {
         String text = POLITE.matcher(original.toLowerCase(Locale.ROOT)).replaceFirst("");
         String originalText = original.substring(original.length() - text.length());
         if (text.isEmpty()) return null;
+
+        if (BEAT.matcher(text).matches()) {
+            return new Plan(List.of(step("beat_stage", "action", "start", "the #beat campaign beats the game phase by phase")),
+                    "Beat the game with #beat.");
+        }
 
         Matcher armour = ARMOUR.matcher(text);
         if (armour.matches()) {

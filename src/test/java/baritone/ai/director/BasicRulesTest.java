@@ -32,6 +32,14 @@ final class BasicRulesTest {
     }
 
     @Test
+    void beatingTheGameIsTheBeatCampaign() {
+        for (String objective : List.of("beat the game", "Please beat minecraft.", "beat the game for me", "kill the ender dragon",
+                "defeat the dragon", "beat the ender dragon")) {
+            assertEquals(List.of("beat_stage action=start"), steps(objective), objective);
+        }
+    }
+
+    @Test
     void getItemWithOrWithoutACount() {
         assertEquals(List.of("acquire item=minecraft:oak_log count=10"), steps("get 10 oak logs"));
         assertEquals(List.of("acquire item=minecraft:oak_log count=10"), steps("Please gather me 10 oak logs."));
@@ -68,7 +76,7 @@ final class BasicRulesTest {
         assertNull(steps("write me a poem"));
         assertNull(steps("get 10 unobtainium"));
         assertNull(steps("go to the moon"));
-        assertNull(steps("beat the game"), "until the Beat stages exist");
+        assertNull(steps("beat the game in five minutes"), "only the plain phrasings map to #beat");
         assertNull(steps(""));
     }
 }
