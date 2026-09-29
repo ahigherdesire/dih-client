@@ -28,7 +28,17 @@ public final class GuardianGameTest implements FabricClientGameTest {
     @Override
     public void runTest(ClientGameTestContext context) {
         context.runOnClient(client -> DihConfig.getGlobal().customMainMenu = false);
-        for (Threat threat : Threat.values()) scenario(context, threat);
+        // DIH_GUARDIAN_ONLY=crowd DIH_GUARDIAN_REPEAT=5 reruns one scenario to chase a flaky death.
+        String only = System.getenv("DIH_GUARDIAN_ONLY");
+        int repeat = 1;
+        try {
+            repeat = Math.max(1, Integer.parseInt(System.getenv().getOrDefault("DIH_GUARDIAN_REPEAT", "1")));
+        } catch (NumberFormatException ignored) {
+        }
+        for (Threat threat : Threat.values()) {
+            if (only != null && !threat.name().equalsIgnoreCase(only)) continue;
+            for (int run = 0; run < repeat; run++) scenario(context, threat);
+        }
         context.setScreen(TitleScreen::new);
     }
 
@@ -99,7 +109,22 @@ public final class GuardianGameTest implements FabricClientGameTest {
                     }
                 }
                 if (threat == Threat.CROWD) {
-                    context.waitFor(client -> guardian().log().recent().stream().anyMatch(e -> e.text().contains("sheltering")), 30 * 20);
+                    // Every change of health, block or status on the way down, to see what a death came from.
+                    String[] last = {""};
+                    context.waitFor(client -> {
+                        if (client.player == null) return true;
+                        String now = "hp " + Math.round(client.player.getHealth()) + " at " + client.player.blockPosition().toShortString()
+                                + " status " + guardian().status();
+                        if (!now.equals(last[0])) {
+                            last[0] = now;
+                            events.add("  tick " + client.player.tickCount + " " + now + " zombies " + client.level.getEntities(
+                                    (net.minecraft.world.entity.Entity) null, client.player.getBoundingBox().inflate(3),
+                                    e -> e.getType().toShortString().equals("zombie")).stream()
+                                    .map(z -> String.format("(%.1f %.1f %.1f)", z.getX(), z.getY(), z.getZ())).toList());
+                        }
+                        return client.player.isDeadOrDying()
+                                || guardian().log().recent().stream().anyMatch(e -> e.text().contains("sheltering"));
+                    }, 30 * 20);
                     context.takeScreenshot("guardian-crowd-sheltered");
                     for (int second = 0; second < 10; second++) {
                         context.waitTicks(20);
@@ -114,7 +139,24 @@ public final class GuardianGameTest implements FabricClientGameTest {
                                     + "/" + level.getBlockState(pos.above().south()).isAir()
                                     + "/" + level.getBlockState(pos.above().east()).isAir()
                                     + "/" + level.getBlockState(pos.above().west()).isAir()
+                                    + " feet/head " + level.getBlockState(pos).getBlock().getName().getString()
+                                    + "/" + level.getBlockState(pos.above()).getBlock().getName().getString()
+                                    + " inWall " + client.player.isInWall()
                                     + " status " + guardian().status();
+                        }) + " | " + world.getServer().computeOnServer(server -> {
+                            // The server's view: a dig it rejected leaves the player inside a block it can't see.
+                            var player = server.getPlayerList().getPlayers().get(0);
+                            var pos = player.blockPosition();
+                            var source = player.getLastDamageSource();
+                            return "server at " + pos.toShortString() + " hp " + Math.round(player.getHealth())
+                                    + " feet " + player.level().getBlockState(pos).getBlock().getName().getString()
+                                    + " head " + player.level().getBlockState(pos.above()).getBlock().getName().getString()
+                                    + " hurt by " + (source == null ? "-" : source.getMsgId()
+                                    + (source.getEntity() == null ? "" : " " + source.getEntity().getType().toShortString()
+                                    + " at " + source.getEntity().blockPosition().toShortString()))
+                                    + " zombies " + player.level().getEntities((net.minecraft.world.entity.Entity) null,
+                                            player.getBoundingBox().inflate(4), e -> e.getType().toShortString().equals("zombie")).stream()
+                                            .map(z -> z.position().toString()).toList();
                         }));
                     }
                     world.getServer().runCommand("/time set 1000");
