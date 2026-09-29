@@ -8,6 +8,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -59,6 +60,9 @@ final class RetrieveStationRunner extends RunnerBase {
             HitResult trace = RayTraceUtils.rayTraceTowards(ctx.player(), rotation.get(), x.reach());
             if (!(trace instanceof BlockHitResult hit) || !hit.getBlockPos().equals(target)) return Result.pause();
             if (!breaking) {
+                if (!holdTool(ctx.world().getBlockState(target))) {
+                    return Result.failed("no tool that picks up the " + Step.shortId(step.station()).replace('_', ' '));
+                }
                 ctx.playerController().clickBlock(target, hit.getDirection());
                 breaking = true;
             } else {
@@ -79,6 +83,15 @@ final class RetrieveStationRunner extends RunnerBase {
                 .min(Comparator.comparingDouble(entity -> entity.distanceToSqr(ctx.player())))
                 .orElse(null);
         return drop == null ? Result.pause() : follow(new GoalBlock(drop.blockPosition()));
+    }
+
+    /** Holds a tool the station drops for: a furnace broken by hand is gone. */
+    private boolean holdTool(BlockState state) {
+        if (!state.requiresCorrectToolForDrops() || ctx.player().getMainHandItem().isCorrectToolForDrops(state)) return true;
+        int slot = InventoryOps.toHotbar(ctx, stack -> stack.isCorrectToolForDrops(state));
+        if (slot < 0) return false;
+        ctx.player().getInventory().setSelectedSlot(slot);
+        return true;
     }
 
     @Override

@@ -69,6 +69,19 @@ final class VanillaDimensionPlanTest {
         assertTrue(egg.complete() && has(egg, Step.CollectEgg.class), egg.missing() + "\n" + AcquirePlanner.explain(egg));
     }
 
+    /**
+     * A pickaxe crafted after the iron is mined doesn't stop more iron (for the gear) joining that mining step: the
+     * stone pickaxe it had is enough. Two iron trips put the furnace down twice.
+     */
+    @Test
+    void anIronPickaxeMinesItsIronInOneTrip() {
+        Plan plan = plan(new Goal.ItemGoal("minecraft:iron_pickaxe", 1));
+        String explained = AcquirePlanner.explain(plan);
+        assertTrue(plan.complete(), plan.missing().toString());
+        assertEquals(1, plan.steps().stream().filter(s -> s instanceof Step.Mine m && m.item().equals("minecraft:raw_iron")).count(), explained);
+        assertTrue(plan.steps().stream().anyMatch(s -> s instanceof Step.Craft c && c.recipe().output().equals("minecraft:iron_helmet")), explained);
+    }
+
     /** Every item plans, or says why not: never an empty reason, never a planner error. */
     @Test
     void everyItemPlansOrSaysWhy() {

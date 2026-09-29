@@ -260,7 +260,7 @@ public final class AcquirePlanner {
                 case Goal.AtLocation where -> travelTo(s, where.location());
             };
             if (ok && options.gearUp() && target instanceof Goal.ItemGoal) addAffordableIronGear(s, count);
-            if (ok) retrieveStations(s);
+            retrieveStations(s);
             List<String> missing = new ArrayList<>(s.missing);
             if (!ok && missing.isEmpty()) missing.add("no known way to get " + goal);
             PlanReplay replay = new PlanReplay(knowledge, world, start);
@@ -369,8 +369,8 @@ public final class AcquirePlanner {
                 int blocks = actions(gained, m.dropsPerBlock());
                 int extra = blocks - old.expectedBlocks();
                 // A replacement crafted now cannot retroactively supply an earlier mining step, and neither can one
-                // crafted since: only merge while the tools held now are the ones that step had.
-                if (!toolMadeSince(s, prev, tool) && availableToolUses(s, tool) >= ToolDurability.budget(extra)) {
+                // crafted since: only merge while the tools that step had cover the extra blocks.
+                if (availableToolUses(s, tool) - usesMadeSince(s, prev, tool) >= ToolDurability.budget(extra)) {
                     if (!budgetTool(s, tool, extra)) return false;
                     s.inv.add(m.item(), need);
                     s.steps.set(prev, new PlanState.Entry(
@@ -387,15 +387,19 @@ public final class AcquirePlanner {
             return emit(s, new Step.Mine(m.blocks(), m.item(), s.inv.count(m.item()), tool, blocks), need, true);
         }
 
-        /** Whether a tool of {@code tool}'s type was crafted after step {@code index}. */
-        private boolean toolMadeSince(PlanState s, int index, ToolReq tool) {
-            if (!gates(tool)) return false;
+        /** The usable uses of tools of {@code tool}'s type crafted after step {@code index}. */
+        private int usesMadeSince(PlanState s, int index, ToolReq tool) {
+            if (!gates(tool)) return 0;
+            int uses = 0;
             for (int i = index + 1; i < s.steps.size(); i++) {
-                if (s.steps.get(i).step() instanceof Step.Craft craft && tool.type().equals(knowledge.toolType(craft.recipe().output()))) {
-                    return true;
-                }
+                if (!(s.steps.get(i).step() instanceof Step.Craft craft)) continue;
+                String id = craft.recipe().output();
+                if (!tool.type().equals(knowledge.toolType(id))) continue;
+                int max = ToolDurability.maxUses(id);
+                if (max <= 0) return Integer.MAX_VALUE;
+                uses += (max - (int) Math.ceil(max * 0.10)) * craft.times() * craft.recipe().outputCount();
             }
-            return false;
+            return uses;
         }
 
         private boolean undergroundOre(MineOption mine) {
@@ -802,7 +806,9 @@ public final class AcquirePlanner {
         /** Emits a PlaceStation unless the station is still set up from earlier; the first placement uses up the item. */
         private boolean setUpStation(PlanState s, String station) {
             if (s.active.contains(station)) return true;
-            if (s.pending.remove(station)) {
+            // Not ready and not pending: retrieved by a move since it was prepared, so it goes down again from the inventory.
+            if (s.pending.remove(station) || !s.ready.contains(station)) {
+                if (s.inv.count(station) < 1) return s.fail("no " + Step.shortId(station).replace('_', ' ') + " to set up");
                 s.consume(station, 1);
                 s.ready.add(station);
                 s.owned.add(station);

@@ -168,6 +168,7 @@ final class PlanReplay {
             }
             if (error != null) return new Result(out, "step " + (i + 1) + " (" + step.describe() + "): " + error);
         }
+        if (!owned.isEmpty()) return new Result(out, "the end: leaves " + owned + " behind");
         return new Result(out, null);
     }
 

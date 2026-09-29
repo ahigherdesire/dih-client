@@ -2,6 +2,7 @@ package baritone.acquire.exec;
 
 import baritone.Baritone;
 import baritone.acquire.model.Step;
+import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.utils.RayTraceUtils;
 import baritone.api.utils.Rotation;
 import baritone.api.utils.RotationUtils;
@@ -23,14 +24,17 @@ import java.util.List;
 /**
  * {@link Step.PlaceStation}: walk to a usable station within {@code acquireStationRadius}, or, when
  * there is none and {@code acquirePlaceStations} is on, place the station item from the inventory on
- * solid ground next to the player. A placed station is remembered so later steps find it again.
+ * solid ground next to the player. With no free spot (a pocket at the bottom of a shaft) it steps sideways into the
+ * wall first, which frees the spot it stood on. A placed station is remembered so later steps find it again.
  */
 final class StationRunner extends RunnerBase {
 
-    private enum State { FIND, WALK, PREPARE, LOOK, VERIFY }
+    private enum State { FIND, WALK, PREPARE, MAKE_ROOM, LOOK, VERIFY }
 
     private static final int MAX_PLACE_ATTEMPTS = 3;
     private static final int VERIFY_TICKS = 20;
+    private static final int MAX_ROOM_MOVES = 2;
+    private static final int ROOM_TICKS = 20 * 20;
 
     private final Step.PlaceStation step;
     private final Block block;
@@ -42,6 +46,8 @@ final class StationRunner extends RunnerBase {
     private InteractionHand hand = InteractionHand.MAIN_HAND;
     private int ticks;
     private int attempts;
+    private BlockPos roomAt;
+    private int roomMoves;
 
     StationRunner(ExecContext x, Step.PlaceStation step) {
         super(x);
@@ -94,9 +100,24 @@ final class StationRunner extends RunnerBase {
                     } else {
                         return Result.failed("can't get the " + name() + " onto the hotbar");
                     }
-                    if (!findSpot()) return Result.failed("no free spot next to you to place a " + name());
+                    if (!findSpot()) {
+                        if (roomMoves >= MAX_ROOM_MOVES || (roomAt = roomToStep()) == null) {
+                            return Result.failed("no free spot next to you to place a " + name());
+                        }
+                        roomMoves++;
+                        state = State.MAKE_ROOM;
+                        ticks = 0;
+                        continue;
+                    }
                     state = State.LOOK;
                     ticks = 0;
+                }
+                case MAKE_ROOM -> {
+                    if (ctx.playerFeet().equals(roomAt) && ctx.player().onGround() || calcFailed || ++ticks > ROOM_TICKS) {
+                        state = State.PREPARE;
+                        return Result.pause();
+                    }
+                    return walk(new GoalBlock(roomAt));
                 }
                 case LOOK -> {
                     x.look(placeRot, true);
@@ -145,6 +166,29 @@ final class StationRunner extends RunnerBase {
             if (trySpot(0, 2, 0, support)) return true;
         }
         return false;
+    }
+
+    /**
+     * A block beside the feet to step into when there's no free spot: solid ground under it, no station or other
+     * block entity in the way, and no liquid to let in. Stepping there frees the spot the player stood on.
+     */
+    private BlockPos roomToStep() {
+        Level level = ctx.world();
+        BlockPos feet = ctx.playerFeet();
+        for (Direction dir : Direction.Plane.HORIZONTAL) {
+            BlockPos to = feet.relative(dir);
+            if (!level.getBlockState(to.below()).isFaceSturdy(level, to.below(), Direction.UP)) continue;
+            boolean ok = true;
+            for (BlockPos pos : new BlockPos[]{to, to.above()}) {
+                BlockState state = level.getBlockState(pos);
+                if (state.hasBlockEntity() || state.getDestroySpeed(level, pos) < 0 || !state.getFluidState().isEmpty()) ok = false;
+                for (Direction side : Direction.values()) {
+                    if (!level.getFluidState(pos.relative(side)).isEmpty()) ok = false;
+                }
+            }
+            if (ok) return to;
+        }
+        return null;
     }
 
     /** Faces to place against, most natural first: the floor, then walls, then the ceiling. */
