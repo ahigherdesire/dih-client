@@ -212,13 +212,19 @@ public final class BeatCampaign extends Behavior {
     }
 
     private String pause(String why) {
+        return pause(why, true);
+    }
+
+    /** @param show whether to repeat the reason in chat (not when #acquire just printed it) */
+    private String pause(String why, boolean show) {
         running = false;
         waiting = null;
         String reason = why == null || why.isBlank() ? "it stopped" : why;
         campaign.setProblem(reason);
         outcome = JobStatus.failed(reason);
         save();
-        String line = "#beat paused at " + campaign.statusLine(have()) + ": " + reason + " #beat resume tries again.";
+        String line = "#beat paused at " + campaign.statusLine(have()) + (show ? ": " + reason : " (the reason is above)")
+                + ". #beat resume tries again.";
         say(line);
         return line;
     }
@@ -243,7 +249,7 @@ public final class BeatCampaign extends Behavior {
                 if (phaseDone && !advance()) return;
                 runPhase();
             }
-            case FAILED, STOPPED -> pause(event.message());
+            case FAILED, STOPPED -> pause(event.message(), false);
             default -> {
             }
         }
