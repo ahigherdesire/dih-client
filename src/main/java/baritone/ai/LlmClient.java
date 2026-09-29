@@ -76,6 +76,16 @@ public final class LlmClient implements ChatModel {
         return this.completionTokens.get();
     }
 
+    @Override
+    public long promptTokens() {
+        return this.promptTokens.get();
+    }
+
+    @Override
+    public long completionTokens() {
+        return this.completionTokens.get();
+    }
+
     public long getCalls() {
         return this.calls.get();
     }
@@ -141,7 +151,7 @@ public final class LlmClient implements ChatModel {
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("Accept", "application/json");
             connection.setRequestProperty("Authorization", "Bearer " + this.config.resolveKey());
-            connection.setFixedLengthStreamingMode(payload.length);
+            // No streaming mode: with it, a 401 leaves no error stream and the provider's reason is lost.
 
             try (OutputStream out = connection.getOutputStream()) {
                 out.write(payload);
@@ -159,7 +169,7 @@ public final class LlmClient implements ChatModel {
             String responseBody = read(status / 100 == 2 ? connection.getInputStream() : connection.getErrorStream());
             if (status / 100 != 2) {
                 String snippet = responseBody.length() > 400 ? responseBody.substring(0, 400) : responseBody;
-                String message = "model returned HTTP " + status + ": " + snippet;
+                String message = "model returned HTTP " + status + ": " + snippet + hint(status);
                 if (RETRYABLE.contains(status)) {
                     throw new RetryableException(message);
                 }
@@ -169,6 +179,16 @@ public final class LlmClient implements ChatModel {
         } finally {
             connection.disconnect();
         }
+    }
+
+    /** What to check for the errors a setup mistake causes. */
+    static String hint(int status) {
+        return switch (status) {
+            case 401 -> " (the key was refused: check #ai key)";
+            case 403 -> " (the key can't use this: check the key and #ai model)";
+            case 404 -> " (nothing there: check #ai url and #ai model)";
+            default -> "";
+        };
     }
 
     private static String read(InputStream stream) throws IOException {
@@ -259,7 +279,7 @@ public final class LlmClient implements ChatModel {
         public final String name;
         public final JsonObject arguments;
 
-        ToolCall(String id, String name, JsonObject arguments) {
+        public ToolCall(String id, String name, JsonObject arguments) {
             this.id = id;
             this.name = name;
             this.arguments = arguments;
@@ -291,7 +311,7 @@ public final class LlmClient implements ChatModel {
         /** The assistant message verbatim, to be appended to the transcript. */
         public final JsonObject rawMessage;
 
-        Reply(String content, List<ToolCall> toolCalls, JsonObject rawMessage) {
+        public Reply(String content, List<ToolCall> toolCalls, JsonObject rawMessage) {
             this.content = content;
             this.toolCalls = toolCalls;
             this.rawMessage = rawMessage;
