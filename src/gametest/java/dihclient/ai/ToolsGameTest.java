@@ -178,14 +178,20 @@ public final class ToolsGameTest implements FabricClientGameTest {
             if (old != null) manager.remove(old);
             manager.add(macro);
             manager.save();
-            manager.load();
-            DihMacro reloaded = manager.get(macro.name);
-            if (reloaded == null || !(reloaded.actions.get(0) instanceof AiToolAction step)
-                    || !"find".equals(step.tool) || !"oak_log".equals(step.args)) {
-                throw new AssertionError("the AI_TOOL step didn't survive a save and reload");
-            }
-            MacroExecutor.execute(reloaded);
         });
+        // The save is written in the background: reload until the file has it (a reload before then loses it).
+        DihMacro[] reloaded = {null};
+        context.waitFor(client -> {
+            DihMacroManager manager = DihMacroManager.get();
+            manager.load();
+            DihMacro found = manager.get("gametest tools");
+            if (found != null && !found.actions.isEmpty() && found.actions.get(0) instanceof AiToolAction step
+                    && "find".equals(step.tool) && "oak_log".equals(step.args)) {
+                reloaded[0] = found;
+            }
+            return reloaded[0] != null;
+        }, 100);
+        context.runOnClient(client -> MacroExecutor.execute(reloaded[0]));
         context.waitFor(client -> SERVER_CHAT.stream().anyMatch(line -> line.contains("tool_status=")), 200);
         String line = SERVER_CHAT.stream().filter(l -> l.contains("tool_status=")).findFirst().orElse("");
         if (!line.contains("tool_status=ok")) throw new AssertionError("macro said: " + line);
