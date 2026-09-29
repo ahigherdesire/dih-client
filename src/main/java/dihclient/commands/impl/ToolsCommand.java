@@ -139,7 +139,7 @@ public class ToolsCommand extends Command {
             askToConfirm(tool, line);
             return SUCCESS;
         }
-        submit(tool, parsed.args(), false);
+        submit(tool, parsed.args(), false, line);
         return SUCCESS;
     }
 
@@ -170,11 +170,11 @@ public class ToolsCommand extends Command {
             DihClientMessaging.sendPrefixed("§cThat confirmation expired or was already used.");
             return true;
         }
-        submit(tool, parsed.args(), true);
+        submit(tool, parsed.args(), true, pending.args());
         return true;
     }
 
-    private static void submit(AiTool tool, JsonObject args, boolean confirmed) {
+    private static void submit(AiTool tool, JsonObject args, boolean confirmed, String line) {
         WORKER.submit(() -> {
             ToolResult result;
             try {
@@ -183,7 +183,12 @@ public class ToolsCommand extends Command {
                 result = ToolResult.failed("Tool failed: " + t);
             }
             ToolResult done = result;
-            Minecraft.getInstance().execute(() -> print(tool.name(), done));
+            // Some tools are dangerous only for some arguments (toggling a combat module): they ask after the fact.
+            boolean ask = !confirmed && Boolean.TRUE.equals(done.facts().get("needs_confirmation"));
+            Minecraft.getInstance().execute(() -> {
+                if (ask) askToConfirm(tool, line);
+                else print(tool.name(), done);
+            });
         });
     }
 
