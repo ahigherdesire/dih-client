@@ -17,6 +17,7 @@
       "dihclient.gui.UiWinsGameTest",
       "dihclient.gui.PaletteTourGameTest",
       "dihclient.ai.ToolsGameTest",
+      "dihclient.ai.ToolCatalogGameTest",
       "baritone.guardian.AcquireRealWorldGameTest"
     ]
   },
