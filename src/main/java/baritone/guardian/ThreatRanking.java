@@ -84,6 +84,8 @@ public final class ThreatRanking {
     public static final int RECOVERED_HEALTH = 16;
     /** Start a pit only while every attacker is further than this: hits knock the player off the column. */
     public static final double SHELTER_CLEARANCE = 3;
+    /** Boxed in, sealed or digging, a mob this close is in the pit with the player (it dropped down the shaft). */
+    public static final double IN_PIT_RADIUS = 1.5;
 
     /**
      * A nearby mob.
@@ -122,13 +124,14 @@ public final class ThreatRanking {
      * @param digging           a pit is already being dug
      * @param inCover           no aiming ranged mob can see the player
      * @param coverNearby       a spot out of every aiming ranged mob's sight is a few steps away
+     * @param boxedIn           solid all round at feet and head height (a pit, sealed or not): no way to step back
      */
     public record Sense(boolean inLava, boolean inFire, boolean burning, boolean waterNearby, boolean falling, double predictedFall,
                         float health, int air, int maxAir, boolean underwater, boolean canEat,
                         List<Mob> mobs, boolean projectileIncoming, double nearestStranger,
                         boolean hasShield, boolean hasWaterBucket,
                         boolean canShelter, boolean sheltered, boolean daylight, boolean canRegen, boolean digging,
-                        boolean inCover, boolean coverNearby) {
+                        boolean inCover, boolean coverNearby, boolean boxedIn) {
     }
 
     /**
@@ -160,7 +163,7 @@ public final class ThreatRanking {
         for (Mob mob : s.mobs()) {
             if (mob.creeper()) {
                 if (mob.distance() <= CREEPER_RADIUS) out.add(new Threat(Kind.CREEPER, mob.id(), mob.type(), mob.distance()));
-            } else if (hostile(mob) || lurking(mob, s)) {
+            } else if (hostile(mob) || lurking(mob, s) || closingIn(mob, s, c)) {
                 out.add(new Threat(Kind.HOSTILE, mob.id(), mob.type(), mob.distance()));
             }
         }
@@ -182,6 +185,20 @@ public final class ThreatRanking {
         if (mob.distance() > radius) return false;
         if (mob.distanceFromAnchor() > CHASE_LIMIT + radius) return false;
         return mob.aggressive() || !mob.neutral() && mob.distance() <= CLOSE_RADIUS;
+    }
+
+    /**
+     * Hurt, with a pit to dig: a mob coming for the player counts from further out, since digging 3 blocks down takes
+     * about as long as a zombie takes to cover {@link #HOSTILE_RADIUS}.
+     */
+    static boolean closingIn(Mob mob, Sense s, Config c) {
+        return s.canShelter() && !s.sheltered() && s.health() <= c.fleeHealth() && mob.aggressive() && !mob.neutral()
+            && mob.distance() <= RANGED_RADIUS && mob.distanceFromAnchor() <= CHASE_LIMIT + RANGED_RADIUS;
+    }
+
+    /** In the pit with the player: sealing it in or waiting it out only helps the mob. */
+    static boolean inPit(Mob mob, Sense s) {
+        return mob != null && (s.sheltered() || s.digging() || s.boxedIn()) && mob.distance() <= IN_PIT_RADIUS;
     }
 
     /** Sheltered at night, any hostile mob nearby is waiting for the player to come out: stay in. */
@@ -207,15 +224,18 @@ public final class ThreatRanking {
             // Nothing breaks a fall without a bucket; the next threat decides instead.
             case FALLING -> s.hasWaterBucket() ? Response.WATER_CLUTCH : null;
             case CREEPER -> {
-                if (s.sheltered()) yield Response.SHELTER;
                 Mob creeper = mob(s, t.mobId());
+                // Nowhere to back off to in a pit; a hit knocks it back and resets the fuse.
+                if (inPit(creeper, s)) yield Response.FIGHT;
+                if (s.sheltered()) yield Response.SHELTER;
                 // A hit knocks it back and resets the fuse; once it hisses, get out of range.
                 yield creeper != null && !creeper.swelling() && healthy ? Response.FIGHT : Response.BACK_OFF;
             }
             case HOSTILE -> {
+                Mob attacker = mob(s, t.mobId());
+                if (inPit(attacker, s)) yield Response.FIGHT;
                 // Sealed in: nothing outside can reach; wait for health, and for daylight to deal with the waiting mobs.
                 if (s.sheltered() && (s.health() < RECOVERED_HEALTH || !s.daylight())) yield Response.SHELTER;
-                Mob attacker = mob(s, t.mobId());
                 boolean outnumbered = crowd >= CROWD && s.health() <= c.fleeHealth() + CROWD_HEALTH_MARGIN;
                 if (healthy && !outnumbered) yield Response.FIGHT;
                 if (s.canShelter() && (s.digging() || nearestAttacker(s) > SHELTER_CLEARANCE)) yield Response.SHELTER;
@@ -254,7 +274,8 @@ public final class ThreatRanking {
             case EXTINGUISH -> "on fire: putting it out";
             case WATER_CLUTCH -> what + ": water bucket";
             case BACK_OFF -> what + " close: backing off";
-            case FIGHT -> what + " at " + Math.round(t.distance()) + " blocks: fighting";
+            case FIGHT -> inPit(mob(s, t.mobId()), s) ? what + " in the pit: fighting"
+                : what + " at " + Math.round(t.distance()) + " blocks: fighting";
             case RETREAT -> what + " at " + Math.round(t.distance()) + " blocks, health low: retreating";
             case SHIELD -> what + ": shield up";
             case SURFACE -> "running out of air: swimming up";

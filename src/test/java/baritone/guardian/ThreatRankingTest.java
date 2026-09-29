@@ -21,7 +21,7 @@ final class ThreatRankingTest {
     /** A calm sense: full health, dry, standing, alone. Tests change one thing at a time. */
     private static final class S {
         boolean lava, fire, burning, water, falling, underwater, canEat, projectile, shield, bucket, canShelter, sheltered,
-            inCover, coverNearby, digging;
+            inCover, coverNearby, digging, boxedIn;
         boolean daylight = true, canRegen = true;
         double fall, stranger = Double.POSITIVE_INFINITY;
         float health = 20;
@@ -30,7 +30,7 @@ final class ThreatRankingTest {
 
         Sense build() {
             return new Sense(lava, fire, burning, water, falling, fall, health, air, 300, underwater, canEat, mobs, projectile, stranger,
-                    shield, bucket, canShelter, sheltered, daylight, canRegen, digging, inCover, coverNearby);
+                    shield, bucket, canShelter, sheltered, daylight, canRegen, digging, inCover, coverNearby, boxedIn);
         }
     }
 
@@ -236,6 +236,72 @@ final class ThreatRankingTest {
         s.canRegen = true;
         s.health = ThreatRanking.RECOVERED_HEALTH;
         assertNull(ThreatRanking.decide(s.build(), CONFIG), "healed and alone: the job carries on");
+    }
+
+    /** From a game-test death: a zombie dropped down the shaft while it was dug, and the seal shut it in with us. */
+    @Test
+    void aMobInsideThePitIsFoughtNotWaitedOut() {
+        S s = new S();
+        s.sheltered = true;
+        s.daylight = false;
+        s.health = 11;
+        s.mobs.add(zombie(1, 3.2)); // on the seal, above
+        s.mobs.add(zombie(2, 0.3)); // in the pit with us
+        Decision inside = ThreatRanking.decide(s.build(), CONFIG);
+        assertEquals(Response.FIGHT, inside.response(), "sealed in with it: only fighting helps");
+        assertEquals(2, inside.threat().mobId());
+
+        s.sheltered = false;
+        s.digging = true;
+        s.canShelter = true;
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "it followed us down mid-dig");
+
+        s.mobs.set(1, creeper(2, 0.8, true));
+        s.sheltered = true;
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(),
+            "nowhere to back off to in a pit: a hit resets its fuse");
+
+        s.mobs.remove(1);
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "the one on the seal can't reach");
+    }
+
+    /** A 3-deep pit takes about as long to dig as a zombie takes to cover 8 blocks: when hurt, start as soon as one comes. */
+    @Test
+    void hurtPlayersDigInBeforeTheMobIsClose() {
+        S s = new S();
+        s.daylight = false;
+        s.health = 8;
+        s.canShelter = true;
+        s.mobs.add(zombie(1, 12));
+        Decision d = ThreatRanking.decide(s.build(), CONFIG);
+        assertEquals(Response.SHELTER, d == null ? null : d.response(), "coming for us from 12 blocks: dig now");
+
+        s.mobs.set(0, new Mob(1, "minecraft:zombie", 12, 12, false, false, false, false));
+        assertNull(ThreatRanking.decide(s.build(), CONFIG), "not after us: leave it");
+        s.mobs.set(0, zombie(1, 12));
+        s.canShelter = false;
+        assertNull(ThreatRanking.decide(s.build(), CONFIG), "no pit to dig: nothing to do at 12 blocks yet");
+        s.canShelter = true;
+        s.health = 20;
+        assertNull(ThreatRanking.decide(s.build(), CONFIG), "healthy: it can come to us");
+    }
+
+    /** From a crowd-test death: a zombie dropped down the shaft before the seal went on, and the Guardian backed off. */
+    @Test
+    void aMobInAnUnsealedPitIsFoughtNotRetreatedFrom() {
+        S s = new S();
+        s.daylight = false;
+        s.health = 8;
+        s.canEat = true;
+        s.boxedIn = true;
+        s.mobs.add(zombie(1, 3.1)); // at the top of the shaft
+        s.mobs.add(zombie(2, 0.7)); // down in it
+        Decision d = ThreatRanking.decide(s.build(), CONFIG);
+        assertEquals(Response.FIGHT, d.response(), "walled in on every side: stepping back goes nowhere");
+        assertEquals(2, d.threat().mobId());
+
+        s.boxedIn = false;
+        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response(), "in the open, hurt: back off");
     }
 
     private static Mob aimingSkeleton(int id, double distance) {

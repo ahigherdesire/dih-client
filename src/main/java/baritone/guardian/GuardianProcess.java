@@ -305,7 +305,7 @@ public final class GuardianProcess extends BaritoneProcessHelper {
                 player.getMaxAirSupply(), player.isUnderWater(), food != null, mobs, projectile, stranger,
                 player.getOffhandItem().is(Items.SHIELD), has(player, s -> s.is(Items.WATER_BUCKET)),
                 shelterSeal != null || canShelter(player), sheltered(player), daylight(level),
-                player.getFoodData().getFoodLevel() >= 18, shelterSeal != null, inCover, coverNearby);
+                player.getFoodData().getFoodLevel() >= 18, shelterSeal != null, inCover, coverNearby, boxedIn(player));
     }
 
     /** The nearest water block within {@link #WATER_SEARCH} blocks the player can stand in, or null. */
@@ -684,6 +684,16 @@ public final class GuardianProcess extends BaritoneProcessHelper {
         shelterSeal = null;
         shelterDigging = null;
         return pause();
+    }
+
+    /** Solid blocks on all sides at feet and head height: nowhere to step back to, whatever is overhead. */
+    private boolean boxedIn(LocalPlayer player) {
+        Level level = ctx.world();
+        BlockPos feet = player.blockPosition();
+        for (Direction side : Direction.Plane.HORIZONTAL) {
+            if (!solid(level, feet.relative(side)) || !solid(level, feet.above().relative(side))) return false;
+        }
+        return true;
     }
 
     /** In a 1x1 pit with solid blocks on all sides at feet and head height, and overhead. */
