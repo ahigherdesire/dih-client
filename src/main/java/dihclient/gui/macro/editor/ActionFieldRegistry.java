@@ -512,6 +512,12 @@ public final class ActionFieldRegistry {
                 .number    ("timeoutMs", "Wait For Screen (ms)").range(0, 60_000)
                 .build());
 
+        SCHEMAS.put(MacroActionType.AI_TOOL, ActionFieldSchema.builder()
+                .text  ("tool",           "Tool").dynamic()
+                .text  ("args",           "Arguments").dynamic()
+                .toggle("allowDangerous", "Allow Dangerous")
+                .build());
+
         SCHEMAS.put(MacroActionType.SEND_CHAT, ActionFieldSchema.builder()
                 .text  ("message",   "Message").dynamic()
                 .toggle("waitForGuiBefore", "Before")

@@ -294,6 +294,7 @@ public class RaceAction implements MacroAction {
             case NBT_BOOK -> new NbtBookAction();
             case PAY -> new PayAction();
             case TRADE -> new TradeAction();
+            case AI_TOOL -> new AiToolAction();
             case INSTA_BREAK -> new InstaBreakAction();
             case BREAK -> new BreakAction();
             case TOGGLE_MODULE -> new ToggleModuleAction();

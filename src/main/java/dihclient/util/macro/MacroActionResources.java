@@ -40,6 +40,10 @@ public final class MacroActionResources {
             resources.add(SharedClientResource.GUI);
             resources.add(SharedClientResource.NETWORK);
         }
+        if (action instanceof AiToolAction) {
+            // Most tools drive Baritone (goto, mine, acquire).
+            resources.add(SharedClientResource.BARITONE);
+        }
         if (action instanceof SendPacketAction
             || action instanceof PacketAction
             || action instanceof PacketClickAction

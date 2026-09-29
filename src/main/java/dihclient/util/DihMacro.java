@@ -263,6 +263,7 @@ public class DihMacro {
             case BREAK -> new BreakAction();
             case PAY -> new PayAction();
             case TRADE -> new dihclient.util.macro.TradeAction();
+            case AI_TOOL -> new dihclient.util.macro.AiToolAction();
             case NBT_BOOK -> new NbtBookAction();
             case SEND_CHAT -> new SendChatAction();
             case WAIT_LAN_STEP -> new WaitForLanStepAction();
