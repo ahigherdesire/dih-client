@@ -121,6 +121,10 @@ public final class DihCommandPalette {
             entries.add(new Entry(Kind.MACRO, macro.name, macro.hasFolder() ? List.of(macro.folder) : List.of(),
                 macro.actions.size() + " steps" + (macro.hasFolder() ? " · " + macro.folder : ""), "macro:" + macro.name));
         }
+        for (baritone.ai.tool.AiTool tool : baritone.ai.tool.ToolRegistry.standard().all()) {
+            entries.add(new Entry(Kind.AI_TOOL, tool.name(), List.of(tool.category().id(), "tool"),
+                tool.summary(), "tool:" + tool.name()));
+        }
         return new PaletteIndex(entries);
     }
 
