@@ -67,6 +67,9 @@ final class CatalogLogicTest {
         assertEquals("Guardian on, fleeing at 12 health or below.", result.text());
         assertEquals(12, result.facts().get("flee_health"));
         assertTrue(CombatTools.describe(false, 10, true).text().endsWith("handing back when a stranger comes near."));
+        assertEquals("Guardian on (flees at 12 health or below): Idle.", CombatTools.statusLine(true, 12, "Idle", List.of()));
+        assertEquals("Guardian off: Idle. Recently: zombie 3 blocks away: fighting",
+                CombatTools.statusLine(false, 12, "Idle", List.of("zombie 3 blocks away: fighting")));
     }
 
     @Test

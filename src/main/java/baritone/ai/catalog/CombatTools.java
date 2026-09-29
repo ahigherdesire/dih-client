@@ -47,10 +47,18 @@ final class CombatTools {
                     if (guardian == null) return ToolResult.failed("Not in a game.");
                     List<String> recent = guardian.log().recent().stream().map(GuardianLog.Event::text).toList();
                     List<String> last = recent.subList(Math.max(0, recent.size() - 8), recent.size());
-                    return ToolResult.ok(guardian.status() + (last.isEmpty() ? "" : ". Recently: " + String.join(" | ", last)))
-                            .fact("status", guardian.status()).fact("recent", last);
+                    var settings = Baritone.settings();
+                    return ToolResult.ok(statusLine(settings.guardianEnabled.value, settings.guardianFleeHealth.value.intValue(),
+                                    guardian.status(), last))
+                            .fact("enabled", settings.guardianEnabled.value).fact("status", guardian.status()).fact("recent", last);
                 })
                 .build());
+    }
+
+    /** "Guardian on (flees at 12 health or below): Idle. Recently: a | b" */
+    static String statusLine(boolean enabled, int fleeHealth, String status, List<String> recent) {
+        return "Guardian " + (enabled ? "on (flees at " + fleeHealth + " health or below)" : "off") + ": " + status
+                + (recent.isEmpty() ? "." : ". Recently: " + String.join(" | ", recent));
     }
 
     static ToolResult describe(boolean enabled, int fleeHealth, boolean stopForPlayers) {
