@@ -2,12 +2,12 @@ package baritone.ai;
 
 import baritone.acquire.AcquireControl;
 import baritone.ai.tool.AiTool;
+import baritone.ai.tool.CommandRunner;
 import baritone.ai.tool.ToolCategory;
 import baritone.ai.tool.ToolContext;
 import baritone.ai.tool.ToolRegistry;
 import baritone.ai.tool.ToolResult;
 import baritone.ai.tool.ToolSchema;
-import baritone.api.command.ICommand;
 
 import java.util.List;
 import java.util.Locale;
@@ -18,9 +18,6 @@ import java.util.Locale;
  * and the rest is looking, waiting, talking and remembering. All eight are job tools: always in the model's list.
  */
 public final class BuiltinTools {
-
-    /** How long to let an async command settle before reporting back. */
-    private static final long SETTLE_MILLIS = 1500L;
 
     private BuiltinTools() {
     }
@@ -134,10 +131,6 @@ public final class BuiltinTools {
     }
 
     private static ToolResult runCommand(ToolContext ctx, String rawInput) {
-        AiBrain brain = ctx.brain();
-        if (brain == null) {
-            return ToolResult.failed("Not in a game.");
-        }
         String raw = rawInput == null ? "" : rawInput.trim();
         while (raw.startsWith("#")) {
             raw = raw.substring(1).trim();
@@ -150,39 +143,48 @@ public final class BuiltinTools {
         }
 
         String name = raw.split("\\s+")[0].toLowerCase(Locale.ROOT);
-        ICommand known = brain.getBaritone().getCommandManager().getCommand(name);
-        List<String> names = known == null ? List.of(name) : known.getNames();
-        // The deny list limits the AI; a player or their macro can type # commands anyway.
-        if (ctx.source() == ToolContext.Source.AI && !brain.getConfig().allowsCommand(name, names)) {
-            return ToolResult.failed("Refused: \"" + name + "\" is on the deny list and cannot be run by the AI.");
-        }
-        if (ctx.source() == ToolContext.Source.AI && (name.equals("acquire") || names.contains("acquire"))) {
-            // Routed through the tools so the AI's acquires are tracked and report back.
-            return ToolResult.failed("Use the acquire tool to start an acquire, or plan_item for a dry run. Its progress shows "
-                    + "in look_around, and run_command \"stop\" cancels it.");
+        CommandRunner commands = ctx.commands();
+        if (ctx.source() == ToolContext.Source.AI) {
+            // The deny list limits the AI; a player or their macro can type # commands anyway.
+            String refusal = refusal(ctx, name, commands.baritoneNames(name));
+            if (refusal != null) {
+                return ToolResult.failed(refusal);
+            }
         }
 
-        final String command = raw;
-        CommandOutputCapture capture = new CommandOutputCapture();
-        Boolean handled = brain.onGameThread(() -> {
-            capture.install();
-            return brain.getBaritone().getCommandManager().execute(command);
-        }, Boolean.FALSE);
-        if (Boolean.TRUE.equals(handled)) {
-            AiBrain.sleepQuietly(SETTLE_MILLIS);
-        }
-        String state = brain.onGameThread(() -> {
-            capture.uninstall();
-            return WorldSnapshot.brief(brain.getBaritone());
-        }, "somewhere");
-
-        if (!Boolean.TRUE.equals(handled)) {
+        CommandRunner.Outcome outcome = commands.baritone(raw);
+        if (!outcome.handled()) {
             return ToolResult.failed("\"" + name + "\" is not a command. Check the command list before trying again.");
         }
-        String output = capture.summary();
-        return ToolResult.ok("Ran #" + command + "."
-                + (output.isEmpty() ? "" : "\nIt printed: " + output)
-                + "\nYou are now " + state + ".");
+        String state = ctx.brief();
+        return ToolResult.ok("Ran #" + raw + "."
+                + (outcome.output().isEmpty() ? "" : "\nIt printed: " + outcome.output())
+                + "\nYou are now " + state + ".").fact("command", "#" + raw);
+    }
+
+    /**
+     * Why the AI may not run the {@code #} command called {@code name} (which also goes by {@code names}), or null.
+     * Shared by run_command and the per-command adapters.
+     */
+    static String refusal(ToolContext ctx, String name, List<String> names) {
+        AiConfig config = ctx.config() == null ? new AiConfig() : ctx.config();
+        if (!config.allowsCommand(name, names)) {
+            return "Refused: \"" + name + "\" is on the deny list and cannot be run by the AI.";
+        }
+        if (name.equals("acquire") || names.contains("acquire")) {
+            // Routed through the tools so the AI's acquires are tracked and report back.
+            return "Use the acquire tool to start an acquire, or plan_item for a dry run. Its progress shows "
+                    + "in look_around, and run_command \"stop\" cancels it.";
+        }
+        return null;
+    }
+
+    /** Starts an acquire of {@code count} {@code item} as the acquire tool would, for other tools (gear_up). */
+    public static ToolResult startAcquire(ToolContext ctx, String item, int count) {
+        com.google.gson.JsonObject args = new com.google.gson.JsonObject();
+        args.addProperty("item", item);
+        args.addProperty("count", count);
+        return acquire(ctx, ItemRequest.parse(args));
     }
 
     private static ToolResult acquire(ToolContext ctx, ItemRequest request) {

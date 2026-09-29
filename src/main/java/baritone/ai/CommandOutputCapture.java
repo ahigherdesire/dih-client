@@ -19,10 +19,14 @@ package baritone.ai;
 
 import baritone.api.BaritoneAPI;
 import baritone.api.Settings;
+import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 /**
@@ -44,6 +48,7 @@ final class CommandOutputCapture implements Consumer<Component> {
     private Settings.Setting<Consumer<Component>> setting;
     private Consumer<Component> original;
     private volatile boolean open;
+    private volatile boolean error;
 
     void install() {
         this.setting = BaritoneAPI.getSettings().logger;
@@ -69,6 +74,9 @@ final class CommandOutputCapture implements Consumer<Component> {
                         this.lines.add(message.getString());
                     }
                 }
+                if (isError(message)) {
+                    this.error = true;
+                }
             } catch (Throwable ignored) {
                 // Capturing is best effort; the real logger below must still run.
             }
@@ -76,6 +84,18 @@ final class CommandOutputCapture implements Consumer<Component> {
         if (this.original != null) {
             this.original.accept(message);
         }
+    }
+
+    /** Whether anything printed was an error: Baritone prints those in red. */
+    boolean errored() {
+        return this.error;
+    }
+
+    /** Red text anywhere in the message. */
+    static boolean isError(Component message) {
+        TextColor red = TextColor.fromLegacyFormat(ChatFormatting.RED);
+        return message.visit((style, text) -> !text.isBlank() && red.equals(style.getColor())
+                ? Optional.of(Boolean.TRUE) : Optional.empty(), Style.EMPTY).orElse(Boolean.FALSE);
     }
 
     /** What was printed, condensed to one line for the model, or "" if nothing. */
