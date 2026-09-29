@@ -4,12 +4,14 @@ import baritone.acquire.knowledge.Knowledge;
 import baritone.acquire.model.CraftSource;
 import baritone.acquire.model.Ingredient;
 import baritone.acquire.model.KillSource;
+import baritone.acquire.model.Location;
 import baritone.acquire.model.MineSource;
 import baritone.acquire.model.SmeltSource;
 import baritone.acquire.model.Source;
 import baritone.acquire.model.ToolReq;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -46,13 +48,70 @@ final class FakeKnowledge implements Knowledge {
     static final String LAVA_BUCKET = "minecraft:lava_bucket";
     static final String WALL_TORCH = "minecraft:wall_torch";
 
+    // With dimensions only.
+    static final String DIAMOND = "minecraft:diamond";
+    static final String DIAMOND_PICKAXE = "minecraft:diamond_pickaxe";
+    static final String OBSIDIAN = "minecraft:obsidian";
+    static final String FLINT_AND_STEEL = "minecraft:flint_and_steel";
+    static final String BLAZE_ROD = "minecraft:blaze_rod";
+    static final String BLAZE_POWDER = "minecraft:blaze_powder";
+    static final String ENDER_PEARL = "minecraft:ender_pearl";
+    static final String ENDER_EYE = "minecraft:ender_eye";
+    static final String END_STONE = "minecraft:end_stone";
+    static final String QUARTZ = "minecraft:quartz";
+    static final String IRON_CHESTPLATE = "minecraft:iron_chestplate";
+    static final String IRON_LEGGINGS = "minecraft:iron_leggings";
+    static final String IRON_BOOTS = "minecraft:iron_boots";
+    static final String IRON_SWORD = "minecraft:iron_sword";
+    static final String BOW = "minecraft:bow";
+    static final String ARROW = "minecraft:arrow";
+    static final String FEATHER = "minecraft:feather";
+
     private static final ToolReq PICK_1 = new ToolReq("pickaxe", 1, true);
     private static final ToolReq PICK_2 = new ToolReq("pickaxe", 2, true);
+    private static final ToolReq PICK_3 = new ToolReq("pickaxe", 3, true);
+    private static final ToolReq PICK_4 = new ToolReq("pickaxe", 4, true);
 
     private final Map<String, List<Source>> sources = new LinkedHashMap<>();
     private final Map<String, Integer> pickaxes = new LinkedHashMap<>();
     private final Map<String, Integer> fuels = new LinkedHashMap<>();
     private final Set<String> items = new HashSet<>();
+    private final Map<String, Location> locations = new HashMap<>();
+
+    /** The Overworld-only knowledge plus the Nether and End: portals, blaze rods, pearls, eyes, end stone, gear. */
+    static FakeKnowledge withDimensions() {
+        return withDimensions(true);
+    }
+
+    /** {@code obsidian} false leaves out every way to get obsidian, so the Nether can't be reached. */
+    static FakeKnowledge withDimensions(boolean obsidian) {
+        FakeKnowledge k = new FakeKnowledge();
+        k.mine(DIAMOND, "minecraft:diamond_ore", 1.0, PICK_3);
+        k.craft(DIAMOND_PICKAXE, 1, true, ing(DIAMOND, 3), ing(STICK, 2));
+        k.pickaxes.put(DIAMOND_PICKAXE, 4);
+        if (obsidian) k.mine(OBSIDIAN, "minecraft:obsidian", 1.0, PICK_4);
+        else k.items.add(OBSIDIAN);
+        k.craft(FLINT_AND_STEEL, 1, false, ing(IRON_INGOT, 1), ing(FLINT, 1));
+        k.add(new KillSource("minecraft:blaze", BLAZE_ROD, 0.5, true));
+        k.locations.put("minecraft:blaze", Location.FORTRESS);
+        k.craft(BLAZE_POWDER, 2, false, ing(BLAZE_ROD, 1));
+        k.add(new KillSource("minecraft:enderman", ENDER_PEARL, 0.5, false));
+        k.locations.put("minecraft:enderman", null);
+        k.craft(ENDER_EYE, 1, false, ing(ENDER_PEARL, 1), ing(BLAZE_POWDER, 1));
+        k.mine(END_STONE, "minecraft:end_stone", 1.0, PICK_1);
+        k.locations.put("minecraft:end_stone", Location.END);
+        k.mine(QUARTZ, "minecraft:nether_quartz_ore", 1.0, PICK_1);
+        k.locations.put("minecraft:nether_quartz_ore", Location.NETHER);
+        k.craft(IRON_CHESTPLATE, 1, true, ing(IRON_INGOT, 8));
+        k.craft(IRON_LEGGINGS, 1, true, ing(IRON_INGOT, 7));
+        k.craft(IRON_BOOTS, 1, true, ing(IRON_INGOT, 4));
+        k.craft(IRON_SWORD, 1, true, ing(IRON_INGOT, 2), ing(STICK, 1));
+        k.craft(BOW, 1, true, ing(STICK, 3), ing(STRING, 3));
+        k.add(new KillSource("minecraft:chicken", FEATHER, 1.0, false));
+        k.craft(ARROW, 4, true, ing(FLINT, 1), ing(STICK, 1), ing(FEATHER, 1));
+        k.items.add("minecraft:dragon_egg");
+        return k;
+    }
 
     FakeKnowledge() {
         mine(LOG, "minecraft:oak_log", 1.0, new ToolReq("axe", 0, false));
@@ -120,6 +179,16 @@ final class FakeKnowledge implements Knowledge {
     private void add(Source source) {
         sources.computeIfAbsent(source.output(), k -> new ArrayList<>()).add(source);
         items.add(source.output());
+    }
+
+    @Override
+    public Location locationOf(Source source) {
+        String key = switch (source) {
+            case MineSource m -> m.block();
+            case KillSource k -> k.entity();
+            default -> null;
+        };
+        return key != null && locations.containsKey(key) ? locations.get(key) : Location.OVERWORLD;
     }
 
     @Override

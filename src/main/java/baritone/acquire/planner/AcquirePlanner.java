@@ -3,6 +3,8 @@ package baritone.acquire.planner;
 import baritone.acquire.knowledge.Knowledge;
 import baritone.acquire.knowledge.WorldView;
 import baritone.acquire.model.CraftSource;
+import baritone.acquire.model.Goal;
+import baritone.acquire.model.Location;
 import baritone.acquire.model.Ingredient;
 import baritone.acquire.model.InventorySnapshot;
 import baritone.acquire.model.KillSource;
@@ -14,8 +16,11 @@ import baritone.acquire.model.Step;
 import baritone.acquire.model.ToolReq;
 import baritone.acquire.model.ToolDurability;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.Deque;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -29,6 +34,10 @@ import static baritone.acquire.planner.PlanReplay.CRAFTING_TABLE;
 import static baritone.acquire.planner.PlanReplay.FURNACE;
 import static baritone.acquire.planner.PlannerCosts.BREAK_TICKS;
 import static baritone.acquire.planner.PlannerCosts.CRAFT_TICKS;
+import static baritone.acquire.planner.PlannerCosts.DRAGON_TICKS;
+import static baritone.acquire.planner.PlannerCosts.FORTRESS_TICKS;
+import static baritone.acquire.planner.PlannerCosts.PORTAL_TICKS;
+import static baritone.acquire.planner.PlannerCosts.STRONGHOLD_TICKS;
 import static baritone.acquire.planner.PlannerCosts.KILL_TICKS;
 import static baritone.acquire.planner.PlannerCosts.STATION_TICKS;
 import static baritone.acquire.planner.PlannerCosts.RETRIEVE_TICKS;
@@ -96,6 +105,38 @@ public final class AcquirePlanner {
     private static final double IRREPLACEABLE = 1e6;
     private static final double INF = Double.POSITIVE_INFINITY;
 
+    private static final String OBSIDIAN = "minecraft:obsidian";
+    private static final String FLINT_AND_STEEL = "minecraft:flint_and_steel";
+    private static final String ENDER_EYE = "minecraft:ender_eye";
+    private static final int PORTAL_OBSIDIAN = 10;
+    private static final int END_PORTAL_EYES = 12;
+    /** Where each place leads: portals, and finding the sites. The End has no way out before the dragon. */
+    private static final Map<Location, List<Location>> EXITS = Map.of(
+            Location.OVERWORLD, List.of(Location.NETHER, Location.STRONGHOLD),
+            Location.STRONGHOLD, List.of(Location.OVERWORLD, Location.END),
+            Location.NETHER, List.of(Location.OVERWORLD, Location.FORTRESS),
+            Location.FORTRESS, List.of(Location.NETHER),
+            Location.END, List.of());
+    /** The Nether gear checkpoint (M2): armour, a shield and a sword, iron or better. */
+    private static final List<Gear> NETHER_GEAR = List.of(
+            gear(1, "iron_helmet", "diamond_helmet", "netherite_helmet"),
+            gear(1, "iron_chestplate", "diamond_chestplate", "netherite_chestplate"),
+            gear(1, "iron_leggings", "diamond_leggings", "netherite_leggings"),
+            gear(1, "iron_boots", "diamond_boots", "netherite_boots"),
+            gear(1, "shield"),
+            gear(1, "iron_sword", "diamond_sword", "netherite_sword"));
+    /** The End gear checkpoint (M2): a bow, arrows and blocks to pillar with. */
+    private static final List<Gear> END_GEAR = List.of(
+            gear(1, "bow"),
+            gear(64, "arrow"),
+            gear(64, "cobblestone", "cobbled_deepslate", "netherrack", "blackstone"));
+
+    private static Gear gear(int count, String... names) {
+        List<String> ids = new ArrayList<>();
+        for (String name : names) ids.add("minecraft:" + name);
+        return new Gear(List.copyOf(ids), count);
+    }
+
     private final Knowledge knowledge;
     private final WorldView world;
     private final PlannerOptions options;
@@ -108,14 +149,34 @@ public final class AcquirePlanner {
 
     /** Never throws for unknown or impossible items; reports them in {@link Plan#missing()}. Does not modify {@code inventory}. */
     public Plan plan(String item, int count, InventorySnapshot inventory) {
+        return plan(new Goal.ItemGoal(item, count), inventory, Location.OVERWORLD);
+    }
+
+    /** Plans {@code goal} from {@code inventory}, standing in {@code start} (null: the Overworld). */
+    public Plan plan(Goal goal, InventorySnapshot inventory, Location start) {
+        String label = goal == null ? "null" : goal.label();
+        int count = goal == null ? 0 : goal.count();
         try {
-            if (item == null || !knowledge.isItem(item)) return failed(item, count, "unknown item " + item);
-            InventorySnapshot start = inventory == null ? InventorySnapshot.empty() : inventory.copy();
-            if (count <= 0 || start.count(item) >= count) return new Plan(item, count, List.of(), List.of(), 0);
-            if (count > MAX_COUNT) return failed(item, count, "can't plan for more than " + MAX_COUNT + " items");
-            return new Search(item, start).run(count);
+            InventorySnapshot inv = inventory == null ? InventorySnapshot.empty() : inventory.copy();
+            Location at = start == null ? Location.OVERWORLD : start;
+            switch (goal) {
+                case null -> {
+                    return failed(label, count, "no goal");
+                }
+                case Goal.ItemGoal item -> {
+                    if (item.item() == null || !knowledge.isItem(item.item())) return failed(item.item(), count, "unknown item " + item.item());
+                    if (count <= 0 || inv.count(item.item()) >= count) return new Plan(item.item(), count, List.of(), List.of(), 0);
+                    if (count > MAX_COUNT) return failed(item.item(), count, "can't plan for more than " + MAX_COUNT + " items");
+                }
+                case Goal.AtLocation where -> {
+                    if (where.location() == at) return new Plan(label, count, List.of(), List.of(), 0);
+                }
+                case Goal.DragonDead dragon -> {
+                }
+            }
+            return new Search(goal, inv, at).run();
         } catch (RuntimeException | StackOverflowError e) {
-            return failed(item, count, "planner error: " + e);
+            return failed(label, count, "planner error: " + e);
         }
     }
 
@@ -135,11 +196,19 @@ public final class AcquirePlanner {
     }
 
     /** Every block that drops {@code item} with the same tool requirement, nearest first. */
-    private record MineOption(String item, List<String> blocks, ToolReq tool, double dropsPerBlock, double distance)
-            implements Option {
+    private record MineOption(String item, List<String> blocks, ToolReq tool, double dropsPerBlock, double distance,
+                              Location location) implements Option {
     }
 
-    private record KillOption(KillSource source, double distance) implements Option {
+    private record KillOption(KillSource source, double distance, Location location) implements Option {
+    }
+
+    /** Mine sources grouped into one option: the same tool, in the same place. */
+    private record MineGroup(ToolReq tool, Location location) {
+    }
+
+    /** Gear held before a trip: any one of {@code anyOf}, {@code count} of it; the first is what gets made. */
+    private record Gear(List<String> anyOf, int count) {
     }
 
     private record CraftOption(CraftSource recipe) implements Option {
@@ -156,8 +225,10 @@ public final class AcquirePlanner {
 
     /** One planning run. The caches and the recursion stack live here, so the planner itself keeps no state. */
     private final class Search {
+        private final Goal target;
         private final String goal;
         private final InventorySnapshot start;
+        private final Location startLocation;
         private final Map<String, List<Option>> optionCache = new HashMap<>();
         private final Map<String, String> noWay = new HashMap<>();
         private final Map<String, Double> estimates = new HashMap<>();
@@ -168,17 +239,27 @@ public final class AcquirePlanner {
         private final Set<String> stack = new HashSet<>();
         /** Tool needs being planned right now ("a pickaxe of tier 1+"). */
         private final List<ToolNeed> toolStack = new ArrayList<>();
+        /** Places being travelled to right now; a trip that needs itself would loop. */
+        private final Set<Location> travelling = new HashSet<>();
         private int work;
 
-        Search(String goal, InventorySnapshot start) {
-            this.goal = goal;
+        Search(Goal target, InventorySnapshot start, Location startLocation) {
+            this.target = target;
+            this.goal = target.label();
             this.start = start;
+            this.startLocation = startLocation;
         }
 
-        Plan run(int count) {
+        Plan run() {
+            int count = target.count();
             PlanState s = new PlanState(start.copy());
-            boolean ok = obtain(s, goal, count);
-            if (ok && options.gearUp()) addAffordableIronGear(s, count);
+            s.location = startLocation;
+            boolean ok = switch (target) {
+                case Goal.ItemGoal item -> obtain(s, item.item(), item.count());
+                case Goal.DragonDead dragon -> slayDragon(s);
+                case Goal.AtLocation where -> travelTo(s, where.location());
+            };
+            if (ok && options.gearUp() && target instanceof Goal.ItemGoal) addAffordableIronGear(s, count);
             if (ok) retrieveStations(s);
             List<String> missing = new ArrayList<>(s.missing);
             if (!ok && missing.isEmpty()) missing.add("no known way to get " + goal);
@@ -216,6 +297,7 @@ public final class AcquirePlanner {
         }
 
         private boolean produce(PlanState s, String item, int need) {
+            if (item.equals(Step.CollectEgg.EGG)) return egg(s, need);
             List<Option> usable = new ArrayList<>();
             for (Option o : options(item)) if (usable(o)) usable.add(o);
             if (usable.isEmpty()) return s.fail(noWay.getOrDefault(item, "no known way to get " + item));
@@ -275,7 +357,7 @@ public final class AcquirePlanner {
         // ---- the four ways to get an item ----
 
         private boolean mine(PlanState s, MineOption m, int need) {
-            if (options.gearUp() && undergroundOre(m) && !hasSword(s)
+            if (options.gearUp() && undergroundOre(m) && m.location() == Location.OVERWORLD && !hasSword(s)
                     && !obtain(s, "minecraft:stone_sword", 1)) return false;
             ToolReq tool = m.tool();
             int prev = findEarlier(s, st -> st instanceof Step.Mine e && e.item().equals(m.item())
@@ -286,8 +368,9 @@ public final class AcquirePlanner {
                 int gained = e.gained() + need;
                 int blocks = actions(gained, m.dropsPerBlock());
                 int extra = blocks - old.expectedBlocks();
-                // A replacement crafted now cannot retroactively supply an earlier mining step.
-                if (availableToolUses(s, tool) >= ToolDurability.budget(extra)) {
+                // A replacement crafted now cannot retroactively supply an earlier mining step, and neither can one
+                // crafted since: only merge while the tools held now are the ones that step had.
+                if (!toolMadeSince(s, prev, tool) && availableToolUses(s, tool) >= ToolDurability.budget(extra)) {
                     if (!budgetTool(s, tool, extra)) return false;
                     s.inv.add(m.item(), need);
                     s.steps.set(prev, new PlanState.Entry(
@@ -298,9 +381,21 @@ public final class AcquirePlanner {
             }
             int blocks = actions(need, m.dropsPerBlock());
             if (!budgetTool(s, tool, blocks)) return false;
+            if (!travelTo(s, m.location())) return false;
             s.inv.add(m.item(), need);
             s.addCost(travel(m.distance()) + blocks * BREAK_TICKS);
             return emit(s, new Step.Mine(m.blocks(), m.item(), s.inv.count(m.item()), tool, blocks), need, true);
+        }
+
+        /** Whether a tool of {@code tool}'s type was crafted after step {@code index}. */
+        private boolean toolMadeSince(PlanState s, int index, ToolReq tool) {
+            if (!gates(tool)) return false;
+            for (int i = index + 1; i < s.steps.size(); i++) {
+                if (s.steps.get(i).step() instanceof Step.Craft craft && tool.type().equals(knowledge.toolType(craft.recipe().output()))) {
+                    return true;
+                }
+            }
+            return false;
         }
 
         private boolean undergroundOre(MineOption mine) {
@@ -338,10 +433,10 @@ public final class AcquirePlanner {
 
         private boolean kill(PlanState s, KillOption k, int need) {
             KillSource src = k.source();
-            s.inv.add(src.output(), need);
             int prev = findEarlier(s, st -> st instanceof Step.Kill e && e.entity().equals(src.entity())
                     && e.item().equals(src.output()));
             if (prev >= 0) {
+                s.inv.add(src.output(), need);
                 PlanState.Entry e = s.steps.get(prev);
                 Step.Kill old = (Step.Kill) e.step();
                 int gained = e.gained() + need;
@@ -351,9 +446,166 @@ public final class AcquirePlanner {
                 s.addCost((kills - old.expectedKills()) * KILL_TICKS);
                 return true;
             }
+            if (!travelTo(s, k.location())) return false;
+            s.inv.add(src.output(), need);
             int kills = actions(need, src.dropsPerKill());
             s.addCost(travel(k.distance()) + kills * KILL_TICKS);
             return emit(s, new Step.Kill(src.entity(), src.output(), s.inv.count(src.output()), kills), need, true);
+        }
+
+        // ---- places: portals, sites, the dragon ----
+
+        /**
+         * Gets the player to {@code target} (null: anywhere will do). What every portal on the way needs is obtained
+         * first (the eyes before looking for the stronghold), then the route is walked from wherever that left us.
+         */
+        private boolean travelTo(PlanState s, Location target) {
+            if (target == null || s.location == target) return true;
+            if (!target.isSite() && s.location.dimension() == target) {
+                s.location = target;
+                return true;
+            }
+            if (!travelling.add(target)) return s.fail("getting to " + target.label() + " needs being there first");
+            try {
+                List<Location> route = route(s.location, target);
+                if (route == null) return s.fail(noRoute(s.location, target));
+                Location prev = s.location;
+                for (Location next : route) {
+                    if (prev.dimension() != next && portalNeeded(s, next) && !preparePortal(s, next)) return false;
+                    prev = next;
+                }
+                route = route(s.location, target);
+                if (route == null) return s.fail(noRoute(s.location, target));
+                Location from = s.location;
+                for (Location next : route) {
+                    if (!hop(s, from, next)) return false;
+                    from = next;
+                }
+                return true;
+            } finally {
+                travelling.remove(target);
+            }
+        }
+
+        private String noRoute(Location from, Location to) {
+            return "no way from " + from.label() + " to " + to.label()
+                    + (from == Location.END ? " (the End has no way out before the dragon is dead)" : "");
+        }
+
+        private boolean portalNeeded(PlanState s, Location next) {
+            return (next == Location.NETHER || next == Location.END) && !s.portals.contains(next) && !s.portalReady.contains(next)
+                    && !world.portalKnown(next);
+        }
+
+        /** The portal items and gear checkpoint for a first trip to {@code to}, obtained and held back. */
+        private boolean preparePortal(PlanState s, Location to) {
+            String where = to.label();
+            for (Map.Entry<String, Integer> item : portalItems(to).entrySet()) {
+                if (!knowledge.isItem(item.getKey()) || !obtain(s, item.getKey(), item.getValue())) {
+                    return s.fail("can't reach " + where + ": needs " + item.getValue() + " " + Step.shortId(item.getKey()));
+                }
+                s.reserve(item.getKey(), item.getValue());
+            }
+            // Gear last, so it is fresh for the trip (and the End gear comes after the Nether, as the phases go).
+            if (!checkpoint(s, to == Location.NETHER ? NETHER_GEAR : END_GEAR, where)) return false;
+            s.portalReady.add(to);
+            return true;
+        }
+
+        /** Obsidian and a flint and steel to build and light a nether portal; 12 eyes to fill the end portal. */
+        private Map<String, Integer> portalItems(Location to) {
+            Map<String, Integer> items = new LinkedHashMap<>();
+            if (to == Location.NETHER) {
+                items.put(OBSIDIAN, PORTAL_OBSIDIAN);
+                items.put(FLINT_AND_STEEL, 1);
+            } else if (to == Location.END) {
+                items.put(ENDER_EYE, END_PORTAL_EYES);
+            }
+            return items;
+        }
+
+        /** One leg: find a site, step out of one, or go through a portal (using up its items the first time). */
+        private boolean hop(PlanState s, Location from, Location to) {
+            if (to.isSite()) {
+                s.addCost(to == Location.FORTRESS ? FORTRESS_TICKS : STRONGHOLD_TICKS);
+                if (!emit(s, new Step.Locate(to), 0, true)) return false;
+                s.location = to;
+                return true;
+            }
+            if (from.isSite() && from.dimension() == to) {
+                s.location = to;
+                return true;
+            }
+            Map<String, Integer> consumes = new LinkedHashMap<>();
+            if (s.portalReady.remove(to)) {
+                for (Map.Entry<String, Integer> item : portalItems(to).entrySet()) {
+                    if (item.getKey().equals(FLINT_AND_STEEL)) s.release(item.getKey(), item.getValue());
+                    else {
+                        s.consume(item.getKey(), item.getValue());
+                        consumes.put(item.getKey(), item.getValue());
+                    }
+                }
+                s.portals.add(to);
+                // The nether portal leads back the same way.
+                if (to == Location.NETHER) s.portals.add(Location.OVERWORLD);
+            }
+            s.addCost(PORTAL_TICKS);
+            if (!emit(s, new Step.Travel(from, to, consumes), 0, true)) return false;
+            s.location = to;
+            return true;
+        }
+
+        /** Before a first trip: hold (or get) each piece of gear; what is held for it stays held back. */
+        private boolean checkpoint(PlanState s, List<Gear> gear, String where) {
+            if (!options.gearCheckpoints()) return true;
+            for (Gear piece : gear) {
+                String held = null;
+                for (String id : piece.anyOf()) if (held == null && s.available(id) >= piece.count()) held = id;
+                String id = held != null ? held : piece.anyOf().get(0);
+                if (!knowledge.isItem(id)) continue;
+                if (held == null && !obtain(s, id, piece.count())) {
+                    return s.fail("the gear for " + where + " needs " + piece.count() + " " + Step.shortId(id));
+                }
+                s.reserve(id, piece.count());
+            }
+            return true;
+        }
+
+        private boolean slayDragon(PlanState s) {
+            if (s.dragonDead) return true;
+            if (!travelTo(s, Location.END)) return false;
+            s.addCost(DRAGON_TICKS);
+            if (!emit(s, new Step.SlayDragon(), 0, true)) return false;
+            s.dragonDead = true;
+            return true;
+        }
+
+        /** The dragon, then the egg off the exit portal. There is only one egg. */
+        private boolean egg(PlanState s, int need) {
+            if (need > 1) return s.fail("there is only one dragon egg");
+            if (!slayDragon(s)) return false;
+            s.inv.add(Step.CollectEgg.EGG, 1);
+            s.addCost(STATION_TICKS);
+            return emit(s, new Step.CollectEgg(s.inv.count(Step.CollectEgg.EGG)), 1, false);
+        }
+
+        /** The legs from {@code from} to {@code to}, not counting {@code from}; null when there is no way. */
+        private static List<Location> route(Location from, Location to) {
+            Map<Location, Location> previous = new EnumMap<>(Location.class);
+            Deque<Location> queue = new ArrayDeque<>();
+            previous.put(from, from);
+            queue.add(from);
+            while (!queue.isEmpty()) {
+                Location at = queue.poll();
+                if (at == to) break;
+                for (Location next : EXITS.get(at)) {
+                    if (previous.putIfAbsent(next, at) == null) queue.add(next);
+                }
+            }
+            if (!previous.containsKey(to)) return null;
+            List<Location> path = new ArrayList<>();
+            for (Location at = to; at != from; at = previous.get(at)) path.add(0, at);
+            return path;
         }
 
         private boolean craft(PlanState s, CraftSource r, int need) {
@@ -599,13 +851,13 @@ public final class AcquirePlanner {
             boolean furnaceRecipe = false;
             // Every block with the same tool requirement becomes one option: any of them will do.
             // Very rare drops are grouped apart and only used when nothing else makes the item.
-            Map<ToolReq, List<MineSource>> groups = new LinkedHashMap<>();
-            Map<ToolReq, List<MineSource>> rareGroups = new LinkedHashMap<>();
+            Map<MineGroup, List<MineSource>> groups = new LinkedHashMap<>();
+            Map<MineGroup, List<MineSource>> rareGroups = new LinkedHashMap<>();
             for (Source src : sources) {
                 if (src instanceof SmeltSource sm && item.equals(sm.output()) && FURNACE.equals(PlanReplay.stationOf(sm)))
                     furnaceRecipe = true;
                 if (src instanceof MineSource m && minable(item, m))
-                    (m.dropsPerBlock() < MIN_DROP_RATE ? rareGroups : groups).computeIfAbsent(toolOf(m), k -> new ArrayList<>()).add(m);
+                    (m.dropsPerBlock() < MIN_DROP_RATE ? rareGroups : groups).computeIfAbsent(groupOf(m), k -> new ArrayList<>()).add(m);
             }
             List<Option> out = new ArrayList<>();
             List<Option> rare = new ArrayList<>();
@@ -618,14 +870,15 @@ public final class AcquirePlanner {
                         if (m.needsSilkTouch()) silkOnly = true;
                         if (minable(item, m)) {
                             boolean isRare = m.dropsPerBlock() < MIN_DROP_RATE;
-                            List<MineSource> group = (isRare ? rareGroups : groups).remove(toolOf(m));
+                            List<MineSource> group = (isRare ? rareGroups : groups).remove(groupOf(m));
                             if (group != null) (isRare ? rare : out).add(mineOption(item, group));
                         }
                     }
                     case KillSource k -> {
                         if (!options.allowKill()) killOff = true;
                         else if (k.dropsPerKill() > 0 && k.entity() != null && !NEVER_KILL.contains(k.entity()))
-                            (k.dropsPerKill() < MIN_DROP_RATE ? rare : out).add(new KillOption(k, world.distanceToEntity(k.entity())));
+                            (k.dropsPerKill() < MIN_DROP_RATE ? rare : out).add(
+                                    new KillOption(k, world.distanceToEntity(k.entity()), knowledge.locationOf(k)));
                     }
                     case CraftSource c -> {
                         if (craftable(c)) out.add(new CraftOption(c));
@@ -656,6 +909,10 @@ public final class AcquirePlanner {
             return m.tool() == null ? ToolReq.NONE : m.tool();
         }
 
+        private MineGroup groupOf(MineSource m) {
+            return new MineGroup(toolOf(m), knowledge.locationOf(m));
+        }
+
         private MineOption mineOption(String item, List<MineSource> group) {
             Map<String, Double> distance = new HashMap<>();
             for (MineSource m : group) distance.computeIfAbsent(m.block(), this::blockDistance);
@@ -664,7 +921,8 @@ public final class AcquirePlanner {
             List<String> blocks = new ArrayList<>();
             for (MineSource m : sorted) if (!blocks.contains(m.block())) blocks.add(m.block());
             MineSource nearest = sorted.get(0);
-            return new MineOption(item, blocks, toolOf(nearest), nearest.dropsPerBlock(), distance.get(nearest.block()));
+            return new MineOption(item, blocks, toolOf(nearest), nearest.dropsPerBlock(), distance.get(nearest.block()),
+                    knowledge.locationOf(nearest));
         }
 
         /**
@@ -723,8 +981,8 @@ public final class AcquirePlanner {
 
         private double estimateOption(Option o) {
             return switch (o) {
-                case MineOption m -> (travel(m.distance()) + BREAK_TICKS) / m.dropsPerBlock();
-                case KillOption k -> (travel(k.distance()) + KILL_TICKS) / k.source().dropsPerKill();
+                case MineOption m -> (travel(m.distance()) + BREAK_TICKS + PlannerCosts.away(m.location())) / m.dropsPerBlock();
+                case KillOption k -> (travel(k.distance()) + KILL_TICKS + PlannerCosts.away(k.location())) / k.source().dropsPerKill();
                 case CraftOption c -> {
                     double sum = CRAFT_TICKS;
                     for (Ingredient ing : c.recipe().ingredients())

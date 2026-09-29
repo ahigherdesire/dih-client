@@ -110,6 +110,37 @@ final class PlanReplay {
                         out.add(new Step.Smelt(r, sm.times(), sm.input(), sm.fuel(), sm.fuelCount(), inv.count(r.output())));
                     }
                 }
+                case Step.Travel t -> {
+                    for (Map.Entry<String, Integer> use : t.consumes().entrySet()) {
+                        if (error == null && inv.take(use.getKey(), use.getValue()) < use.getValue()) error = "short of " + use.getKey();
+                    }
+                    if (error == null && !owned.isEmpty()) error = "leaves " + owned + " behind";
+                    if (error == null) {
+                        out.add(t);
+                        active.clear();
+                        ready.clear();
+                        moved = true;
+                    }
+                }
+                case Step.Locate l -> {
+                    if (!owned.isEmpty()) error = "leaves " + owned + " behind";
+                    else {
+                        out.add(l);
+                        active.clear();
+                        ready.clear();
+                        moved = true;
+                    }
+                }
+                case Step.SlayDragon d -> {
+                    out.add(d);
+                    active.clear();
+                    ready.clear();
+                    moved = true;
+                }
+                case Step.CollectEgg e -> {
+                    inv.add(e.item(), 1);
+                    out.add(new Step.CollectEgg(inv.count(e.item())));
+                }
                 case Step.RetrieveStation r -> {
                     if (!owned.remove(r.station())) error = "station was not placed by this plan";
                     else {
@@ -190,6 +221,17 @@ final class PlanReplay {
                 }
                 case Step.RetrieveStation r -> {}
                 case Step.PlaceStation p -> {
+                }
+                case Step.Travel t -> {
+                    return false;
+                }
+                case Step.Locate l -> {
+                    return false;
+                }
+                case Step.SlayDragon d -> {
+                    return false;
+                }
+                case Step.CollectEgg e -> {
                 }
             }
         }

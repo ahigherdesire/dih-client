@@ -2,6 +2,7 @@ package baritone.acquire.exec;
 
 import baritone.acquire.model.CraftSource;
 import baritone.acquire.model.Ingredient;
+import baritone.acquire.model.Location;
 import baritone.acquire.model.Plan;
 import baritone.acquire.model.SmeltSource;
 import baritone.acquire.model.Step;
@@ -50,6 +51,39 @@ final class AcquireRunTest {
 
     static ToIntFunction<String> inv(Map<String, Integer> counts) {
         return id -> counts.getOrDefault(id, 0);
+    }
+
+    /** Logs, then the Nether: a plan whose second step has no runner yet. */
+    static Plan logsThenNether() {
+        return new Plan("minecraft:blaze_rod", 1, List.of(
+                mineLogs(3),
+                new Step.Travel(Location.OVERWORLD, Location.NETHER, Map.of("minecraft:obsidian", 10)),
+                new Step.Locate(Location.FORTRESS),
+                new Step.Kill("minecraft:blaze", "minecraft:blaze_rod", 1, 2)
+        ), List.of(), 100);
+    }
+
+    @Test
+    void stopsHonestlyAtTheFirstStepWithoutARunner() {
+        AcquireRun run = new AcquireRun("minecraft:blaze_rod", 1, logsThenNether());
+        assertEquals(0, run.advance(inv(Map.of())));
+        assertNull(run.blocked(), "mining logs has a runner");
+        // A step with no item is never "already done": the trip is not skipped.
+        assertEquals(1, run.advance(inv(Map.of(LOG, 3))));
+        String blocked = run.blocked();
+        assertTrue(blocked != null && blocked.contains("step 2/4") && blocked.contains("the Nether")
+                && blocked.contains("isn't built yet"), blocked);
+        assertEquals(0, run.replans(), "no re-plans burned");
+    }
+
+    @Test
+    void everyNewStepSaysWhatIsMissing() {
+        for (Step step : List.of(new Step.Travel(Location.STRONGHOLD, Location.END, Map.of()), new Step.Locate(Location.STRONGHOLD),
+                new Step.SlayDragon(), new Step.CollectEgg(1))) {
+            assertTrue(AcquireRun.unsupported(step) != null, step.describe());
+            assertFalse(AcquireRun.met(step, inv(Map.of())), step.describe() + " is never already done");
+        }
+        assertNull(AcquireRun.unsupported(mineLogs(1)));
     }
 
     @Test

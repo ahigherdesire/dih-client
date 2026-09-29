@@ -4,6 +4,10 @@ import baritone.acquire.knowledge.Knowledge;
 import baritone.acquire.knowledge.WorldView;
 import baritone.acquire.model.CraftSource;
 import baritone.acquire.model.Ingredient;
+import baritone.acquire.model.KillSource;
+import baritone.acquire.model.Location;
+import baritone.acquire.model.MineSource;
+import baritone.acquire.model.Source;
 import baritone.acquire.model.InventorySnapshot;
 import baritone.acquire.model.Plan;
 import baritone.acquire.model.SmeltSource;
@@ -54,6 +58,8 @@ final class PlanSimulator {
         Set<String> setUp = new HashSet<>();
         Set<String> owned = new HashSet<>();
         boolean moved = false;
+        boolean dragonDead = false;
+        Location here = Location.OVERWORLD;
         List<Step> steps = plan.steps();
         for (int i = 0; i < steps.size(); i++) {
             Step step = steps.get(i);
@@ -65,6 +71,7 @@ final class PlanSimulator {
                         assertTrue(knowledge.toolsOf(tool.type(), tool.minTier()).stream().anyMatch(t -> count(inv, t) > 0),
                                 at + ": no " + tool.type() + " of tier " + tool.minTier());
                     }
+                    assertTrue(canWork(here, mineLocation(knowledge, m)), at + ": mines in " + here);
                     int gained = m.untilCount() - count(inv, m.item());
                     assertTrue(gained > 0, at + ": nothing to mine");
                     assertTrue(m.expectedBlocks() > 0, at);
@@ -75,6 +82,7 @@ final class PlanSimulator {
                     moved = true;
                 }
                 case Step.Kill k -> {
+                    assertTrue(canWork(here, killLocation(knowledge, k)), at + ": kills in " + here);
                     int gained = k.untilCount() - count(inv, k.item());
                     assertTrue(gained > 0, at + ": nothing to kill for");
                     inv.put(k.item(), k.untilCount());
@@ -117,6 +125,35 @@ final class PlanSimulator {
                     placed.add(p.station());
                     setUp.add(p.station());
                 }
+                case Step.Travel t -> {
+                    assertTrue(canWork(here, t.from()), at + ": leaves from " + here + ", not " + t.from());
+                    if (t.to() == Location.NETHER && t.consumes().containsKey("minecraft:obsidian")) {
+                        assertTrue(count(inv, "minecraft:flint_and_steel") > 0, at + ": nothing to light the portal with");
+                    }
+                    t.consumes().forEach((item, n) -> take(inv, item, n, at));
+                    assertTrue(owned.isEmpty(), at + ": leaves placed stations behind");
+                    here = t.to();
+                    setUp.clear();
+                    placed.clear();
+                    moved = true;
+                }
+                case Step.Locate l -> {
+                    assertEquals(l.site().dimension(), here.dimension(), at + ": looks in the wrong dimension");
+                    assertTrue(owned.isEmpty(), at + ": leaves placed stations behind");
+                    here = l.site();
+                    setUp.clear();
+                    placed.clear();
+                    moved = true;
+                }
+                case Step.SlayDragon d -> {
+                    assertEquals(Location.END, here, at + ": the dragon is in the End");
+                    dragonDead = true;
+                }
+                case Step.CollectEgg e -> {
+                    assertTrue(dragonDead, at + ": the egg comes after the dragon");
+                    inv.merge(e.item(), 1, Integer::sum);
+                    assertEquals(e.untilCount(), count(inv, e.item()), at + ": untilCount");
+                }
                 case Step.RetrieveStation r -> {
                     assertTrue(owned.remove(r.station()), at + ": station was not placed by this plan");
                     inv.merge(r.station(), 1, Integer::sum);
@@ -127,6 +164,23 @@ final class PlanSimulator {
         }
         inv.values().removeIf(v -> v == 0);
         return new Result(inv, mined, crafted);
+    }
+
+    /** Standing at {@code here} is fine for work at {@code needed}: the same place, anywhere, or a site's own dimension. */
+    private static boolean canWork(Location here, Location needed) {
+        return needed == null || needed == here || !needed.isSite() && here.dimension() == needed;
+    }
+
+    private static Location mineLocation(Knowledge knowledge, Step.Mine m) {
+        for (Source source : knowledge.sourcesFor(m.item()))
+            if (source instanceof MineSource mine && m.blocks().contains(mine.block())) return knowledge.locationOf(mine);
+        return Location.OVERWORLD;
+    }
+
+    private static Location killLocation(Knowledge knowledge, Step.Kill k) {
+        for (Source source : knowledge.sourcesFor(k.item()))
+            if (source instanceof KillSource kill && kill.entity().equals(k.entity())) return knowledge.locationOf(kill);
+        return Location.OVERWORLD;
     }
 
     private static int count(Map<String, Integer> inv, String item) {

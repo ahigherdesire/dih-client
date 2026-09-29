@@ -1,5 +1,7 @@
 package baritone.acquire.planner;
 
+import baritone.acquire.model.Location;
+
 /**
  * The planner's rough costs in ticks, in one place so they are easy to tune. They only compare
  * alternatives; nobody should read them as a time estimate.
@@ -25,8 +27,27 @@ public final class PlannerCosts {
     /** Break and pick up a station already placed by this acquire. */
     public static final double RETRIEVE_TICKS = 12;
     // Smelting costs the recipe's cookTicks per item.
+    /** Going through a portal once it is there (walking to it included). */
+    public static final double PORTAL_TICKS = 2400;
+    /** Finding a nether fortress and getting there. */
+    public static final double FORTRESS_TICKS = 12000;
+    /** Finding the stronghold's portal room and getting there. */
+    public static final double STRONGHOLD_TICKS = 16000;
+    /** The dragon fight. */
+    public static final double DRAGON_TICKS = 12000;
 
     private PlannerCosts() {
+    }
+
+    /** A rough extra cost for a source away from the Overworld, so options there sort after Overworld ones. */
+    public static double away(Location location) {
+        if (location == null || location == Location.OVERWORLD) return 0;
+        return switch (location) {
+            case NETHER -> PORTAL_TICKS;
+            case FORTRESS -> PORTAL_TICKS + FORTRESS_TICKS;
+            case STRONGHOLD -> STRONGHOLD_TICKS;
+            default -> STRONGHOLD_TICKS + PORTAL_TICKS;
+        };
     }
 
     /** Ticks to walk {@code distance} blocks. Unknown (infinite or NaN) distances count as {@link #UNKNOWN_DISTANCE}. */

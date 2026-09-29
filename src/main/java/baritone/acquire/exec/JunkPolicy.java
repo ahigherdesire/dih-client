@@ -44,6 +44,10 @@ final class JunkPolicy {
                 case Step.Kill kill -> { }
                 case Step.PlaceStation station -> needed.add(station.station());
                 case Step.RetrieveStation station -> needed.add(station.station());
+                case Step.Travel travel -> needed.addAll(travel.consumes().keySet());
+                case Step.Locate locate -> { }
+                case Step.SlayDragon dragon -> { }
+                case Step.CollectEgg egg -> { }
             }
         }
         return needed;

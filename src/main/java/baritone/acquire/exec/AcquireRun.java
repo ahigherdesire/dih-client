@@ -64,8 +64,7 @@ final class AcquireRun {
         List<Step> steps = plan.steps();
         for (int i = index + 1; i < steps.size(); i++) {
             Step step = steps.get(i);
-            boolean work = step instanceof Step.PlaceStation ps ? stationNeeded(i, ps.station(), have)
-                    : step instanceof Step.RetrieveStation || !met(step, have);
+            boolean work = step instanceof Step.PlaceStation ps ? stationNeeded(i, ps.station(), have) : !met(step, have);
             if (work) {
                 index = i;
                 return i;
@@ -96,8 +95,38 @@ final class AcquireRun {
     }
 
     static boolean met(Step step, ToIntFunction<String> have) {
-        return !(step instanceof Step.PlaceStation) && !(step instanceof Step.RetrieveStation)
-                && have.applyAsInt(step.item()) >= step.untilCount();
+        return switch (step) {
+            case Step.PlaceStation p -> false;
+            case Step.RetrieveStation r -> false;
+            // Trips and the dragon have no item to count: never already done.
+            case Step.Travel t -> false;
+            case Step.Locate l -> false;
+            case Step.SlayDragon d -> false;
+            default -> have.applyAsInt(step.item()) >= step.untilCount();
+        };
+    }
+
+    /**
+     * Why {@code step} can't run yet, or null when it has a runner. Portals, finding structures and the dragon come
+     * with the Nether and End updates; until then a plan stops there instead of re-planning.
+     */
+    static String unsupported(Step step) {
+        return switch (step) {
+            case Step.Travel t -> "going to " + t.to().label() + " isn't built yet";
+            case Step.Locate l -> "finding " + l.site().label() + " isn't built yet";
+            case Step.SlayDragon d -> "fighting the ender dragon isn't built yet";
+            case Step.CollectEgg e -> "collecting the dragon egg isn't built yet";
+            default -> null;
+        };
+    }
+
+    /** "Stopped at step 2/4 (...): going to the Nether isn't built yet. ..." when the current step can't run, else null. */
+    String blocked() {
+        Step step = current();
+        String why = step == null ? null : unsupported(step);
+        if (why == null) return null;
+        return "Stopped at step " + (index + 1) + "/" + stepCount() + " (" + step.describe() + "): " + why
+                + ". Everything before it is done; #beat plan shows the whole route.";
     }
 
     boolean goalMet(ToIntFunction<String> have) {

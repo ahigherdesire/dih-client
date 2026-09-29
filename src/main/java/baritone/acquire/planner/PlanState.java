@@ -1,6 +1,7 @@
 package baritone.acquire.planner;
 
 import baritone.acquire.model.InventorySnapshot;
+import baritone.acquire.model.Location;
 import baritone.acquire.model.Step;
 
 import java.util.ArrayList;
@@ -51,6 +52,13 @@ final class PlanState {
     Set<String> owned;
     /** A Mine or Kill may have taken us away from stations observed at the starting position. */
     boolean moved;
+    /** Where the player is after the drafted steps. */
+    Location location = Location.OVERWORLD;
+    /** Portals this plan has opened, by the dimension they lead to: later trips need nothing. */
+    Set<Location> portals = new HashSet<>();
+    /** Portals whose items (and gear checkpoint) are obtained and held back, by the dimension they lead to. */
+    Set<Location> portalReady = new HashSet<>();
+    boolean dragonDead;
     double cost;
     /** Trials that get more expensive than this are abandoned (branch and bound). Not taken over by {@link #become}. */
     double limit = Double.POSITIVE_INFINITY;
@@ -80,6 +88,10 @@ final class PlanState {
         PlanState c = new PlanState(inv.copy(), new HashMap<>(reserved), new HashMap<>(usedDurability), new ArrayList<>(steps),
                 new LinkedHashSet<>(missing), new HashSet<>(ready), new HashSet<>(pending), new HashSet<>(active), new HashSet<>(owned), moved, cost);
         c.limit = limit;
+        c.location = location;
+        c.portals = new HashSet<>(portals);
+        c.portalReady = new HashSet<>(portalReady);
+        c.dragonDead = dragonDead;
         return c;
     }
 
@@ -96,6 +108,10 @@ final class PlanState {
         owned = o.owned;
         moved = o.moved;
         cost = o.cost;
+        location = o.location;
+        portals = o.portals;
+        portalReady = o.portalReady;
+        dragonDead = o.dragonDead;
     }
 
     /** Held and not reserved for anything. */

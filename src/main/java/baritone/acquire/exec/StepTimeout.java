@@ -16,6 +16,10 @@ final class StepTimeout {
             case Step.Craft craft -> craft.times() * 60.0;
             case Step.PlaceStation place -> 600.0;
             case Step.RetrieveStation retrieve -> 900.0;
+            case Step.Travel travel -> 6000.0;
+            case Step.Locate locate -> 12000.0;
+            case Step.SlayDragon dragon -> 12000.0;
+            case Step.CollectEgg egg -> 1200.0;
         };
         double scaled = 20.0 * (45 + blocks * 3 + depth * 6) + work;
         return (int) Math.min(Integer.MAX_VALUE, Math.max(Math.max(1, floorSeconds) * 20.0, scaled));

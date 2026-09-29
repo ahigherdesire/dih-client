@@ -368,6 +368,12 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             return replan("the plan ran out with " + have(active.goal) + "/" + active.count + " " + Step.shortId(active.goal)) && startNextStep();
         }
         Step step = active.current();
+        String blocked = active.blocked();
+        if (blocked != null) {
+            // No runner for this step yet (portals, structures, the dragon): stop here instead of re-planning.
+            finish(AcquireEvent.Kind.FAILED, blocked);
+            return false;
+        }
         runner = createRunner(step);
         stepTicks = 0;
         stepTimeoutTicks = timeoutFor(step);
@@ -385,6 +391,10 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             case Step.Kill kill -> new KillRunner(exec, kill);
             case Step.PlaceStation station -> new StationRunner(exec, station);
             case Step.RetrieveStation station -> new RetrieveStationRunner(exec, station);
+            case Step.Travel travel -> throw new IllegalStateException("no runner for " + step.describe());
+            case Step.Locate locate -> throw new IllegalStateException("no runner for " + step.describe());
+            case Step.SlayDragon dragon -> throw new IllegalStateException("no runner for " + step.describe());
+            case Step.CollectEgg egg -> throw new IllegalStateException("no runner for " + step.describe());
         };
     }
 

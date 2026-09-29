@@ -1,5 +1,6 @@
 package baritone.acquire.knowledge;
 
+import baritone.acquire.model.Location;
 import baritone.acquire.model.CraftSource;
 import baritone.acquire.model.Ingredient;
 import baritone.acquire.model.KillSource;
@@ -198,6 +199,44 @@ public final class VanillaKnowledge implements Knowledge {
     @Override
     public List<Source> allSources() {
         return allSources;
+    }
+
+    /** Blocks and mobs found only in the Nether, at a fortress, or in the End. Everything else counts as the Overworld. */
+    private static final Map<String, Location> PLACES = places();
+    /** Mobs found everywhere (endermen): no trip needed. */
+    private static final Set<String> ANYWHERE = Set.of("minecraft:enderman");
+
+    private static Map<String, Location> places() {
+        Map<String, Location> places = new HashMap<>();
+        for (String id : List.of("netherrack", "nether_quartz_ore", "nether_gold_ore", "ancient_debris", "soul_sand",
+                "soul_soil", "glowstone", "basalt", "polished_basalt", "blackstone", "gilded_blackstone", "crimson_stem",
+                "warped_stem", "crimson_hyphae", "warped_hyphae", "crimson_nylium", "warped_nylium", "shroomlight",
+                "crimson_fungus", "warped_fungus", "weeping_vines", "weeping_vines_plant", "twisting_vines",
+                "twisting_vines_plant", "nether_wart_block", "warped_wart_block", "crimson_roots", "warped_roots",
+                "nether_sprouts", "ghast", "magma_cube", "piglin", "hoglin", "strider", "zoglin")) {
+            places.put("minecraft:" + id, Location.NETHER);
+        }
+        for (String id : List.of("nether_bricks", "nether_brick_fence", "nether_brick_stairs", "nether_wart", "blaze",
+                "wither_skeleton")) {
+            places.put("minecraft:" + id, Location.FORTRESS);
+        }
+        for (String id : List.of("end_stone", "end_stone_bricks", "chorus_plant", "chorus_flower", "purpur_block",
+                "purpur_pillar", "end_rod", "shulker", "dragon_egg", "ender_dragon")) {
+            places.put("minecraft:" + id, Location.END);
+        }
+        return Map.copyOf(places);
+    }
+
+    @Override
+    public Location locationOf(Source source) {
+        String key = switch (source) {
+            case MineSource mine -> mine.block();
+            case KillSource kill -> kill.entity();
+            default -> null;
+        };
+        if (key == null) return null;
+        if (ANYWHERE.contains(key)) return null;
+        return PLACES.getOrDefault(key, Location.OVERWORLD);
     }
 
     @Override
