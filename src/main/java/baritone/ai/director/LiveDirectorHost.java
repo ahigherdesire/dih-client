@@ -227,6 +227,11 @@ public final class LiveDirectorHost implements DirectorHost {
     }
 
     @Override
+    public void askConfirm(String tool, String why) {
+        Minecraft.getInstance().execute(() -> dihclient.ai.AiConfirmPrompt.show(tool, why));
+    }
+
+    @Override
     public void stopJobs() {
         ClientJob client = this.currentJob == null ? null : CLIENT_JOBS.get(this.currentJob);
         if (client != null) {

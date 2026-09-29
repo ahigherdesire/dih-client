@@ -21,6 +21,7 @@ final class FakeHost implements DirectorHost {
     final List<JsonObject> ranArgs = new ArrayList<>();
     final List<Boolean> ranConfirmed = new ArrayList<>();
     final List<String> reports = new ArrayList<>();
+    final List<String> confirmPrompts = new ArrayList<>();
     final List<String> guardian = new ArrayList<>();
     final List<JsonObject> journals = new ArrayList<>();
     String autoStop;
@@ -48,6 +49,11 @@ final class FakeHost implements DirectorHost {
         this.ranConfirmed.add(confirmed);
         Deque<ToolResult> script = this.results.get(tool);
         return script == null ? ToolResult.ok(tool + " ok") : next(script);
+    }
+
+    @Override
+    public void askConfirm(String tool, String why) {
+        this.confirmPrompts.add(tool + ": " + why);
     }
 
     @Override

@@ -101,6 +101,12 @@ public final class DihCommandPalette {
             }
         }
         String dot = DihCommands.effectivePrefix();
+        entries.add(new Entry(Kind.DOT_COMMAND, dot + "ai start", List.of("AI objective", "run"),
+            "Tell the AI what to do", "ai:start"));
+        entries.add(new Entry(Kind.DOT_COMMAND, dot + "ai setup", List.of("AI provider", "model key"),
+            "Choose an AI provider and test it", "ai:setup"));
+        entries.add(new Entry(Kind.DOT_COMMAND, dot + "ai panel", List.of("AI progress", "checklist"),
+            "Show the live AI panel", "ai:panel"));
         for (Command command : DihCommands.all()) {
             entries.add(new Entry(Kind.DOT_COMMAND, dot + command.name(), Arrays.asList(command.aliases()),
                 command.description(), "dot:" + command.name()));
@@ -152,6 +158,12 @@ public final class DihCommandPalette {
         config.paletteRecent = PaletteIndex.remember(config.paletteRecent, entry.action(), RECENT_MAX);
         config.save();
         String action = entry.action();
+        if (action.equals("ai:start")) return new ChatScreen(DihCommands.effectivePrefix() + "ai start ", false);
+        if (action.equals("ai:setup")) return new dihclient.gui.screen.DihAiSetupScreen(parent);
+        if (action.equals("ai:panel")) {
+            dihclient.util.DihAiPanelOverlay.toggle();
+            return parent;
+        }
         switch (entry.kind()) {
             case MODULE -> {
                 Module module = ModuleRegistry.get(action.substring("module:".length()));
@@ -190,7 +202,7 @@ public final class DihCommandPalette {
 
     /** A {@code .} command runs straight away only if it takes nothing: it executes bare and has no arguments. */
     static boolean runsDirectly(Entry entry) {
-        if (entry.kind() != Kind.DOT_COMMAND) return false;
+        if (entry.kind() != Kind.DOT_COMMAND || !entry.action().startsWith("dot:")) return false;
         CommandNode<DihCommandSource> node = DihCommands.dispatcher().getRoot().getChild(entry.action().substring("dot:".length()));
         return node != null && node.getCommand() != null && node.getChildren().isEmpty();
     }

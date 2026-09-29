@@ -150,9 +150,13 @@ final class DirectorTest {
         assertEquals(RunStatus.PAUSED, state.status());
         assertTrue(state.lastReason().contains("whisper") && state.lastReason().contains(".ai confirm"), state.lastReason());
         assertEquals(1, model.calls(), "waiting for the player is not a failure");
+        assertTrue(state.awaitingConfirm(), "the panel shows confirm / deny");
+        assertEquals(List.of("whisper: asked to"), host.confirmPrompts, "a prompt for when the panel is closed");
 
         director.confirm();
-        assertEquals(RunStatus.DONE, drive(director, host).status());
+        DirectorState done = drive(director, host);
+        assertEquals(RunStatus.DONE, done.status());
+        assertFalse(done.awaitingConfirm());
         assertEquals(List.of(false, true), host.ranConfirmed);
     }
 

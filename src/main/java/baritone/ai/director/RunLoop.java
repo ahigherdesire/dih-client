@@ -314,6 +314,7 @@ abstract class RunLoop implements Director {
         if (Boolean.TRUE.equals(result.facts().get("needs_confirmation"))) {
             pauseHere(step.plan.tool() + " needs your OK first (" + step.plan.reason() + "). Type .ai confirm to allow it, or .ai stop.");
             this.awaitingConfirm = true;
+            this.host.askConfirm(step.plan.tool(), step.plan.reason());
             return;
         }
         switch (result.status()) {
@@ -422,7 +423,8 @@ abstract class RunLoop implements Director {
                     step.plan.reason(), step.status, step.note));
         }
         this.published = new DirectorState(this.objective, basic(), this.status, views, this.current, this.lastReason,
-                modelCalls(), promptTokens(), completionTokens(), this.startedAt, this.planVersion);
+                modelCalls(), promptTokens(), completionTokens(), this.startedAt, this.planVersion,
+                this.awaitingConfirm && this.status == RunStatus.PAUSED);
     }
 
     /** The plan so far, one line per step, for a re-plan. */

@@ -12,6 +12,9 @@ import dihclient.commands.Command;
 import dihclient.commands.DihCommandSource;
 import dihclient.commands.DihCommands;
 import dihclient.util.DihClientMessaging;
+import dihclient.util.DihAiPanelOverlay;
+import dihclient.gui.screen.DihAiSetupScreen;
+import net.minecraft.client.Minecraft;
 
 import java.util.function.Consumer;
 
@@ -57,9 +60,12 @@ public class AiRunCommand extends Command {
             return SUCCESS;
         }));
         root.then(LiteralArgumentBuilder.<DihCommandSource>literal("setup").executes(ctx -> {
-            DihClientMessaging.sendPrefixed("§7Any OpenAI-compatible provider works. Set it with §f#ai url <base url>§7, "
-                    + "§f#ai model <name>§7 and §f#ai key <key>§7. For a local Ollama: §f#ai url http://localhost:11434/v1§7. "
-                    + "Without a key, .ai start runs in basic mode.");
+            Minecraft mc = Minecraft.getInstance();
+            mc.execute(() -> mc.gui.setScreen(new DihAiSetupScreen(mc.gui.screen())));
+            return SUCCESS;
+        }));
+        root.then(LiteralArgumentBuilder.<DihCommandSource>literal("panel").executes(ctx -> {
+            Minecraft.getInstance().execute(DihAiPanelOverlay::toggle);
             return SUCCESS;
         }));
     }
@@ -67,7 +73,7 @@ public class AiRunCommand extends Command {
     private static void usage() {
         String p = DihCommands.effectivePrefix();
         DihClientMessaging.sendPrefixed("§e" + p + "ai start <objective>§7, then §e" + p + "ai status§7, §estop§7, §epause§7, "
-                + "§eresume§7, §ewhy§7, §econfirm§7. §e" + p + "ai setup§7 for the model.");
+                + "§eresume§7, §ewhy§7, §econfirm§7. §e" + p + "ai setup§7 for the model, §e" + p + "ai panel§7 for progress.");
     }
 
     private static LiteralArgumentBuilder<DihCommandSource> control(String name, Consumer<Director> action) {
@@ -91,6 +97,7 @@ public class AiRunCommand extends Command {
         }
         String error = brain.startRun(objective);
         if (error != null) DihClientMessaging.sendPrefixed("§c" + error);
+        else Minecraft.getInstance().execute(DihAiPanelOverlay::open);
     }
 
     /** The current or last run, or null (after saying so). */

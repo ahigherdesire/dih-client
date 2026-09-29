@@ -24,6 +24,10 @@ public interface DirectorHost {
 
     long now();
 
+    /** A dangerous step waits for the player's OK: ask where they'll see it. */
+    default void askConfirm(String tool, String why) {
+    }
+
     /** A line for the player. */
     void report(String line);
 
