@@ -27,6 +27,8 @@ public final class ToolContext {
     private final Consumer<String> events;
     private final CommandRunner commands;
     private final AiConfig config;
+    /** Run by a director's plan: its acquires are the director's, not the chat brain's follow-up chain. */
+    private final boolean directed;
 
     /** Outside a game every command is unknown. */
     private static final CommandRunner NO_GAME = new CommandRunner() {
@@ -42,7 +44,7 @@ public final class ToolContext {
     };
 
     private ToolContext(AiBrain brain, Source source, ToolSession session, boolean confirmed, Consumer<String> events,
-                        CommandRunner commands, AiConfig config) {
+                        CommandRunner commands, AiConfig config, boolean directed) {
         this.brain = brain;
         this.source = source;
         this.session = session;
@@ -50,40 +52,49 @@ public final class ToolContext {
         this.events = events;
         this.commands = commands;
         this.config = config;
+        this.directed = directed;
     }
 
     /** {@code brain} may be null in tests; game-thread work then runs inline. */
     public static ToolContext of(AiBrain brain, Source source) {
-        return new ToolContext(brain, source, null, false, event -> { }, null, null);
+        return new ToolContext(brain, source, null, false, event -> { }, null, null, false);
     }
 
     /** The run's visible tools, for an AI call. */
     public ToolContext withSession(ToolSession session) {
-        return new ToolContext(this.brain, this.source, session, this.confirmed, this.events, this.commands, this.config);
+        return new ToolContext(this.brain, this.source, session, this.confirmed, this.events, this.commands, this.config, this.directed);
     }
 
     /** A dangerous tool may run: the player clicked [confirm], or a macro step allows it. */
     public ToolContext confirmed(boolean confirmed) {
-        return new ToolContext(this.brain, this.source, this.session, confirmed, this.events, this.commands, this.config);
+        return new ToolContext(this.brain, this.source, this.session, confirmed, this.events, this.commands, this.config, this.directed);
     }
 
     /** Where tools report things that happen later, such as a job ending. */
     public ToolContext withEvents(Consumer<String> events) {
         return new ToolContext(this.brain, this.source, this.session, this.confirmed, events == null ? event -> { } : events,
-                this.commands, this.config);
+                this.commands, this.config, this.directed);
     }
 
     /** Runs commands through {@code commands} instead of the game: for tests. */
     public ToolContext withCommands(CommandRunner commands) {
-        return new ToolContext(this.brain, this.source, this.session, this.confirmed, this.events, commands, this.config);
+        return new ToolContext(this.brain, this.source, this.session, this.confirmed, this.events, commands, this.config, this.directed);
     }
 
     /** Uses {@code config} instead of the brain's: for tests. */
     public ToolContext withConfig(AiConfig config) {
-        return new ToolContext(this.brain, this.source, this.session, this.confirmed, this.events, this.commands, config);
+        return new ToolContext(this.brain, this.source, this.session, this.confirmed, this.events, this.commands, config, this.directed);
     }
 
     /** Where tools run {@code #} and {@code .} commands. */
+    public ToolContext directed() {
+        return new ToolContext(this.brain, this.source, this.session, this.confirmed, this.events, this.commands, this.config, true);
+    }
+
+    public boolean isDirected() {
+        return this.directed;
+    }
+
     public CommandRunner commands() {
         if (this.commands != null) return this.commands;
         return this.brain == null ? NO_GAME : new LiveCommands(this.brain);

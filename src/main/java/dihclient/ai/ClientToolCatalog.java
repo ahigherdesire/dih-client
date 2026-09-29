@@ -2,11 +2,15 @@ package dihclient.ai;
 
 import baritone.ai.LiveCommands;
 import baritone.ai.catalog.CommandAdapters;
+import baritone.ai.director.JobStatus;
+import baritone.ai.director.LiveDirectorHost;
 import baritone.ai.tool.ToolRegistry;
 import baritone.api.BaritoneAPI;
 import baritone.api.command.ICommand;
 import dihclient.commands.Command;
 import dihclient.commands.DihCommands;
+import dihclient.util.macro.MacroExecutor;
+import net.minecraft.client.Minecraft;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -27,6 +31,15 @@ public final class ClientToolCatalog {
         if (installed) return;
         installed = true;
         LiveCommands.setClientRunner(DotCommandRunner::run);
+        // Jobs the client tools start, so a director run can wait for them.
+        LiveDirectorHost.registerJob("macro", new LiveDirectorHost.ClientJob(
+                () -> MacroExecutor.isVisibleRunning() ? JobStatus.running() : JobStatus.done("the macro finished"),
+                () -> Minecraft.getInstance().execute(MacroExecutor::stop)));
+        LiveDirectorHost.registerJob("connect", new LiveDirectorHost.ClientJob(
+                () -> Minecraft.getInstance().level != null ? JobStatus.done("joined")
+                        : Minecraft.getInstance().gui.screen() instanceof net.minecraft.client.gui.screens.DisconnectedScreen
+                        ? JobStatus.failed("couldn't join the server") : JobStatus.running(),
+                () -> { }));
         ToolRegistry.contribute(registry -> {
             ClientTools.register(registry);
             CommandAdapters.registerBaritone(registry, baritoneCommands());

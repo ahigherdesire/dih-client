@@ -84,6 +84,7 @@ public final class DihCommands {
             register(new dihclient.commands.impl.RemoteViewCommand());
             register(new dihclient.commands.impl.NameScrapeCommand());
             register(new dihclient.commands.impl.ToolsCommand());
+            register(new dihclient.commands.impl.AiRunCommand());
             dihclient.ai.ClientToolCatalog.install();
         }
     }

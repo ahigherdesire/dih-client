@@ -120,13 +120,18 @@ public final class BuiltinTools {
 
         registry.register(AiTool.builder("remember", ToolCategory.JOB)
                 .summary("Store one short fact for later sessions.")
-                .description("Store one short fact for later sessions, such as a base coordinate or a player's habits.")
+                .description("Store one short fact for later sessions. Facts about this world (a base coordinate, where "
+                        + "the village is) are kept per world; facts about the player (their habits, what they like) everywhere.")
                 .schema(ToolSchema.builder()
                         .string("fact", "One sentence.").required()
+                        .enumOf("about", "What the fact is about.", "world", "player").defaultsTo("world")
                         .build())
-                .handler((ctx, args) -> ctx.memory() == null
-                        ? ToolResult.failed("Memory isn't loaded.")
-                        : ToolResult.ok(ctx.memory().remember(args.string("fact"))))
+                .handler((ctx, args) -> {
+                    if (ctx.memory() == null) return ToolResult.failed("Memory isn't loaded.");
+                    AiMemory memory = "player".equals(args.string("about")) && ctx.brain() != null
+                            ? ctx.brain().getMemories().global() : ctx.memory();
+                    return ToolResult.ok(memory.remember(args.string("fact"))).fact("about", args.string("about"));
+                })
                 .build());
     }
 
@@ -204,14 +209,14 @@ public final class BuiltinTools {
             return ToolResult.failed(AiTools.ACQUIRE_UNAVAILABLE);
         }
         String result;
-        if (ctx.source() == ToolContext.Source.AI) {
+        if (ctx.source() == ToolContext.Source.AI && !ctx.isDirected()) {
             boolean eventsOn = brain.getConfig().followUpsActive();
             result = brain.onGameThread(() -> {
                 brain.attachAcquireListener(control);
                 return AiTools.startAcquire(control, brain.getFollowUps(), request, eventsOn);
             }, "Timed out while starting. Check look_around before trying again.");
         } else {
-            // Started by a player or a macro: the AI mustn't treat its end as its own follow-up.
+            // Started by a player, a macro or a director's plan: the chat AI mustn't treat its end as its own follow-up.
             result = brain.onGameThread(() -> AiTools.startByHand(control, request), "Timed out while starting.");
         }
         String text = result + "\nYou are now " + ctx.brief() + ".";

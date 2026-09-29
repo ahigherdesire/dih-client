@@ -38,6 +38,13 @@ public record ItemRequest(String item, int count, String error) {
     private static final Pattern LEADING_COUNT = Pattern.compile("^(\\d{1,5})\\s*[x×]?\\s+(.+)$");
     private static final Pattern TRAILING_COUNT = Pattern.compile("^(.+?)\\s+[x×]\\s*(\\d{1,5})$");
 
+    /** Free text with an optional count in it: "10 oak logs", "torch x3". */
+    public static ItemRequest fromText(String text) {
+        JsonObject args = new JsonObject();
+        args.addProperty("item", text == null ? "" : text);
+        return parse(args);
+    }
+
     static ItemRequest parse(LlmClient.ToolCall call) {
         return parse(call.arguments);
     }
@@ -91,7 +98,7 @@ public record ItemRequest(String item, int count, String error) {
         return new ItemRequest(item, count, null);
     }
 
-    boolean ok() {
+    public boolean ok() {
         return this.error == null;
     }
 

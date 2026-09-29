@@ -200,16 +200,20 @@ public class AiCommand extends Command {
             case "forget": {
                 String needle = args.rawRest().trim();
                 if (needle.isEmpty()) {
-                    logDirect("Memory:");
-                    logDirect(behavior.getMemory().digest());
+                    logDirect("Memory (" + behavior.getMemories().worldKey() + "):");
+                    logDirect(behavior.getMemories().digest());
                     return;
                 }
                 if (needle.equalsIgnoreCase("all")) {
                     behavior.getMemory().clear();
-                    logDirect("Memory wiped.", ChatFormatting.YELLOW);
+                    logDirect("This world's memory wiped.", ChatFormatting.YELLOW);
                     return;
                 }
-                logDirect(behavior.getMemory().forget(needle), ChatFormatting.YELLOW);
+                String forgot = behavior.getMemory().forget(needle);
+                if (forgot.startsWith("No matching") && behavior.getMemories().global() != behavior.getMemory()) {
+                    forgot = behavior.getMemories().global().forget(needle);
+                }
+                logDirect(forgot, ChatFormatting.YELLOW);
                 return;
             }
             case "clear": {

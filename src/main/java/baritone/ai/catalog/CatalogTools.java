@@ -12,6 +12,11 @@ public final class CatalogTools {
     private CatalogTools() {
     }
 
+    /** The structures goto_structure knows, as ids ("village", "nether_fortress"). */
+    public static java.util.List<String> structures() {
+        return java.util.List.of(JobTools.STRUCTURES);
+    }
+
     public static void register(ToolRegistry registry) {
         JobTools.register(registry);
         MovementTools.register(registry);
