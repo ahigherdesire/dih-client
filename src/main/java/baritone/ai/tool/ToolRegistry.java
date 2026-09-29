@@ -1,6 +1,7 @@
 package baritone.ai.tool;
 
 import baritone.ai.BuiltinTools;
+import baritone.ai.catalog.CatalogTools;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 
@@ -10,6 +11,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Predicate;
 
 /**
@@ -22,24 +24,47 @@ import java.util.function.Predicate;
 public final class ToolRegistry {
 
     private static volatile ToolRegistry standard;
+    /** Tools added from outside Baritone (the client's own, and command adapters), applied to the standard registry. */
+    private static final List<Consumer<ToolRegistry>> CONTRIBUTIONS = new ArrayList<>();
 
     private final Map<String, AiTool> byName = new LinkedHashMap<>();
 
-    /** The client's tools, built once. */
+    /** The client's tools, built once: {@link #withDefaults()} plus every contribution. */
     public static ToolRegistry standard() {
         ToolRegistry registry = standard;
         if (registry == null) {
             synchronized (ToolRegistry.class) {
                 registry = standard;
                 if (registry == null) {
-                    registry = new ToolRegistry();
-                    BuiltinTools.register(registry);
-                    MetaTools.register(registry);
+                    registry = withDefaults();
+                    for (Consumer<ToolRegistry> contribution : CONTRIBUTIONS) {
+                        contribution.accept(registry);
+                    }
                     standard = registry;
                 }
             }
         }
         return registry;
+    }
+
+    /** A new registry with every tool that needs no game to register: the built-ins, the meta tools and the catalog. */
+    public static ToolRegistry withDefaults() {
+        ToolRegistry registry = new ToolRegistry();
+        BuiltinTools.register(registry);
+        MetaTools.register(registry);
+        CatalogTools.register(registry);
+        return registry;
+    }
+
+    /**
+     * Adds tools to the standard registry: now if it is already built, else when it is. For code outside Baritone
+     * (the client's tools) and tools that need the running game to list (command adapters).
+     */
+    public static void contribute(Consumer<ToolRegistry> contribution) {
+        synchronized (ToolRegistry.class) {
+            CONTRIBUTIONS.add(contribution);
+            if (standard != null) contribution.accept(standard);
+        }
     }
 
     public synchronized ToolRegistry register(AiTool tool) {
@@ -105,6 +130,9 @@ public final class ToolRegistry {
     private static ToolResult run(AiTool tool, ToolContext ctx, JsonObject args) {
         try {
             return tool.execute(ctx, args);
+        } catch (IllegalArgumentException e) {
+            // Tools throw these for arguments the schema can't express ("give x and z together"): a reason, not a crash.
+            return ToolResult.failed(e.getMessage() == null ? "Bad arguments." : e.getMessage());
         } catch (Exception e) {
             return ToolResult.failed("Tool failed: " + e);
         }

@@ -94,6 +94,8 @@ public final class VanillaKnowledge implements Knowledge {
     private static Knowledge instance;
 
     private final Map<String, List<Source>> sources;
+    /** {@link #sources} flattened, in item id order. */
+    private final List<Source> allSources;
     private final Map<String, String> toolTypes;
     private final Map<String, Integer> toolTiers;
     private final Map<String, List<String>> toolsByType;
@@ -106,6 +108,9 @@ public final class VanillaKnowledge implements Knowledge {
         Map<String, List<Source>> frozen = new HashMap<>();
         b.sources.forEach((item, list) -> frozen.put(item, List.copyOf(list)));
         this.sources = Map.copyOf(frozen);
+        List<Source> all = new ArrayList<>();
+        new java.util.TreeMap<>(frozen).values().forEach(all::addAll);
+        this.allSources = List.copyOf(all);
         this.toolTypes = Map.copyOf(b.toolTypes);
         this.toolTiers = Map.copyOf(b.toolTiers);
         Map<String, List<String>> byType = new HashMap<>();
@@ -188,6 +193,11 @@ public final class VanillaKnowledge implements Knowledge {
     @Override
     public List<Source> sourcesFor(String item) {
         return item == null ? List.of() : sources.getOrDefault(id(item), List.of());
+    }
+
+    @Override
+    public List<Source> allSources() {
+        return allSources;
     }
 
     @Override

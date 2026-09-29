@@ -29,10 +29,10 @@ import java.util.regex.Pattern;
  * models send counts as numbers, as strings, inside the item text ("3 iron_ingot"), or not at all.
  * Exactly one of {@code item} and {@code error} is meaningful: a request with an error is refused.
  */
-record ItemRequest(String item, int count, String error) {
+public record ItemRequest(String item, int count, String error) {
 
     /** A full inventory of one stackable item. Anything larger is almost certainly a mistake. */
-    static final int MAX_COUNT = 64 * 36;
+    public static final int MAX_COUNT = 64 * 36;
     static final int MAX_ITEM_CHARS = 80;
 
     private static final Pattern LEADING_COUNT = Pattern.compile("^(\\d{1,5})\\s*[x×]?\\s+(.+)$");

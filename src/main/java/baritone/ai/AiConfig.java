@@ -81,6 +81,9 @@ public final class AiConfig {
             "activate", "set", "setting", "settings", "reloadall", "saveall", "gc", "render", "ai"
     ));
 
+    /** Let the AI search and read the web (web_search, web_fetch). Off by default: pages can say anything. */
+    public boolean webTools = false;
+
     // ── #acquire follow-ups ─────────────────────────────────────────────────
     /**
      * When an acquire the AI started finishes or fails, give it one more turn to carry on (the next

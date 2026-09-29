@@ -38,4 +38,9 @@ public interface Knowledge {
 
     /** Up to {@code limit} item ids that look like {@code userText}, best first, for "did you mean". */
     List<String> suggest(String userText, int limit);
+
+    /** Every known source of every item, for reverse lookups: what an item is used in, what a mob drops. */
+    default List<Source> allSources() {
+        return List.of();
+    }
 }
