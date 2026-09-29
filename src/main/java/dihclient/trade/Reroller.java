@@ -254,8 +254,16 @@ public final class Reroller {
                 }
                 if (player.getBoundingBox().intersects(new net.minecraft.world.phys.AABB(workstation))) {
                     // Picking the workstation up walked us into its spot; nothing can be placed inside the player.
-                    if (ticks % 20 == 1) BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess()
-                            .setGoalAndPath(new GoalBlock(standAt));
+                    if (player.blockPosition().equals(standAt)) {
+                        // On the right block but against its edge: Baritone counts the goal as reached, so walk to the middle.
+                        Vec3 toMiddle = Vec3.atBottomCenterOf(standAt).subtract(player.position()).multiply(1, 0, 1);
+                        if (toMiddle.lengthSqr() > 1.0E-4) {
+                            Vec3 step = toMiddle.normalize().scale(Math.min(0.1, toMiddle.length()));
+                            player.setDeltaMovement(step.x, player.getDeltaMovement().y, step.z);
+                        }
+                    } else if (ticks % 20 == 1) {
+                        BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(new GoalBlock(standAt));
+                    }
                     if (ticks > COLLECT_TIMEOUT) return fail("couldn't step out of the workstation spot");
                     status = "reroll " + rerolls + ": stepping back";
                     return State.WORKING;
