@@ -1,0 +1,110 @@
+{
+  "_checked": "2026-09-29 against each provider's docs (see the source field). Prices are USD per million input/output tokens, standard tier.",
+  "providers": [
+    {
+      "id": "openrouter",
+      "name": "OpenRouter",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "needsKey": true,
+      "keyUrl": "https://openrouter.ai/keys",
+      "source": "https://openrouter.ai/docs/quickstart",
+      "models": [
+        {"id": "anthropic/claude-sonnet-5.5", "in": 2.0, "out": 10.0},
+        {"id": "google/gemini-3.8-flash"},
+        {"id": "openai/gpt-oss-120b"}
+      ]
+    },
+    {
+      "id": "openai",
+      "name": "OpenAI",
+      "baseUrl": "https://api.openai.com/v1",
+      "needsKey": true,
+      "keyUrl": "https://platform.openai.com/api-keys",
+      "source": "https://developers.openai.com/api/docs/pricing",
+      "models": [
+        {"id": "gpt-6-luna", "in": 0.10, "out": 0.50},
+        {"id": "gpt-5.6-luna", "in": 0.20, "out": 1.20},
+        {"id": "gpt-6-sol", "in": 2.0, "out": 10.0}
+      ]
+    },
+    {
+      "id": "anthropic",
+      "name": "Anthropic (Claude)",
+      "baseUrl": "https://api.anthropic.com/v1/",
+      "needsKey": true,
+      "keyUrl": "https://platform.claude.com/settings/keys",
+      "source": "https://platform.claude.com/docs/en/api/openai-sdk",
+      "models": [
+        {"id": "claude-haiku-4-5", "in": 1.0, "out": 5.0},
+        {"id": "claude-sonnet-5-5", "in": 2.0, "out": 10.0},
+        {"id": "claude-opus-5-5", "in": 4.0, "out": 20.0}
+      ]
+    },
+    {
+      "id": "gemini",
+      "name": "Google Gemini",
+      "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
+      "needsKey": true,
+      "keyUrl": "https://aistudio.google.com/apikey",
+      "source": "https://ai.google.dev/gemini-api/docs/openai",
+      "models": [
+        {"id": "gemini-3.8-flash", "in": 0.75, "out": 3.75},
+        {"id": "gemini-3.5-flash-lite", "in": 0.30, "out": 2.50},
+        {"id": "gemini-3.1-pro-preview", "in": 2.0, "out": 12.0}
+      ]
+    },
+    {
+      "id": "groq",
+      "name": "Groq",
+      "baseUrl": "https://api.groq.com/openai/v1",
+      "needsKey": true,
+      "keyUrl": "https://console.groq.com/keys",
+      "source": "https://console.groq.com/docs/tool-use",
+      "models": [
+        {"id": "openai/gpt-oss-120b", "in": 0.15, "out": 0.60},
+        {"id": "openai/gpt-oss-20b", "in": 0.075, "out": 0.30},
+        {"id": "llama-3.3-70b-versatile"}
+      ]
+    },
+    {
+      "id": "deepseek",
+      "name": "DeepSeek",
+      "baseUrl": "https://api.deepseek.com",
+      "needsKey": true,
+      "keyUrl": "https://platform.deepseek.com/api_keys",
+      "source": "https://api-docs.deepseek.com/quick_start/pricing",
+      "models": [
+        {"id": "deepseek-flash", "in": 0.30, "out": 1.20},
+        {"id": "deepseek-v4-pro", "in": 1.32, "out": 3.96}
+      ]
+    },
+    {
+      "id": "ollama",
+      "name": "Ollama (on this PC)",
+      "baseUrl": "http://localhost:11434/v1",
+      "needsKey": false,
+      "local": true,
+      "source": "https://docs.ollama.com/api/openai-compatibility",
+      "models": [
+        {"id": "qwen3:8b"},
+        {"id": "gpt-oss:20b"}
+      ]
+    },
+    {
+      "id": "lmstudio",
+      "name": "LM Studio (on this PC)",
+      "baseUrl": "http://localhost:1234/v1",
+      "needsKey": false,
+      "local": true,
+      "source": "https://lmstudio.ai/docs/app/api/endpoints/openai",
+      "models": []
+    },
+    {
+      "id": "custom",
+      "name": "Custom",
+      "baseUrl": "",
+      "needsKey": true,
+      "models": []
+    }
+  ]
+}

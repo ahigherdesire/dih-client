@@ -497,6 +497,10 @@ public class DihModuleScreen extends DihScreen {
     }
 
     private void runUtility(String id) {
+        if ("ai_setup".equals(id)) {
+            if (minecraft != null) minecraft.gui.setScreen(new DihAiSetupScreen(this));
+            return;
+        }
         if ("macros".equals(id)) {
             toggleMacroPanel();
             return;

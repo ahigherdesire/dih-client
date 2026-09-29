@@ -59,13 +59,20 @@ public final class LlmClient implements ChatModel {
     private static final int READ_TIMEOUT_MILLIS = 90_000;
 
     private final AiConfig config;
+    private final int attempts;
 
     private final AtomicLong promptTokens = new AtomicLong();
     private final AtomicLong completionTokens = new AtomicLong();
     private final AtomicLong calls = new AtomicLong();
 
     public LlmClient(AiConfig config) {
+        this(config, MAX_ATTEMPTS);
+    }
+
+    /** {@code attempts} tries per request (1 for a quick setup check that shouldn't wait on retries). */
+    public LlmClient(AiConfig config, int attempts) {
         this.config = config;
+        this.attempts = Math.max(1, attempts);
     }
 
     public long getPromptTokens() {
@@ -104,13 +111,14 @@ public final class LlmClient implements ChatModel {
         mergeExtraBody(body);
 
         IOException last = null;
-        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        for (int attempt = 0; attempt < this.attempts; attempt++) {
             if (attempt > 0) {
                 sleep(700L * (1L << (attempt - 1)));
             }
             try {
                 return parse(post(body));
-            } catch (RetryableException e) {
+            } catch (RequestFailed e) {
+                if (!e.retryable) throw e;
                 last = e;
             }
         }
@@ -140,7 +148,7 @@ public final class LlmClient implements ChatModel {
         try {
             connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
         } catch (IllegalArgumentException e) {
-            throw new IOException("bad base URL \"" + this.config.baseUrl + "\"");
+            throw new RequestFailed(RequestFailed.BAD_URL, false, "bad base URL \"" + this.config.baseUrl + "\"");
         }
 
         try {
@@ -156,24 +164,22 @@ public final class LlmClient implements ChatModel {
             try (OutputStream out = connection.getOutputStream()) {
                 out.write(payload);
             } catch (IOException e) {
-                throw new RetryableException("could not send request: " + e.getMessage());
+                throw new RequestFailed(RequestFailed.NETWORK, true, "could not send request: " + e.getMessage());
             }
 
             int status;
             try {
                 status = connection.getResponseCode();
             } catch (IOException e) {
-                throw new RetryableException("no response: " + e.getMessage());
+                throw new RequestFailed(RequestFailed.NETWORK, true, "no response: " + e.getMessage());
             }
 
             String responseBody = read(status / 100 == 2 ? connection.getInputStream() : connection.getErrorStream());
             if (status / 100 != 2) {
                 String snippet = responseBody.length() > 400 ? responseBody.substring(0, 400) : responseBody;
-                String message = "model returned HTTP " + status + ": " + snippet + hint(status);
-                if (RETRYABLE.contains(status)) {
-                    throw new RetryableException(message);
-                }
-                throw new IOException(message);
+                String message = Redact.text("model returned HTTP " + status + ": " + snippet + hint(status),
+                        this.config.resolveKey());
+                throw new RequestFailed(status, RETRYABLE.contains(status), message);
             }
             return responseBody;
         } finally {
@@ -204,7 +210,7 @@ public final class LlmClient implements ChatModel {
             }
             return buffer.toString(StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new RetryableException("could not read response: " + e.getMessage());
+            throw new RequestFailed(RequestFailed.NETWORK, true, "could not read response: " + e.getMessage());
         }
     }
 
@@ -322,9 +328,17 @@ public final class LlmClient implements ChatModel {
         }
     }
 
-    private static final class RetryableException extends IOException {
-        RetryableException(String message) {
+    /** A request that didn't get a reply: an HTTP status, or {@link #NETWORK} when the server couldn't be reached. */
+    public static final class RequestFailed extends IOException {
+        public static final int NETWORK = -1;
+        public static final int BAD_URL = -2;
+        public final int status;
+        public final boolean retryable;
+
+        RequestFailed(int status, boolean retryable, String message) {
             super(message);
+            this.status = status;
+            this.retryable = retryable;
         }
     }
 }
