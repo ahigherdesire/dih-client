@@ -18,6 +18,7 @@
 package baritone.ai;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import java.util.regex.Matcher;
@@ -38,7 +39,17 @@ record ItemRequest(String item, int count, String error) {
     private static final Pattern TRAILING_COUNT = Pattern.compile("^(.+?)\\s+[x×]\\s*(\\d{1,5})$");
 
     static ItemRequest parse(LlmClient.ToolCall call) {
-        String item = call.string("item", "");
+        return parse(call.arguments);
+    }
+
+    static ItemRequest parse(JsonObject arguments) {
+        JsonElement rawItem = arguments == null ? null : arguments.get("item");
+        String item;
+        try {
+            item = rawItem == null || rawItem.isJsonNull() ? "" : rawItem.getAsString();
+        } catch (RuntimeException e) {
+            item = "";
+        }
         item = item == null ? "" : item.replaceAll("\\s+", " ").trim();
 
         // A count written into the item text: "3 iron_ingot", "3x torch", "torch x3".
@@ -60,7 +71,7 @@ record ItemRequest(String item, int count, String error) {
             return error("That item name is too long. Use the item id, e.g. \"diamond_pickaxe\".");
         }
 
-        JsonElement raw = call.arguments.get("count");
+        JsonElement raw = arguments == null ? null : arguments.get("count");
         int count;
         if (raw == null || raw.isJsonNull()) {
             count = embedded == null ? 1 : embedded;

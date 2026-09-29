@@ -20,8 +20,9 @@ package baritone.ai;
 import baritone.Baritone;
 import baritone.acquire.AcquireControl;
 import baritone.api.command.ICommand;
+import baritone.ai.tool.ToolRegistry;
+import baritone.ai.tool.ToolSession;
 import baritone.api.utils.Helper;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -275,69 +276,80 @@ public final class AiBrain implements Helper {
             trimTranscript();
         }
 
-        JsonArray tools = AiTools.definitions();
-
         int maxSteps = Math.max(1, this.config.maxSteps);
-        for (int step = 0; step < maxSteps; step++) {
-            if (!this.config.enabled) {
-                logAsync("AI was turned off; stopping mid-turn.", ChatFormatting.GRAY);
-                return;
+        ToolSession session = new ToolSession(ToolRegistry.standard());
+        ToolLoop.End end = ToolLoop.run(this.llm, session, new ToolLoop.Host() {
+            @Override
+            public boolean enabled() {
+                if (!AiBrain.this.config.enabled) {
+                    logAsync("AI was turned off; stopping mid-turn.", ChatFormatting.GRAY);
+                    return false;
+                }
+                return true;
             }
-            JsonArray messages = new JsonArray();
-            messages.add(message("system", systemPrompt()));
-            synchronized (this.transcript) {
-                for (JsonObject entry : this.transcript) {
-                    messages.add(entry);
+
+            @Override
+            public String systemPrompt() {
+                return AiBrain.this.systemPrompt();
+            }
+
+            @Override
+            public List<JsonObject> transcript() {
+                synchronized (AiBrain.this.transcript) {
+                    return new ArrayList<>(AiBrain.this.transcript);
                 }
             }
 
-            LlmClient.Reply reply;
-            try {
-                reply = this.llm.chat(messages, tools);
-            } catch (Exception e) {
-                this.lastError = e.getMessage();
+            @Override
+            public void append(JsonObject message) {
+                synchronized (AiBrain.this.transcript) {
+                    AiBrain.this.transcript.add(message);
+                }
+            }
+
+            @Override
+            public void amend(JsonObject toolResult, String extra) {
+                synchronized (AiBrain.this.transcript) {
+                    toolResult.addProperty("content", toolResult.get("content").getAsString() + "\n\n" + extra);
+                }
+            }
+
+            @Override
+            public String lateEvents() {
+                return AiBrain.this.followUps.drainNotes();
+            }
+
+            @Override
+            public void trim() {
+                synchronized (AiBrain.this.transcript) {
+                    trimTranscript();
+                }
+            }
+
+            @Override
+            public void answer(String text) {
+                speak(text);
+            }
+
+            @Override
+            public void failed(Exception e) {
+                AiBrain.this.lastError = e.getMessage();
                 logAsync("AI request failed: " + e.getMessage(), ChatFormatting.RED);
-                return;
             }
 
-            synchronized (this.transcript) {
-                this.transcript.add(reply.rawMessage);
-            }
-
-            if (!reply.hasToolCalls()) {
-                if (!reply.content.isEmpty()) {
-                    speak(reply.content);
-                }
-                return;
-            }
-
-            JsonObject lastResult = null;
-            for (LlmClient.ToolCall call : reply.toolCalls) {
-                String result = AiTools.execute(this, call);
-                lastResult = toolResult(call.id, result);
-                synchronized (this.transcript) {
-                    this.transcript.add(lastResult);
-                }
-                if (this.config.autonomous || Baritone.settings().chatDebug.value) {
+            @Override
+            public String runTool(LlmClient.ToolCall call, ToolSession run) {
+                String result = AiTools.execute(AiBrain.this, call, run);
+                if (AiBrain.this.config.autonomous || Baritone.settings().chatDebug.value) {
                     logAsync("[ai] " + call.name + " -> " + result, ChatFormatting.DARK_GRAY);
                 }
+                return result;
             }
-            // Acquire events that arrived mid-turn ride along with the last tool result, as long
-            // as the model still has a step left to act on them; otherwise they earn a new turn.
-            if (lastResult != null && step < maxSteps - 1) {
-                String lateEvents = this.followUps.drainNotes();
-                if (!lateEvents.isEmpty()) {
-                    synchronized (this.transcript) {
-                        lastResult.addProperty("content", lastResult.get("content").getAsString() + "\n\n" + lateEvents);
-                    }
-                }
-            }
-            synchronized (this.transcript) {
-                trimTranscript();
-            }
-        }
+        }, maxSteps);
 
-        logAsync("AI hit its " + this.config.maxSteps + "-step limit and stopped.", ChatFormatting.GRAY);
+        if (end == ToolLoop.End.STEP_LIMIT) {
+            logAsync("AI hit its " + this.config.maxSteps + "-step limit and stopped.", ChatFormatting.GRAY);
+        }
     }
 
     private String systemPrompt() {
@@ -364,7 +376,9 @@ public final class AiBrain implements Helper {
         if (this.config.isCommandAllowed("acquire")) {
             sb.append(AiTools.acquireGuide(this.config.followUpsActive())).append('\n');
         }
-        sb.append("Use find to locate the nearest block, mob or player of a kind before going there.\n\n");
+        sb.append("Use find to locate the nearest block, mob or player of a kind before going there.\n");
+        sb.append("More tools: list_tools shows the other categories (combat, mining, crafting, ...) and load_tools ")
+                .append("adds one for the rest of this turn. Prefer a purpose-built tool over run_command.\n\n");
 
         sb.append("WHAT YOU REMEMBER:\n").append(this.memory.digest()).append("\n\n");
 
@@ -482,8 +496,20 @@ public final class AiBrain implements Helper {
 
     /** Runs work on the client thread and waits for the answer. Called from the worker. */
     public <T> T onGameThread(Supplier<T> supplier, T fallback) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null) {
+            return fallback;
+        }
+        if (mc.isSameThread()) {
+            // Already there (a tool run from a keybind or the game thread): waiting on ourselves would deadlock.
+            try {
+                return supplier.get();
+            } catch (Throwable t) {
+                return fallback;
+            }
+        }
         CompletableFuture<T> future = new CompletableFuture<>();
-        Minecraft.getInstance().execute(() -> {
+        mc.execute(() -> {
             try {
                 future.complete(supplier.get());
             } catch (Throwable t) {

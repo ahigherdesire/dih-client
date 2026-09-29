@@ -49,7 +49,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * <p>Every method here blocks. Call it from the AI worker thread, never from the game thread.
  */
-public final class LlmClient {
+public final class LlmClient implements ChatModel {
 
     private static final Gson GSON = new Gson();
     private static final List<Integer> RETRYABLE = Arrays.asList(408, 409, 425, 429, 500, 502, 503, 504);
@@ -81,6 +81,7 @@ public final class LlmClient {
     }
 
     /** One request/response round trip. */
+    @Override
     public Reply chat(JsonArray messages, JsonArray tools) throws IOException {
         JsonObject body = new JsonObject();
         body.addProperty("model", this.config.model);
