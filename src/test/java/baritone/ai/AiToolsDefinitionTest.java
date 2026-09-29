@@ -39,7 +39,8 @@ final class AiToolsDefinitionTest {
     void offersTheExpectedTools() {
         assertEquals(
                 List.of("run_command", "acquire", "plan_item", "find", "say", "look_around", "wait", "remember",
-                        "load_tools", "list_tools"),
+                        "load_tools", "list_tools", "goto", "goto_structure", "explore", "farm", "flee_to_safety", "stop",
+                        "build_schematic", "gear_up"),
                 List.copyOf(functionsByName().keySet()));
     }
 

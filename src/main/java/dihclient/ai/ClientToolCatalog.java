@@ -40,8 +40,8 @@ public final class ClientToolCatalog {
             for (ICommand command : BaritoneAPI.getProvider().getPrimaryBaritone().getCommandManager().getRegistry().descendingStream().toList()) {
                 out.add(new CommandAdapters.Info(command.getNames().get(0), command.getNames(), command.getShortDesc()));
             }
-        } catch (RuntimeException e) {
-            // Baritone isn't up: the adapters for # commands are simply missing, run_command still works.
+        } catch (RuntimeException | LinkageError e) {
+            // Baritone isn't up (or, in unit tests, can't load): the adapters for # commands are simply missing, run_command still works.
         }
         return out;
     }
