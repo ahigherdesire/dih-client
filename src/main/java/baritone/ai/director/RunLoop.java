@@ -437,10 +437,11 @@ abstract class RunLoop implements Director {
 
     static String checklist(Plan plan) {
         StringBuilder sb = new StringBuilder(plan.summary().isEmpty() ? "" : plan.summary() + " ");
+        sb.append("Steps: ");
         for (int i = 0; i < plan.steps().size(); i++) {
             sb.append(i == 0 ? "" : ", ").append(i + 1).append(". ").append(plan.steps().get(i).tool());
         }
-        return sb.toString().trim();
+        return sb.append('.').toString();
     }
 
     static String duration(long millis) {
