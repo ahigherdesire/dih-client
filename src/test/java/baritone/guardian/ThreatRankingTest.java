@@ -238,6 +238,46 @@ final class ThreatRankingTest {
         assertNull(ThreatRanking.decide(s.build(), CONFIG), "healed and alone: the job carries on");
     }
 
+    @Test
+    void shelteredWithNoWayToHealDoesNotWaitForeverOnAMobOutside() {
+        S s = new S();
+        s.sheltered = true;
+        s.daylight = true;
+        s.health = 6;
+        s.canEat = false;
+        s.canRegen = false;
+        s.mobs.add(zombie(1, 6));
+        assertNull(ThreatRanking.decide(s.build(), CONFIG), "a zombie in the cave that can't reach, and nothing to heal with");
+        s.canRegen = true;
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "healing: stay in");
+        s.canRegen = false;
+        s.daylight = false;
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "at night: wait for daylight");
+    }
+
+    /** Handed back out of a pit with nothing to heal with, digging a new one only hands it back again. */
+    @Test
+    void hurtWithNoWayToHealDoesNotDigInByDay() {
+        S s = new S();
+        s.daylight = true;
+        s.health = 6;
+        s.canEat = false;
+        s.canRegen = false;
+        s.canShelter = true;
+        s.mobs.add(zombie(1, 6));
+        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response(), "a pit would not heal us");
+        s.digging = true;
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "a started pit is finished");
+        s.digging = false;
+        s.mobs.set(0, zombie(1, 12));
+        assertNull(ThreatRanking.decide(s.build(), CONFIG), "no pit worth digging: nothing to do at 12 blocks yet");
+        s.daylight = false;
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "at night a pit waits out the dark");
+        s.daylight = true;
+        s.canRegen = true;
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "a pit to heal in");
+    }
+
     /** From a game-test death: a zombie dropped down the shaft while it was dug, and the seal shut it in with us. */
     @Test
     void aMobInsideThePitIsFoughtNotWaitedOut() {

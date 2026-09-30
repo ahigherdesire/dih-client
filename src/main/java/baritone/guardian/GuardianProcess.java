@@ -200,6 +200,7 @@ public final class GuardianProcess extends BaritoneProcessHelper {
         String what = d.threat().what() + (d.reason().startsWith("sheltering") ? " (inside)" : "");
         if (d.response() != lastResponse || !what.equals(lastWhat)) {
             log.add(d.reason());
+            logDebug("Guardian: " + d.reason());
             lastResponse = d.response();
             lastWhat = what;
             lookTicks = 0;

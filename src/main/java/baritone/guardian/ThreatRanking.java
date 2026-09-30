@@ -188,12 +188,20 @@ public final class ThreatRanking {
     }
 
     /**
-     * Hurt, with a pit to dig: a mob coming for the player counts from further out, since digging 3 blocks down takes
-     * about as long as a zombie takes to cover {@link #HOSTILE_RADIUS}.
+     * Hurt, with a pit worth digging: a mob coming for the player counts from further out, since digging 3 blocks down
+     * takes about as long as a zombie takes to cover {@link #HOSTILE_RADIUS}.
      */
     static boolean closingIn(Mob mob, Sense s, Config c) {
-        return s.canShelter() && !s.sheltered() && s.health() <= c.fleeHealth() && mob.aggressive() && !mob.neutral()
-            && mob.distance() <= RANGED_RADIUS && mob.distanceFromAnchor() <= CHASE_LIMIT + RANGED_RADIUS;
+        return s.canShelter() && shelterHelps(s) && !s.sheltered() && s.health() <= c.fleeHealth()
+            && mob.aggressive() && !mob.neutral() && mob.distance() <= RANGED_RADIUS && mob.distanceFromAnchor() <= CHASE_LIMIT + RANGED_RADIUS;
+    }
+
+    /**
+     * Whether a pit gets anything back: health comes back in it (food held, or a food bar full enough to regenerate),
+     * or it waits out the night. By day with neither, the Guardian hands a sealed pit straight back to the job.
+     */
+    static boolean shelterHelps(Sense s) {
+        return s.canEat() || s.canRegen() || !s.daylight();
     }
 
     /** In the pit with the player: sealing it in or waiting it out only helps the mob. */
@@ -234,11 +242,17 @@ public final class ThreatRanking {
             case HOSTILE -> {
                 Mob attacker = mob(s, t.mobId());
                 if (inPit(attacker, s)) yield Response.FIGHT;
-                // Sealed in: nothing outside can reach; wait for health, and for daylight to deal with the waiting mobs.
-                if (s.sheltered() && (s.health() < RECOVERED_HEALTH || !s.daylight())) yield Response.SHELTER;
+                // Sealed in: nothing outside can reach; wait for health while it comes back, and for daylight to deal
+                // with the waiting mobs.
+                boolean healing = s.health() < RECOVERED_HEALTH && (s.canEat() || s.canRegen());
+                if (s.sheltered() && (healing || !s.daylight())) yield Response.SHELTER;
                 boolean outnumbered = crowd >= CROWD && s.health() <= c.fleeHealth() + CROWD_HEALTH_MARGIN;
                 if (healthy && !outnumbered) yield Response.FIGHT;
-                if (s.canShelter() && (s.digging() || nearestAttacker(s) > SHELTER_CLEARANCE)) yield Response.SHELTER;
+                // Sealed in by day with no food and no regeneration: waiting gets nothing back, so the job goes on
+                // (and gets food first).
+                if (s.sheltered()) yield null;
+                if (s.canShelter() && (s.digging() || shelterHelps(s) && nearestAttacker(s) > SHELTER_CLEARANCE))
+                    yield Response.SHELTER;
                 if (attacker != null && attacker.ranged()) {
                     // Arrows outrange a retreat. Hurt: get out of sight and heal; with nowhere to hide, go through it.
                     if (s.inCover() && (s.canEat() || s.canRegen())) yield Response.COVER;
