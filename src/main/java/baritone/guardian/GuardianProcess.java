@@ -266,6 +266,12 @@ public final class GuardianProcess extends BaritoneProcessHelper {
         Settings s = Baritone.settings();
         decision = ThreatRanking.decide(senseOf(player), new ThreatRanking.Config(s.guardianFleeHealth.value,
                 s.guardianStopForPlayers.value));
+        // A kill step already fighting this kind of mob keeps the fight, and the drops it loots afterwards; the
+        // Guardian steps in to do something else (cover, a pit, eating) or to fight a different mob.
+        if (decision != null && !engaged && decision.response() == Response.FIGHT) {
+            Entity foe = entity(decision);
+            if (foe != null && combat.fighting(foe.getType())) decision = null;
+        }
     }
 
     private Sense senseOf(LocalPlayer player) {
@@ -288,7 +294,7 @@ public final class GuardianProcess extends BaritoneProcessHelper {
                 // Piglins leave a player in gold armour alone (and all of them turn on one who hits one).
                 boolean neutral = e instanceof NeutralMob || e instanceof Piglin && PiglinAi.isWearingSafeArmor(player);
                 mobs.add(new Mob(e.getId(), typeId(e), distance, Math.sqrt(e.distanceToSqr(Vec3.atCenterOf(from))),
-                        mob.isAggressive(), neutral, false, false));
+                        aggressive(mob, player), neutral, false, false));
             } else if (e instanceof Projectile shot && distance <= ThreatRanking.PROJECTILE_RADIUS
                     && shot.getOwner() != player && CombatRunner.incoming(shot, player)) {
                 // A fight under way raises the shield at shots itself, between its own moves.
@@ -497,7 +503,7 @@ public final class GuardianProcess extends BaritoneProcessHelper {
     /** Faces the nearest aggressive mob (the likely shooter) and holds the shield up. */
     private PathingCommand shield(LocalPlayer player) {
         ctx.entitiesStream()
-                .filter(e -> e instanceof net.minecraft.world.entity.Mob mob && e instanceof Enemy && mob.isAggressive())
+                .filter(e -> e instanceof net.minecraft.world.entity.Mob mob && e instanceof Enemy && aggressive(mob, player))
                 .min((a, b) -> Double.compare(a.distanceToSqr(player), b.distanceToSqr(player)))
                 .ifPresent(shooter -> lookAt(shooter.getEyePosition()));
         holdUse();
@@ -541,7 +547,7 @@ public final class GuardianProcess extends BaritoneProcessHelper {
     private List<Entity> shooters(LocalPlayer player) {
         List<Entity> out = new ArrayList<>();
         for (Entity e : ctx.entitiesStream().toList()) {
-            if (!(e instanceof net.minecraft.world.entity.Mob mob) || !e.isAlive() || !mob.isAggressive()) continue;
+            if (!(e instanceof net.minecraft.world.entity.Mob mob) || !e.isAlive() || !aggressive(mob, player)) continue;
             if (!ThreatRanking.RANGED.contains(typeId(e)) || e.distanceTo(player) > ThreatRanking.RANGED_RADIUS) continue;
             out.add(e);
         }
@@ -833,6 +839,14 @@ public final class GuardianProcess extends BaritoneProcessHelper {
         releaseUse();
         releaseMove();
         lookTicks = 0;
+    }
+
+    /**
+     * Whether a mob is after the player: most show it (raised arms, a drawn bow), but a blaze never sets the flag, so
+     * one that can see the player counts.
+     */
+    private static boolean aggressive(net.minecraft.world.entity.Mob mob, LocalPlayer player) {
+        return mob.isAggressive() || ThreatRanking.FIRES_ON_SIGHT.contains(typeId(mob)) && mob.hasLineOfSight(player);
     }
 
     private static String typeId(Entity e) {

@@ -106,7 +106,8 @@ final class KillRunner extends RunnerBase {
                     state = State.FIGHT;
                 }
                 case FIGHT -> {
-                    if (target.isDeadOrDying()) {
+                    // Gone while the Guardian had the fight (it kills what it fights too): loot as after our own kill.
+                    if (target.isDeadOrDying() || target.isRemoved() && !calcFailed) {
                         combat.release();
                         killSpot = target.position();
                         state = State.LOOT;

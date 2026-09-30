@@ -20,6 +20,7 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.monster.Blaze;
 import net.minecraft.world.entity.monster.Creeper;
@@ -67,6 +68,8 @@ public final class CombatRunner {
     private int shots;
     /** The game time of the last {@link #tick}. */
     private long lastFight = -100;
+    /** What the last {@link #tick} fought. */
+    private EntityType<?> lastFoe;
     /** The shot flying at the player this tick, or null. */
     private Projectile shot;
 
@@ -104,10 +107,16 @@ public final class CombatRunner {
         return level != null && level.getGameTime() - lastFight <= 2;
     }
 
+    /** Whether a fight with a mob of this type is under way. */
+    public boolean fighting(EntityType<?> type) {
+        return fighting() && lastFoe == type;
+    }
+
     /** One tick against {@code target}: a goal to path toward, or null when this tick's move is made by hand. */
     public Goal tick(LivingEntity target) {
         LocalPlayer player = ctx.player();
         lastFight = ctx.world().getGameTime();
+        lastFoe = target.getType();
         shot = incomingShot(ctx, SHOT_RADIUS);
         Foe foe = foeOf(target);
         ItemStack bow = bow(player);

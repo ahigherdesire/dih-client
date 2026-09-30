@@ -255,6 +255,23 @@ final class ThreatRankingTest {
         assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "at night: wait for daylight");
     }
 
+    /**
+     * From a blaze-rod game-test death: blazes never show the aggression flag, so the Guardian saw one only at 4 blocks
+     * and never took cover from it. One that can see the player now counts as aiming.
+     */
+    @Test
+    void aBlazeInSightIsAShooterToTakeCoverFrom() {
+        assertTrue(ThreatRanking.FIRES_ON_SIGHT.contains("minecraft:blaze"));
+        S s = new S();
+        s.health = 8;
+        s.canEat = true;
+        s.coverNearby = true;
+        s.mobs.add(new Mob(1, "minecraft:blaze", 12, 12, true, false, false, false));
+        assertEquals(Response.COVER, ThreatRanking.decide(s.build(), CONFIG).response(), "hurt: out of its sight to eat");
+        s.health = 20;
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "healthy: shoot it");
+    }
+
     /** Handed back out of a pit with nothing to heal with, digging a new one only hands it back again. */
     @Test
     void hurtWithNoWayToHealDoesNotDigInByDay() {

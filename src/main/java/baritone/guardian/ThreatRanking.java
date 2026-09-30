@@ -106,6 +106,11 @@ public final class ThreatRanking {
 
     static final java.util.Set<String> RANGED = java.util.Set.of("minecraft:skeleton", "minecraft:stray", "minecraft:bogged",
         "minecraft:pillager", "minecraft:blaze", "minecraft:witch");
+    /**
+     * Shooters that never show the game's aggression flag (a blaze attacks without it): one that can see the player
+     * counts as aggressive.
+     */
+    static final java.util.Set<String> FIRES_ON_SIGHT = java.util.Set.of("minecraft:blaze");
 
     /**
      * Everything the ranking looks at, as plain values.
