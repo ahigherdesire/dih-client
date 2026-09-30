@@ -45,6 +45,12 @@ final class KillRunner extends RunnerBase {
     private static final double MAX_TARGET_DISTANCE_SQ = 64 * 64;
     /** Mobs looked for when none is in view, rather than given up on. */
     private static final Set<String> ROAMING = Set.of("minecraft:enderman");
+    /** Mobs that come out of spawners (blazes, in a fortress): with none in view, it waits by the nearest spawner. */
+    private static final Set<String> SPAWNED = Set.of("minecraft:blaze");
+    /** A spawner spawns every 10 to 40 seconds while a player is within 16 blocks: two slow spawns and a bit. */
+    private static final int CAMP_TICKS = 1800;
+    /** Close enough to keep it spawning, far enough not to stand in its fire. */
+    private static final int CAMP_DISTANCE = 6;
     /** How long to look for a roaming mob before giving up. */
     private static final int ROAM_TICKS = 6000;
     /** A warped forest this far off or nearer counts as reached. */
@@ -54,6 +60,8 @@ final class KillRunner extends RunnerBase {
     private final EntityType<?> type;
     private final Item drop;
     private final Set<Integer> skipped = new HashSet<>();
+    private final Set<BlockPos> badSpawners = new HashSet<>();
+    private BlockPos spawner;
     private final CombatRunner combat;
     private State state = State.SEEK;
     private LivingEntity target;
@@ -85,6 +93,10 @@ final class KillRunner extends RunnerBase {
                         if (roams(step.entity())) {
                             if (++ticks > ROAM_TICKS) return Result.failed("no " + Step.shortId(step.entity()) + " found");
                             return roam(calcFailed);
+                        }
+                        if (SPAWNED.contains(step.entity())) {
+                            Result camp = camp(calcFailed);
+                            if (camp != null) return camp;
                         }
                         if (++ticks > NO_TARGET_TICKS) return Result.failed("no " + Step.shortId(step.entity()) + " nearby");
                         return Result.pause();
@@ -134,6 +146,26 @@ final class KillRunner extends RunnerBase {
     /** Whether {@code entity} is looked for when none is in view. */
     static boolean roams(String entity) {
         return ROAMING.contains(entity);
+    }
+
+    /**
+     * Goes to the nearest spawner (one with no way to it is skipped) and waits by it for the next mob; null with no
+     * spawner in view.
+     */
+    private Result camp(boolean calcFailed) {
+        if (calcFailed && spawner != null) {
+            badSpawners.add(spawner);
+            spawner = null;
+        }
+        if (spawner == null) {
+            spawner = NearestBlock.find(ctx.world(), ctx.playerFeet(), Blocks.SPAWNER, 4, 48, 2, p -> !badSpawners.contains(p));
+            if (spawner == null) return null;
+            ticks = 0;
+        }
+        GoalNear near = new GoalNear(spawner, CAMP_DISTANCE);
+        if (!near.isInGoal(ctx.playerFeet())) return walk(near);
+        if (++ticks > CAMP_TICKS) return Result.failed("no " + Step.shortId(step.entity()) + " came out of the spawner at " + spawner.toShortString());
+        return Result.pause();
     }
 
     /** Walks on looking for the mob: to a warped forest in the Nether if one is in view, else straight on. */
