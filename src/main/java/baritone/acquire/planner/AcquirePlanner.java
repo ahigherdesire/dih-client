@@ -2,6 +2,7 @@ package baritone.acquire.planner;
 
 import baritone.acquire.knowledge.Knowledge;
 import baritone.acquire.knowledge.WorldView;
+import baritone.acquire.model.BarterSource;
 import baritone.acquire.model.CraftSource;
 import baritone.acquire.model.Goal;
 import baritone.acquire.model.Location;
@@ -32,13 +33,17 @@ import java.util.function.Predicate;
 
 import static baritone.acquire.planner.PlanReplay.CRAFTING_TABLE;
 import static baritone.acquire.planner.PlanReplay.FURNACE;
+import static baritone.acquire.planner.PlannerCosts.BARTER_TICKS;
 import static baritone.acquire.planner.PlannerCosts.BREAK_TICKS;
 import static baritone.acquire.planner.PlannerCosts.CRAFT_TICKS;
 import static baritone.acquire.planner.PlannerCosts.DRAGON_TICKS;
 import static baritone.acquire.planner.PlannerCosts.FORTRESS_TICKS;
+import static baritone.acquire.planner.PlannerCosts.CAST_OBSIDIAN_TICKS;
+import static baritone.acquire.planner.PlannerCosts.CAST_PORTAL_TICKS;
 import static baritone.acquire.planner.PlannerCosts.PORTAL_TICKS;
 import static baritone.acquire.planner.PlannerCosts.STRONGHOLD_TICKS;
 import static baritone.acquire.planner.PlannerCosts.KILL_TICKS;
+import static baritone.acquire.planner.PlannerCosts.ROAM_KILL_TICKS;
 import static baritone.acquire.planner.PlannerCosts.STATION_TICKS;
 import static baritone.acquire.planner.PlannerCosts.RETRIEVE_TICKS;
 import static baritone.acquire.planner.PlannerCosts.UNKNOWN_DISTANCE;
@@ -107,9 +112,37 @@ public final class AcquirePlanner {
 
     private static final String OBSIDIAN = "minecraft:obsidian";
     private static final String FLINT_AND_STEEL = "minecraft:flint_and_steel";
+    private static final String BUCKET = "minecraft:bucket";
+    private static final String WATER_BUCKET = "minecraft:water_bucket";
+    private static final String LAVA_BUCKET = "minecraft:lava_bucket";
+    /** Casting obsidian takes two buckets: one for water, one to carry lava. */
+    private static final int OBSIDIAN_BUCKETS = 2;
     private static final String ENDER_EYE = "minecraft:ender_eye";
+    private static final String PIGLIN = "minecraft:piglin";
     private static final int PORTAL_OBSIDIAN = 10;
+    /**
+     * The speedrunner's portal: its frame cast in place from lava, with a mould wall of 20 blocks and four buckets,
+     * one for water and three to carry lava: a trip to the pool for every three frame blocks, not every one. Two
+     * already held will do (a trip a block): the other two aren't worth a trip for iron of their own.
+     */
+    private static final int CAST_BUCKETS = 4;
+    private static final int CAST_MIN_BUCKETS = 2;
+    private static final int CAST_MOULD = 20;
+    /** What the mould wall may be made of, the usual first; the runner takes any of these. */
+    private static final List<String> MOULD = List.of("minecraft:cobblestone", "minecraft:cobbled_deepslate",
+            "minecraft:netherrack", "minecraft:dirt", "minecraft:blackstone");
+    /**
+     * A pickaxe with wear to spare for a first trip to the Nether: casting digs the site out (up to 30 blocks) and
+     * paths through stone to water and lava, and the Nether is dug through on foot: about what a fresh stone pickaxe
+     * has. Any pickaxe will do.
+     */
+    private static final ToolReq PICKAXE = new ToolReq("pickaxe", 1, true);
+    private static final int CAST_DIGS = 40;
+    private static final int NETHER_DIGS = 48;
     private static final int END_PORTAL_EYES = 12;
+    /** Piglins attack a player with no gold on: one of these is worn while bartering, the cheapest made if none is held. */
+    private static final List<String> GOLD_ARMOUR = List.of("minecraft:golden_boots", "minecraft:golden_helmet",
+            "minecraft:golden_leggings", "minecraft:golden_chestplate");
     /** Where each place leads: portals, and finding the sites. The End has no way out before the dragon. */
     private static final Map<Location, List<Location>> EXITS = Map.of(
             Location.OVERWORLD, List.of(Location.NETHER, Location.STRONGHOLD),
@@ -192,7 +225,7 @@ public final class AcquirePlanner {
 
     // ---- options: the sources of one item, prepared once per plan ----
 
-    private sealed interface Option permits MineOption, KillOption, CraftOption, SmeltOption {
+    private sealed interface Option permits MineOption, KillOption, BarterOption, CraftOption, SmeltOption {
     }
 
     /** Every block that drops {@code item} with the same tool requirement, nearest first. */
@@ -201,6 +234,9 @@ public final class AcquirePlanner {
     }
 
     private record KillOption(KillSource source, double distance, Location location) implements Option {
+    }
+
+    private record BarterOption(BarterSource source, double distance, Location location) implements Option {
     }
 
     /** Mine sources grouped into one option: the same tool, in the same place. */
@@ -306,6 +342,7 @@ public final class AcquirePlanner {
             return cheapest(s, usable, (t, o) -> switch (o) {
                 case MineOption m -> mine(t, m, need);
                 case KillOption k -> kill(t, k, need);
+                case BarterOption b -> barter(t, b, need);
                 case CraftOption c -> craft(t, c.recipe(), need);
                 case SmeltOption sm -> smelt(t, sm.recipe(), need);
             }) >= 0;
@@ -359,6 +396,13 @@ public final class AcquirePlanner {
         private boolean mine(PlanState s, MineOption m, int need) {
             if (options.gearUp() && undergroundOre(m) && m.location() == Location.OVERWORLD && !hasSword(s)
                     && !obtain(s, "minecraft:stone_sword", 1)) return false;
+            // Obsidian nobody has seen is cast: lava carried in one bucket, poured beside water from the other.
+            if (m.item().equals(OBSIDIAN) && !seen(OBSIDIAN)) {
+                int filled = s.inv.count(WATER_BUCKET) + s.inv.count(LAVA_BUCKET);
+                if (filled < OBSIDIAN_BUCKETS && !obtain(s, BUCKET, OBSIDIAN_BUCKETS - filled)) return false;
+                // Each block is a lava trip, not just a break.
+                s.addCost(need * CAST_OBSIDIAN_TICKS);
+            }
             ToolReq tool = m.tool();
             int prev = findEarlier(s, st -> st instanceof Step.Mine e && e.item().equals(m.item())
                     && e.blocks().equals(m.blocks()) && e.tool().equals(tool));
@@ -385,6 +429,11 @@ public final class AcquirePlanner {
             s.inv.add(m.item(), need);
             s.addCost(travel(m.distance()) + blocks * BREAK_TICKS);
             return emit(s, new Step.Mine(m.blocks(), m.item(), s.inv.count(m.item()), tool, blocks), need, true);
+        }
+
+        private boolean seen(String block) {
+            double d = world.distanceToBlock(block);
+            return !Double.isNaN(d) && !Double.isInfinite(d);
         }
 
         /** The usable uses of tools of {@code tool}'s type crafted after step {@code index}. */
@@ -447,14 +496,51 @@ public final class AcquirePlanner {
                 int kills = actions(gained, src.dropsPerKill());
                 s.steps.set(prev, new PlanState.Entry(
                         new Step.Kill(src.entity(), src.output(), old.untilCount() + need, kills), gained));
-                s.addCost((kills - old.expectedKills()) * KILL_TICKS);
+                s.addCost((kills - old.expectedKills()) * killTicks(k));
                 return true;
             }
             if (!travelTo(s, k.location())) return false;
             s.inv.add(src.output(), need);
             int kills = actions(need, src.dropsPerKill());
-            s.addCost(travel(k.distance()) + kills * KILL_TICKS);
+            s.addCost(travel(k.distance()) + kills * killTicks(k));
             return emit(s, new Step.Kill(src.entity(), src.output(), s.inv.count(src.output()), kills), need, true);
+        }
+
+        /** A mob found anywhere (endermen) is thin on the ground: each one is looked for first. */
+        private double killTicks(KillOption k) {
+            return k.location() == null ? ROAM_KILL_TICKS : KILL_TICKS;
+        }
+
+        /**
+         * Trades {@code need} of the item for currency: the currency is obtained and held back, a gold piece put on
+         * for piglins, then it goes to where they live.
+         */
+        private boolean barter(PlanState s, BarterOption b, int need) {
+            BarterSource src = b.source();
+            int trades = actions(need, src.perTrade());
+            if (!obtain(s, src.currency(), trades)) return false;
+            s.reserve(src.currency(), trades);
+            if (src.entity().equals(PIGLIN) && !wearGold(s)) return false;
+            if (!travelTo(s, b.location())) return false;
+            s.consume(src.currency(), trades);
+            s.inv.add(src.output(), need);
+            s.addCost(travel(b.distance()) + trades * BARTER_TICKS);
+            return emit(s, new Step.Barter(src.entity(), src.currency(), src.output(), s.inv.count(src.output()), trades), need, true);
+        }
+
+        /** A gold armour piece to wear, held back: one already held, or the cheapest made. */
+        private boolean wearGold(PlanState s) {
+            for (String id : GOLD_ARMOUR) {
+                if (s.inv.count(id) <= 0) continue;
+                if (s.reserved.getOrDefault(id, 0) == 0) s.reserve(id, 1);
+                return true;
+            }
+            String piece = GOLD_ARMOUR.get(0);
+            if (!knowledge.isItem(piece) || !obtain(s, piece, 1)) {
+                return s.fail("bartering with piglins needs a piece of gold armour to wear: 1 " + Step.shortId(piece));
+            }
+            s.reserve(piece, 1);
+            return true;
         }
 
         // ---- places: portals, sites, the dragon ----
@@ -497,35 +583,63 @@ public final class AcquirePlanner {
         }
 
         private boolean portalNeeded(PlanState s, Location next) {
-            return (next == Location.NETHER || next == Location.END) && !s.portals.contains(next) && !s.portalReady.contains(next)
+            return (next == Location.NETHER || next == Location.END) && !s.portals.contains(next) && !s.portalReady.containsKey(next)
                     && !world.portalKnown(next);
         }
 
-        /** The portal items and gear checkpoint for a first trip to {@code to}, obtained and held back. */
+        /**
+         * The portal kit and gear checkpoint for a first trip to {@code to}, obtained and held back. A nether portal is
+         * cast from lava or built from obsidian, whichever is cheaper from here: casting unless 10 obsidian are to hand,
+         * since mining obsidian takes diamonds.
+         */
         private boolean preparePortal(PlanState s, Location to) {
-            String where = to.label();
-            for (Map.Entry<String, Integer> item : portalItems(to).entrySet()) {
+            return cheapest(s, portalKits(s, to), (t, kit) -> prepareKit(t, to, kit)) >= 0;
+        }
+
+        private boolean prepareKit(PlanState s, Location to, Map<String, Integer> kit) {
+            boolean cast = to == Location.NETHER && !kit.containsKey(OBSIDIAN);
+            for (Map.Entry<String, Integer> item : kit.entrySet()) {
                 if (!knowledge.isItem(item.getKey()) || !obtain(s, item.getKey(), item.getValue())) {
-                    return s.fail("can't reach " + where + ": needs " + item.getValue() + " " + Step.shortId(item.getKey()));
+                    return s.fail("can't reach " + to.label() + ": " + (cast ? "casting the obsidian frame from lava " : "")
+                            + "needs " + item.getValue() + " " + Step.shortId(item.getKey()));
                 }
                 s.reserve(item.getKey(), item.getValue());
             }
+            if (cast) s.addCost(CAST_PORTAL_TICKS);
             // Gear last, so it is fresh for the trip (and the End gear comes after the Nether, as the phases go).
-            if (!checkpoint(s, to == Location.NETHER ? NETHER_GEAR : END_GEAR, where)) return false;
-            s.portalReady.add(to);
+            if (!checkpoint(s, to == Location.NETHER ? NETHER_GEAR : END_GEAR, to.label())) return false;
+            int digs = (cast ? CAST_DIGS : 0) + (to == Location.NETHER && options.gearCheckpoints() ? NETHER_DIGS : 0);
+            if (!budgetTool(s, PICKAXE, digs)) return s.fail("can't reach " + to.label() + ": no pickaxe to dig with");
+            s.portalReady.put(to, kit);
             return true;
         }
 
-        /** Obsidian and a flint and steel to build and light a nether portal; 12 eyes to fill the end portal. */
-        private Map<String, Integer> portalItems(Location to) {
-            Map<String, Integer> items = new LinkedHashMap<>();
-            if (to == Location.NETHER) {
-                items.put(OBSIDIAN, PORTAL_OBSIDIAN);
-                items.put(FLINT_AND_STEEL, 1);
-            } else if (to == Location.END) {
-                items.put(ENDER_EYE, END_PORTAL_EYES);
+        /**
+         * What a portal can be made from. The Nether's: buckets (filled ones count), mould blocks and a flint and
+         * steel to cast the frame; or, with 10 obsidian to hand, those and a flint and steel. Obsidian still to get
+         * never makes a frame: seen obsidian says nothing of how much, and the rest is cast a block at a time, a lava
+         * trip each. The End's: 12 eyes to fill the end portal.
+         */
+        private List<Map<String, Integer>> portalKits(PlanState s, Location to) {
+            if (to != Location.NETHER) return List.of(Map.of(ENDER_EYE, END_PORTAL_EYES));
+            Map<String, Integer> cast = new LinkedHashMap<>();
+            int filled = s.available(WATER_BUCKET) + s.available(LAVA_BUCKET);
+            int buckets = (filled + s.available(BUCKET) >= CAST_MIN_BUCKETS ? CAST_MIN_BUCKETS : CAST_BUCKETS) - filled;
+            if (buckets > 0) cast.put(BUCKET, buckets);
+            String mould = MOULD.get(0);
+            for (String id : MOULD) {
+                if (s.available(id) >= CAST_MOULD) {
+                    mould = id;
+                    break;
+                }
             }
-            return items;
+            cast.put(mould, CAST_MOULD);
+            cast.put(FLINT_AND_STEEL, 1);
+            if (s.available(OBSIDIAN) < PORTAL_OBSIDIAN) return List.of(cast);
+            Map<String, Integer> frame = new LinkedHashMap<>();
+            frame.put(OBSIDIAN, PORTAL_OBSIDIAN);
+            frame.put(FLINT_AND_STEEL, 1);
+            return List.of(cast, frame);
         }
 
         /** One leg: find a site, step out of one, or go through a portal (using up its items the first time). */
@@ -541,9 +655,11 @@ public final class AcquirePlanner {
                 return true;
             }
             Map<String, Integer> consumes = new LinkedHashMap<>();
-            if (s.portalReady.remove(to)) {
-                for (Map.Entry<String, Integer> item : portalItems(to).entrySet()) {
-                    if (item.getKey().equals(FLINT_AND_STEEL)) s.release(item.getKey(), item.getValue());
+            Map<String, Integer> kit = s.portalReady.remove(to);
+            if (kit != null) {
+                for (Map.Entry<String, Integer> item : kit.entrySet()) {
+                    // The flint and steel and the buckets come along; the obsidian, mould blocks or eyes stay behind.
+                    if (item.getKey().equals(FLINT_AND_STEEL) || item.getKey().equals(BUCKET)) s.release(item.getKey(), item.getValue());
                     else {
                         s.consume(item.getKey(), item.getValue());
                         consumes.put(item.getKey(), item.getValue());
@@ -886,6 +1002,11 @@ public final class AcquirePlanner {
                             (k.dropsPerKill() < MIN_DROP_RATE ? rare : out).add(
                                     new KillOption(k, world.distanceToEntity(k.entity()), knowledge.locationOf(k)));
                     }
+                    case BarterSource b -> {
+                        if (b.perTrade() > 0 && b.entity() != null && b.currency() != null && !b.currency().equals(item))
+                            (b.perTrade() < MIN_DROP_RATE ? rare : out).add(
+                                    new BarterOption(b, world.distanceToEntity(b.entity()), knowledge.locationOf(b)));
+                    }
                     case CraftSource c -> {
                         if (craftable(c)) out.add(new CraftOption(c));
                     }
@@ -962,6 +1083,7 @@ public final class AcquirePlanner {
             return switch (o) {
                 case CraftOption c -> c.recipe().ingredients().stream().allMatch(i -> i.count() <= 0 || hasFreeAlternative(i));
                 case SmeltOption sm -> hasFreeAlternative(sm.recipe().input());
+                case BarterOption b -> !stack.contains(b.source().currency());
                 default -> true;
             };
         }
@@ -973,7 +1095,7 @@ public final class AcquirePlanner {
 
         // ---- quick estimates: only order the options, the trial plans decide ----
 
-        /** Rough cost per item from scratch, ignoring tools, stations and fuel. Infinite if nothing makes it. */
+        /** Rough cost per item from scratch where the plan starts, ignoring tools, stations and fuel. Infinite if nothing makes it. */
         private double estimateItem(String item) {
             Double known = estimates.get(item);
             if (known != null) return known;
@@ -987,8 +1109,10 @@ public final class AcquirePlanner {
 
         private double estimateOption(Option o) {
             return switch (o) {
-                case MineOption m -> (travel(m.distance()) + BREAK_TICKS + PlannerCosts.away(m.location())) / m.dropsPerBlock();
-                case KillOption k -> (travel(k.distance()) + KILL_TICKS + PlannerCosts.away(k.location())) / k.source().dropsPerKill();
+                case MineOption m -> (travel(m.distance()) + BREAK_TICKS + PlannerCosts.away(startLocation, m.location())) / m.dropsPerBlock();
+                case KillOption k -> (travel(k.distance()) + killTicks(k) + PlannerCosts.away(startLocation, k.location())) / k.source().dropsPerKill();
+                case BarterOption b -> (travel(b.distance()) + BARTER_TICKS + PlannerCosts.away(startLocation, b.location())
+                        + estimateItem(b.source().currency())) / b.source().perTrade();
                 case CraftOption c -> {
                     double sum = CRAFT_TICKS;
                     for (Ingredient ing : c.recipe().ingredients())

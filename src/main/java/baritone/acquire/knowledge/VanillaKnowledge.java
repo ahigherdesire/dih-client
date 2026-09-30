@@ -1,5 +1,6 @@
 package baritone.acquire.knowledge;
 
+import baritone.acquire.model.BarterSource;
 import baritone.acquire.model.Location;
 import baritone.acquire.model.CraftSource;
 import baritone.acquire.model.Ingredient;
@@ -203,6 +204,8 @@ public final class VanillaKnowledge implements Knowledge {
 
     /** Blocks and mobs found only in the Nether, at a fortress, or in the End. Everything else counts as the Overworld. */
     private static final Map<String, Location> PLACES = places();
+    /** The loot table rolled once per gold ingot a piglin is given. */
+    private static final String PIGLIN_BARTERING = "minecraft:gameplay/piglin_bartering";
     /** Mobs found everywhere (endermen): no trip needed. */
     private static final Set<String> ANYWHERE = Set.of("minecraft:enderman");
 
@@ -232,6 +235,7 @@ public final class VanillaKnowledge implements Knowledge {
         String key = switch (source) {
             case MineSource mine -> mine.block();
             case KillSource kill -> kill.entity();
+            case BarterSource barter -> barter.entity();
             default -> null;
         };
         if (key == null) return null;
@@ -316,7 +320,7 @@ public final class VanillaKnowledge implements Knowledge {
         final Set<String> items = new HashSet<>();
         final Map<String, String> displayNames = new HashMap<>();
         Map<String, Integer> skippedRecipes = Map.of();
-        int crafts, smelts, blockTables, mineSources, mobTables, killSources;
+        int crafts, smelts, blockTables, mineSources, mobTables, killSources, barterSources;
 
         Builder(Map<String, String> files, GameFacts facts) {
             this.facts = facts;
@@ -352,6 +356,7 @@ public final class VanillaKnowledge implements Knowledge {
             LootReader loot = new LootReader(lootTables, itemTags);
             readBlockDrops(loot);
             readMobDrops(loot);
+            readBarters(loot);
             readItems();
             readFuels();
             return new VanillaKnowledge(this);
@@ -492,6 +497,16 @@ public final class VanillaKnowledge implements Knowledge {
             }
         }
 
+        /** What piglins give for one gold ingot: one roll of the bartering table per ingot. */
+        private void readBarters(LootReader loot) {
+            if (!lootTables.containsKey(PIGLIN_BARTERING)) return;
+            loot.expectedDrops(PIGLIN_BARTERING, new LootReader.Scenario(null, false, false)).forEach((item, n) -> {
+                if (n <= 0) return;
+                add(new BarterSource("minecraft:piglin", "minecraft:gold_ingot", item, n));
+                barterSources++;
+            });
+        }
+
         /** "minecraft:blocks/stone" with "blocks/" -> "minecraft:stone"; null for other folders and nested tables. */
         private static String directChild(String table, String folder) {
             int colon = table.indexOf(':');
@@ -548,7 +563,7 @@ public final class VanillaKnowledge implements Knowledge {
         String summary() {
             return crafts + " crafting + " + smelts + " cooking recipes (skipped " + skippedRecipes + "), "
                     + mineSources + " block drops from " + blockTables + " block tables, "
-                    + killSources + " mob drops from " + mobTables + " mob tables, "
+                    + killSources + " mob drops from " + mobTables + " mob tables, " + barterSources + " barters, "
                     + items.size() + " items, " + toolTypes.size() + " tools, " + fuels.size() + " fuels";
         }
     }

@@ -56,8 +56,11 @@ final class PlanState {
     Location location = Location.OVERWORLD;
     /** Portals this plan has opened, by the dimension they lead to: later trips need nothing. */
     Set<Location> portals = new HashSet<>();
-    /** Portals whose items (and gear checkpoint) are obtained and held back, by the dimension they lead to. */
-    Set<Location> portalReady = new HashSet<>();
+    /**
+     * Portals whose items (and gear checkpoint) are obtained and held back, by the dimension they lead to, with the
+     * items: the kit the portal is made from.
+     */
+    Map<Location, Map<String, Integer>> portalReady = new HashMap<>();
     boolean dragonDead;
     double cost;
     /** Trials that get more expensive than this are abandoned (branch and bound). Not taken over by {@link #become}. */
@@ -90,7 +93,7 @@ final class PlanState {
         c.limit = limit;
         c.location = location;
         c.portals = new HashSet<>(portals);
-        c.portalReady = new HashSet<>(portalReady);
+        c.portalReady = new HashMap<>(portalReady);
         c.dragonDead = dragonDead;
         return c;
     }

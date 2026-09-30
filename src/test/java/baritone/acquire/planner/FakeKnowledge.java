@@ -1,6 +1,7 @@
 package baritone.acquire.planner;
 
 import baritone.acquire.knowledge.Knowledge;
+import baritone.acquire.model.BarterSource;
 import baritone.acquire.model.CraftSource;
 import baritone.acquire.model.Ingredient;
 import baritone.acquire.model.KillSource;
@@ -53,6 +54,8 @@ final class FakeKnowledge implements Knowledge {
     static final String DIAMOND_PICKAXE = "minecraft:diamond_pickaxe";
     static final String OBSIDIAN = "minecraft:obsidian";
     static final String FLINT_AND_STEEL = "minecraft:flint_and_steel";
+    static final String BUCKET = "minecraft:bucket";
+    static final String WATER_BUCKET = "minecraft:water_bucket";
     static final String BLAZE_ROD = "minecraft:blaze_rod";
     static final String BLAZE_POWDER = "minecraft:blaze_powder";
     static final String ENDER_PEARL = "minecraft:ender_pearl";
@@ -66,6 +69,12 @@ final class FakeKnowledge implements Knowledge {
     static final String BOW = "minecraft:bow";
     static final String ARROW = "minecraft:arrow";
     static final String FEATHER = "minecraft:feather";
+    static final String GOLD_INGOT = "minecraft:gold_ingot";
+    static final String GOLDEN_BOOTS = "minecraft:golden_boots";
+    static final String GOLDEN_HELMET = "minecraft:golden_helmet";
+    static final String PIGLIN = "minecraft:piglin";
+    /** Pearls per gold ingot bartered: 10 in 469 barters give 2 to 4. */
+    static final double PEARLS_PER_INGOT = 10.0 / 469 * 3;
 
     private static final ToolReq PICK_1 = new ToolReq("pickaxe", 1, true);
     private static final ToolReq PICK_2 = new ToolReq("pickaxe", 2, true);
@@ -83,14 +92,20 @@ final class FakeKnowledge implements Knowledge {
         return withDimensions(true);
     }
 
-    /** {@code obsidian} false leaves out every way to get obsidian, so the Nether can't be reached. */
-    static FakeKnowledge withDimensions(boolean obsidian) {
+    /** {@code portal} false leaves out every way to get obsidian or a bucket, so the Nether can't be reached. */
+    static FakeKnowledge withDimensions(boolean portal) {
         FakeKnowledge k = new FakeKnowledge();
         k.mine(DIAMOND, "minecraft:diamond_ore", 1.0, PICK_3);
         k.craft(DIAMOND_PICKAXE, 1, true, ing(DIAMOND, 3), ing(STICK, 2));
         k.pickaxes.put(DIAMOND_PICKAXE, 4);
-        if (obsidian) k.mine(OBSIDIAN, "minecraft:obsidian", 1.0, PICK_4);
-        else k.items.add(OBSIDIAN);
+        if (portal) {
+            k.mine(OBSIDIAN, "minecraft:obsidian", 1.0, PICK_4);
+            k.craft(BUCKET, 1, true, ing(IRON_INGOT, 3));
+        } else {
+            k.items.add(OBSIDIAN);
+            k.items.add(BUCKET);
+        }
+        k.items.add(WATER_BUCKET);
         k.craft(FLINT_AND_STEEL, 1, false, ing(IRON_INGOT, 1), ing(FLINT, 1));
         k.add(new KillSource("minecraft:blaze", BLAZE_ROD, 0.5, true));
         k.locations.put("minecraft:blaze", Location.FORTRESS);
@@ -98,6 +113,12 @@ final class FakeKnowledge implements Knowledge {
         k.add(new KillSource("minecraft:enderman", ENDER_PEARL, 0.5, false));
         k.locations.put("minecraft:enderman", null);
         k.craft(ENDER_EYE, 1, false, ing(ENDER_PEARL, 1), ing(BLAZE_POWDER, 1));
+        // Piglins barter pearls for gold; there is no way to make gold here, only held gold is bartered.
+        k.add(new BarterSource(PIGLIN, GOLD_INGOT, ENDER_PEARL, PEARLS_PER_INGOT));
+        k.locations.put(PIGLIN, Location.NETHER);
+        k.items.add(GOLD_INGOT);
+        k.craft(GOLDEN_BOOTS, 1, true, ing(GOLD_INGOT, 4));
+        k.craft(GOLDEN_HELMET, 1, true, ing(GOLD_INGOT, 5));
         k.mine(END_STONE, "minecraft:end_stone", 1.0, PICK_1);
         k.locations.put("minecraft:end_stone", Location.END);
         k.mine(QUARTZ, "minecraft:nether_quartz_ore", 1.0, PICK_1);
@@ -186,6 +207,7 @@ final class FakeKnowledge implements Knowledge {
         String key = switch (source) {
             case MineSource m -> m.block();
             case KillSource k -> k.entity();
+            case BarterSource b -> b.entity();
             default -> null;
         };
         return key != null && locations.containsKey(key) ? locations.get(key) : Location.OVERWORLD;

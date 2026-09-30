@@ -25,6 +25,10 @@ public final class PlanEffects {
             switch (step) {
                 case Step.Mine m -> inv.add(m.item(), Math.max(0, m.untilCount() - inv.count(m.item())));
                 case Step.Kill k -> inv.add(k.item(), Math.max(0, k.untilCount() - inv.count(k.item())));
+                case Step.Barter b -> {
+                    inv.take(b.currency(), b.trades());
+                    inv.add(b.item(), Math.max(0, b.untilCount() - inv.count(b.item())));
+                }
                 case Step.CollectEgg e -> inv.add(e.item(), Math.max(0, e.untilCount() - inv.count(e.item())));
                 case Step.Craft c -> {
                     CraftSource r = c.recipe();

@@ -11,8 +11,8 @@ import java.util.Map;
  * the finish line: if the inventory already has it, the step is skipped; if the step ends short, the
  * executor re-plans from the real inventory.
  */
-public sealed interface Step permits Step.Mine, Step.Craft, Step.Smelt, Step.Kill, Step.PlaceStation, Step.RetrieveStation,
-        Step.Travel, Step.Locate, Step.SlayDragon, Step.CollectEgg {
+public sealed interface Step permits Step.Mine, Step.Craft, Step.Smelt, Step.Kill, Step.Barter, Step.PlaceStation,
+        Step.RetrieveStation, Step.Travel, Step.Locate, Step.SlayDragon, Step.CollectEgg {
 
     /** The item this step produces. For {@link PlaceStation} it is the station block's item. */
     String item();
@@ -84,6 +84,17 @@ public sealed interface Step permits Step.Mine, Step.Craft, Step.Smelt, Step.Kil
     }
 
     /**
+     * Throw {@code currency} to {@code entity} ({@code trades} of it at most) and pick up what comes back, until the
+     * inventory holds {@code untilCount} of {@code item}. A gold armour piece is worn while bartering with piglins.
+     */
+    record Barter(String entity, String currency, String item, int untilCount, int trades) implements Step {
+        @Override
+        public String describe() {
+            return "barter ~" + trades + " " + shortId(currency) + " with " + shortId(entity) + "s for " + shortId(item);
+        }
+    }
+
+    /**
      * Make sure a {@code station} block ({@code minecraft:crafting_table}, {@code minecraft:furnace}, ...)
      * is usable nearby: use a known one within range, otherwise place one from the inventory. The
      * planner puts the station item in the plan before this step.
@@ -113,8 +124,9 @@ public sealed interface Step permits Step.Mine, Step.Craft, Step.Smelt, Step.Kil
     }
 
     /**
-     * Go from {@code from} to {@code to} through a portal, using up {@code consumes} on the way: 10 obsidian for the
-     * first nether portal (lit with a held flint and steel), 12 eyes of ender to fill the end portal.
+     * Go from {@code from} to {@code to} through a portal, using up {@code consumes} on the way: for the first nether
+     * portal 10 obsidian, or the 20 mould blocks of a frame cast from lava (lit with a held flint and steel either
+     * way); 12 eyes of ender to fill the end portal.
      */
     record Travel(Location from, Location to, Map<String, Integer> consumes) implements Step {
         public Travel {
@@ -127,7 +139,9 @@ public sealed interface Step permits Step.Mine, Step.Craft, Step.Smelt, Step.Kil
         @Override
         public String describe() {
             String what = switch (to) {
-                case NETHER -> consumes.isEmpty() ? "go through the portal to the Nether" : "build and light a nether portal, then go through";
+                case NETHER -> consumes.isEmpty() ? "go through the portal to the Nether"
+                        : consumes.containsKey("minecraft:obsidian") ? "build and light a nether portal, then go through"
+                        : "cast and light a nether portal from lava buckets, then go through";
                 case END -> "fill the end portal" + (consumes.isEmpty() ? "" : " with " + consumes.values().iterator().next() + " ender_eye")
                         + " and jump in";
                 default -> "go through the portal to " + to.label();

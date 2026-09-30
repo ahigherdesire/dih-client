@@ -1,5 +1,6 @@
 package baritone.acquire.knowledge;
 
+import baritone.acquire.model.BarterSource;
 import baritone.acquire.model.Goal;
 import baritone.acquire.model.InventorySnapshot;
 import baritone.acquire.model.Location;
@@ -50,12 +51,92 @@ final class VanillaDimensionPlanTest {
     }
 
     @Test
+    void piglinsBarterPearlsForGoldInTheNether() {
+        BarterSource barter = knowledge.sourcesFor("minecraft:ender_pearl").stream()
+                .filter(s -> s instanceof BarterSource).map(s -> (BarterSource) s).findFirst().orElseThrow();
+        assertEquals("minecraft:piglin", barter.entity());
+        assertEquals("minecraft:gold_ingot", barter.currency());
+        // 10 of 469 barters give 2 to 4 pearls.
+        assertEquals(10.0 / 469 * 3, barter.perTrade(), 1e-6);
+        assertEquals(Location.NETHER, knowledge.locationOf(barter));
+    }
+
+    /** In the Nether a crafting table is made from a nether stem at hand, not from an Overworld log a portal away. */
+    @Test
+    void aCraftingTableInTheNetherIsMadeFromNetherStems() {
+        Plan plan = new AcquirePlanner(knowledge, WorldView.UNKNOWN, PlannerOptions.DEFAULT)
+                .plan(new Goal.ItemGoal("minecraft:crafting_table", 1), InventorySnapshot.empty(), Location.NETHER);
+        String explained = AcquirePlanner.explain(plan);
+        assertTrue(plan.complete(), plan.missing() + "\n" + explained);
+        assertFalse(has(plan, Step.Travel.class), explained);
+        assertTrue(plan.steps().stream().anyMatch(s -> s instanceof Step.Mine m
+                && (m.item().equals("minecraft:crimson_stem") || m.item().equals("minecraft:warped_stem"))), explained);
+    }
+
+    @Test
+    void heldGoldInTheNetherIsBarteredForPearls() {
+        InventorySnapshot inv = InventorySnapshot.empty();
+        inv.add("minecraft:gold_ingot", 256);
+        Plan plan = new AcquirePlanner(knowledge, WorldView.UNKNOWN, PlannerOptions.DEFAULT)
+                .plan(new Goal.ItemGoal("minecraft:ender_pearl", 12), inv, Location.NETHER);
+        String explained = AcquirePlanner.explain(plan);
+        assertTrue(plan.complete(), plan.missing() + "\n" + explained);
+        assertTrue(has(plan, Step.Barter.class), explained);
+        assertFalse(plan.steps().stream().anyMatch(s -> s instanceof Step.Kill), explained);
+    }
+
+    @Test
     void netherAndEndItemsPlanWithATrip() {
         for (String item : List.of("minecraft:blaze_rod", "minecraft:ender_eye", "minecraft:end_stone", "minecraft:quartz")) {
             Plan plan = plan(new Goal.ItemGoal(item, 1));
             assertTrue(plan.complete(), item + ": " + plan.missing());
             assertTrue(has(plan, Step.Travel.class), item + " needs a portal:\n" + AcquirePlanner.explain(plan));
         }
+    }
+
+    /** At a fortress (the Nether with nether bricks around), blaze rods are a kill: no portal, no search. */
+    @Test
+    void atAFortressBlazeRodsAreAKill() {
+        Plan plan = new AcquirePlanner(knowledge, WorldView.UNKNOWN, PlannerOptions.DEFAULT)
+                .plan(new Goal.ItemGoal("minecraft:blaze_rod", 3), InventorySnapshot.empty(), Location.FORTRESS);
+        String explained = AcquirePlanner.explain(plan);
+        assertTrue(plan.complete(), plan.missing() + "\n" + explained);
+        assertFalse(has(plan, Step.Travel.class) ||has(plan, Step.Locate.class), explained);
+        assertTrue(plan.steps().stream().anyMatch(s -> s instanceof Step.Kill k && k.entity().equals("minecraft:blaze")), explained);
+    }
+
+    /** In the Nether away from a fortress, the fortress is found first, with no portal trip. */
+    @Test
+    void inTheNetherTheFortressIsFoundFirst() {
+        Plan plan = new AcquirePlanner(knowledge, WorldView.UNKNOWN, PlannerOptions.DEFAULT)
+                .plan(new Goal.ItemGoal("minecraft:blaze_rod", 3), InventorySnapshot.empty(), Location.NETHER);
+        String explained = AcquirePlanner.explain(plan);
+        assertTrue(plan.complete(), plan.missing() + "\n" + explained);
+        assertFalse(has(plan, Step.Travel.class), explained);
+        assertTrue(plan.steps().get(0) instanceof Step.Locate l && l.site() == Location.FORTRESS, explained);
+    }
+
+    @Test
+    void theNetherFromNothingCastsThePortalWithBucketsAndNoDiamonds() {
+        Plan plan = plan(new Goal.AtLocation(Location.NETHER));
+        assertTrue(plan.complete(), plan.missing().toString());
+        String explained = AcquirePlanner.explain(plan);
+        List<Step> steps = plan.steps();
+        int buckets = 0;
+        int travel = -1;
+        for (int i = 0; i < steps.size(); i++) {
+            Step step = steps.get(i);
+            if (step instanceof Step.Craft c && c.recipe().output().equals("minecraft:bucket") && travel < 0) {
+                buckets += c.times() * c.recipe().outputCount();
+            }
+            if (travel < 0 && step instanceof Step.Travel t && t.to() == Location.NETHER) travel = i;
+            assertFalse(step instanceof Step.Mine m && (m.item().equals("minecraft:obsidian") || m.item().equals("minecraft:diamond")),
+                    "no obsidian or diamonds mined: " + step + "\n" + explained);
+        }
+        assertTrue(travel >= 0, explained);
+        assertEquals(4, buckets, "four buckets before the portal:\n" + explained);
+        Step.Travel portal = (Step.Travel) steps.get(travel);
+        assertFalse(portal.consumes().containsKey("minecraft:obsidian"), explained);
     }
 
     @Test

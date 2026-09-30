@@ -181,7 +181,12 @@ final class SmeltRunner extends RunnerBase {
 
         Item fuelItem = InventoryReader.itemOf(step.fuel());
         ItemStack fuel = menu.getSlot(FUEL).getItem();
-        // A different fuel already in the slot stays; the furnace burns it and the stall check catches a shortfall.
+        // A different fuel left from an earlier smelt (a stick the last one didn't need) would keep the planned fuel
+        // out and burn short: take it back first. If the inventory has no room it stays, and the stall check catches it.
+        if (step.fuelCount() > 0 && fuelItem != null && !fuel.isEmpty() && !fuel.is(fuelItem)) {
+            InventoryOps.quickMove(ctx, menu.containerId, FUEL);
+            fuel = menu.getSlot(FUEL).getItem();
+        }
         if (step.fuelCount() > 0 && fuelItem != null && (fuel.isEmpty() || fuel.is(fuelItem))) {
             fill(menu, fuelItem, FUEL, step.fuelCount() - fuel.getCount(), fuel);
         }

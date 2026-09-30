@@ -1,6 +1,7 @@
 package baritone.ai.catalog;
 
 import baritone.acquire.knowledge.Knowledge;
+import baritone.acquire.model.BarterSource;
 import baritone.acquire.model.CraftSource;
 import baritone.acquire.model.Ingredient;
 import baritone.acquire.model.KillSource;
@@ -139,6 +140,8 @@ final class KnowledgeTools {
             if (source instanceof KillSource kill && (kill.entity().equals(full) || kill.entity().equals(id))) {
                 lines.add(String.format("%.2f %s per kill%s", kill.dropsPerKill(), plain(kill.output()),
                         kill.needsPlayerKill() ? " (player kill)" : ""));
+            } else if (source instanceof BarterSource barter && (barter.entity().equals(full) || barter.entity().equals(id))) {
+                lines.add(String.format("%.3f %s per %s bartered", barter.perTrade(), plain(barter.output()), plain(barter.currency())));
             } else if (source instanceof MineSource mine && (mine.block().equals(full) || mine.block().equals(id))) {
                 isBlock = true;
                 tool = mine.tool();
@@ -165,6 +168,7 @@ final class KnowledgeTools {
             switch (source) {
                 case MineSource mine -> lines.add("mine " + plain(mine.block()) + " (" + toolText(mine.tool()).toLowerCase() + ")");
                 case KillSource kill -> lines.add("kill " + plain(kill.entity()));
+                case BarterSource barter -> lines.add("barter " + plain(barter.currency()) + " with " + plain(barter.entity()) + "s");
                 case CraftSource craft -> lines.add("craft from " + ingredients(craft.ingredients()));
                 case SmeltSource smelt -> lines.add("smelt " + options(smelt.input()));
             }

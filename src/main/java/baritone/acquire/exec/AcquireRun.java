@@ -120,8 +120,8 @@ final class AcquireRun {
      */
     static String unsupported(Step step) {
         return switch (step) {
-            case Step.Travel t -> "going to " + t.to().label() + " isn't built yet";
-            case Step.Locate l -> "finding " + l.site().label() + " isn't built yet";
+            case Step.Travel t -> TravelRunner.supports(t) ? null : "going to " + t.to().label() + " isn't built yet";
+            case Step.Locate l -> LocateRunner.supports(l.site()) ? null : "finding " + l.site().label() + " isn't built yet";
             case Step.SlayDragon d -> "fighting the ender dragon isn't built yet";
             case Step.CollectEgg e -> "collecting the dragon egg isn't built yet";
             default -> null;

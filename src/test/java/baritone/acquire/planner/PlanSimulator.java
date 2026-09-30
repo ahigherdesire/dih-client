@@ -2,6 +2,7 @@ package baritone.acquire.planner;
 
 import baritone.acquire.knowledge.Knowledge;
 import baritone.acquire.knowledge.WorldView;
+import baritone.acquire.model.BarterSource;
 import baritone.acquire.model.CraftSource;
 import baritone.acquire.model.Ingredient;
 import baritone.acquire.model.KillSource;
@@ -32,6 +33,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  */
 final class PlanSimulator {
     private static final String TABLE = "minecraft:crafting_table";
+    private static final List<String> GOLD_ARMOUR = List.of("minecraft:golden_helmet", "minecraft:golden_chestplate",
+            "minecraft:golden_leggings", "minecraft:golden_boots");
 
     record Result(Map<String, Integer> inventory, Map<String, Integer> mined, Map<String, Integer> crafted) {
         int count(String item) {
@@ -51,6 +54,11 @@ final class PlanSimulator {
     }
 
     static Result simulate(Plan plan, InventorySnapshot start, Knowledge knowledge, WorldView world) {
+        return simulate(plan, start, knowledge, world, Location.OVERWORLD);
+    }
+
+    /** As above, starting in {@code from}. */
+    static Result simulate(Plan plan, InventorySnapshot start, Knowledge knowledge, WorldView world, Location from) {
         Map<String, Integer> inv = new HashMap<>(start.asMap());
         Map<String, Integer> mined = new HashMap<>();
         Map<String, Integer> crafted = new HashMap<>();
@@ -59,7 +67,7 @@ final class PlanSimulator {
         Set<String> owned = new HashSet<>();
         boolean moved = false;
         boolean dragonDead = false;
-        Location here = Location.OVERWORLD;
+        Location here = from;
         List<Step> steps = plan.steps();
         for (int i = 0; i < steps.size(); i++) {
             Step step = steps.get(i);
@@ -86,6 +94,19 @@ final class PlanSimulator {
                     int gained = k.untilCount() - count(inv, k.item());
                     assertTrue(gained > 0, at + ": nothing to kill for");
                     inv.put(k.item(), k.untilCount());
+                    setUp.clear();
+                    placed.clear();
+                    moved = true;
+                }
+                case Step.Barter b -> {
+                    assertTrue(canWork(here, barterLocation(knowledge, b)), at + ": barters in " + here);
+                    // Piglins attack a player with no gold on.
+                    assertTrue(GOLD_ARMOUR.stream().anyMatch(piece -> count(inv, piece) > 0), at + ": no gold armour to wear");
+                    assertTrue(b.trades() > 0, at);
+                    take(inv, b.currency(), b.trades(), at);
+                    int gained = b.untilCount() - count(inv, b.item());
+                    assertTrue(gained > 0, at + ": nothing to barter for");
+                    inv.put(b.item(), b.untilCount());
                     setUp.clear();
                     placed.clear();
                     moved = true;
@@ -127,8 +148,13 @@ final class PlanSimulator {
                 }
                 case Step.Travel t -> {
                     assertTrue(canWork(here, t.from()), at + ": leaves from " + here + ", not " + t.from());
-                    if (t.to() == Location.NETHER && t.consumes().containsKey("minecraft:obsidian")) {
+                    if (t.to() == Location.NETHER && !t.consumes().isEmpty()) {
                         assertTrue(count(inv, "minecraft:flint_and_steel") > 0, at + ": nothing to light the portal with");
+                        if (!t.consumes().containsKey("minecraft:obsidian")) {
+                            int buckets = count(inv, "minecraft:bucket") + count(inv, "minecraft:water_bucket")
+                                    + count(inv, "minecraft:lava_bucket");
+                            assertTrue(buckets >= 2, at + ": casting the frame takes two buckets, has " + buckets);
+                        }
                     }
                     t.consumes().forEach((item, n) -> take(inv, item, n, at));
                     assertTrue(owned.isEmpty(), at + ": leaves placed stations behind");
@@ -180,6 +206,12 @@ final class PlanSimulator {
     private static Location killLocation(Knowledge knowledge, Step.Kill k) {
         for (Source source : knowledge.sourcesFor(k.item()))
             if (source instanceof KillSource kill && kill.entity().equals(k.entity())) return knowledge.locationOf(kill);
+        return Location.OVERWORLD;
+    }
+
+    private static Location barterLocation(Knowledge knowledge, Step.Barter b) {
+        for (Source source : knowledge.sourcesFor(b.item()))
+            if (source instanceof BarterSource barter && barter.entity().equals(b.entity())) return knowledge.locationOf(barter);
         return Location.OVERWORLD;
     }
 

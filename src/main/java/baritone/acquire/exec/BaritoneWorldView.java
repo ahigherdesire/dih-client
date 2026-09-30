@@ -16,6 +16,7 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.HashMap;
@@ -38,6 +39,20 @@ public final class BaritoneWorldView implements WorldView {
             case "the_end" -> Location.END;
             default -> Location.OVERWORLD;
         };
+    }
+
+    /** Nether bricks within this many chunks mean a fortress is here. */
+    private static final int FORTRESS_CHUNKS = 3;
+    /** More than a few stray blocks: a fortress's bridges and halls have thousands. */
+    private static final int FORTRESS_BRICKS = 24;
+
+    /** Where the player is for the planner: the dimension, or {@link Location#FORTRESS} in the Nether among nether bricks. */
+    public static Location here(IPlayerContext ctx) {
+        Location dimension = dimension(ctx.world());
+        if (dimension != Location.NETHER || ctx.player() == null) return dimension;
+        int bricks = BaritoneAPI.getProvider().getWorldScanner().scanChunkRadius(
+                ctx, new BlockOptionalMetaLookup(Blocks.NETHER_BRICKS), FORTRESS_BRICKS, -1, FORTRESS_CHUNKS).size();
+        return bricks >= FORTRESS_BRICKS ? Location.FORTRESS : dimension;
     }
 
 

@@ -79,6 +79,10 @@ final class CraftingTools {
                 return ToolResult.needs(KnowledgeTools.plain(kill.item()), kill.untilCount())
                         .fact("gather", "kill").fact("goal", goal);
             }
+            if (step instanceof Step.Barter barter) {
+                return ToolResult.needs(KnowledgeTools.plain(barter.item()), barter.untilCount())
+                        .fact("gather", "barter").fact("goal", goal);
+            }
         }
         return null;
     }

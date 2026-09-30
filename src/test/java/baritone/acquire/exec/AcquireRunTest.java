@@ -53,25 +53,25 @@ final class AcquireRunTest {
         return id -> counts.getOrDefault(id, 0);
     }
 
-    /** Logs, then the Nether: a plan whose second step has no runner yet. */
-    static Plan logsThenNether() {
-        return new Plan("minecraft:blaze_rod", 1, List.of(
+    /** Logs, then the End: a plan whose second step has no runner yet. */
+    static Plan logsThenEnd() {
+        return new Plan("minecraft:end_stone", 1, List.of(
                 mineLogs(3),
-                new Step.Travel(Location.OVERWORLD, Location.NETHER, Map.of("minecraft:obsidian", 10)),
-                new Step.Locate(Location.FORTRESS),
-                new Step.Kill("minecraft:blaze", "minecraft:blaze_rod", 1, 2)
+                new Step.Travel(Location.STRONGHOLD, Location.END, Map.of("minecraft:ender_eye", 12)),
+                new Step.Mine(List.of("minecraft:end_stone"), "minecraft:end_stone", 1, ToolReq.NONE, 1),
+                new Step.Mine(List.of("minecraft:end_stone"), "minecraft:end_stone", 1, ToolReq.NONE, 1)
         ), List.of(), 100);
     }
 
     @Test
     void stopsHonestlyAtTheFirstStepWithoutARunner() {
-        AcquireRun run = new AcquireRun("minecraft:blaze_rod", 1, logsThenNether());
+        AcquireRun run = new AcquireRun("minecraft:end_stone", 1, logsThenEnd());
         assertEquals(0, run.advance(inv(Map.of())));
         assertNull(run.blocked(), "mining logs has a runner");
         // A step with no item is never "already done": the trip is not skipped.
         assertEquals(1, run.advance(inv(Map.of(LOG, 3))));
         String blocked = run.blocked();
-        assertTrue(blocked != null && blocked.contains("step 2/4") && blocked.contains("the Nether")
+        assertTrue(blocked != null && blocked.contains("step 2/4") && blocked.contains("the End")
                 && blocked.contains("isn't built yet"), blocked);
         assertEquals(0, run.replans(), "no re-plans burned");
     }
@@ -84,6 +84,10 @@ final class AcquireRunTest {
             assertFalse(AcquireRun.met(step, inv(Map.of())), step.describe() + " is never already done");
         }
         assertNull(AcquireRun.unsupported(mineLogs(1)));
+        assertNull(AcquireRun.unsupported(new Step.Locate(Location.FORTRESS)), "finding a fortress runs");
+        assertNull(AcquireRun.unsupported(new Step.Travel(Location.OVERWORLD, Location.NETHER, Map.of("minecraft:obsidian", 10))),
+                "building a portal runs");
+        assertNull(AcquireRun.unsupported(new Step.Travel(Location.FORTRESS, Location.OVERWORLD, Map.of())), "going home runs");
     }
 
     @Test

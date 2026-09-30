@@ -15,6 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -28,6 +29,12 @@ final class ExecContext implements Helper {
     final IPlayerContext ctx;
     final Knowledge knowledge;
     final StationFinder stations;
+    /** Lava a portal found no room to be cast beside, for the whole run: a re-plan's new caster looks elsewhere. */
+    final Set<BlockPos> noRoomLava = new HashSet<>();
+    /** Portal sites given up on (no way to them, or to dig them out), for the whole run as {@link #noRoomLava} is. */
+    final Set<BlockPos> badCastSites = new HashSet<>();
+    /** The portal site being cast on in this run: a re-plan's caster picks up the frame where the last one left it. */
+    PortalCast castSite;
     private final Supplier<Set<String>> neededItems;
 
     ExecContext(Baritone baritone, Knowledge knowledge, StationFinder stations, Supplier<Set<String>> neededItems) {

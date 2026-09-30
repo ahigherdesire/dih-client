@@ -37,6 +37,8 @@ final class VanillaData {
             "data/minecraft/recipe/",
             "data/minecraft/loot_table/blocks/",
             "data/minecraft/loot_table/entities/",
+            // What piglins barter for gold.
+            "data/minecraft/loot_table/gameplay/piglin_bartering.json",
             "data/minecraft/tags/item/",
             "data/minecraft/tags/block/");
 

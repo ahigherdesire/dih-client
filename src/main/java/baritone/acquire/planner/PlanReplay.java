@@ -82,6 +82,17 @@ final class PlanReplay {
                         moved = true;
                     }
                 }
+                case Step.Barter b -> {
+                    if (gained <= 0) error = "gains nothing";
+                    else if (inv.take(b.currency(), b.trades()) < b.trades()) error = "short of " + b.currency();
+                    else {
+                        inv.add(b.item(), gained);
+                        out.add(new Step.Barter(b.entity(), b.currency(), b.item(), inv.count(b.item()), b.trades()));
+                        active.clear();
+                        ready.clear();
+                        moved = true;
+                    }
+                }
                 case Step.Craft c -> {
                     CraftSource r = c.recipe();
                     if (r.needsTable() && !active.contains(CRAFTING_TABLE)) error = "no crafting table set up";
@@ -212,6 +223,9 @@ final class PlanReplay {
                     return false;
                 }
                 case Step.Kill kill -> {
+                    return false;
+                }
+                case Step.Barter barter -> {
                     return false;
                 }
                 case Step.Craft c -> {

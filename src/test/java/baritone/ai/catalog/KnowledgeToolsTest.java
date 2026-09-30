@@ -1,6 +1,7 @@
 package baritone.ai.catalog;
 
 import baritone.acquire.knowledge.Knowledge;
+import baritone.acquire.model.BarterSource;
 import baritone.acquire.model.CraftSource;
 import baritone.acquire.model.Ingredient;
 import baritone.acquire.model.KillSource;
@@ -49,6 +50,7 @@ final class KnowledgeToolsTest {
                 case SmeltSource m -> m.output();
                 case CraftSource m -> m.output();
                 case KillSource m -> m.output();
+                case BarterSource m -> m.output();
             };
         }
 

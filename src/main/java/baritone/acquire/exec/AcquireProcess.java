@@ -4,6 +4,7 @@ import baritone.Baritone;
 import baritone.acquire.AcquireControl;
 import baritone.acquire.knowledge.Knowledge;
 import baritone.acquire.knowledge.VanillaKnowledge;
+import baritone.acquire.model.BarterSource;
 import baritone.acquire.model.Goal;
 import baritone.acquire.model.InventorySnapshot;
 import baritone.acquire.model.Location;
@@ -105,6 +106,11 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     }
 
     @Override
+    public String startBarter(String itemText, int count) {
+        return onGameThread(() -> startBarter0(itemText, count));
+    }
+
+    @Override
     public String plan(String itemText, int count) {
         return onGameThread(() -> plan0(itemText, count));
     }
@@ -173,6 +179,32 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         if (plan.alreadyDone()) return "Already done: " + goal.label() + ".";
         if (!plan.complete()) throw new IllegalArgumentException("Can't plan " + goal.label() + ": " + String.join("; ", plan.missing()));
         return begin(k, goal, plan, false);
+    }
+
+    /** One barter step, with every gold ingot held; if it runs out first, the run re-plans the rest like any step. */
+    private String startBarter0(String itemText, int count) {
+        if (count < 1) throw new IllegalArgumentException("The count must be at least 1.");
+        if (ctx.player() == null || ctx.world() == null) throw new IllegalArgumentException("Join a world first.");
+        Knowledge k = knowledge();
+        String item = resolve(k, itemText);
+        BarterSource source = k.sourcesFor(item).stream().filter(s -> s instanceof BarterSource)
+                .map(s -> (BarterSource) s).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Piglins don't barter " + Step.shortId(item) + "."));
+        int have = InventoryReader.count(ctx.player(), item);
+        if (have >= count) return "You already have " + count + " " + Step.shortId(item) + ".";
+        if (!TravelRunner.dimensionId(ctx.world()).equals("the_nether")) {
+            throw new IllegalArgumentException("Piglins live in the Nether: go there first (build_portal).");
+        }
+        int gold = InventoryReader.count(ctx.player(), source.currency());
+        if (gold == 0) throw new IllegalArgumentException("No " + Step.shortId(source.currency()) + " to barter with.");
+        if (!net.minecraft.world.entity.monster.piglin.PiglinAi.isWearingSafeArmor(ctx.player())
+                && BarterRunner.goldArmourHeld(ctx.player()) < 0) {
+            throw new IllegalArgumentException("Piglins attack a player wearing no gold: get a piece of gold armour "
+                    + "first (golden_boots take 4 gold ingots).");
+        }
+        Step.Barter step = new Step.Barter(source.entity(), source.currency(), item, count, gold);
+        Plan plan = new Plan(item, count, List.of(step), List.of(), 0);
+        return begin(k, new Goal.ItemGoal(item, count), plan, false);
     }
 
     private String begin(Knowledge k, Goal goal, Plan plan, boolean food) {
@@ -277,9 +309,9 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         }
     }
 
-    /** The dimension the player is in, for the planner. */
+    /** Where the player is, for the planner: the dimension, or a nether fortress. */
     Location here() {
-        return BaritoneWorldView.dimension(ctx.world());
+        return BaritoneWorldView.here(ctx);
     }
 
     /** The planner options from the Baritone settings. */
@@ -318,10 +350,13 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             boolean died = waitingForRespawn;
             waitingForRespawn = false;
             lastPlayer = player;
-            cancelRunner();
-            detour = null;
-            pendingReplan = null;
-            if (!replanMain(died ? "you died" : "you changed worlds")) return null;
+            // A portal trip landing where it was going carries on: it remembers the portals and steps out first.
+            if (died || !(runner instanceof TravelRunner travel && travel.landed())) {
+                cancelRunner();
+                detour = null;
+                pendingReplan = null;
+                if (!replanMain(died ? "you died" : "you changed worlds")) return null;
+            }
         }
         lastPlayer = player;
 
@@ -392,7 +427,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
                     endDetour("Got " + have(detour.goal) + " " + Step.shortId(detour.goal) + ".");
                     return false;
                 }
-                finish(AcquireEvent.Kind.DONE, "Done: you have " + have(run.goal) + " " + Step.shortId(run.goal) + ".");
+                finish(AcquireEvent.Kind.DONE, doneLine());
                 return false;
             }
             return replan("the plan ran out with " + have(active.goal) + "/" + active.count + " " + Step.shortId(active.goal)) && startNextStep();
@@ -415,14 +450,18 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
 
     private StepRunner createRunner(Step step) {
         return switch (step) {
-            case Step.Mine mine -> new MineRunner(exec, mine);
+            // Carrying two buckets, obsidian is cast from lava rather than mined out of a lava pool.
+            case Step.Mine mine -> ObsidianRunner.supports(mine, exec.have(ObsidianRunner.BUCKET),
+                    exec.have(ObsidianRunner.WATER_BUCKET), exec.have(ObsidianRunner.LAVA_BUCKET))
+                    ? new ObsidianRunner(exec, mine) : new MineRunner(exec, mine);
             case Step.Craft craft -> new CraftRunner(exec, craft);
             case Step.Smelt smelt -> new SmeltRunner(exec, smelt);
             case Step.Kill kill -> new KillRunner(exec, kill);
+            case Step.Barter barter -> new BarterRunner(exec, barter);
             case Step.PlaceStation station -> new StationRunner(exec, station);
             case Step.RetrieveStation station -> new RetrieveStationRunner(exec, station);
-            case Step.Travel travel -> throw new IllegalStateException("no runner for " + step.describe());
-            case Step.Locate locate -> throw new IllegalStateException("no runner for " + step.describe());
+            case Step.Travel travel -> new TravelRunner(exec, travel);
+            case Step.Locate locate -> new LocateRunner(exec, locate);
             case Step.SlayDragon dragon -> throw new IllegalStateException("no runner for " + step.describe());
             case Step.CollectEgg egg -> throw new IllegalStateException("no runner for " + step.describe());
         };
@@ -487,7 +526,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             return false;
         }
         if (plan.alreadyDone()) {
-            finish(AcquireEvent.Kind.DONE, "Done: you have " + have(run.goal) + " " + Step.shortId(run.goal) + ".");
+            finish(AcquireEvent.Kind.DONE, doneLine());
             return false;
         }
         if (!plan.complete()) {
@@ -722,6 +761,11 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         AcquireRun food = detour;
         if (food != null) needed.addAll(JunkPolicy.neededItems(food.goal, food.plan().steps(), Math.max(0, food.index())));
         return needed;
+    }
+
+    private String doneLine() {
+        if (run.target instanceof Goal.AtLocation at) return "Done: in " + at.location().label() + ".";
+        return "Done: you have " + have(run.goal) + " " + Step.shortId(run.goal) + ".";
     }
 
     private int have(String item) {

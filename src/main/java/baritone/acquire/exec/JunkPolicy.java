@@ -42,6 +42,7 @@ final class JunkPolicy {
                     needed.add(smelt.fuel());
                 }
                 case Step.Kill kill -> { }
+                case Step.Barter barter -> needed.add(barter.currency());
                 case Step.PlaceStation station -> needed.add(station.station());
                 case Step.RetrieveStation station -> needed.add(station.station());
                 case Step.Travel travel -> needed.addAll(travel.consumes().keySet());
