@@ -38,6 +38,8 @@ final class KillRunner extends RunnerBase {
 
     /** Give up when no target shows up for this long. */
     private static final int NO_TARGET_TICKS = 200;
+    /** A fight not won in this long (a mob out of reach, a way that doesn't get there) moves on to another mob. */
+    private static final int FIGHT_TICKS = 1200;
     private static final int LOOT_TICKS = 100;
     /** Drops appear a tick or two after the kill; stop looting sooner if there are none. */
     private static final int NO_DROP_TICKS = 20;
@@ -118,6 +120,13 @@ final class KillRunner extends RunnerBase {
                         combat.release();
                         if (calcFailed) skipped.add(target.getId());
                         state = State.SEEK;
+                        return Result.pause();
+                    }
+                    if (++ticks > FIGHT_TICKS) {
+                        combat.release();
+                        skipped.add(target.getId());
+                        state = State.SEEK;
+                        ticks = 0;
                         return Result.pause();
                     }
                     Goal goal = combat.tick(target);

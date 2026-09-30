@@ -233,9 +233,14 @@ public final class CombatRunner {
         return null;
     }
 
-    /** Next to a walking mob; under a flying one that hovers out of reach. */
+    /**
+     * Next to a walking mob, up on its ledge if need be; under a flying one that hovers out of reach. (Under a pig on a
+     * ledge the goal was already reached with the pig still out of reach, and the fight stood there for good.)
+     */
     private static Goal approach(LocalPlayer player, LivingEntity target) {
-        if (target.getY() - player.getY() > CombatTactics.REACH_HEIGHT) return new GoalXZ(target.getBlockX(), target.getBlockZ());
+        if (foeOf(target) == Foe.BLAZE && target.getY() - player.getY() > CombatTactics.REACH_HEIGHT) {
+            return new GoalXZ(target.getBlockX(), target.getBlockZ());
+        }
         return new GoalNear(target.blockPosition(), 1);
     }
 
