@@ -82,6 +82,10 @@ figure { margin: 0; }
 .fine + .fine { margin-top: 4px; }
 /* download pickers: Minecraft version + loader dropdowns above the download button */
 .picker-selects { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.pick-warn { margin: -2px 0 12px; max-width: 46ch; padding: 8px 12px; border: 1px solid rgba(250, 204, 21, .35);
+  border-radius: 10px; background: rgba(250, 204, 21, .08); color: var(--text); font-size: 11.5px; line-height: 1.5; }
+.pick-warn b { color: var(--gold); font-weight: 500; }
+.pick-warn[hidden] { display: none; }
 .select {
   position: relative; display: inline-flex; align-items: center; height: 40px;
   border: 1px solid var(--line-2); border-radius: 10px; background: rgba(255,255,255,.04);

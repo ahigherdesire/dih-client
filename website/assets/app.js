@@ -55,6 +55,8 @@
       else if (key === 'summary') el.textContent = b ? LOADERS[sel.loader] + ' ' + sel.mc + ' · ' + b.size : 'Not built for ' + LOADERS[sel.loader] + ' ' + sel.mc;
       else el.textContent = b ? b[key] : '—';
     });
+    // known-bug notices for one Minecraft version: <p data-pick-warn="26.3" hidden>
+    document.querySelectorAll('[data-pick-warn]').forEach(el => { el.hidden = el.dataset.pickWarn !== sel.mc; });
     document.querySelectorAll('[data-pick-install]').forEach(el => { el.innerHTML = INSTALL[sel.loader](sel.mc); });
     const jm = (R.journeymap || {})[sel.mc + '-' + sel.loader];
     document.querySelectorAll('[data-pick-jm]').forEach(a => { if (jm) a.href = jm; });
