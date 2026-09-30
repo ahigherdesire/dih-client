@@ -1,0 +1,8 @@
+# Everything in this folder is uploaded as a static file unless it is listed here.
+.git
+.gitignore
+.wrangler
+node_modules
+serve.py
+wrangler.jsonc
+worker

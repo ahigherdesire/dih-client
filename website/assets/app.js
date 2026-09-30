@@ -38,12 +38,13 @@
   const channelOf = el => el.dataset.pickLink || el.dataset.pickSum ||
     (el.closest('[data-picker]') || {}).dataset?.picker || (el.closest('[data-pick-sum]') || {}).dataset?.pickSum;
   const buildOf = ch => C[ch] && C[ch].builds[sel.mc + '-' + sel.loader];
-  const urlOf = (ch, b) => R.repo + '/releases/download/' + C[ch].tag + '/' + b.file;
+  // the site Worker counts the download, then redirects to the jar on GitHub (worker/index.js)
+  const urlOf = ch => '/dl/' + ch + '/' + sel.mc + '-' + sel.loader;
   function renderPicks() {
     document.querySelectorAll('[data-pick]').forEach(s => { s.value = sel[s.dataset.pick]; });
     document.querySelectorAll('[data-pick-link]').forEach(a => {
       const ch = channelOf(a), b = buildOf(ch);
-      if (b) a.href = urlOf(ch, b);
+      if (b) a.href = urlOf(ch);
       a.classList.toggle('is-off', !b);
       if (b) a.removeAttribute('aria-disabled'); else a.setAttribute('aria-disabled', 'true');
     });
@@ -65,24 +66,18 @@
   }));
   renderPicks();
   // ------------------------------------------------------------ download count
-  // Total jar downloads across every release, from GitHub's API (60 requests an hour per visitor,
-  // so it is cached for the tab). Stays hidden if the request fails.
+  // Total jar downloads, counted by the site Worker as downloads go through /dl/. Stays hidden if the
+  // request fails (or under a plain static server, which has no /api).
   const dlCount = $('#dl-count');
-  if (dlCount && R.repo) {
-    const show = n => { dlCount.querySelector('b').textContent = n.toLocaleString('en-US'); dlCount.hidden = false; };
-    let cached = null;
-    try { cached = sessionStorage.getItem('dih-downloads'); } catch (e) {}
-    if (cached) show(+cached);
-    else {
-      fetch(R.repo.replace('https://github.com/', 'https://api.github.com/repos/') + '/releases?per_page=100')
-        .then(r => r.ok ? r.json() : Promise.reject(r.status))
-        .then(rels => {
-          const n = rels.reduce((t, r) => t + r.assets.reduce((u, a) => u + (/\.jar$/.test(a.name) ? a.download_count : 0), 0), 0);
-          try { sessionStorage.setItem('dih-downloads', n); } catch (e) {}
-          show(n);
-        })
-        .catch(() => {});
-    }
+  if (dlCount) {
+    fetch('/api/downloads')
+      .then(r => r.ok ? r.json() : Promise.reject(r.status))
+      .then(d => {
+        if (typeof d.total !== 'number') return;
+        dlCount.querySelector('b').textContent = d.total.toLocaleString('en-US');
+        dlCount.hidden = false;
+      })
+      .catch(() => {});
   }
 
   document.querySelectorAll('[data-copy]').forEach(btn => {
