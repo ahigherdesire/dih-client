@@ -266,11 +266,11 @@ public final class GuardianProcess extends BaritoneProcessHelper {
         Settings s = Baritone.settings();
         decision = ThreatRanking.decide(senseOf(player), new ThreatRanking.Config(s.guardianFleeHealth.value,
                 s.guardianStopForPlayers.value));
-        // A kill step already fighting this kind of mob keeps the fight, and the drops it loots afterwards; the
-        // Guardian steps in to do something else (cover, a pit, eating) or to fight a different mob.
-        if (decision != null && !engaged && decision.response() == Response.FIGHT) {
+        // A kill step hunting this kind of mob keeps the fights (with its eating, and the drops it loots after); the
+        // Guardian steps in to do something else (cover, a retreat, a pit) or to fight a different mob.
+        if (decision != null && decision.response() == Response.FIGHT) {
             Entity foe = entity(decision);
-            if (foe != null && combat.fighting(foe.getType())) decision = null;
+            if (foe != null && combat.hunted(foe.getType())) decision = null;
         }
     }
 

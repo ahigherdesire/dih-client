@@ -262,6 +262,8 @@ public final class ThreatRanking {
                     // Arrows outrange a retreat. Hurt: get out of sight and heal; with nowhere to hide, go through it.
                     if (s.inCover() && (s.canEat() || s.canRegen())) yield Response.COVER;
                     if (!s.inCover() && s.coverNearby()) yield Response.COVER;
+                    // A blaze's fireballs are slow and so is the blaze: back the way we came, out of its sight, to heal.
+                    if (FIRES_ON_SIGHT.contains(attacker.type()) && (s.canEat() || s.canRegen())) yield Response.RETREAT;
                     yield Response.FIGHT;
                 }
                 yield Response.RETREAT;

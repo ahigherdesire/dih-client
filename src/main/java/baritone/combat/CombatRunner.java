@@ -68,8 +68,9 @@ public final class CombatRunner {
     private int shots;
     /** The game time of the last {@link #tick}. */
     private long lastFight = -100;
-    /** What the last {@link #tick} fought. */
-    private EntityType<?> lastFoe;
+    /** What a kill step is hunting ({@link #hunting}), and the game time it last said so. */
+    private EntityType<?> hunted;
+    private long lastHunt = -1000;
     /** The shot flying at the player this tick, or null. */
     private Projectile shot;
 
@@ -107,16 +108,27 @@ public final class CombatRunner {
         return level != null && level.getGameTime() - lastFight <= 2;
     }
 
-    /** Whether a fight with a mob of this type is under way. */
-    public boolean fighting(EntityType<?> type) {
-        return fighting() && lastFoe == type;
+    /** A kill step hunting this type of mob says so every tick it runs. */
+    public void hunting(EntityType<?> type) {
+        Level level = ctx.world();
+        if (level == null) return;
+        hunted = type;
+        lastHunt = level.getGameTime();
+    }
+
+    /**
+     * Whether a kill step hunts this type of mob: it said so within the last 30 seconds (it is paused while the
+     * Guardian takes cover or heals).
+     */
+    public boolean hunted(EntityType<?> type) {
+        Level level = ctx.world();
+        return level != null && hunted == type && level.getGameTime() - lastHunt <= 600;
     }
 
     /** One tick against {@code target}: a goal to path toward, or null when this tick's move is made by hand. */
     public Goal tick(LivingEntity target) {
         LocalPlayer player = ctx.player();
         lastFight = ctx.world().getGameTime();
-        lastFoe = target.getType();
         shot = incomingShot(ctx, SHOT_RADIUS);
         Foe foe = foeOf(target);
         ItemStack bow = bow(player);

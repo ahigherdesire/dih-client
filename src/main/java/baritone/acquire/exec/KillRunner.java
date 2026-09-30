@@ -53,6 +53,8 @@ final class KillRunner extends RunnerBase {
     private static final int CAMP_TICKS = 1800;
     /** Close enough to keep it spawning, far enough not to stand in its fire. */
     private static final int CAMP_DISTANCE = 6;
+    /** Longest rest before a fight with a spawned mob, per stretch of being hurt. */
+    private static final int REST_TICKS = 1200;
     /** How long to look for a roaming mob before giving up. */
     private static final int ROAM_TICKS = 6000;
     /** A warped forest this far off or nearer counts as reached. */
@@ -69,6 +71,7 @@ final class KillRunner extends RunnerBase {
     private LivingEntity target;
     private Vec3 killSpot;
     private int ticks;
+    private int rested;
     private Goal roamGoal;
     private float roamTurn;
 
@@ -84,12 +87,14 @@ final class KillRunner extends RunnerBase {
     @Override
     public Result tick(boolean calcFailed, boolean safeToCancel) {
         if (type == null || AcquirePlanner.NEVER_KILL.contains(step.entity())) return Result.failed("can't hunt " + step.entity());
+        combat.hunting(type);
         if (x.have(step.item()) >= step.untilCount()) return Result.done();
         Result full = x.checkRoom(step.item());
         if (full != null) return full;
         for (int guard = 0; guard < 4; guard++) {
             switch (state) {
                 case SEEK -> {
+                    if (rest()) return Result.pause();
                     target = nearestTarget();
                     if (target == null) {
                         if (roams(step.entity())) {
@@ -151,6 +156,21 @@ final class KillRunner extends RunnerBase {
     @Override
     public void cancel() {
         combat.release();
+    }
+
+    /**
+     * Before going for a spawned mob (blazes at their spawner), waits while hurt and healing, up to
+     * {@link #REST_TICKS}; the acquire's eating runs meanwhile, and the Guardian if one comes over.
+     */
+    private boolean rest() {
+        LocalPlayer player = ctx.player();
+        if (!SPAWNED.contains(step.entity()) || !HealthPolicy.restBeforeFight(player.getHealth(),
+                player.getFoodData().getFoodLevel(), FoodChoice.choose(Foods.held(player), player.getFoodData().getFoodLevel(),
+                        false, Set.of()) != null)) {
+            rested = 0;
+            return false;
+        }
+        return ++rested <= REST_TICKS;
     }
 
     /** Whether {@code entity} is looked for when none is in view. */

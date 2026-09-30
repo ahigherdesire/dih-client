@@ -272,6 +272,25 @@ final class ThreatRankingTest {
         assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "healthy: shoot it");
     }
 
+    /**
+     * From a blaze-rod death: hurt at a spawner on an open fortress floor with no cover near, it fought on and burned.
+     * A blaze's fireballs are slow and so is the blaze: back the way we came, out of its sight, and heal there.
+     */
+    @Test
+    void hurtWithNoCoverFromABlazeFallsBack() {
+        S s = new S();
+        s.health = 8;
+        s.canEat = true;
+        s.mobs.add(new Mob(1, "minecraft:blaze", 10, 10, true, false, false, false));
+        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response());
+        s.canEat = false;
+        s.canRegen = false;
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "nothing to heal with: fight it");
+        s.canEat = true;
+        s.mobs.set(0, new Mob(1, "minecraft:skeleton", 10, 10, true, false, false, false));
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "arrows outrun a retreat");
+    }
+
     /** Handed back out of a pit with nothing to heal with, digging a new one only hands it back again. */
     @Test
     void hurtWithNoWayToHealDoesNotDigInByDay() {
