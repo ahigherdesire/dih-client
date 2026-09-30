@@ -29,6 +29,7 @@
       "dihclient.ai.AiRunGameTest",
       "dihclient.ai.AiPanelGameTest",
       "baritone.beat.BeatGameTest",
+      "baritone.beat.BeatHomeGameTest",
       "baritone.guardian.AcquireRealWorldGameTest"
     ]
   },

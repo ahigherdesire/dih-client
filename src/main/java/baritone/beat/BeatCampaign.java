@@ -5,6 +5,7 @@ import baritone.acquire.AcquireControl;
 import baritone.acquire.exec.AcquireProcess;
 import baritone.acquire.exec.BaritoneWorldView;
 import baritone.acquire.exec.InventoryReader;
+import baritone.acquire.exec.PortalMemory;
 import baritone.acquire.knowledge.VanillaKnowledge;
 import baritone.acquire.knowledge.WorldView;
 import baritone.acquire.model.Goal;
@@ -163,6 +164,9 @@ public final class BeatCampaign extends Behavior {
     /** Hands the current phase's next goal to #acquire, moving past phases that are already met. */
     private String runPhase() {
         listen();
+        campaign.portals().forEach((dimension, at) -> {
+            if (at.length == 3) PortalMemory.put(campaign.world(), dimension, new net.minecraft.core.BlockPos(at[0], at[1], at[2]));
+        });
         AcquireControl acquire = AcquireControl.get();
         if (acquire == null) return pause("#acquire didn't load");
         for (int guard = 0; ; guard++) {
@@ -278,6 +282,9 @@ public final class BeatCampaign extends Behavior {
     private void save() {
         if (campaign == null) return;
         savedAt = ticks;
+        // The portals the trips went through, so the way home survives a restart.
+        PortalMemory.all(campaign.world()).forEach((dimension, pos) ->
+                campaign.portals().put(dimension, new int[]{pos.getX(), pos.getY(), pos.getZ()}));
         try {
             store().save(campaign, System.currentTimeMillis());
         } catch (IOException e) {

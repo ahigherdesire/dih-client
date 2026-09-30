@@ -26,22 +26,24 @@ final class CampaignTest {
     }
 
     @Test
-    void eightPhasesInOrder() {
-        assertEquals(List.of("gear", "portal", "blaze_rods", "pearls", "eyes", "stronghold", "end", "dragon"),
+    void ninePhasesInOrder() {
+        assertEquals(List.of("gear", "portal", "blaze_rods", "pearls", "home", "eyes", "stronghold", "end", "dragon"),
                 Arrays.stream(Phase.values()).map(Phase::id).toList());
         assertEquals(List.of(new Goal.AtLocation(Location.NETHER)), Phase.PORTAL.goals(have(Map.of())));
         assertEquals(List.of(new Goal.DragonDead()), Phase.DRAGON.goals(have(Map.of())));
+        // With the rods and pearls, back through the portal to the Overworld.
+        assertEquals(List.of(new Goal.AtLocation(Location.OVERWORLD)), Phase.HOME.goals(have(Map.of())));
     }
 
     @Test
     void theStatusLineCountsThePhase() {
         Campaign campaign = new Campaign("sp-test", 1);
         campaign.setPhase(Phase.BLAZE_RODS);
-        assertEquals("Phase 3/8: blaze rods 4/7", campaign.statusLine(have(Map.of("minecraft:blaze_rod", 4))));
+        assertEquals("Phase 3/9: blaze rods 4/7", campaign.statusLine(have(Map.of("minecraft:blaze_rod", 4))));
         campaign.setPhase(Phase.GEAR);
-        assertEquals("Phase 1/8: gear 2/6", campaign.statusLine(have(Map.of("minecraft:iron_helmet", 1, "minecraft:diamond_sword", 1))));
+        assertEquals("Phase 1/9: gear 2/6", campaign.statusLine(have(Map.of("minecraft:iron_helmet", 1, "minecraft:diamond_sword", 1))));
         campaign.setPhase(Phase.STRONGHOLD);
-        assertEquals("Phase 6/8: the stronghold", campaign.statusLine(have(Map.of())));
+        assertEquals("Phase 7/9: the stronghold", campaign.statusLine(have(Map.of())));
     }
 
     @Test
@@ -53,11 +55,20 @@ final class CampaignTest {
     }
 
     @Test
+    void pearlsAreTwelveForTheEyesAndFourSpare() {
+        assertEquals(List.of(new Goal.ItemGoal("minecraft:ender_pearl", 16)), Phase.PEARLS.goals(have(Map.of("minecraft:ender_pearl", 12))));
+        assertTrue(Phase.PEARLS.goals(have(Map.of("minecraft:ender_pearl", 16))).isEmpty());
+        Campaign campaign = new Campaign("sp-test", 1);
+        campaign.setPhase(Phase.PEARLS);
+        assertEquals("Phase 4/9: pearls 12/16", campaign.statusLine(have(Map.of("minecraft:ender_pearl", 12))));
+    }
+
+    @Test
     void nextStopsAfterTheDragon() {
         Campaign campaign = new Campaign("sp-test", 1);
         int moves = 0;
         while (campaign.next()) moves++;
-        assertEquals(7, moves);
+        assertEquals(8, moves);
         assertEquals(Phase.DRAGON, campaign.phase());
         assertFalse(campaign.next());
     }

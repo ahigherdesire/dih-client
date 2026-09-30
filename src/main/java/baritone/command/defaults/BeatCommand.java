@@ -61,8 +61,9 @@ public class BeatCommand extends Command {
     @Override
     public List<String> getLongDesc() {
         return Arrays.asList(
-                "Beats the game as a campaign of 8 phases: gear, a nether portal, blaze rods, pearls, eyes of ender,",
-                "the stronghold, the End and the dragon. Progress is saved per world, so it survives a crash or restart.",
+                "Beats the game as a campaign of 9 phases: gear, a nether portal, blaze rods, pearls, home to the",
+                "Overworld, eyes of ender, the stronghold, the End and the dragon. Progress is saved per world, so it",
+                "survives a crash or restart.",
                 "Parts that aren't built yet (going through portals, finding structures, the dragon fight) stop the",
                 "campaign with a clear message; everything before them runs.",
                 "",

@@ -30,9 +30,16 @@ final class CampaignChainTest {
             assertTrue(phase.complete(), phase.phase() + ": " + phase.plans().stream().flatMap(p -> p.missing().stream()).toList());
         }
         List<String> lines = CampaignChain.explain(chain);
-        assertTrue(lines.get(0).startsWith("Phase 1/8: gear ("), lines.get(0));
-        assertTrue(lines.stream().anyMatch(l -> l.startsWith("Phase 3/8: blaze rods")), String.join("\n", lines));
-        assertTrue(lines.stream().anyMatch(l -> l.startsWith("Phase 8/8: the dragon")), String.join("\n", lines));
+        assertTrue(lines.get(0).startsWith("Phase 1/9: gear ("), lines.get(0));
+        assertTrue(lines.stream().anyMatch(l -> l.startsWith("Phase 3/9: blaze rods")), String.join("\n", lines));
+        assertTrue(lines.stream().anyMatch(l -> l.startsWith("Phase 9/9: the dragon")), String.join("\n", lines));
+        // Home: from the Nether back through the portal it came by, which needs nothing new.
+        CampaignChain.PhasePlan home = chain.get(Phase.HOME.ordinal());
+        List<baritone.acquire.model.Step> homeSteps = home.plans().get(0).steps();
+        assertEquals(1, homeSteps.size(), String.join("\n", lines));
+        baritone.acquire.model.Step.Travel back = (baritone.acquire.model.Step.Travel) homeSteps.get(0);
+        assertEquals(Location.OVERWORLD, back.to(), String.join("\n", lines));
+        assertTrue(back.consumes().isEmpty(), String.join("\n", lines));
         assertTrue(lines.get(lines.size() - 1).startsWith("The whole route: "), lines.get(lines.size() - 1));
         // The gear made in phase 1 is not made again for the Nether gear checkpoint in phase 2.
         long swords = chain.stream().flatMap(p -> p.plans().stream()).flatMap(p -> p.steps().stream())

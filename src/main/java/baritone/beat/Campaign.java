@@ -82,7 +82,7 @@ public final class Campaign {
         return true;
     }
 
-    /** "Phase 3/8: blaze rods 4/7". */
+    /** "Phase 3/9: blaze rods 4/7". */
     public String statusLine(ToIntFunction<String> have) {
         return phase.number() + ": " + phase.progress(have);
     }

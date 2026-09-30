@@ -9,13 +9,14 @@ import java.util.function.ToIntFunction;
 
 /**
  * The steps of beating the game, in order. Each is one or more planner goals: gear, then reaching the Nether, blaze
- * rods, pearls, eyes, the stronghold, the End and the dragon.
+ * rods, pearls, home to the Overworld through the same portal, eyes, the stronghold, the End and the dragon.
  */
 public enum Phase {
     GEAR("gear"),
     PORTAL("the Nether"),
     BLAZE_RODS("blaze rods"),
     PEARLS("pearls"),
+    HOME("home"),
     EYES("eyes"),
     STRONGHOLD("the stronghold"),
     END("the End"),
@@ -23,7 +24,8 @@ public enum Phase {
 
     /** Blaze rods to get: 6 make the 12 powder 12 eyes need, plus one spare. */
     public static final int BLAZE_RODS_WANTED = 7;
-    public static final int PEARLS_WANTED = 12;
+    /** Pearls to get: 12 for the eyes, and 4 spare for eyes that break when thrown to find the stronghold. */
+    public static final int PEARLS_WANTED = 16;
     public static final int EYES_WANTED = 12;
 
     /** The Nether gear: each piece is any one of its ids; the first is the one to make. */
@@ -49,7 +51,7 @@ public enum Phase {
         return name().toLowerCase(Locale.ROOT);
     }
 
-    /** "Phase 3/8". */
+    /** "Phase 3/9". */
     public String number() {
         return "Phase " + (ordinal() + 1) + "/" + values().length;
     }
@@ -65,6 +67,7 @@ public enum Phase {
             case PORTAL -> List.of(new Goal.AtLocation(Location.NETHER));
             case BLAZE_RODS -> item("minecraft:blaze_rod", BLAZE_RODS_WANTED, have);
             case PEARLS -> item("minecraft:ender_pearl", PEARLS_WANTED, have);
+            case HOME -> List.of(new Goal.AtLocation(Location.OVERWORLD));
             case EYES -> item("minecraft:ender_eye", EYES_WANTED, have);
             case STRONGHOLD -> List.of(new Goal.AtLocation(Location.STRONGHOLD));
             case END -> List.of(new Goal.AtLocation(Location.END));

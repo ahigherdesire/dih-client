@@ -117,10 +117,10 @@ final class JobTools {
 
         registry.register(AiTool.builder("beat_stage", ToolCategory.JOB)
                 .summary("Beat the game (#beat): start or resume the campaign, stop it, or see its phase and plan.")
-                .description("Beat the game as a saved campaign of 8 phases: gear, a nether portal, blaze rods, pearls, "
-                        + "eyes of ender, the stronghold, the End, the dragon. start begins (or carries on with this world's "
+                .description("Beat the game as a saved campaign of 9 phases: gear, a nether portal, blaze rods, pearls, "
+                        + "home to the Overworld, eyes of ender, the stronghold, the End, the dragon. start begins (or carries on with this world's "
                         + "saved campaign) and runs until a phase finishes the game or stops with a reason; status gives "
-                        + "\"Phase 3/8: blaze rods 4/7\"; plan lists every phase's steps; resume continues after a stop.")
+                        + "\"Phase 3/9: blaze rods 4/7\"; plan lists every phase's steps; resume continues after a stop.")
                 .schema(ToolSchema.builder()
                         .enumOf("action", "What to do.", "start", "resume", "stop", "status", "plan").defaultsTo("status")
                         .build())
