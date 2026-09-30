@@ -15,18 +15,13 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Field;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
-import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** The whole catalog, as the client builds it: at least 110 tools, 70 of them hand-written, every category covered. */
 final class ToolCatalogCountTest {
-
-    /** Filled by the Beat stages (WP 10-12). */
-    private static final Set<ToolCategory> LATER = EnumSet.of(ToolCategory.NETHER_END);
 
     /** An object of {@code type} whose methods do nothing and return more of the same, so constructors can run. */
     @SuppressWarnings("unchecked")
@@ -85,7 +80,6 @@ final class ToolCatalogCountTest {
         assertTrue(cmd >= 30, "# adapters: " + cmd);
         assertTrue(dot >= 20, ". adapters: " + dot);
         for (ToolCategory category : ToolCategory.values()) {
-            if (LATER.contains(category)) continue;
             assertFalse(registry.inCategory(category).isEmpty(), "no tools in " + category.id());
         }
         System.out.println("[ToolCatalogCountTest] " + all.size() + " tools: " + handWritten.size() + " hand-written, "

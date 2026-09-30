@@ -38,13 +38,14 @@ final class ToolShapeTest {
             "web_search", "web_fetch",                                                    // WebToolsTest
             "load_tools", "list_tools",                                                   // ToolRegistryTest, ToolLoopTest
             "wait", "remember", "plan_item", "acquire",                                   // AiToolsDefinitionTest, below
-            "macro_write", "read_offers");                                                // MacroStepsTest, ClientToolsTest
+            "macro_write", "read_offers",                                                 // MacroStepsTest, ClientToolsTest
+            "build_portal", "find_fortress", "barter_piglins");                           // below
 
     /** Tools that need a live world; their pure parts are unit-tested and ToolsGameTest runs them in a world. */
     static final Set<String> LIVE_ONLY = Set.of(
             "find", "look_around", "say", "gear_up", "craft", "inventory", "equip", "biome_here", "set_guardian",
             "guardian_status", "whisper", "module_list", "module_toggle", "module_setting", "macro_list", "macro_run",
-            "macro_stop", "server_connect", "friend_add", "friend_remove", "trade", "enchant_plan");
+            "macro_stop", "server_connect", "friend_add", "friend_remove", "trade", "enchant_plan", "light_portal");
 
     static Stream<Arguments> commandTools() {
         return Stream.of(
@@ -212,6 +213,19 @@ final class ToolShapeTest {
         assertTrue(callLine("run_command", "set allowBreak false", commands, ToolContext.Source.CHAT).ok(), "a player may");
         ToolResult noGame = callLine("acquire", "diamond", commands, ToolContext.Source.CHAT);
         assertEquals("Not in a game.", noGame.text());
+    }
+
+    @Test
+    void theNetherTripsStartAcquireAndNeedAGame() {
+        RecordingCommands commands = new RecordingCommands();
+        assertEquals("Not in a game.", callLine("build_portal", "nether", commands, ToolContext.Source.CHAT).text());
+        assertEquals("Not in a game.", callLine("build_portal", "overworld", commands, ToolContext.Source.CHAT).text());
+        assertEquals("Not in a game.", callLine("find_fortress", "", commands, ToolContext.Source.CHAT).text());
+        assertEquals("Not in a game.", callLine("barter_piglins", "ender_pearl", commands, ToolContext.Source.CHAT).text());
+        ToolResult bad = callLine("build_portal", "the_end", commands, ToolContext.Source.CHAT);
+        assertEquals(ToolResult.Status.FAILED, bad.status());
+        assertTrue(bad.text().contains("nether"), bad.text());
+        assertTrue(commands.baritone.isEmpty(), "trips go through acquire, not a command: " + commands.baritone);
     }
 
     @Test

@@ -1,6 +1,7 @@
 package baritone.ai;
 
 import baritone.acquire.AcquireControl;
+import baritone.acquire.model.Goal;
 import baritone.ai.tool.AiTool;
 import baritone.ai.tool.CommandRunner;
 import baritone.ai.tool.ToolCategory;
@@ -193,10 +194,32 @@ public final class BuiltinTools {
     }
 
     private static ToolResult acquire(ToolContext ctx, ItemRequest request) {
-        AiBrain brain = ctx.brain();
         if (!request.ok()) {
             return ToolResult.failed(request.error());
         }
+        String what = "acquiring " + request.count() + " " + request.item();
+        ToolResult result = begin(ctx, control -> () -> control.start(request.item(), request.count()), what,
+                " plan_item shows what is missing; a different item name may help.");
+        return result.ok() ? result.fact("item", request.item()).fact("count", request.count()) : result;
+    }
+
+    /**
+     * Starts an acquire of a goal that isn't an item (being in the Nether, at a fortress) as the acquire tool would,
+     * for the nether_end tools.
+     */
+    public static ToolResult startGoal(ToolContext ctx, Goal goal) {
+        return begin(ctx, control -> () -> control.startGoal(goal), "getting to " + goal.label(), "");
+    }
+
+    /** Starts bartering with piglins for {@code count} of {@code item}, as the acquire tool would. */
+    public static ToolResult startBarter(ToolContext ctx, String item, int count) {
+        return begin(ctx, control -> () -> control.startBarter(item, count), "bartering for " + item, "");
+    }
+
+    /** The acquire tool's start: refusals, the game thread, and whose acquire it is. */
+    private static ToolResult begin(ToolContext ctx, java.util.function.Function<AcquireControl, java.util.function.Supplier<String>> start,
+                                    String what, String hint) {
+        AiBrain brain = ctx.brain();
         if (brain == null) {
             return ToolResult.failed("Not in a game.");
         }
@@ -213,16 +236,14 @@ public final class BuiltinTools {
             boolean eventsOn = brain.getConfig().followUpsActive();
             result = brain.onGameThread(() -> {
                 brain.attachAcquireListener(control);
-                return AiTools.startAcquire(control, brain.getFollowUps(), request, eventsOn);
+                return AiTools.startAsAi(start.apply(control), what, brain.getFollowUps(), eventsOn, hint);
             }, "Timed out while starting. Check look_around before trying again.");
         } else {
             // Started by a player, a macro or a director's plan: the chat AI mustn't treat its end as its own follow-up.
-            result = brain.onGameThread(() -> AiTools.startByHand(control, request), "Timed out while starting.");
+            result = brain.onGameThread(() -> AiTools.startByHand(start.apply(control), what), "Timed out while starting.");
         }
         String text = result + "\nYou are now " + ctx.brief() + ".";
-        return result.startsWith("Started")
-                ? ToolResult.running("acquire", text).fact("item", request.item()).fact("count", request.count())
-                : ToolResult.failed(text);
+        return result.startsWith("Started") ? ToolResult.running("acquire", text) : ToolResult.failed(text);
     }
 
     private static ToolResult planItem(ToolContext ctx, ItemRequest request) {

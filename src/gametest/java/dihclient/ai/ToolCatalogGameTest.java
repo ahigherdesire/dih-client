@@ -22,8 +22,8 @@ import java.util.List;
 
 /**
  * WP 07 in a real client: a spot-check of the catalog through {@code .tools}, at least one tool from every category
- * but nether_end (WP 10-12) plus a {@code #} and a {@code .} adapter. Tools that change the world are checked by
- * what changed, not only by what they printed.
+ * (nether_end by light_portal; its trips are the portal game test's) plus a {@code #} and a {@code .} adapter. Tools
+ * that change the world are checked by what changed, not only by what they printed.
  */
 @SuppressWarnings("UnstableApiUsage")
 public final class ToolCatalogGameTest implements FabricClientGameTest {
@@ -102,6 +102,17 @@ public final class ToolCatalogGameTest implements FabricClientGameTest {
                 context.waitFor(client -> client.player.blockPosition().distSqr(new BlockPos(-5, 100, 5)) <= 2, 1200);
                 expect(context, "stop", "stop ok", "#stop");
                 System.out.println("[ToolCatalogGameTest] goto ok");
+
+                // An empty frame two blocks in front of the player, along X.
+                world.getServer().runCommand("/fill -5 100 7 -2 104 7 minecraft:obsidian");
+                world.getServer().runCommand("/fill -4 101 7 -3 103 7 minecraft:air");
+                context.waitTicks(10);
+                expect(context, "light_portal", "light_portal failed", "No flint and steel");
+                world.getServer().runCommand("/give @p minecraft:flint_and_steel");
+                context.waitFor(client -> count(client, Items.FLINT_AND_STEEL) >= 1, 100);
+                expect(context, "light_portal", "light_portal ok", "Lit the portal frame");
+                context.waitFor(client -> client.level.getBlockState(new BlockPos(-4, 101, 7)).is(Blocks.NETHER_PORTAL), 100);
+                System.out.println("[ToolCatalogGameTest] light_portal ok");
                 context.takeScreenshot("tool-catalog");
             } catch (Throwable t) {
                 System.out.println("[ToolCatalogGameTest] FAILED after " + PASSED + ": " + t);

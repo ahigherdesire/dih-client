@@ -27,6 +27,7 @@ public final class CatalogTools {
         CombatTools.register(registry);
         FarmingTools.register(registry);
         WorldTools.register(registry);
+        NetherTools.register(registry);
         KnowledgeTools.register(registry, VanillaKnowledge::get);
         WebTools.register(registry);
         ChatTools.register(registry);

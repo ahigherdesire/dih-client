@@ -94,37 +94,47 @@ public final class AiTools {
 
     /** Starts an acquire for a player or a macro; the AI's follow-ups leave it alone. Game thread (or a test). */
     static String startByHand(AcquireControl control, ItemRequest request) {
+        return startByHand(() -> control.start(request.item(), request.count()),
+                "acquiring " + request.count() + " " + request.item());
+    }
+
+    /** {@link #startByHand} for any start: {@code what} is the line to show when the start says nothing. */
+    static String startByHand(java.util.function.Supplier<String> start, String what) {
         String message;
         try {
-            message = control.start(request.item(), request.count());
+            message = start.get();
         } catch (IllegalArgumentException e) {
             return "Could not start: " + reason(e) + ".";
         } catch (RuntimeException e) {
             return "The acquire crashed while starting: " + e;
         }
-        return "Started: " + (message == null || message.isBlank()
-                ? "acquiring " + request.count() + " " + request.item()
-                : message.replaceAll("\\s+", " ").trim());
+        return "Started: " + (message == null || message.isBlank() ? what : message.replaceAll("\\s+", " ").trim());
     }
 
     /** Starts an acquire and records it as the AI's own. Game thread (or a test). */
     static String startAcquire(AcquireControl control, AcquireFollowUps followUps, ItemRequest request, boolean eventsOn) {
+        return startAsAi(() -> control.start(request.item(), request.count()),
+                "acquiring " + request.count() + " " + request.item(), followUps, eventsOn,
+                " plan_item shows what is missing; a different item name may help.");
+    }
+
+    /** {@link #startAcquire} for any start; {@code hint} follows a refusal. */
+    static String startAsAi(java.util.function.Supplier<String> start, String what, AcquireFollowUps followUps,
+                            boolean eventsOn, String hint) {
         followUps.aiStarting(System.currentTimeMillis());
         String message;
         try {
-            message = control.start(request.item(), request.count());
+            message = start.get();
         } catch (IllegalArgumentException e) {
             followUps.aiStartFinished(false);
-            return "Could not start: " + reason(e) + ". plan_item shows what is missing; a different item name may help.";
+            return "Could not start: " + reason(e) + "." + hint;
         } catch (RuntimeException e) {
             followUps.aiStartFinished(false);
             return "The acquire crashed while starting: " + e;
         }
         followUps.aiStartFinished(true);
-        String what = message == null || message.isBlank()
-                ? "acquiring " + request.count() + " " + request.item()
-                : message.replaceAll("\\s+", " ").trim();
-        return "Started: " + what + (eventsOn
+        String line = message == null || message.isBlank() ? what : message.replaceAll("\\s+", " ").trim();
+        return "Started: " + line + (eventsOn
                 ? "\nYou will get an [event] message when it finishes or fails, so don't poll; end your turn."
                 : "\nCheck progress with look_around.");
     }
