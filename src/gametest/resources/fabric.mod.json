@@ -13,6 +13,7 @@
       "baritone.acquire.exec.AcquireNormalMealGameTest",
       "baritone.acquire.exec.AcquireTightSpotGameTest",
       "baritone.guardian.GuardianGameTest",
+      "baritone.combat.CombatGameTest",
       "dihclient.gui.screen.DonateScreenGameTest",
       "dihclient.trade.TradeGameTest",
       "dihclient.gui.UiWinsGameTest",

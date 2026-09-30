@@ -4,11 +4,13 @@ import baritone.acquire.model.Step;
 import baritone.acquire.planner.AcquirePlanner;
 import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.pathing.goals.GoalNear;
+import baritone.api.pathing.goals.GoalXZ;
+import baritone.combat.CombatRunner;
+import baritone.api.pathing.goals.Goal;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
-import net.minecraft.tags.ItemTags;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -16,18 +18,19 @@ import net.minecraft.world.entity.TamableAnimal;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Comparator;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Set;
 
 /**
- * {@link Step.Kill}: hunt the nearest mob of the step's type, hit it with a full attack cooldown, then
- * walk over the drops near where it died. Only that mob type; never players, babies (they drop
- * nothing), named mobs or tamed pets.
+ * {@link Step.Kill}: hunt the nearest mob of the step's type, fight it with the {@link CombatRunner} (critical
+ * hits, shield, bow, backing off a creeper), then walk over the drops near where it died. Only that mob type; never players, babies (they drop
+ * nothing), named mobs or tamed pets. Endermen spawn thinly anywhere, so with none in view it goes looking: in the
+ * Nether toward a warped forest, where they crowd, elsewhere straight on, turning when the way is blocked.
  */
 final class KillRunner extends RunnerBase {
 
@@ -40,16 +43,24 @@ final class KillRunner extends RunnerBase {
     private static final int NO_DROP_TICKS = 20;
     private static final double LOOT_RADIUS_SQ = 6 * 6;
     private static final double MAX_TARGET_DISTANCE_SQ = 64 * 64;
+    /** Mobs looked for when none is in view, rather than given up on. */
+    private static final Set<String> ROAMING = Set.of("minecraft:enderman");
+    /** How long to look for a roaming mob before giving up. */
+    private static final int ROAM_TICKS = 6000;
+    /** A warped forest this far off or nearer counts as reached. */
+    private static final int FOREST_REACHED = 12;
 
     private final Step.Kill step;
     private final EntityType<?> type;
     private final Item drop;
     private final Set<Integer> skipped = new HashSet<>();
+    private final CombatRunner combat;
     private State state = State.SEEK;
     private LivingEntity target;
     private Vec3 killSpot;
     private int ticks;
-    private int lookTicks;
+    private Goal roamGoal;
+    private float roamTurn;
 
     KillRunner(ExecContext x, Step.Kill step) {
         super(x);
@@ -57,6 +68,7 @@ final class KillRunner extends RunnerBase {
         Identifier key = Identifier.tryParse(step.entity());
         this.type = key == null ? null : BuiltInRegistries.ENTITY_TYPE.getOptional(key).orElse(null);
         this.drop = InventoryReader.itemOf(step.item());
+        this.combat = CombatRunner.of(x.baritone);
     }
 
     @Override
@@ -65,42 +77,38 @@ final class KillRunner extends RunnerBase {
         if (x.have(step.item()) >= step.untilCount()) return Result.done();
         Result full = x.checkRoom(step.item());
         if (full != null) return full;
-        LocalPlayer player = ctx.player();
         for (int guard = 0; guard < 4; guard++) {
             switch (state) {
                 case SEEK -> {
                     target = nearestTarget();
                     if (target == null) {
+                        if (roams(step.entity())) {
+                            if (++ticks > ROAM_TICKS) return Result.failed("no " + Step.shortId(step.entity()) + " found");
+                            return roam(calcFailed);
+                        }
                         if (++ticks > NO_TARGET_TICKS) return Result.failed("no " + Step.shortId(step.entity()) + " nearby");
                         return Result.pause();
                     }
                     ticks = 0;
-                    lookTicks = 0;
-                    selectWeapon();
+                    roamGoal = null;
                     state = State.FIGHT;
                 }
                 case FIGHT -> {
                     if (target.isDeadOrDying()) {
+                        combat.release();
                         killSpot = target.position();
                         state = State.LOOT;
                         ticks = 0;
                         continue;
                     }
                     if (target.isRemoved() || calcFailed) {
+                        combat.release();
                         if (calcFailed) skipped.add(target.getId());
                         state = State.SEEK;
                         return Result.pause();
                     }
-                    if (player.isWithinEntityInteractionRange(target, -0.25D)) {
-                        x.lookAt(target.getBoundingBox().getCenter(), false);
-                        if (++lookTicks >= 2 && player.getAttackStrengthScale(0.5F) >= 0.95F) {
-                            ctx.minecraft().gameMode.attack(player, target);
-                            player.swing(InteractionHand.MAIN_HAND);
-                        }
-                        return Result.pause();
-                    }
-                    lookTicks = 0;
-                    return follow(new GoalNear(target.blockPosition(), 1));
+                    Goal goal = combat.tick(target);
+                    return goal == null ? Result.pause() : follow(goal);
                 }
                 case LOOT -> {
                     ItemEntity item = nearestDrop();
@@ -120,6 +128,34 @@ final class KillRunner extends RunnerBase {
 
     @Override
     public void cancel() {
+        combat.release();
+    }
+
+    /** Whether {@code entity} is looked for when none is in view. */
+    static boolean roams(String entity) {
+        return ROAMING.contains(entity);
+    }
+
+    /** Walks on looking for the mob: to a warped forest in the Nether if one is in view, else straight on. */
+    private Result roam(boolean calcFailed) {
+        if (calcFailed) {
+            roamGoal = null;
+            roamTurn += 90;
+        }
+        BlockPos feet = ctx.playerFeet();
+        if (roamGoal == null || roamGoal.isInGoal(feet)) {
+            Level level = ctx.world();
+            BlockPos forest = level.dimension() == Level.NETHER
+                    ? NearestBlock.find(level, feet, Blocks.WARPED_NYLIUM, 4, 32, 4, p -> level.getBlockState(p.above()).isAir())
+                    : null;
+            if (forest != null && !forest.closerThan(feet, FOREST_REACHED)) {
+                roamGoal = new GoalNear(forest.above(), 3);
+            } else {
+                LocalPlayer player = ctx.player();
+                roamGoal = GoalXZ.fromDirection(player.position(), player.getYRot() + roamTurn, 48);
+            }
+        }
+        return walk(roamGoal);
     }
 
     private LivingEntity nearestTarget() {
@@ -149,20 +185,5 @@ final class KillRunner extends RunnerBase {
                 .min(Comparator.comparingDouble((Entity e) -> e.distanceToSqr(player)))
                 .map(e -> (ItemEntity) e)
                 .orElse(null);
-    }
-
-    /** Holds a sword, else an axe, if one is already on the hotbar. Never shuffles the inventory for it. */
-    private void selectWeapon() {
-        List<ItemStack> main = ctx.player().getInventory().getNonEquipmentItems();
-        int axe = -1;
-        for (int i = 0; i < 9; i++) {
-            ItemStack stack = main.get(i);
-            if (stack.is(ItemTags.SWORDS)) {
-                ctx.player().getInventory().setSelectedSlot(i);
-                return;
-            }
-            if (axe < 0 && stack.is(ItemTags.AXES)) axe = i;
-        }
-        if (axe >= 0) ctx.player().getInventory().setSelectedSlot(axe);
     }
 }

@@ -7,6 +7,7 @@ import baritone.acquire.exec.InventoryOps;
 import baritone.api.Settings;
 import baritone.api.event.events.TickEvent;
 import baritone.api.event.listener.AbstractGameEventListener;
+import baritone.api.pathing.goals.Goal;
 import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.pathing.goals.GoalNear;
 import baritone.api.pathing.goals.GoalRunAway;
@@ -15,6 +16,7 @@ import baritone.api.process.PathingCommandType;
 import baritone.api.utils.Rotation;
 import baritone.api.utils.RotationUtils;
 import baritone.api.utils.input.Input;
+import baritone.combat.CombatRunner;
 import baritone.guardian.ThreatRanking.Decision;
 import baritone.guardian.ThreatRanking.Mob;
 import baritone.guardian.ThreatRanking.Response;
@@ -31,9 +33,12 @@ import net.minecraft.tags.FluidTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.NeutralMob;
 import net.minecraft.world.entity.monster.Creeper;
 import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.monster.piglin.Piglin;
+import net.minecraft.world.entity.monster.piglin.PiglinAi;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
@@ -65,8 +70,9 @@ import java.util.function.Predicate;
  * {@link #log()} holds the last {@link GuardianLog#CAPACITY} decisions with a short reason each. Both are safe to
  * read from any thread.
  *
- * <p>Fighting uses normal human timing: it looks at the hitbox centre and attacks only when the attack cooldown is
- * full, through the normal client attack path.
+ * <p>Fighting goes through the {@link CombatRunner} (critical hits, shield, bow, backing off a creeper), with normal
+ * human timing: it looks at the hitbox centre and attacks only when the attack cooldown is full, through the normal
+ * client attack path.
  */
 public final class GuardianProcess extends BaritoneProcessHelper {
 
@@ -85,10 +91,10 @@ public final class GuardianProcess extends BaritoneProcessHelper {
     /** How far to look for cover from a shooter, and how often to look again. */
     private static final int COVER_RADIUS = 6;
     private static final int COVER_EVERY = 10;
-    /** Sprint straight at a target this close when the ground between is safe, instead of pathing. */
-    private static final double CHARGE_DISTANCE = 6;
 
     private final GuardianLog log = new GuardianLog();
+    /** Fights for {@link Response#FIGHT}; shared with {@code #acquire}'s kill steps. */
+    private final CombatRunner combat;
     private final Deque<BlockPos> crumbs = new ArrayDeque<>();
 
     private volatile String status = "Idle";
@@ -121,6 +127,7 @@ public final class GuardianProcess extends BaritoneProcessHelper {
 
     public GuardianProcess(Baritone baritone) {
         super(baritone);
+        this.combat = CombatRunner.of(baritone);
         baritone.getGameEventHandler().registerEventListener(new AbstractGameEventListener() {
             @Override
             public void onTick(TickEvent event) {
@@ -198,7 +205,8 @@ public final class GuardianProcess extends BaritoneProcessHelper {
             lookTicks = 0;
         }
         status = capitalize(d.reason());
-        if (d.response() != Response.SHIELD && d.response() != Response.FIGHT) releaseUse();
+        if (d.response() != Response.FIGHT) combat.release();
+        if (d.response() != Response.SHIELD) releaseUse();
         if (d.response() != Response.ESCAPE_HAZARD && d.response() != Response.SURFACE) releaseMove();
         return switch (d.response()) {
             case ESCAPE_HAZARD -> escapeHazard(player);
@@ -276,11 +284,14 @@ public final class GuardianProcess extends BaritoneProcessHelper {
                 mobs.add(new Mob(e.getId(), typeId(e), distance, Math.sqrt(e.distanceToSqr(Vec3.atCenterOf(from))),
                         false, false, true, creeper.getSwellDir() > 0 || creeper.getSwelling(1.0F) > 0));
             } else if (e instanceof Enemy && e instanceof net.minecraft.world.entity.Mob mob) {
+                // Piglins leave a player in gold armour alone (and all of them turn on one who hits one).
+                boolean neutral = e instanceof NeutralMob || e instanceof Piglin && PiglinAi.isWearingSafeArmor(player);
                 mobs.add(new Mob(e.getId(), typeId(e), distance, Math.sqrt(e.distanceToSqr(Vec3.atCenterOf(from))),
-                        mob.isAggressive(), e instanceof NeutralMob, false, false));
+                        mob.isAggressive(), neutral, false, false));
             } else if (e instanceof Projectile shot && distance <= ThreatRanking.PROJECTILE_RADIUS
-                    && shot.getOwner() != player && incoming(shot, player)) {
-                projectile = true;
+                    && shot.getOwner() != player && CombatRunner.incoming(shot, player)) {
+                // A fight under way raises the shield at shots itself, between its own moves.
+                if (!combat.fighting()) projectile = true;
             }
         }
         List<Entity> shooters = shooters(player);
@@ -339,65 +350,20 @@ public final class GuardianProcess extends BaritoneProcessHelper {
         return FALL_SCAN;
     }
 
-    private static boolean incoming(Projectile shot, LocalPlayer player) {
-        Vec3 velocity = shot.getDeltaMovement();
-        if (velocity.lengthSqr() < 0.01) return false; // stuck in the ground
-        Vec3 toPlayer = player.getBoundingBox().getCenter().subtract(shot.position());
-        return velocity.normalize().dot(toPlayer.normalize()) > 0.8;
-    }
-
     // ---------------------------------------------------------------- responses
 
     private PathingCommand fight(LocalPlayer player, Entity target) {
-        if (target == null) return pause();
-        selectWeapon(player);
-        boolean shieldable = player.getOffhandItem().is(Items.SHIELD) && target.distanceTo(player) > 4
-                && target instanceof net.minecraft.world.entity.Mob mob && mob.isAggressive();
-        if (player.isWithinEntityInteractionRange(target, -0.25D) && player.hasLineOfSight(target)) {
-            releaseUse();
-            lookAt(target.getBoundingBox().getCenter());
-            if (++lookTicks >= 2 && player.getAttackStrengthScale(0.5F) >= 0.95F) {
-                ctx.minecraft().gameMode.attack(player, target);
-                player.swing(InteractionHand.MAIN_HAND);
-            }
-            return pause();
-        }
-        lookTicks = 0;
-        if (shieldable) holdUse();
-        else releaseUse();
+        if (!(target instanceof LivingEntity mob)) return pause();
         boolean ranged = ThreatRanking.RANGED.contains(typeId(target));
-        double chargeDistance = ranged ? ThreatRanking.RANGED_RADIUS : CHARGE_DISTANCE;
-        if (target.distanceTo(player) <= chargeDistance && player.hasLineOfSight(target) && clearRun(player, target)) {
-            // In sight, flat safe ground between: sprint straight at it. Pathing is too slow to catch a skeleton,
-            // which backs away while it shoots.
-            lookAt(target.getBoundingBox().getCenter());
-            forceMove(false);
-            return pause();
-        }
-        if (!ranged && anchor != null && target.blockPosition().distSqr(anchor) > ThreatRanking.CHASE_LIMIT * ThreatRanking.CHASE_LIMIT) {
+        if (!ranged && anchor != null && target.blockPosition().distSqr(anchor) > ThreatRanking.CHASE_LIMIT * ThreatRanking.CHASE_LIMIT
+                && !player.isWithinEntityInteractionRange(target, -0.25D)) {
             // Beyond the chase limit: hold the ground and let it come (a shooter never would, so those are chased).
+            combat.release();
             lookAt(target.getBoundingBox().getCenter());
             return pause();
         }
-        return new PathingCommand(new GoalNear(target.blockPosition(), 1), PathingCommandType.REVALIDATE_GOAL_AND_PATH);
-    }
-
-    /** Solid ground, open air and no fluid every half block along the straight line to {@code target}. */
-    private boolean clearRun(LocalPlayer player, Entity target) {
-        Level level = ctx.world();
-        Vec3 from = player.position();
-        Vec3 to = target.position();
-        if (Math.abs(to.y - from.y) > 1.1) return false;
-        double length = from.distanceTo(to);
-        for (double t = 0.5; t < length; t += 0.5) {
-            Vec3 at = from.lerp(to, t / length);
-            BlockPos feet = BlockPos.containing(at.x, from.y + 0.1, at.z);
-            if (!solid(level, feet.below()) || solid(level, feet) || solid(level, feet.above())) return false;
-            if (!level.getFluidState(feet).isEmpty() || !level.getFluidState(feet.below()).isEmpty()) return false;
-            BlockState ground = level.getBlockState(feet.below());
-            if (ground.is(net.minecraft.world.level.block.Blocks.MAGMA_BLOCK) || ground.is(BlockTags.FIRE)) return false;
-        }
-        return true;
+        Goal goal = combat.tick(mob);
+        return goal == null ? pause() : new PathingCommand(goal, PathingCommandType.REVALIDATE_GOAL_AND_PATH);
     }
 
     private PathingCommand runFrom(Entity threat, double distance) {
@@ -806,12 +772,6 @@ public final class GuardianProcess extends BaritoneProcessHelper {
         return d.threat().mobId() < 0 ? null : ctx.world().getEntity(d.threat().mobId());
     }
 
-    private void selectWeapon(LocalPlayer player) {
-        int slot = InventoryOps.toHotbar(ctx, s -> s.is(ItemTags.SWORDS) && best(player, ItemTags.SWORDS) == s);
-        if (slot < 0) slot = InventoryOps.toHotbar(ctx, s -> s.is(ItemTags.AXES) && best(player, ItemTags.AXES) == s);
-        if (slot >= 0) player.getInventory().setSelectedSlot(slot);
-    }
-
     /** The held item of a tag with the most durability left, a rough "best tier" (diamond > iron > stone > wood). */
     private static ItemStack best(LocalPlayer player, net.minecraft.tags.TagKey<net.minecraft.world.item.Item> tag) {
         ItemStack best = null;
@@ -868,6 +828,7 @@ public final class GuardianProcess extends BaritoneProcessHelper {
     }
 
     private void releaseInputs() {
+        combat.release();
         releaseUse();
         releaseMove();
         lookTicks = 0;
