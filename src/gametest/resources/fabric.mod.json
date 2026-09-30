@@ -12,6 +12,7 @@
       "baritone.acquire.exec.AcquireHealingGameTest",
       "baritone.acquire.exec.AcquireNormalMealGameTest",
       "baritone.acquire.exec.AcquireTightSpotGameTest",
+      "baritone.acquire.exec.SplitSmeltGameTest",
       "baritone.guardian.GuardianGameTest",
       "baritone.combat.CombatGameTest",
       "baritone.acquire.exec.PortalGameTest",
