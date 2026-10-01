@@ -34,6 +34,13 @@ final class SplitSmeltTest {
         return plan.steps().stream().filter(s -> s instanceof Step.Smelt).map(s -> (Step.Smelt) s).toList();
     }
 
+    /** The one smelt of all {@code times} cooks. */
+    private static Step.Smelt goalSmelt(Plan plan, int times) {
+        List<Step.Smelt> all = smelts(plan).stream().filter(s -> s.times() == times).toList();
+        assertEquals(1, all.size(), () -> "one smelt of " + times + ":\n" + AcquirePlanner.explain(plan));
+        return all.get(0);
+    }
+
     @Test
     void sharesAreEvenTheLargerFirst() {
         assertArrayEquals(new int[]{9, 9, 8, 8}, Step.Smelt.shares(34, 4));
@@ -59,11 +66,9 @@ final class SplitSmeltTest {
         inv.add(LOG, 16);
         inv.add(TABLE, 1);
         Plan plan = valid(new Goal.ItemGoal(IRON_INGOT, 34), inv);
-        List<Step.Smelt> smelts = smelts(plan);
-        assertEquals(1, smelts.size(), AcquirePlanner.explain(plan));
-        Step.Smelt smelt = smelts.get(0);
+        // The gear before it (a shield, a helmet) smelts a few more on its own.
+        Step.Smelt smelt = goalSmelt(plan, 34);
         assertEquals(4, smelt.furnaces(), AcquirePlanner.explain(plan));
-        assertEquals(34, smelt.times());
         assertTrue(smelt.describe().contains("in 4 furnaces"), smelt.describe());
     }
 
@@ -87,7 +92,7 @@ final class SplitSmeltTest {
         inv.add(TABLE, 1);
         Plan plan = valid(new Goal.ItemGoal(IRON_INGOT, 34), inv);
         PlanSimulator.Result result = PlanSimulator.simulate(plan, inv, KNOWLEDGE, WorldView.UNKNOWN);
-        int furnaces = smelts(plan).get(0).furnaces();
+        int furnaces = goalSmelt(plan, 34).furnaces();
         assertTrue(result.count(FURNACE) >= furnaces - 1, "the extra furnaces are held at the end:\n" + AcquirePlanner.explain(plan));
     }
 }
