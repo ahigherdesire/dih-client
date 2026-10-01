@@ -393,6 +393,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             if (++stepTicks > stepTimeoutTicks) {
                 AcquireRun active = active();
                 Step step = active.current();
+                if (runner instanceof MineRunner mine) mine.gaveUp();
                 cancelRunner();
                 if (!replan("step " + (active.index() + 1) + " (" + step.describe() + ") timed out")) return idle();
                 continue;

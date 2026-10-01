@@ -87,6 +87,13 @@ final class FakeKnowledge implements Knowledge {
     private final Set<String> items = new HashSet<>();
     private final Map<String, Location> locations = new HashMap<>();
 
+    /** The Overworld-only knowledge where iron blocks can also be mined (placed in structures, crafted from ingots). */
+    static FakeKnowledge withIronBlocks() {
+        FakeKnowledge k = new FakeKnowledge();
+        k.mine(IRON_BLOCK, IRON_BLOCK, 1.0, PICK_2);
+        return k;
+    }
+
     /** The Overworld-only knowledge plus the Nether and End: portals, blaze rods, pearls, eyes, end stone, gear. */
     static FakeKnowledge withDimensions() {
         return withDimensions(true);

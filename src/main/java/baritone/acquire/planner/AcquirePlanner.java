@@ -1028,8 +1028,13 @@ public final class AcquirePlanner {
             return out;
         }
 
+        /**
+         * A usually player-placed block (an iron block, a crafting table) is mined only when the world view has seen
+         * one: there is no hunting for a structure that may be nowhere near.
+         */
         private boolean minable(String item, MineSource m) {
-            return item.equals(m.output()) && m.block() != null && !m.needsSilkTouch() && m.dropsPerBlock() > 0;
+            return item.equals(m.output()) && m.block() != null && !m.needsSilkTouch() && m.dropsPerBlock() > 0
+                && (!placedLooking(m.block()) || seen(m.block()));
         }
 
         private ToolReq toolOf(MineSource m) {

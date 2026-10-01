@@ -64,7 +64,7 @@ final class MineRunner extends RunnerBase {
             return Result.defer();
         }
         if (!mine.isActive()) {
-            if (unreachable(startCount, x.have(step.item()), step.item(), step.blocks())) x.unreachableBlocks.addAll(step.blocks());
+            gaveUp();
             return Result.failed("mining stopped with " + x.have(step.item()) + "/" + step.untilCount() + " "
                     + Step.shortId(step.item()) + " (nothing reachable left nearby?)");
         }
@@ -76,6 +76,11 @@ final class MineRunner extends RunnerBase {
      * of it, and the block is mined for itself, as a placed block in a structure is. Ore is not: it drops another item,
      * and lies everywhere.
      */
+    /** The step stopped short (no way to the blocks, or out of time): leave them out of the run if nothing came of it. */
+    void gaveUp() {
+        if (unreachable(startCount, x.have(step.item()), step.item(), step.blocks())) x.unreachableBlocks.addAll(step.blocks());
+    }
+
     static boolean unreachable(int before, int now, String item, java.util.List<String> blocks) {
         return before >= 0 && now <= before && blocks.contains(item);
     }

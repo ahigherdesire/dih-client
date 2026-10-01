@@ -224,6 +224,22 @@ final class AcquirePlannerTest {
         assertEquals(-1, indexOf(plan, mines(TORCH)), "placed torches are not hunted for");
     }
 
+    /**
+     * From a game test: unseen, iron blocks were planned from 512 blocks off (a guess for placed blocks), still cheaper
+     * than smelting ore, and every re-plan went hunting for a structure that was nowhere near. Only a seen one is mined.
+     */
+    @Test
+    void anUnseenPlacedBlockIsNotHuntedFor() {
+        FakeKnowledge k = FakeKnowledge.withIronBlocks();
+        InventorySnapshot start = inv(IRON_PICKAXE, 1, LOG, 16, COBBLESTONE, 16);
+        Plan unseen = new AcquirePlanner(k, WorldView.UNKNOWN, PlannerOptions.DEFAULT).plan(IRON_INGOT, 18, start);
+        assertTrue(unseen.complete(), () -> AcquirePlanner.explain(unseen));
+        assertEquals(-1, indexOf(unseen, mines(IRON_BLOCK)), AcquirePlanner.explain(unseen));
+        FakeWorld world = new FakeWorld().block(IRON_BLOCK, 6);
+        Plan seen = new AcquirePlanner(k, world, PlannerOptions.DEFAULT).plan(IRON_INGOT, 18, start);
+        assertTrue(indexOf(seen, mines(IRON_BLOCK)) >= 0, AcquirePlanner.explain(seen));
+    }
+
     @Test
     void placedBlocksAreCraftedUnlessKnownNearby() {
         Plan crafted = planner().plan(TABLE, 1, InventorySnapshot.empty());
