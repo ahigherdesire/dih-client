@@ -265,13 +265,10 @@ public final class ThreatRanking {
                 if (s.canShelter() && !firesOnSight && (s.digging() || shelterHelps(s) && nearestAttacker(s) > SHELTER_CLEARANCE))
                     yield Response.SHELTER;
                 if (attacker != null && attacker.ranged()) {
-                    // Arrows outrange a retreat. Hurt: get out of sight and heal; with nowhere to hide, go through it.
+                    // Arrows and fireballs outrange a retreat. Hurt: get out of sight and heal; with nowhere to hide, go
+                    // through it (a walk in the open, or a rest in sight, only takes the shots without giving any back).
                     if (s.inCover() && (s.canEat() || s.canRegen())) yield Response.COVER;
                     if (!s.inCover() && s.coverNearby()) yield Response.COVER;
-                    // A blaze's fireballs are slow and so is the blaze: back the way we came, out of its sight, to heal.
-                    // One already in reach is struck down instead: walking off only leaves it setting us alight.
-                    if (FIRES_ON_SIGHT.contains(attacker.type()) && attacker.distance() > CLOSE_RADIUS
-                            && (s.canEat() || s.canRegen())) yield Response.RETREAT;
                     yield Response.FIGHT;
                 }
                 yield Response.RETREAT;

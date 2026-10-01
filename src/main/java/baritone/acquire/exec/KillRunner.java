@@ -55,6 +55,8 @@ final class KillRunner extends RunnerBase {
     private static final int CAMP_DISTANCE = 6;
     /** Longest rest before a fight with a spawned mob, per stretch of being hurt. */
     private static final int REST_TICKS = 1200;
+    /** A spawned mob this close that can see the player is shooting at it: no resting then. */
+    private static final double SEEN_DISTANCE = 32;
     /** How long to look for a roaming mob before giving up. */
     private static final int ROAM_TICKS = 6000;
     /** A warped forest this far off or nearer counts as reached. */
@@ -159,17 +161,24 @@ final class KillRunner extends RunnerBase {
 
     /**
      * Before going for a spawned mob (blazes at their spawner), waits while hurt and healing, up to
-     * {@link #REST_TICKS}; the acquire's eating runs meanwhile, and the Guardian if one comes over.
+     * {@link #REST_TICKS}; the acquire's eating runs meanwhile, and the Guardian if one comes over. Never with one in
+     * sight: a rest under its fire only takes the shots.
      */
     private boolean rest() {
         LocalPlayer player = ctx.player();
-        if (!SPAWNED.contains(step.entity()) || !HealthPolicy.restBeforeFight(player.getHealth(),
+        if (!SPAWNED.contains(step.entity()) || seen(player) || !HealthPolicy.restBeforeFight(player.getHealth(),
                 player.getFoodData().getFoodLevel(), FoodChoice.choose(Foods.held(player), player.getFoodData().getFoodLevel(),
                         false, Set.of()) != null)) {
             rested = 0;
             return false;
         }
         return ++rested <= REST_TICKS;
+    }
+
+    /** Whether a live mob of the step's type within {@link #SEEN_DISTANCE} has the player in its sight. */
+    private boolean seen(LocalPlayer player) {
+        return ctx.entitiesStream().anyMatch(e -> e.getType() == type && e instanceof net.minecraft.world.entity.Mob mob
+                && mob.isAlive() && e.distanceToSqr(player) <= SEEN_DISTANCE * SEEN_DISTANCE && mob.hasLineOfSight(player));
     }
 
     /** Whether {@code entity} is looked for when none is in view. */

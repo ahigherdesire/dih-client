@@ -273,22 +273,21 @@ final class ThreatRankingTest {
     }
 
     /**
-     * From a blaze-rod death: hurt at a spawner on an open fortress floor with no cover near, it fought on and burned.
-     * A blaze's fireballs are slow and so is the blaze: back the way we came, out of its sight, and heal there.
+     * From blaze deaths at a spawner: hurt with no cover near, falling back across an open fortress floor (or a closed
+     * hall) never left the blazes' sight, and they burned it down while it walked or rested. Fireballs outrange a
+     * retreat as arrows do: it fights on, as against a skeleton.
      */
     @Test
-    void hurtWithNoCoverFromABlazeFallsBack() {
+    void hurtWithNoCoverFromABlazeFightsIt() {
         S s = new S();
         s.health = 8;
         s.canEat = true;
         s.mobs.add(new Mob(1, "minecraft:blaze", 10, 10, true, false, false, false));
-        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response());
-        s.canEat = false;
-        s.canRegen = false;
-        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "nothing to heal with: fight it");
-        s.canEat = true;
-        s.mobs.set(0, new Mob(1, "minecraft:skeleton", 10, 10, true, false, false, false));
-        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "arrows outrun a retreat");
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response());
+        s.mobs.set(0, new Mob(1, "minecraft:blaze", 3, 3, true, false, false, false));
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "in reach");
+        s.coverNearby = true;
+        assertEquals(Response.COVER, ThreatRanking.decide(s.build(), CONFIG).response(), "cover in reach: out of its sight");
     }
 
     /**
@@ -296,32 +295,17 @@ final class ThreatRankingTest {
      * burned while digging. A blaze shoots down into a pit as it is dug.
      */
     @Test
-    void hurtByABlazeFallsBackRatherThanDigging() {
+    void hurtByABlazeDoesNotDigIn() {
         S s = new S();
         s.health = 8;
         s.canEat = true;
         s.canShelter = true;
         s.mobs.add(new Mob(1, "minecraft:blaze", 6, 6, true, false, false, false));
-        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response());
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response());
         s.digging = true;
-        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response(), "a pit begun is left");
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "a pit begun is left");
         s.mobs.set(0, new Mob(1, "minecraft:zombie", 6, 6, true, false, false, false));
         assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "a zombie can't reach into one");
-    }
-
-    /**
-     * From a combat game-test death: outnumbered by blazes in a closed hall at 14 HP, it walked away from ones 2 to 4
-     * blocks off and burned. One within reach is fought; the further ones are still backed away from.
-     */
-    @Test
-    void aBlazeInReachIsFoughtNotWalkedAwayFrom() {
-        S s = new S();
-        s.health = 8;
-        s.canEat = true;
-        s.mobs.add(new Mob(1, "minecraft:blaze", 3, 3, true, false, false, false));
-        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response());
-        s.mobs.set(0, new Mob(1, "minecraft:blaze", 7, 7, true, false, false, false));
-        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response());
     }
 
     /** Handed back out of a pit with nothing to heal with, digging a new one only hands it back again. */
