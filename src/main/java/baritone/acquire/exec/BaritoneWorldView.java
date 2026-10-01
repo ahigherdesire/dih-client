@@ -69,10 +69,18 @@ public final class BaritoneWorldView implements WorldView {
     private final Map<String, Double> entities = new HashMap<>();
     private final Map<String, Boolean> stationCache = new HashMap<>();
 
+    /** Blocks counted as not there (no way to them this run). */
+    private final java.util.Set<String> skipped;
+
     BaritoneWorldView(IPlayerContext ctx, StationFinder stations, int stationRadius) {
+        this(ctx, stations, stationRadius, java.util.Set.of());
+    }
+
+    BaritoneWorldView(IPlayerContext ctx, StationFinder stations, int stationRadius, java.util.Set<String> skipped) {
         this.ctx = ctx;
         this.stations = stations;
         this.stationRadius = stationRadius;
+        this.skipped = skipped;
     }
 
     @Override
@@ -97,7 +105,7 @@ public final class BaritoneWorldView implements WorldView {
 
     private double scanBlock(String id) {
         Block block = StationFinder.block(id);
-        if (block == null || ctx.player() == null || ctx.world() == null) return Double.POSITIVE_INFINITY;
+        if (block == null || skipped.contains(id) || ctx.player() == null || ctx.world() == null) return Double.POSITIVE_INFINITY;
         Vec3 from = ctx.player().position();
         double best = Double.POSITIVE_INFINITY;
         double depth = 0;

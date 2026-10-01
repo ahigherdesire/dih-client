@@ -33,6 +33,11 @@ final class ExecContext implements Helper {
     final Set<BlockPos> noRoomLava = new HashSet<>();
     /** Portal sites given up on (no way to them, or to dig them out), for the whole run as {@link #noRoomLava} is. */
     final Set<BlockPos> badCastSites = new HashSet<>();
+    /**
+     * Placed blocks (an iron block in a structure) a mine step found no way to, for the whole run: the planner counts
+     * them as not there, so a re-plan takes another way instead of the same unreachable block again.
+     */
+    final Set<String> unreachableBlocks = new HashSet<>();
     /** The portal site being cast on in this run: a re-plan's caster picks up the frame where the last one left it. */
     PortalCast castSite;
     private final Supplier<Set<String>> neededItems;

@@ -13,6 +13,8 @@ final class MineRunner extends RunnerBase {
 
     private final Step.Mine step;
     private boolean started;
+    /** The step's item held when mining first started. */
+    private int startCount = -1;
 
     MineRunner(ExecContext x, Step.Mine step) {
         super(x);
@@ -58,13 +60,24 @@ final class MineRunner extends RunnerBase {
             if (!mine.isActive()) return Result.failed("Baritone won't mine " + Step.shortId(step.blocks().get(0)) + " (allowBreak off?)");
             BaritoneAPI.getProvider().getWorldScanner().repack(ctx);
             started = true;
+            if (startCount < 0) startCount = x.have(step.item());
             return Result.defer();
         }
         if (!mine.isActive()) {
+            if (unreachable(startCount, x.have(step.item()), step.item(), step.blocks())) x.unreachableBlocks.addAll(step.blocks());
             return Result.failed("mining stopped with " + x.have(step.item()) + "/" + step.untilCount() + " "
                     + Step.shortId(step.item()) + " (nothing reachable left nearby?)");
         }
         return Result.defer();
+    }
+
+    /**
+     * Whether mining that stopped (no way to any of the blocks left) marks them unreachable for the run: nothing came
+     * of it, and the block is mined for itself, as a placed block in a structure is. Ore is not: it drops another item,
+     * and lies everywhere.
+     */
+    static boolean unreachable(int before, int now, String item, java.util.List<String> blocks) {
+        return before >= 0 && now <= before && blocks.contains(item);
     }
 
     @Override

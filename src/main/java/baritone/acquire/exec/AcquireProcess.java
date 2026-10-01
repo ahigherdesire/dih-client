@@ -266,7 +266,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
 
     private FoodGoal.Choice chooseFood(int points, int items, Set<String> exclude) {
         InventorySnapshot inventory = InventoryReader.snapshot(ctx.player());
-        BaritoneWorldView world = new BaritoneWorldView(ctx, stations, Baritone.settings().acquireStationRadius.value);
+        BaritoneWorldView world = new BaritoneWorldView(ctx, stations, Baritone.settings().acquireStationRadius.value, unreachableBlocks());
         try {
             return FoodGoal.choose(new AcquirePlanner(knowledge(), world, options()), inventory, points, items, exclude);
         } catch (RuntimeException | LinkageError e) {
@@ -299,9 +299,14 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         });
     }
 
+    /** Blocks a mine step found no way to in this run, which the planner counts as not there. */
+    private Set<String> unreachableBlocks() {
+        return exec == null ? Set.of() : exec.unreachableBlocks;
+    }
+
     private Plan newPlan(Knowledge k, Goal goal) {
         InventorySnapshot inventory = InventoryReader.snapshot(ctx.player());
-        BaritoneWorldView world = new BaritoneWorldView(ctx, stations, Baritone.settings().acquireStationRadius.value);
+        BaritoneWorldView world = new BaritoneWorldView(ctx, stations, Baritone.settings().acquireStationRadius.value, unreachableBlocks());
         try {
             return new AcquirePlanner(k, world, options()).plan(goal, inventory, here());
         } catch (RuntimeException | LinkageError e) {
@@ -468,7 +473,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     }
 
     private int timeoutFor(Step step) {
-        BaritoneWorldView world = new BaritoneWorldView(ctx, stations, Baritone.settings().acquireStationRadius.value);
+        BaritoneWorldView world = new BaritoneWorldView(ctx, stations, Baritone.settings().acquireStationRadius.value, unreachableBlocks());
         double distance = 0;
         double depth = 0;
         if (step instanceof Step.Mine mine) {
