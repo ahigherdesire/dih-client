@@ -51,7 +51,6 @@ import net.minecraft.world.phys.Vec3;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -114,6 +113,8 @@ public final class GuardianProcess extends BaritoneProcessHelper {
     /** Water placed by a clutch that should be picked back up once landed. */
     private BlockPos clutchWater;
     private int crumbTicks;
+    /** The crumb a retreat is walking back to, kept until reached. */
+    private BlockPos retreatTo;
     /** While digging in: where the seal goes (the block the player stood on when it started). */
     private BlockPos shelterSeal;
     /** The block being dug for a shelter, to continue rather than restart the dig. */
@@ -207,6 +208,7 @@ public final class GuardianProcess extends BaritoneProcessHelper {
         }
         status = capitalize(d.reason());
         if (d.response() != Response.FIGHT) combat.release();
+        if (d.response() != Response.RETREAT) retreatTo = null;
         if (d.response() != Response.SHIELD) releaseUse();
         if (d.response() != Response.ESCAPE_HAZARD && d.response() != Response.SURFACE) releaseMove();
         return switch (d.response()) {
@@ -376,13 +378,8 @@ public final class GuardianProcess extends BaritoneProcessHelper {
     private PathingCommand retreat(LocalPlayer player, Entity threat) {
         if (threat == null) return pause();
         BlockPos danger = threat.blockPosition();
-        Iterator<BlockPos> newest = crumbs.descendingIterator();
-        while (newest.hasNext()) {
-            BlockPos crumb = newest.next();
-            if (crumb.distSqr(danger) >= RETREAT_DISTANCE * RETREAT_DISTANCE && !crumb.closerThan(player.blockPosition(), 3)) {
-                return new PathingCommand(new GoalNear(crumb, 1), PathingCommandType.REVALIDATE_GOAL_AND_PATH);
-            }
-        }
+        retreatTo = RetreatPath.next(List.copyOf(crumbs), retreatTo, player.blockPosition(), danger, RETREAT_DISTANCE);
+        if (retreatTo != null) return new PathingCommand(new GoalNear(retreatTo, 1), PathingCommandType.REVALIDATE_GOAL_AND_PATH);
         return new PathingCommand(new GoalRunAway(RETREAT_DISTANCE + 4, danger), PathingCommandType.REVALIDATE_GOAL_AND_PATH);
     }
 
