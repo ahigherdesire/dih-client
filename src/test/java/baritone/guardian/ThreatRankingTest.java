@@ -309,6 +309,21 @@ final class ThreatRankingTest {
         assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "a zombie can't reach into one");
     }
 
+    /**
+     * From a combat game-test death: outnumbered by blazes in a closed hall at 14 HP, it walked away from ones 2 to 4
+     * blocks off and burned. One within reach is fought; the further ones are still backed away from.
+     */
+    @Test
+    void aBlazeInReachIsFoughtNotWalkedAwayFrom() {
+        S s = new S();
+        s.health = 8;
+        s.canEat = true;
+        s.mobs.add(new Mob(1, "minecraft:blaze", 3, 3, true, false, false, false));
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response());
+        s.mobs.set(0, new Mob(1, "minecraft:blaze", 7, 7, true, false, false, false));
+        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response());
+    }
+
     /** Handed back out of a pit with nothing to heal with, digging a new one only hands it back again. */
     @Test
     void hurtWithNoWayToHealDoesNotDigInByDay() {
