@@ -53,6 +53,10 @@ final class KillRunner extends RunnerBase {
     private static final int CAMP_TICKS = 1800;
     /** Close enough to keep it spawning, far enough not to stand in its fire. */
     private static final int CAMP_DISTANCE = 6;
+    /** Legs walked through a fortress looking for a spawner before giving up. */
+    private static final int EXPLORE_LEGS = 10;
+    /** Longest leg (blocks): within the loaded chunks, and a fresh look around at every end. */
+    private static final int EXPLORE_LEG = 40;
     /** Longest rest before a fight with a spawned mob, per stretch of being hurt. */
     private static final int REST_TICKS = 1200;
     /** A spawned mob this close that can see the player is shooting at it: no resting then. */
@@ -68,6 +72,10 @@ final class KillRunner extends RunnerBase {
     private final Set<Integer> skipped = new HashSet<>();
     private final Set<BlockPos> badSpawners = new HashSet<>();
     private BlockPos spawner;
+    /** Fortress floor walked to while looking for a spawner, the start among it. */
+    private final java.util.List<BlockPos> walked = new java.util.ArrayList<>();
+    private BlockPos walkTo;
+    private int legs;
     private final CombatRunner combat;
     private State state = State.SEEK;
     private LivingEntity target;
@@ -197,13 +205,38 @@ final class KillRunner extends RunnerBase {
         }
         if (spawner == null) {
             spawner = NearestBlock.find(ctx.world(), ctx.playerFeet(), Blocks.SPAWNER, 4, 48, 2, p -> !badSpawners.contains(p));
-            if (spawner == null) return null;
+            if (spawner == null) return explore(calcFailed);
+            walkTo = null;
             ticks = 0;
         }
         GoalNear near = new GoalNear(spawner, CAMP_DISTANCE);
         if (!near.isInGoal(ctx.playerFeet())) return walk(near);
         if (++ticks > CAMP_TICKS) return Result.failed("no " + Step.shortId(step.entity()) + " came out of the spawner at " + spawner.toShortString());
         return Result.pause();
+    }
+
+    /**
+     * No spawner in view: walks the fortress to its far halls, each leg to the nether-brick floor furthest from where it
+     * has been; null once {@link #EXPLORE_LEGS} legs are walked or no floor is left to go to.
+     */
+    private Result explore(boolean calcFailed) {
+        BlockPos feet = ctx.playerFeet();
+        if (walked.isEmpty()) walked.add(feet);
+        if (walkTo != null && (calcFailed || walkTo.closerThan(feet, 3))) {
+            walked.add(walkTo);
+            walkTo = null;
+        }
+        if (walkTo == null) {
+            if (legs >= EXPLORE_LEGS) return null;
+            Level level = ctx.world();
+            walkTo = NearestBlock.best(level, feet, Blocks.NETHER_BRICKS, 4, 16,
+                    p -> FortressWalk.score(p, feet, walked, EXPLORE_LEG),
+                    p -> level.getBlockState(p.above()).isAir() && level.getBlockState(p.above(2)).isAir());
+            if (walkTo == null) return null;
+            walkTo = walkTo.above();
+            legs++;
+        }
+        return walk(new GoalNear(walkTo, 2));
     }
 
     /** Walks on looking for the mob: to a warped forest in the Nether if one is in view, else straight on. */
