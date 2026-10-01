@@ -269,7 +269,7 @@ final class ThreatRankingTest {
         s.mobs.add(new Mob(1, "minecraft:blaze", 12, 12, true, false, false, false));
         assertEquals(Response.COVER, ThreatRanking.decide(s.build(), CONFIG).response(), "hurt: out of its sight to eat");
         s.health = 20;
-        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "healthy: shoot it");
+        assertNull(ThreatRanking.decide(s.build(), CONFIG), "healthy: the kill step fights it, or it is left alone");
     }
 
     /**
@@ -289,6 +289,24 @@ final class ThreatRankingTest {
         s.canEat = true;
         s.mobs.set(0, new Mob(1, "minecraft:skeleton", 10, 10, true, false, false, false));
         assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response(), "arrows outrun a retreat");
+    }
+
+    /**
+     * From a blaze-rod death: hurt, 6 blocks from a blaze, it switched between falling back and digging a pit, and
+     * burned while digging. A blaze shoots down into a pit as it is dug.
+     */
+    @Test
+    void hurtByABlazeFallsBackRatherThanDigging() {
+        S s = new S();
+        s.health = 8;
+        s.canEat = true;
+        s.canShelter = true;
+        s.mobs.add(new Mob(1, "minecraft:blaze", 6, 6, true, false, false, false));
+        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response());
+        s.digging = true;
+        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response(), "a pit begun is left");
+        s.mobs.set(0, new Mob(1, "minecraft:zombie", 6, 6, true, false, false, false));
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "a zombie can't reach into one");
     }
 
     /** Handed back out of a pit with nothing to heal with, digging a new one only hands it back again. */

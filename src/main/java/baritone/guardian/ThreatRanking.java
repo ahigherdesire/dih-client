@@ -252,11 +252,17 @@ public final class ThreatRanking {
                 boolean healing = s.health() < RECOVERED_HEALTH && (s.canEat() || s.canRegen());
                 if (s.sheltered() && (healing || !s.daylight())) yield Response.SHELTER;
                 boolean outnumbered = crowd >= CROWD && s.health() <= c.fleeHealth() + CROWD_HEALTH_MARGIN;
-                if (healthy && !outnumbered) yield Response.FIGHT;
+                if (healthy && !outnumbered) {
+                    // Blazes are fought by a kill step (with its eating and looting) or left to fly: the Guardian
+                    // only shields from them, takes cover and backs off.
+                    yield attacker != null && FIRES_ON_SIGHT.contains(attacker.type()) ? null : Response.FIGHT;
+                }
                 // Sealed in by day with no food and no regeneration: waiting gets nothing back, so the job goes on
                 // (and gets food first).
                 if (s.sheltered()) yield null;
-                if (s.canShelter() && (s.digging() || shelterHelps(s) && nearestAttacker(s) > SHELTER_CLEARANCE))
+                // A blaze shoots down into a pit while it is dug: back off out of its sight instead.
+                boolean firesOnSight = attacker != null && FIRES_ON_SIGHT.contains(attacker.type());
+                if (s.canShelter() && !firesOnSight && (s.digging() || shelterHelps(s) && nearestAttacker(s) > SHELTER_CLEARANCE))
                     yield Response.SHELTER;
                 if (attacker != null && attacker.ranged()) {
                     // Arrows outrange a retreat. Hurt: get out of sight and heal; with nowhere to hide, go through it.

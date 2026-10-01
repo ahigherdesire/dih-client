@@ -87,7 +87,6 @@ final class KillRunner extends RunnerBase {
     @Override
     public Result tick(boolean calcFailed, boolean safeToCancel) {
         if (type == null || AcquirePlanner.NEVER_KILL.contains(step.entity())) return Result.failed("can't hunt " + step.entity());
-        combat.hunting(type);
         if (x.have(step.item()) >= step.untilCount()) return Result.done();
         Result full = x.checkRoom(step.item());
         if (full != null) return full;
