@@ -330,13 +330,23 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
 
     @Override
     public PathingCommand onTick(boolean calcFailed, boolean isSafeToCancel) {
+        PathingCommand command;
         try {
-            return tick(calcFailed, isSafeToCancel);
+            command = tick(calcFailed, isSafeToCancel);
         } catch (RuntimeException | LinkageError e) {
             e.printStackTrace();
             finish(AcquireEvent.Kind.FAILED, "Acquire failed: internal error (" + e + ").");
-            return null; // inactive now, so the manager accepts null
+            command = null;
         }
+        return ended(command, isActive());
+    }
+
+    /**
+     * A null command (the run ended) is only accepted from an inactive process. A listener told of the end may have
+     * started the next acquire already (#beat chains them), and an active process must not return null: pause a tick.
+     */
+    static PathingCommand ended(PathingCommand command, boolean active) {
+        return command == null && active ? pause() : command;
     }
 
     private PathingCommand tick(boolean calcFailed, boolean safeToCancel) {
