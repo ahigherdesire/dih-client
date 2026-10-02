@@ -645,3 +645,26 @@ body::after {
   .go .wm-a { fill: #fff; } .go .wm-b { fill: url(#wm-g); } .go .wm-dot { fill: var(--red); }
   .dl-check { stroke-dashoffset: 0; }
 }
+
+/* ---------------------------------------------------------------- discord button (always on screen) */
+.discord-fab {
+  position: fixed; z-index: 80;
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, calc(env(safe-area-inset-bottom) + 12px));
+  display: inline-flex; align-items: center; gap: 9px;
+  height: 48px; padding: 0 18px 0 14px; border-radius: 999px;
+  background: #5865f2; color: #fff; font-size: 14px; font-weight: 600; text-decoration: none;
+  box-shadow: 0 8px 24px rgba(88, 101, 242, .35), 0 2px 6px rgba(0, 0, 0, .4), inset 0 0 0 1px rgba(255, 255, 255, .12);
+  transition: transform .25s var(--ease), box-shadow .3s, background-color .2s;
+}
+.discord-fab svg { width: 22px; height: 22px; flex: none; fill: currentColor; }
+.discord-fab:hover { color: #fff; background: #4752c4; transform: translateY(-2px); box-shadow: 0 12px 30px rgba(88, 101, 242, .45), 0 2px 6px rgba(0, 0, 0, .4), inset 0 0 0 1px rgba(255, 255, 255, .16); }
+.discord-fab:focus-visible { outline: 2px solid #fff; outline-offset: 3px; border-radius: 999px; }
+@media (max-width: 520px) {
+  .discord-fab { width: 52px; height: 52px; padding: 0; justify-content: center; }
+  .discord-fab svg { width: 26px; height: 26px; }
+  .discord-fab-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .discord-fab, .discord-fab:hover { transition: none; transform: none; }
+}
