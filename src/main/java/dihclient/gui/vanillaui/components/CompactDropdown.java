@@ -1,5 +1,6 @@
 package dihclient.gui.vanillaui.components;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
 import dihclient.gui.vanillaui.UiContexts;
@@ -158,16 +159,16 @@ public final class CompactDropdown {
         if (dropdowns == null) return false;
         CompactDropdown openDropdown = openDropdown(dropdowns);
         if (openDropdown != null) {
-            if (mouseButton == 0) suppressUnderlyingPointerUntilRelease = true;
+            if (mouseButton == InputConstants.MOUSE_BUTTON_LEFT) suppressUnderlyingPointerUntilRelease = true;
             openDropdown.dropdown.mouseClicked((int) mouseX, (int) mouseY, mouseButton);
-            if (mouseButton != 0 && !openDropdown.bounds().contains((int) mouseX, (int) mouseY)
+            if (mouseButton != InputConstants.MOUSE_BUTTON_LEFT && !openDropdown.bounds().contains((int) mouseX, (int) mouseY)
                 && !openDropdown.dropdown.containsMenu((int) mouseX, (int) mouseY)) {
                 openDropdown.close();
             }
             suppressUnderlyingPointerUntilRelease = openDropdown.dropdown.isOpen();
             return true;
         }
-        if (mouseButton != 0) return false;
+        if (mouseButton != InputConstants.MOUSE_BUTTON_LEFT) return false;
         for (int i = dropdowns.size() - 1; i >= 0; i--) {
             CompactDropdown dropdown = dropdowns.get(i);
             if (dropdown == null || !dropdown.visible || !dropdown.active || !dropdown.bounds().contains((int) mouseX, (int) mouseY)) continue;
@@ -200,7 +201,7 @@ public final class CompactDropdown {
         suppressUnderlyingPointerUntilRelease = false;
         if (dropdowns == null) return consumed;
         for (CompactDropdown dropdown : dropdowns) {
-            if (dropdown != null && dropdown.dropdown.mouseReleased(0, 0, 0) == UiInputResult.HANDLED) consumed = true;
+            if (dropdown != null && dropdown.dropdown.mouseReleased(0, 0, InputConstants.MOUSE_BUTTON_LEFT) == UiInputResult.HANDLED) consumed = true;
         }
         return consumed;
     }

@@ -171,10 +171,10 @@ public class DihForceOpPreviewScreen extends DihScreen {
 
         for (Hit hit : hits) {
             if (hit.contains(mx, my)) {
-                if (hit.type == HitType.CLOSE && event.button() == 0) {
+                if (hit.type == HitType.CLOSE && event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
                     onClose();
                     return true;
-                } else if (hit.type == HitType.SCROLLBAR && event.button() == 0) {
+                } else if (hit.type == HitType.SCROLLBAR && event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
                     int innerH = panelH() - HEADER_H - 24;
                     CompactScrollbar.Metrics metrics = CompactScrollbar.compute(visiblePasswords.size() * ROW_H, innerH, hit.x, hit.y, hit.w, hit.h, scroll);
                     if (metrics.overThumb(mx, my)) {

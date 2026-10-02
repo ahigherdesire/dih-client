@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.direct.DirectUiButton;
 import dihclient.gui.vanillaui.direct.DirectUiInsets;
@@ -518,7 +519,7 @@ public class DihServerInfoOverlay extends DihOverlayBase {
 
         @Override
         public boolean mouseClicked(DirectRenderContext context, float mouseX, float mouseY, int button) {
-            if (!visible || !enabled || button != 0 || tabs.length == 0) return false;
+            if (!visible || !enabled || button != InputConstants.MOUSE_BUTTON_LEFT || tabs.length == 0) return false;
             for (int i = 0; i < tabs.length; i++) {
                 if (tabBounds(i).contains(Math.round(mouseX), Math.round(mouseY))) {
                     if (i != activeIndex) {
@@ -589,7 +590,7 @@ public class DihServerInfoOverlay extends DihOverlayBase {
 
         @Override
         public boolean mouseClicked(DirectRenderContext context, float mouseX, float mouseY, int button) {
-            if (button != 0 || !contains(mouseX, mouseY)) return false;
+            if (button != InputConstants.MOUSE_BUTTON_LEFT || !contains(mouseX, mouseY)) return false;
             dragging = true;
             updateFromMouse(mouseX);
             return true;
@@ -597,7 +598,7 @@ public class DihServerInfoOverlay extends DihOverlayBase {
 
         @Override
         public boolean mouseReleased(DirectRenderContext context, float mouseX, float mouseY, int button) {
-            if (button == 0 && dragging) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && dragging) {
                 dragging = false;
                 return true;
             }
@@ -606,7 +607,7 @@ public class DihServerInfoOverlay extends DihOverlayBase {
 
         @Override
         public boolean mouseDragged(DirectRenderContext context, float mouseX, float mouseY, int button, float deltaX, float deltaY) {
-            if (!dragging || button != 0) return false;
+            if (!dragging || button != InputConstants.MOUSE_BUTTON_LEFT) return false;
             updateFromMouse(mouseX);
             return true;
         }
@@ -5485,7 +5486,7 @@ public class DihServerInfoOverlay extends DihOverlayBase {
             dragMoved = false;
             return true;
         }
-        if (button == 0 && isOverHeaderUi(uiMouseX, uiMouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverHeaderUi(uiMouseX, uiMouseY)) {
             isDragging = true;
             dragMoved = false;
             dragOffsetX = uiMouseX - panelX;
@@ -5498,7 +5499,7 @@ public class DihServerInfoOverlay extends DihOverlayBase {
         }
 
         if (collapsed) return false;
-        if (button != 0) return isMouseOver(mx, my);
+        if (button != InputConstants.MOUSE_BUTTON_LEFT) return isMouseOver(mx, my);
 
         if (activeTab == 1 && pluginScanDone && !pluginScanInProgress) {
             CompactScrollbar.Metrics scrollbarMetrics = getPluginScrollbarMetrics(
@@ -5554,12 +5555,12 @@ public class DihServerInfoOverlay extends DihOverlayBase {
 
     @Override
     public boolean mouseReleased(double mx, double my, int button) {
-        if (button == 0 && pluginScrollbarDragging) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && pluginScrollbarDragging) {
             pluginScrollbarDragging = false;
             saveState();
             return true;
         }
-        if (button == 0 && radarScrollbarDragging) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && radarScrollbarDragging) {
             radarScrollbarDragging = false;
             saveState();
             return true;
@@ -5575,7 +5576,7 @@ public class DihServerInfoOverlay extends DihOverlayBase {
 
     @Override
     public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
-        if (pluginScrollbarDragging && button == 0) {
+        if (pluginScrollbarDragging && button == InputConstants.MOUSE_BUTTON_LEFT) {
             DirectViewport viewport = surface.viewport();
             float uiMouseY = viewport.toUiY(my);
             CompactScrollbar.Metrics scrollbarMetrics = getPluginScrollbarMetrics(
@@ -5587,7 +5588,7 @@ public class DihServerInfoOverlay extends DihOverlayBase {
             pluginScrollState.setFromThumbStepped(scrollbarMetrics, Math.round(uiMouseY), pluginScrollbarGrabOffset, pluginListRowStep());
             return true;
         }
-        if (radarScrollbarDragging && button == 0) {
+        if (radarScrollbarDragging && button == InputConstants.MOUSE_BUTTON_LEFT) {
             DirectViewport viewport = surface.viewport();
             float uiMouseY = viewport.toUiY(my);
             CompactScrollbar.Metrics scrollbarMetrics = getRadarScrollbarMetrics(

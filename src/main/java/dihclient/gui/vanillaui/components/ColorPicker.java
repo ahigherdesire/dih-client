@@ -114,7 +114,7 @@ public final class ColorPicker {
 
     public boolean mouseClicked(int mouseX, int mouseY, int button) {
         if (!open) return false;
-        if (button != 0) return true;
+        if (button != InputConstants.MOUSE_BUTTON_LEFT) return true;
         if (!bounds.contains(mouseX, mouseY)) {
             closeCancel();
             return true;
@@ -167,7 +167,7 @@ public final class ColorPicker {
     }
 
     public boolean mouseDragged(int mouseX, int mouseY, int button, double deltaX, double deltaY) {
-        if (!open || button != 0) return false;
+        if (!open || button != InputConstants.MOUSE_BUTTON_LEFT) return false;
         switch (dragTarget) {
             case SV -> updateSaturationValue(mouseX, mouseY);
             case HUE -> updateHue(mouseY);

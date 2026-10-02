@@ -1215,9 +1215,9 @@ public final class VanillaModuleMenuController {
                 }
                 case MODULE -> {
                     bringWindowToFront(hit.category != null ? hit.category.name() : SEARCH_WINDOW);
-                    if (button == 1) openSettings(hit.module);
-                    else if (button == 2) bindingModule = hit.module;
-                    else if (button == 0) {
+                    if (button == InputConstants.MOUSE_BUTTON_RIGHT) openSettings(hit.module);
+                    else if (button == InputConstants.MOUSE_BUTTON_MIDDLE) bindingModule = hit.module;
+                    else if (button == InputConstants.MOUSE_BUTTON_LEFT) {
 
                         if (hasVisibleSettings(hit.module) && (hit.module.opensSettingsOnClick() || !hit.module.hasActivationToggle())) openSettings(hit.module);
                         else toggleModule(hit.module);
@@ -1225,11 +1225,11 @@ public final class VanillaModuleMenuController {
                     return true;
                 }
                 case MODULE_BIND -> {
-                    if (button == 0) bindingModule = hit.module;
+                    if (button == InputConstants.MOUSE_BUTTON_LEFT) bindingModule = hit.module;
                     return true;
                 }
                 case UTILITY -> {
-                    if (button == 0) host.runUtility(hit.id);
+                    if (button == InputConstants.MOUSE_BUTTON_LEFT) host.runUtility(hit.id);
                     return true;
                 }
                 case BACK -> {
@@ -1388,11 +1388,11 @@ public final class VanillaModuleMenuController {
             macroPicker.mouseReleased(mx, my, button);
             return true;
         }
-        if (button == 0 && resizingCategoryId != null) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && resizingCategoryId != null) {
             resizingCategoryId = null;
             host.saveConfig();
         }
-        if (button == 0 && draggingWindowId != null) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && draggingWindowId != null) {
             if (!draggingMoved) {
                 DihConfig.ModuleCategoryLayout layout = layout(draggingWindowId);
                 layout.collapsed = !layout.collapsed;
@@ -1419,7 +1419,7 @@ public final class VanillaModuleMenuController {
             return true;
         }
 
-        if (draggingTextSelection && button == 0 && editing != null && editingFieldBounds != null) {
+        if (draggingTextSelection && button == InputConstants.MOUSE_BUTTON_LEFT && editing != null && editingFieldBounds != null) {
             moveEditingCursor(cursorAtX(editing.text, mx, editingFieldBounds), true);
             return true;
         }
@@ -1600,8 +1600,8 @@ public final class VanillaModuleMenuController {
         if (module == null || option == null) return;
         switch (option.kind()) {
             case BOOLEAN, ACTION -> {
-                if (host.offlineSetup()) module.adjustConfiguredOption(option, button == 1 ? -1 : 1);
-                else module.adjustOption(option, button == 1 ? -1 : 1);
+                if (host.offlineSetup()) module.adjustConfiguredOption(option, button == InputConstants.MOUSE_BUTTON_RIGHT ? -1 : 1);
+                else module.adjustOption(option, button == InputConstants.MOUSE_BUTTON_RIGHT ? -1 : 1);
             }
             default -> {
             }
@@ -2660,7 +2660,7 @@ public final class VanillaModuleMenuController {
         }
 
         private boolean mouseClicked(int mouseX, int mouseY, int button) {
-            if (button != 0) return menuBounds.contains(mouseX, mouseY);
+            if (button != InputConstants.MOUSE_BUTTON_LEFT) return menuBounds.contains(mouseX, mouseY);
             if (!menuBounds.contains(mouseX, mouseY)) return false;
             if (clearBounds.contains(mouseX, mouseY)) {
                 setOptionValue(module, option, "");

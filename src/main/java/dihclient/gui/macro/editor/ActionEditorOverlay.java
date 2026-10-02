@@ -455,7 +455,7 @@ public class ActionEditorOverlay extends DihOverlayBase {
 
         private HitRegion(int x, int y, int w, int h, Runnable action) {
             this(x, y, w, h, (mx, my, mouseButton) -> {
-                if (mouseButton != 0) return false;
+                if (mouseButton != InputConstants.MOUSE_BUTTON_LEFT) return false;
                 action.run();
                 return true;
             });
@@ -5508,7 +5508,7 @@ public class ActionEditorOverlay extends DihOverlayBase {
         boolean hovered = mx >= x && mx < x + size && my >= y && my < y + size;
         MacroTypedListControl.renderDelete(ctx, UiBounds.of(x, y, size, size), hovered);
         hitRegions.add(new HitRegion(x, y, size, size, (mouseX, mouseY, mouseButton) -> {
-            if (mouseButton != 0) return false;
+            if (mouseButton != InputConstants.MOUSE_BUTTON_LEFT) return false;
             action.run();
             return true;
         }));
@@ -6033,7 +6033,7 @@ public class ActionEditorOverlay extends DihOverlayBase {
         boolean hovered = active && mx >= x && mx < x + size && my >= y && my < y + size;
         MacroTypedListControl.renderSymbol(ctx, UiBounds.of(x, y, size, size), symbol, hovered, danger);
         hitRegions.add(new HitRegion(x, y, size, size, (mouseX, mouseY, mouseButton) -> {
-            if (!active || mouseButton != 0) return false;
+            if (!active || mouseButton != InputConstants.MOUSE_BUTTON_LEFT) return false;
             action.run();
             return true;
         }));
@@ -7946,17 +7946,17 @@ public class ActionEditorOverlay extends DihOverlayBase {
 
         clearTextFieldFocus();
 
-        if (button == 0 && isOverWaitChatFuzzySlider(imx, imy)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverWaitChatFuzzySlider(imx, imy)) {
             waitChatFuzzySliderDragging = true;
             updateWaitChatFuzzyPercentFromMouse(imx);
             return true;
         }
-        if (button == 0 && isOverRotateSmoothnessSlider(imx, imy)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverRotateSmoothnessSlider(imx, imy)) {
             rotateSmoothnessSliderDragging = true;
             updateRotateSmoothnessFromMouse(imx);
             return true;
         }
-        if (button == 0 && isOverXCarrySafeDelaySlider(imx, imy)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverXCarrySafeDelaySlider(imx, imy)) {
             xcarrySafeDelaySliderDragging = true;
             updateXCarrySafeDelayFromMouse(imx);
             return true;

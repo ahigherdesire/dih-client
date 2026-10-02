@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.multi.MultiPanel;
 import dihclient.gui.screen.DihAccountsScreen;
 import dihclient.gui.screen.DihFormValuesScreen;
@@ -211,7 +212,7 @@ public final class DihMultiOverlay extends DihOverlayBase implements MultiPanel.
             dragging = false;
             return true;
         }
-        if (button == 0 && isOverDragBar(mouseX, mouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverDragBar(mouseX, mouseY)) {
             dragging = true;
             dragOffsetX = mouseX - panelX;
             dragOffsetY = mouseY - panelY;

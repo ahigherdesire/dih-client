@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiContext;
 import dihclient.gui.vanillaui.UiContexts;
 import dihclient.gui.vanillaui.UiInputResult;
@@ -694,13 +695,13 @@ public class DihOverlayManager {
         }
 
         clearFocusedTextFields();
-        if (button == 0 && topOverlay instanceof DihWindow window && window.isOverPinButton(mouseX, mouseY, topOverlay.getBounds())) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && topOverlay instanceof DihWindow window && window.isOverPinButton(mouseX, mouseY, topOverlay.getBounds())) {
             topOverlay.setPinned(!topOverlay.isPinned());
             bringToFront(topOverlay);
             invalidateHoverBlockCache();
             return true;
         }
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             if (topOverlay.isOverResizeHandle(mouseX, mouseY)) {
                 resizingOverlay = topOverlay;
                 resizeStartBounds = topOverlay.getBounds();
@@ -755,13 +756,13 @@ public class DihOverlayManager {
         boolean wasDraggingOrResizing = (draggingOverlay != null || resizingOverlay != null);
         IDihOverlay prevDragging = draggingOverlay;
         IDihOverlay prevResizing = resizingOverlay;
-        boolean shouldToggleHeaderCollapse = button == 0
+        boolean shouldToggleHeaderCollapse = button == InputConstants.MOUSE_BUTTON_LEFT
             && prevDragging != null
             && prevDragging == headerCollapseOverlay
             && prevDragging.usesSharedHeaderClickCollapse()
             && !headerCollapseMoved;
         DihWindowLayout headerStartBounds = headerCollapseStartBounds;
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
 
             if (prevDragging != null && prevDragging.getOverlayId() != null && dragStartBounds != null) {
 

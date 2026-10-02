@@ -453,7 +453,7 @@ public class DihPluginLibraryScreen extends DihScreen {
         double mx = ve.x();
         double my = ve.y();
 
-        if (ve.button() == 0 && !compactLayout()) {
+        if (ve.button() == InputConstants.MOUSE_BUTTON_LEFT && !compactLayout()) {
             CompactScrollbar.Metrics sb = scrollbarMetrics(allRows.size());
             if (sb.hasScroll() && sb.contains(mx, my)) {
                 scrollbarDragging = true;
@@ -468,7 +468,7 @@ public class DihPluginLibraryScreen extends DihScreen {
             if (CompactOverlayButton.fireIfHit(b, mx, my, ve.button())) return true;
         }
 
-        if (ve.button() == 0) {
+        if (ve.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             for (RowHit hit : rowHits) {
                 if (hit.contains(mx, my)) {
                     toggleExpand(hit.key);

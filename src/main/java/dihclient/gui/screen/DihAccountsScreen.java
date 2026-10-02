@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.components.CompactDropdown;
 import dihclient.gui.vanillaui.components.CompactOverlayButton;
 import dihclient.util.DihConfig;
@@ -985,7 +986,7 @@ public class DihAccountsScreen extends DihScreen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         MouseButtonEvent virtualEvent = virtualEvent(event);
-        if (virtualEvent.button() != 0) return super.mouseClicked(virtualEvent, doubleClick);
+        if (virtualEvent.button() != InputConstants.MOUSE_BUTTON_LEFT) return super.mouseClicked(virtualEvent, doubleClick);
         if (activePopup != POPUP_NONE) {
             handlePopupMouse(virtualEvent, doubleClick);
             return true;

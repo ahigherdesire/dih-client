@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.components.Chip;
 import dihclient.gui.vanillaui.components.CompactControlGlyphs;
@@ -1059,12 +1060,12 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
 
         if (ctxMenu.handleClick(mouseX, mouseY, button, (entry, action, index) -> executeCtxAction(action, entry))) return true;
 
-        if (button != 0 && button != 1) return false;
+        if (button != InputConstants.MOUSE_BUTTON_LEFT && button != InputConstants.MOUSE_BUTTON_RIGHT) return false;
 
         if (mouseY >= panelY && mouseY <= panelY + HEADER_H && mouseX >= panelX && mouseX <= panelX + PANEL_WIDTH) {
             DihWindowLayout bounds = new DihWindowLayout(panelX, panelY, PANEL_WIDTH, calcPanelH(), visible, collapsed);
             if (isOverCloseButton(mouseX, mouseY, bounds)) { setVisible(false); return true; }
-            if (button == 0) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT) {
                 isDragging = true;
                 headerDragMoved = false;
                 dragOffX = mouseX - panelX;
@@ -1078,7 +1079,7 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
         int filterY = tabY + tabHeight() + 2;
         int contentY = filterY + filterHeight() + 2;
 
-        if (mouseY >= tabY && mouseY < tabY + tabHeight() && button == 0) {
+        if (mouseY >= tabY && mouseY < tabY + tabHeight() && button == InputConstants.MOUSE_BUTTON_LEFT) {
             int x = panelX + 4;
             for (Category cat : Category.values()) {
                 int w = DirectLayout.fitOverlayButtonWidth(textRenderer, theme, UiTone.BODY, cat.label, 5, 32, 64);
@@ -1088,7 +1089,7 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
             return true;
         }
 
-        if (mouseY >= filterY && mouseY < filterY + filterHeight() && button == 0) {
+        if (mouseY >= filterY && mouseY < filterY + filterHeight() && button == InputConstants.MOUSE_BUTTON_LEFT) {
             return handleFilterClick(mouseX, mouseY, filterY);
         }
 
@@ -1096,7 +1097,7 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
 
         int contentEndY = contentY + contentAreaHeight();
         if (mouseY >= contentY && mouseY < contentEndY) {
-            if (button == 0) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT) {
                 CompactScrollbar.Metrics scrollbarMetrics = getContentScrollbarMetrics();
                 if (scrollbarMetrics.hasScroll() && scrollbarMetrics.contains((int) mouseX, (int) mouseY)) {
                     scrollbarDragging = true;
@@ -1148,7 +1149,7 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
         x = panelX + 4;
         int sw = filterSearchFieldWidth();
         if (mouseY >= row2Y && mouseY < row2Y + filterRowHeight() && mouseX >= x && mouseX < x + sw) {
-            searchField.mouseClicked(mouseX, mouseY, 0);
+            searchField.mouseClicked(mouseX, mouseY, InputConstants.MOUSE_BUTTON_LEFT);
             return true;
         }
         x += sw + 3;
@@ -1179,12 +1180,12 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
 
         if (row.type == RowType.GROUP) {
             int bx = panelX + PANEL_WIDTH - 28;
-            if (button == 0 && mouseX >= bx && mouseX <= bx + 24 && row.packetClass != null) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && mouseX >= bx && mouseX <= bx + 24 && row.packetClass != null) {
                 @SuppressWarnings("unchecked")
                 String n = DihPacketNamer.getFriendlyName((Class<? extends Packet<?>>) row.packetClass);
                 blockPacketName(n); return true;
             }
-            if (button == 0) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT) {
                 if (expandedGroups.contains(row.groupKey)) expandedGroups.remove(row.groupKey);
                 else expandedGroups.add(row.groupKey);
                 dirty = true; return true;
@@ -1194,7 +1195,7 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
         if (row.type == RowType.ENTRY && row.entry != null) {
 
             int menuIconX = panelX + PANEL_WIDTH - 16;
-            if (button == 1 || (button == 0 && mouseX >= menuIconX)) {
+            if (button == InputConstants.MOUSE_BUTTON_RIGHT || (button == InputConstants.MOUSE_BUTTON_LEFT && mouseX >= menuIconX)) {
                 openCtxMenu(row.entry, (int) mouseX, (int) mouseY);
                 return true;
             }
@@ -1330,13 +1331,13 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
     }
 
     @Override public boolean mouseDragged(double mx, double my, int b, double dx, double dy) {
-        if (scrollbarDragging && b == 0) {
+        if (scrollbarDragging && b == InputConstants.MOUSE_BUTTON_LEFT) {
             CompactScrollbar.Metrics scrollbarMetrics = getContentScrollbarMetrics();
             scrollOffset = quantizeScrollOffset(CompactScrollbar.scrollFromThumb(scrollbarMetrics, (int) my, scrollbarGrabOffset), lineHeight(), scrollbarMetrics.maxScroll());
             contentScrollState.jumpTo(scrollOffset, scrollbarMetrics.maxScroll());
             return true;
         }
-        if (isDragging && b == 0) {
+        if (isDragging && b == InputConstants.MOUSE_BUTTON_LEFT) {
             DihWindowLayout nextBounds = clampToScreen(this,
                 new DihWindowLayout((int) (mx - dragOffX), (int) (my - dragOffY),
                     PANEL_WIDTH, PANEL_HEIGHT, visible, collapsed));
@@ -1351,8 +1352,8 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
         return false;
     }
     @Override public boolean mouseReleased(double mx, double my, int b) {
-        if (b == 0 && scrollbarDragging) { scrollbarDragging = false; return true; }
-        if (b == 0 && isDragging) {
+        if (b == InputConstants.MOUSE_BUTTON_LEFT && scrollbarDragging) { scrollbarDragging = false; return true; }
+        if (b == InputConstants.MOUSE_BUTTON_LEFT && isDragging) {
 
             isDragging = false;
             headerDragMoved = false;
@@ -1786,7 +1787,7 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
         }
 
         private boolean handleRegistrationWarningClick(double mx, double my, int button) {
-            if (button != 0) return true;
+            if (button != InputConstants.MOUSE_BUTTON_LEFT) return true;
             RegistrationWarningBounds bounds = registrationWarningBounds();
             int cancelW = 72;
             int acceptW = 92;
@@ -2615,14 +2616,14 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
         public boolean mouseClicked(double mx, double my, int button) {
             if (!visible) return false;
             DihWindowLayout bounds = getBounds();
-            if (button == 0 && isOverCloseButton(mx, my, bounds)) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverCloseButton(mx, my, bounds)) {
                 setVisible(false);
                 return true;
             }
             if (registrationWarningOpen) {
                 return handleRegistrationWarningClick(mx, my, button);
             }
-            if (button == 0 && isOverDragBar(mx, my)) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverDragBar(mx, my)) {
                 draggingWindow = true;
                 dragOffsetX = mx - panelX;
                 dragOffsetY = my - panelY;
@@ -2635,7 +2636,7 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
             int y = customY();
             int customW = customPatternWidth();
             int addX = panelX + 6 + customW + CUSTOM_GAP;
-            if (button == 0 && my >= y && my < y + 16) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && my >= y && my < y + 16) {
                 if (mx >= addX && mx < addX + CUSTOM_ADD_W) {
                     saveCustomRuleField();
                     return true;
@@ -2657,7 +2658,7 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
             int applyX = filterX + FILTER_W + CONTROL_GAP;
             int revertX = applyX + APPLY_W + CONTROL_GAP;
             int allOffX = revertX + REVERT_W + CONTROL_GAP;
-            if (button == 0 && my >= y && my < y + 16 && mx >= defaultsX && mx < defaultsX + DEFAULTS_W) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && my >= y && my < y + 16 && mx >= defaultsX && mx < defaultsX + DEFAULTS_W) {
                 payloadListeners.applyDefaultRecommendedOnlyInMemory();
                 payloadRegistrations.applyRecommendedOnlyInMemory();
                 markPayloadChannelConfigDirty();
@@ -2665,28 +2666,28 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
                 dirty = true;
                 return true;
             }
-            if (button == 0 && my >= y && my < y + 16 && mx >= knownOnX && mx < knownOnX + KNOWN_ON_W) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && my >= y && my < y + 16 && mx >= knownOnX && mx < knownOnX + KNOWN_ON_W) {
                 enableAllKnownExactChannels();
                 return true;
             }
-            if (button == 0 && my >= y && my < y + 16 && mx >= captureX && mx < captureX + CAPTURE_W) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && my >= y && my < y + 16 && mx >= captureX && mx < captureX + CAPTURE_W) {
                 captureLearnedChannels(false);
                 return true;
             }
-            if (button == 0 && my >= y && my < y + 16 && mx >= filterX && mx < filterX + FILTER_W) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && my >= y && my < y + 16 && mx >= filterX && mx < filterX + FILTER_W) {
                 enabledOnly = !enabledOnly;
                 rebuildRows();
                 return true;
             }
-            if (button == 0 && my >= y && my < y + 16 && mx >= applyX && mx < applyX + APPLY_W) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && my >= y && my < y + 16 && mx >= applyX && mx < applyX + APPLY_W) {
                 applyPayloadChannelRegistration();
                 return true;
             }
-            if (button == 0 && my >= y && my < y + 16 && mx >= revertX && mx < revertX + REVERT_W) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && my >= y && my < y + 16 && mx >= revertX && mx < revertX + REVERT_W) {
                 revertPayloadChannelRegistration();
                 return true;
             }
-            if (button == 0 && my >= y && my < y + 16 && mx >= allOffX && mx < allOffX + ALL_OFF_W) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && my >= y && my < y + 16 && mx >= allOffX && mx < allOffX + ALL_OFF_W) {
                 payloadListeners.disableAllInMemory();
                 payloadRegistrations.disableAllInMemory();
                 markPayloadChannelConfigDirty();
@@ -2697,7 +2698,7 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
 
             int lockX = panelX + panelWidth - 8 - REGISTRATION_LOCK_W;
             int lockY = registrationButtonY();
-            if (button == 0 && my >= lockY && my < lockY + 16
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && my >= lockY && my < lockY + 16
                 && mx >= lockX && mx < lockX + REGISTRATION_LOCK_W) {
                 if (DihPayloadChannelSubscriptionManager.isRegistrationUnlocked()) {
                     disablePayloadRegistration();
@@ -2710,12 +2711,12 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
             int listTop = listTopY();
             int listH = listenerListHeight();
             CompactScrollbar.Metrics metrics = CompactScrollbar.compute(rows.size() * ROW_H, listH, panelX + panelWidth - 7, listTop, 3, listH, rowScroll);
-            if (button == 0 && metrics.hasScroll() && metrics.contains((int) mx, (int) my)) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && metrics.hasScroll() && metrics.contains((int) mx, (int) my)) {
                 draggingScroll = true;
                 scrollGrabOffset = (int) my - metrics.thumbY();
                 return true;
             }
-            if (button == 0 && my >= listTop && my < listTop + listH && mx >= listLeft() && mx < listRight()) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && my >= listTop && my < listTop + listH && mx >= listLeft() && mx < listRight()) {
                 int index = (int) ((my - listTop + rowScroll) / ROW_H);
                 if (index >= 0 && index < rows.size()) {
                     ListenerRow row = rows.get(index);
@@ -3378,12 +3379,12 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
 
         @Override
         public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
-            if (draggingWindow && button == 0) {
+            if (draggingWindow && button == InputConstants.MOUSE_BUTTON_LEFT) {
                 setBounds(new DihWindowLayout((int) Math.round(mx - dragOffsetX), (int) Math.round(my - dragOffsetY),
                     panelWidth, panelHeight, visible, collapsed));
                 return true;
             }
-            if (draggingScroll && button == 0) {
+            if (draggingScroll && button == InputConstants.MOUSE_BUTTON_LEFT) {
                 int listTop = listTopY();
                 int listH = listenerListHeight();
                 CompactScrollbar.Metrics metrics = CompactScrollbar.compute(rows.size() * ROW_H, listH, panelX + panelWidth - 7, listTop, 3, listH, rowScroll);
@@ -3397,12 +3398,12 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
 
         @Override
         public boolean mouseReleased(double mx, double my, int button) {
-            if (button == 0 && draggingWindow) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && draggingWindow) {
                 draggingWindow = false;
                 saveLayout();
                 return true;
             }
-            if (button == 0 && draggingScroll) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && draggingScroll) {
                 draggingScroll = false;
                 return true;
             }
@@ -3717,11 +3718,11 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
         public boolean mouseClicked(double mx, double my, int button) {
             if (!visible) return false;
             DihWindowLayout bounds = getBounds();
-            if (button == 0 && isOverCloseButton(mx, my, bounds)) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverCloseButton(mx, my, bounds)) {
                 setVisible(false);
                 return true;
             }
-            if (button == 0 && isOverDragBar(mx, my)) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverDragBar(mx, my)) {
                 draggingWindow = true;
                 dragOffsetX = mx - panelX;
                 dragOffsetY = my - panelY;
@@ -3732,7 +3733,7 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
             if (search.mouseClicked(mx, my, button)) return true;
 
             int y = controlsRowY();
-            if (button == 0 && my >= y && my < y + 16) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && my >= y && my < y + 16) {
                 int clearX = x + BLOCKED_W + 4;
                 int resetX = clearX + CLEAR_W + 4;
                 if (mx >= x && mx < x + BLOCKED_W) {
@@ -3756,12 +3757,12 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
             int listTop = listTopY();
             int listH = Math.max(20, panelY + panelHeight - listTop - 6);
             CompactScrollbar.Metrics metrics = CompactScrollbar.compute(rows.size() * lineHeight(), listH, panelX + panelWidth - 5, listTop, 3, listH, rowScroll);
-            if (button == 0 && metrics.hasScroll() && metrics.contains((int) mx, (int) my)) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && metrics.hasScroll() && metrics.contains((int) mx, (int) my)) {
                 draggingScroll = true;
                 scrollGrabOffset = (int) my - metrics.thumbY();
                 return true;
             }
-            if (button == 0 && my >= listTop) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && my >= listTop) {
                 int index = (int) ((my - listTop + rowScroll) / lineHeight());
                 if (index >= 0 && index < rows.size()) {
                     Class<? extends Packet<?>> cls = rows.get(index);
@@ -3780,12 +3781,12 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
 
         @Override
         public boolean mouseDragged(double mx, double my, int button, double dx, double dy) {
-            if (draggingWindow && button == 0) {
+            if (draggingWindow && button == InputConstants.MOUSE_BUTTON_LEFT) {
                 setBounds(new DihWindowLayout((int) Math.round(mx - dragOffsetX), (int) Math.round(my - dragOffsetY),
                     panelWidth, panelHeight, visible, collapsed));
                 return true;
             }
-            if (draggingScroll && button == 0) {
+            if (draggingScroll && button == InputConstants.MOUSE_BUTTON_LEFT) {
                 int listTop = listTopY();
                 int listH = Math.max(20, panelY + panelHeight - listTop - 6);
                 CompactScrollbar.Metrics metrics = CompactScrollbar.compute(rows.size() * lineHeight(), listH, panelX + panelWidth - 5, listTop, 3, listH, rowScroll);
@@ -3798,12 +3799,12 @@ public class DihPacketLoggerOverlay extends DihOverlayBase {
 
         @Override
         public boolean mouseReleased(double mx, double my, int button) {
-            if (button == 0 && draggingWindow) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && draggingWindow) {
                 draggingWindow = false;
                 saveLayout();
                 return true;
             }
-            if (button == 0 && draggingScroll) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && draggingScroll) {
                 draggingScroll = false;
                 return true;
             }

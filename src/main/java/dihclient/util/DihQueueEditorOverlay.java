@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.direct.DirectLayout;
 import dihclient.gui.vanillaui.components.CompactListRenderer;
@@ -788,7 +789,7 @@ public class DihQueueEditorOverlay extends DihOverlayBase {
             ? HEADER_HEIGHT
             : clampToScreen(this, new DihWindowLayout(panelX, panelY, PANEL_WIDTH, getPanelHeight(displayQueue), visible, collapsed)).height;
 
-        if (button == 0 && mouseX >= panelX && mouseX <= panelX + PANEL_WIDTH && mouseY >= panelY && mouseY <= panelY + HEADER_HEIGHT) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && mouseX >= panelX && mouseX <= panelX + PANEL_WIDTH && mouseY >= panelY && mouseY <= panelY + HEADER_HEIGHT) {
             DihWindowLayout bounds = new DihWindowLayout(panelX, panelY, PANEL_WIDTH, panelHeight, visible, collapsed);
             if (isOverCloseButton(mouseX, mouseY, bounds)) {
                 setVisible(false);
@@ -802,7 +803,7 @@ public class DihQueueEditorOverlay extends DihOverlayBase {
 
         if (collapsed) return false;
 
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (ClickRegion region : toolbarRegions) {
                 if (region.contains(mouseX, mouseY)) {
                     region.action.run();
@@ -812,7 +813,7 @@ public class DihQueueEditorOverlay extends DihOverlayBase {
         }
 
         CompactScrollbar.Metrics scrollbarMetrics = getScrollbarMetrics(panelHeight);
-        if (button == 0 && scrollbarMetrics.hasScroll() && scrollbarMetrics.contains(mouseX, mouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && scrollbarMetrics.hasScroll() && scrollbarMetrics.contains(mouseX, mouseY)) {
             scrollbarDragging = true;
             scrollbarGrabOffset = scrollbarMetrics.overThumb(mouseX, mouseY)
                 ? (int) Math.round(mouseY) - scrollbarMetrics.thumbY()
@@ -825,13 +826,13 @@ public class DihQueueEditorOverlay extends DihOverlayBase {
         for (RowRegion region : rowRegions) {
             if (!region.contains(mouseX, mouseY)) continue;
 
-            if (region.overRemove(mouseX, mouseY) && button == 0) {
+            if (region.overRemove(mouseX, mouseY) && button == InputConstants.MOUSE_BUTTON_LEFT) {
                 shared.removeQueuedPacket(region.packet);
                 if (selectedPacketId == region.packet.getId()) clearSelection();
                 return true;
             }
 
-            if (region.overMode(mouseX, mouseY) && button == 0) {
+            if (region.overMode(mouseX, mouseY) && button == InputConstants.MOUSE_BUTTON_LEFT) {
                 DihSharedState.ReplayMode next = region.packet.isExactReplay()
                     ? DihSharedState.ReplayMode.REGENERATE
                     : DihSharedState.ReplayMode.EXACT;
@@ -840,17 +841,17 @@ public class DihQueueEditorOverlay extends DihOverlayBase {
             }
 
             if (region.overDelay(mouseX, mouseY)) {
-                if (button == 0) {
+                if (button == InputConstants.MOUSE_BUTTON_LEFT) {
                     shared.updatePacketDelay(region.packet, region.packet.getDelay() + 1);
                     return true;
                 }
-                if (button == 1) {
+                if (button == InputConstants.MOUSE_BUTTON_RIGHT) {
                     shared.updatePacketDelay(region.packet, Math.max(0, region.packet.getDelay() - 1));
                     return true;
                 }
             }
 
-            if (button == 0) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT) {
                 selectedPacketId = selectedPacketId == region.packet.getId() ? -1 : region.packet.getId();
                 return true;
             }
@@ -861,7 +862,7 @@ public class DihQueueEditorOverlay extends DihOverlayBase {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        if (isDragging && button == 0) {
+        if (isDragging && button == InputConstants.MOUSE_BUTTON_LEFT) {
             DihWindowLayout nextBounds = clampToScreen(this,
                 new DihWindowLayout((int) (mouseX - dragOffsetX), (int) (mouseY - dragOffsetY),
                     PANEL_WIDTH, PANEL_HEIGHT, visible, collapsed));
@@ -869,7 +870,7 @@ public class DihQueueEditorOverlay extends DihOverlayBase {
             panelY = nextBounds.y;
             return true;
         }
-        if (scrollbarDragging && button == 0) {
+        if (scrollbarDragging && button == InputConstants.MOUSE_BUTTON_LEFT) {
             List<QueuedPacket> displayQueue = cachedDisplayQueue.isEmpty() ? getCurrentQueue() : cachedDisplayQueue;
             int panelHeight = collapsed
                 ? HEADER_HEIGHT
@@ -884,12 +885,12 @@ public class DihQueueEditorOverlay extends DihOverlayBase {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0 && isDragging) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isDragging) {
             isDragging = false;
             saveState();
             return true;
         }
-        if (button == 0 && scrollbarDragging) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && scrollbarDragging) {
             scrollbarDragging = false;
             return true;
         }

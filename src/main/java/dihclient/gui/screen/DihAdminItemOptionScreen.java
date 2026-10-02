@@ -172,31 +172,31 @@ public final class DihAdminItemOptionScreen extends DihScreen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         int mx = DihUiScale.toVirtualInt(event.x());
         int my = DihUiScale.toVirtualInt(event.y());
-        if (event.button() == 0 && closeBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && closeBounds.contains(mx, my)) {
             onClose();
             return true;
         }
-        if (event.button() == 0 && saveBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && saveBounds.contains(mx, my)) {
             save();
             return true;
         }
-        if (event.button() == 0 && cancelBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && cancelBounds.contains(mx, my)) {
             onClose();
             return true;
         }
-        if (event.button() == 0 && formatBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && formatBounds.contains(mx, my)) {
             formatFullNbt();
             return true;
         }
-        if (event.button() == 0 && validateBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && validateBounds.contains(mx, my)) {
             validateFullNbt();
             return true;
         }
-        if (event.button() == 0 && copyBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && copyBounds.contains(mx, my)) {
             copyRaw();
             return true;
         }
-        if (event.button() == 0 && pasteBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && pasteBounds.contains(mx, my)) {
             pasteRaw();
             return true;
         }

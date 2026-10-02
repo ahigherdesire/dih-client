@@ -3476,16 +3476,16 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
       if (this.stepPickerSearchField != null && this.stepPickerSearchField.mouseReleased(mouseX, mouseY, button)) return true;
       if (this.nameField != null && this.nameField.mouseReleased(mouseX, mouseY, button)) return true;
       if (this.loopCountField != null && this.loopCountField.mouseReleased(mouseX, mouseY, button)) return true;
-      if (button == 0 && (this.draggingIndex >= 0 || this.pressedStepIndex >= 0)) {
+      if (button == InputConstants.MOUSE_BUTTON_LEFT && (this.draggingIndex >= 0 || this.pressedStepIndex >= 0)) {
          this.finishStepDrag();
          return true;
-      } else if (button == 0 && this.activeScrollbarDrag != 0) {
+      } else if (button == InputConstants.MOUSE_BUTTON_LEFT && this.activeScrollbarDrag != 0) {
          this.activeScrollbarDrag = 0;
          this.saveState();
          return true;
       } else if (dropdownReleased) {
          return true;
-      } else if (button != 0) {
+      } else if (button != InputConstants.MOUSE_BUTTON_LEFT) {
          return false;
       } else {
          boolean moved = this.headerDragMoved
@@ -4838,7 +4838,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
       if (!inside) {
          this.closeStepPicker();
          return true;
-      } else if (button != 0) {
+      } else if (button != InputConstants.MOUSE_BUTTON_LEFT) {
          return true;
       } else if (mouseX >= closeX && mouseX < closeX + 12 && mouseY >= closeY && mouseY < closeY + 12) {
          this.closeStepPicker();
@@ -4891,10 +4891,10 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
          return false;
       }
       if (this.stepCtxMenu.isOpen()) {
-         if (button == 0) {
+         if (button == InputConstants.MOUSE_BUTTON_LEFT) {
 
             if (this.stepCtxMenu.handleClick(mouseX, mouseY, button, (idx, label, i) -> this.executeStepCtxAction(idx, i))) return true;
-         } else if (button == 1 && !this.stepCtxMenu.isMouseOver(mouseX, mouseY)) {
+         } else if (button == InputConstants.MOUSE_BUTTON_RIGHT && !this.stepCtxMenu.isMouseOver(mouseX, mouseY)) {
 
             this.stepCtxMenu.close();
          }
@@ -4909,7 +4909,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
          this.recreateComponents();
          this.clearStepSelection();
          return true;
-      } else if (button == 0 && this.isOverHeaderUi(mouseX, mouseY)) {
+      } else if (button == InputConstants.MOUSE_BUTTON_LEFT && this.isOverHeaderUi(mouseX, mouseY)) {
          if (this.isOverCloseButtonUi(mouseX, mouseY)) {
             this.close();
             return true;
@@ -4980,7 +4980,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
          int listHeight = this.getStepListHeight();
          if (mouseY >= listY && mouseY <= listY + listHeight && mouseX >= this.getStepListFrameX() && mouseX <= this.getStepListFrameX() + this.getStepListFrameWidth()) {
             CompactScrollbar.Metrics stepListScrollbar = this.getStepListScrollbarMetrics();
-            if (button == 0 && stepListScrollbar.hasScroll() && stepListScrollbar.contains((int)mouseX, (int)mouseY)) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && stepListScrollbar.hasScroll() && stepListScrollbar.contains((int)mouseX, (int)mouseY)) {
                this.clearStepSelection();
                this.activeScrollbarDrag = 1;
                boolean onThumb = mouseY >= stepListScrollbar.thumbY() && mouseY < stepListScrollbar.thumbY() + stepListScrollbar.thumbHeight();
@@ -5001,7 +5001,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
                this.clearStepSelection();
                this.clearStepDragState();
 
-               if (button == 1 && index >= 0 && index < this.macro.actions.size()) {
+               if (button == InputConstants.MOUSE_BUTTON_RIGHT && index >= 0 && index < this.macro.actions.size()) {
                   int lockedRowY = y + index * this.actionRowHeight();
                   if (this.isStepRowFullyVisible(lockedRowY) && mouseX < this.getStepListContentRight()) {
                      this.stepCtxMenu.open((int)mouseX, (int)mouseY, index);
@@ -5089,7 +5089,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
                   return true;
                }
 
-               if (button == 0 && mouseX < this.getStepListContentRight()) {
+               if (button == InputConstants.MOUSE_BUTTON_LEFT && mouseX < this.getStepListContentRight()) {
                   boolean shiftDown = this.isShiftModifierDown();
                   boolean controlDown = this.isControlModifierDown();
                   if (controlDown || shiftDown) {
@@ -5099,19 +5099,19 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
                   }
                   return true;
                }
-               if (button == 1 && mouseX < this.getStepListContentRight()) {
+               if (button == InputConstants.MOUSE_BUTTON_RIGHT && mouseX < this.getStepListContentRight()) {
                   this.handleStepRightClick(index, (int)mouseX, (int)mouseY);
                   return true;
                }
             }
 
-            if (button == 0) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT) {
                this.clearStepSelection();
                return true;
             }
          }
 
-         if (button == 0) {
+         if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             this.clearStepSelection();
          }
          return false;
@@ -5509,14 +5509,14 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
       } else if (this.isStepListLockedForRun() && (this.draggingIndex >= 0 || this.pressedStepIndex >= 0)) {
          this.clearStepDragState();
          return true;
-      } else if (button == 0 && (this.draggingIndex >= 0 || this.pressedStepIndex >= 0)) {
+      } else if (button == InputConstants.MOUSE_BUTTON_LEFT && (this.draggingIndex >= 0 || this.pressedStepIndex >= 0)) {
          this.tryStartStepDrag(mouseX, mouseY);
          if (this.draggingIndex >= 0) {
             this.updateStepDrag(mouseY);
          }
 
          return true;
-      } else if (this.isWindowResizing && button == 0) {
+      } else if (this.isWindowResizing && button == InputConstants.MOUSE_BUTTON_LEFT) {
          int nextWidth = this.resizeStartWidth + (int)Math.round(mouseX - this.resizeStartMouseX);
          int nextHeight = this.resizeStartHeight + (int)Math.round(mouseY - this.resizeStartMouseY);
          DihWindowLayout nextBounds = this.clampToScreen(
@@ -5528,7 +5528,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
          this.panelY = nextBounds.y;
          this.recreateComponents();
          return true;
-      } else if (this.isWindowDragging && button == 0) {
+      } else if (this.isWindowDragging && button == InputConstants.MOUSE_BUTTON_LEFT) {
          this.panelX = (int)(mouseX - this.dragOffsetX);
          this.panelY = (int)(mouseY - this.dragOffsetY);
          int screenW = DihUiScale.getVirtualScreenWidth();

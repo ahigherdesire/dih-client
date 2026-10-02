@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.util.DihHudManager;
 import dihclient.util.DihUiScale;
 import net.minecraft.client.gui.components.events.ContainerEventHandler;
@@ -17,7 +18,7 @@ public interface DihContainerEventHandlerMixin {
 
         if (dihclient.util.DihLiteVariant.enabled()) return;
         if (!((Object) this instanceof Screen screen)) return;
-        if (event.button() != 0) return;
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) return;
         if (DihHudManager.musicDisplayMouseClicked(
                 DihUiScale.toVirtualInt(event.x()), DihUiScale.toVirtualInt(event.y()), screen)) {
             cir.setReturnValue(true);

@@ -1,5 +1,6 @@
 package dihclient.gui.vanillaui.components;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
 import dihclient.gui.vanillaui.UiContexts;
@@ -114,8 +115,8 @@ public final class CompactOverlayButton {
 
     public static boolean fireIfHit(CompactOverlayButton button, double mouseX, double mouseY, int mouseButton) {
         if (button == null || !button.visible || !button.active) return false;
-        if ((mouseButton != 0 && mouseButton != 1) || !button.contains(mouseX, mouseY)) return false;
-        PressAction action = mouseButton == 1 ? button.secondaryAction : button.primaryAction;
+        if ((mouseButton != InputConstants.MOUSE_BUTTON_LEFT && mouseButton != InputConstants.MOUSE_BUTTON_RIGHT) || !button.contains(mouseX, mouseY)) return false;
+        PressAction action = mouseButton == InputConstants.MOUSE_BUTTON_RIGHT ? button.secondaryAction : button.primaryAction;
         if (action == null) return false;
         action.onPress(button);
         return true;

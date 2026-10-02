@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import baritone.ai.AiBrain;
 import baritone.ai.AiProviders;
 import baritone.ai.director.Director;
@@ -143,7 +144,7 @@ public final class DihAiPanelOverlay extends DihOverlayBase {
             setVisible(false);
             return true;
         }
-        if (collapsed || button != 0) return isMouseOver(mouseX, mouseY);
+        if (collapsed || button != InputConstants.MOUSE_BUTTON_LEFT) return isMouseOver(mouseX, mouseY);
         for (int i = 0; i < actions.size(); i++) {
             if (actions.get(i).contains((int) mouseX, (int) mouseY)) {
                 press(i);

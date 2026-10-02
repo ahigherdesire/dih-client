@@ -1685,7 +1685,7 @@ public final class MultiPanel {
         }
 
         if (!contextMenuId.isBlank()) {
-            if (button == 0) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT) {
                 for (int[] rect : contextItemRects) {
                     if (mx >= rect[0] && mx < rect[0] + rect[2] && my >= rect[1] && my < rect[1] + rect[3]) {
                         runContextAction(rect[4]);
@@ -1697,7 +1697,7 @@ public final class MultiPanel {
             return true;
         }
 
-        if (button == 1 && tab == Tab.CONSOLE) {
+        if (button == InputConstants.MOUSE_BUTTON_RIGHT && tab == Tab.CONSOLE) {
             for (RowHit row : sessionRowHits) {
                 if (row.hit(mx, my)) {
                     contextMenuId = row.id();
@@ -1708,7 +1708,7 @@ public final class MultiPanel {
             }
         }
 
-        if (button == 0 && tab == Tab.CONSOLE) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && tab == Tab.CONSOLE) {
             for (int[] rect : chatSuggestRects) {
                 if (mx >= rect[0] && mx < rect[0] + rect[2] && my >= rect[1] && my < rect[1] + rect[3]) {
                     applyChatSuggestionAt(rect[4]);
@@ -1724,13 +1724,13 @@ public final class MultiPanel {
                 return true;
             }
         }
-        if (button == 0 && tab == Tab.CONSOLE) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && tab == Tab.CONSOLE) {
 
             if (handleChatClick(mx, my)) return true;
             if (beginChatSelection(mx, my)) return true;
         }
         clearFocus();
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (int i = hotspots.size() - 1; i >= 0; i--) {
                 Hotspot hit = hotspots.get(i);
                 if (!hit.hit(mx, my)) continue;

@@ -557,7 +557,7 @@ public class CompactTextInput extends DirectUiNode implements FocusableTextInput
 
     @Override
     public boolean mouseClicked(DirectRenderContext context, float mouseX, float mouseY, int button) {
-        if (button != 0 || !contains(mouseX, mouseY)) return false;
+        if (button != InputConstants.MOUSE_BUTTON_LEFT || !contains(mouseX, mouseY)) return false;
         if (multiline && tryStartMultilineScrollbarDrag(context, mouseX, mouseY)) {
             setFocused(true);
             return true;
@@ -598,12 +598,12 @@ public class CompactTextInput extends DirectUiNode implements FocusableTextInput
 
     @Override
     public boolean mouseReleased(DirectRenderContext context, float mouseX, float mouseY, int button) {
-        if (button == 0 && draggingMultilineScrollbar) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && draggingMultilineScrollbar) {
             draggingMultilineScrollbar = false;
             multilineScrollbarGrabOffset = 0;
             return true;
         }
-        if (button == 0 && draggingSelection) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && draggingSelection) {
             draggingSelection = false;
             return focused;
         }
@@ -612,11 +612,11 @@ public class CompactTextInput extends DirectUiNode implements FocusableTextInput
 
     @Override
     public boolean mouseDragged(DirectRenderContext context, float mouseX, float mouseY, int button, float deltaX, float deltaY) {
-        if (button == 0 && draggingMultilineScrollbar) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && draggingMultilineScrollbar) {
             dragMultilineScrollbar(context, mouseY);
             return true;
         }
-        if (!editable || !focused || !draggingSelection || button != 0) return false;
+        if (!editable || !focused || !draggingSelection || button != InputConstants.MOUSE_BUTTON_LEFT) return false;
         Identifier font = resolvedFont(context);
         int bodyColor = context.theme().color(textTone);
         int innerW = contentWidth(Math.round(width), context.theme().scale(horizontalPadding), context.theme().scale(2));

@@ -139,10 +139,10 @@ public final class DihSharePickerOverlay extends DihOverlayBase {
         DihWindowLayout bounds = getBounds();
         if (isOverCloseButton(mx, my, bounds)) { setVisible(false); isDragging = false; return true; }
         CompactScrollbar.Metrics sb = scrollbarMetrics();
-        if (button == 0 && sb.overThumb(mx, my)) { scrollbarDragging = true; scrollGrab = (int) Math.round(my) - sb.thumbY(); return true; }
-        if (button == 0 && isOverDragBar(mx, my)) { isDragging = true; dragOffsetX = mx - panelX; dragOffsetY = my - panelY; return true; }
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && sb.overThumb(mx, my)) { scrollbarDragging = true; scrollGrab = (int) Math.round(my) - sb.thumbY(); return true; }
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverDragBar(mx, my)) { isDragging = true; dragOffsetX = mx - panelX; dragOffsetY = my - panelY; return true; }
         if (search.mouseClicked(ctx(null, mx, my, 0f), (float) mx, (float) my, button)) return true;
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             int lt = listTop(), areaH = listAreaH();
             for (int[] h : hits) {
                 int ry = h[0];

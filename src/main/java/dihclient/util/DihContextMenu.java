@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.components.UiText;
 import dihclient.gui.vanillaui.components.CompactTheme;
 import dihclient.gui.vanillaui.components.UiTone;
@@ -144,7 +145,7 @@ public class DihContextMenu<T> {
 
     public boolean handleClick(double mouseX, double mouseY, int button, ItemPickedCallback<T> onPick) {
         if (!isOpen()) return false;
-        if (button != 0) {
+        if (button != InputConstants.MOUSE_BUTTON_LEFT) {
             close();
             return true;
         }

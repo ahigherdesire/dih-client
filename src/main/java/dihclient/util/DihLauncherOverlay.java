@@ -491,7 +491,7 @@ public class DihLauncherOverlay extends DihOverlayBase {
         float uiMouseX = viewport.toUiX(mouseX);
         float uiMouseY = viewport.toUiY(mouseY);
 
-        if (button == 0 && isOverMainMenuHeader(uiMouseX, uiMouseY) && mainMenuSection != null) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverMainMenuHeader(uiMouseX, uiMouseY) && mainMenuSection != null) {
             dragging = true;
             dragMoved = false;
             dragOffsetX = uiMouseX - panelX;

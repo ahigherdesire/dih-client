@@ -247,7 +247,7 @@ public class DihStringListSettingScreen extends DihScreen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         int mx = DihUiScale.toVirtualInt(event.x());
         int my = DihUiScale.toVirtualInt(event.y());
-        if (event.button() != 0) return true;
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) return true;
         CompactScrollbar.Metrics metrics = stringScrollbarMetrics();
         if (metrics.hasScroll() && metrics.contains(mx, my)) {
             scrollbarDragging = true;

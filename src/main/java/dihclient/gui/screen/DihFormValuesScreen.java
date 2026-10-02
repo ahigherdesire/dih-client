@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.gui.vanillaui.components.Button;
@@ -261,7 +262,7 @@ public final class DihFormValuesScreen extends DihScreen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         MouseButtonEvent virtualEvent = virtualEvent(event);
-        if (virtualEvent.button() == 0) {
+        if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             for (int[] rect : accountRowRects) {
                 if (virtualEvent.x() >= rect[0] && virtualEvent.x() < rect[0] + rect[2]
                     && virtualEvent.y() >= rect[1] && virtualEvent.y() < rect[1] + rect[3]) {

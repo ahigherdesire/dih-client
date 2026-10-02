@@ -289,50 +289,50 @@ public final class DihAdminItemStructuredScreen extends DihScreen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         int mx = DihUiScale.toVirtualInt(event.x());
         int my = DihUiScale.toVirtualInt(event.y());
-        if (event.button() == 0 && closeBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && closeBounds.contains(mx, my)) {
             onClose();
             return true;
         }
-        if (event.button() == 0 && saveBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && saveBounds.contains(mx, my)) {
             save();
             return true;
         }
-        if (event.button() == 0 && cancelBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && cancelBounds.contains(mx, my)) {
             onClose();
             return true;
         }
-        if (event.button() == 0 && rawBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && rawBounds.contains(mx, my)) {
             saveDraft();
             if (minecraft != null) minecraft.gui.setScreen(new DihAdminItemOptionScreen(parent, module, option,
                 mode == Mode.ENCHANTMENTS ? DihAdminItemOptionScreen.Mode.ENCHANTMENTS : DihAdminItemOptionScreen.Mode.ATTRIBUTES));
             return true;
         }
-        if (event.button() == 0 && operationBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && operationBounds.contains(mx, my)) {
             operation = cycle(OPERATIONS, operation);
             return true;
         }
-        if (event.button() == 0 && slotBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && slotBounds.contains(mx, my)) {
             slot = cycle(SLOTS, slot);
             return true;
         }
-        if (event.button() == 0 && applyBounds.contains(mx, my) && selectedIndex >= 0 && selectedIndex < entries.size()) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && applyBounds.contains(mx, my) && selectedIndex >= 0 && selectedIndex < entries.size()) {
             entries.set(selectedIndex, updatedEntry(entries.get(selectedIndex)));
             return true;
         }
         for (RowHit hit : entryHits) {
-            if (event.button() == 0 && hit.remove.contains(mx, my)) {
+            if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && hit.remove.contains(mx, my)) {
                 entries.remove(hit.index);
                 if (selectedIndex == hit.index) selectedIndex = -1;
                 else if (selectedIndex > hit.index) selectedIndex--;
                 return true;
             }
-            if (event.button() == 0 && hit.bounds.contains(mx, my)) {
+            if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && hit.bounds.contains(mx, my)) {
                 selectEntry(hit.index);
                 return true;
             }
         }
         for (RowHit hit : resultHits) {
-            if (event.button() == 0 && hit.bounds.contains(mx, my)) {
+            if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && hit.bounds.contains(mx, my)) {
                 entries.add(newEntry(filteredRows.get(hit.index).id));
                 selectedIndex = entries.size() - 1;
                 selectEntry(selectedIndex);

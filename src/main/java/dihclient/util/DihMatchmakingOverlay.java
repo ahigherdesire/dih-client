@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.mm.MatchmakingPanel;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
@@ -120,7 +121,7 @@ public final class DihMatchmakingOverlay extends DihOverlayBase implements Match
         if (!visible) return false;
         DihWindowLayout bounds = getBounds();
         if (!mainMenuMode && isOverCloseButton(mx, my, bounds)) { setVisible(false); isDragging = false; return true; }
-        if (!mainMenuMode && button == 0 && isOverDragBar(mx, my)) {
+        if (!mainMenuMode && button == InputConstants.MOUSE_BUTTON_LEFT && isOverDragBar(mx, my)) {
             isDragging = true;
             dragOffsetX = mx - panelX;
             dragOffsetY = my - panelY;

@@ -673,7 +673,7 @@ public final class DihAdminToolsOverlay extends DihOverlayBase {
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!visible) return false;
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             DihWindowLayout bounds = getBounds();
             if (isOverCloseButton(mouseX, mouseY, bounds)) {
                 setVisible(false);
@@ -978,7 +978,7 @@ public final class DihAdminToolsOverlay extends DihOverlayBase {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
-        if (button == 0 && headerDragging) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && headerDragging) {
             DihWindowLayout current = getBounds();
             setBounds(new DihWindowLayout(
                 current.x + (int) Math.round(deltaX),
@@ -1006,7 +1006,7 @@ public final class DihAdminToolsOverlay extends DihOverlayBase {
             return true;
         }
 
-        if (draggingTextSelection && button == 0 && editing != null && editingTextFieldBounds != null) {
+        if (draggingTextSelection && button == InputConstants.MOUSE_BUTTON_LEFT && editing != null && editingTextFieldBounds != null) {
             moveEditingCursor(cursorAtX(editing.text, (int) mouseX, editingTextFieldBounds), true);
             return true;
         }

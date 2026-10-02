@@ -115,7 +115,7 @@ public final class DihCommandPaletteScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() != 0) return false;
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) return false;
         int row = rowAt(DihUiScale.toVirtual(event.x()), DihUiScale.toVirtual(event.y()));
         if (row >= 0) {
             selected = row;

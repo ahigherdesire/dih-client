@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.util.DihScreens;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.components.UiSizing;
@@ -287,7 +288,7 @@ public class DihTitleScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() != 0) return false;
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) return false;
 
         float uiMouseX = (float) DihUiScale.toVirtual(event.x());
         float uiMouseY = (float) DihUiScale.toVirtual(event.y());

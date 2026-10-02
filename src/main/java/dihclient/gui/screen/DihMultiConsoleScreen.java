@@ -1134,7 +1134,7 @@ public final class DihMultiConsoleScreen extends DihScreen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         MouseButtonEvent virtualEvent = virtualEvent(event);
-        if (virtualEvent.button() == 0 && suggestionsFresh()) {
+        if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT && suggestionsFresh()) {
             for (int[] rect : suggestRects) {
                 if (virtualEvent.x() >= rect[0] && virtualEvent.x() < rect[0] + rect[2] && virtualEvent.y() >= rect[1] && virtualEvent.y() < rect[1] + rect[3]) {
                     suggestionIndex = rect[4];
@@ -1146,7 +1146,7 @@ public final class DihMultiConsoleScreen extends DihScreen {
                 }
             }
         }
-        if (sharedView && virtualEvent.button() == 0) {
+        if (sharedView && virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             for (int[] rect : sharedTabRects) {
                 if (virtualEvent.x() >= rect[0] && virtualEvent.x() < rect[0] + rect[2]
                     && virtualEvent.y() >= rect[1] && virtualEvent.y() < rect[1] + rect[3]
@@ -1159,7 +1159,7 @@ public final class DihMultiConsoleScreen extends DihScreen {
             }
         }
         if (isViewing()) {
-            if (virtualEvent.button() == 0) {
+            if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT) {
                 for (MultiMenuRenderer.MenuHit hit : viewWidgetHits) {
                     if (virtualEvent.x() < hit.x() || virtualEvent.x() >= hit.x() + hit.w()
                         || virtualEvent.y() < hit.y() || virtualEvent.y() >= hit.y() + hit.h()) continue;
@@ -1183,7 +1183,7 @@ public final class DihMultiConsoleScreen extends DihScreen {
                 return true;
             }
         }
-        if (virtualEvent.button() == 1) {
+        if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
             for (int[] rect : presetRects) {
                 if (virtualEvent.x() >= rect[0] && virtualEvent.x() < rect[0] + rect[2] && virtualEvent.y() >= rect[1] && virtualEvent.y() < rect[1] + rect[3]) {
                     openQuickEditor(rect[4]);
@@ -1192,17 +1192,17 @@ public final class DihMultiConsoleScreen extends DihScreen {
             }
         }
 
-        if (virtualEvent.button() == 0 && macroDelayBox != null && delayField != null
+        if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT && macroDelayBox != null && delayField != null
             && delayField.mouseClicked(virtualEvent.x(), virtualEvent.y(), 0)) {
             if (chatInput != null) chatInput.setFocused(false);
             this.setFocused(null);
             return true;
         }
-        if (virtualEvent.button() == 0 && macroDelayAt(virtualEvent.x(), virtualEvent.y(), true)) {
+        if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT && macroDelayAt(virtualEvent.x(), virtualEvent.y(), true)) {
             macroDelayDragging = true;
             return true;
         }
-        if (virtualEvent.button() == 0) {
+        if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             for (SessionRow row : sessionRows) {
                 int ax = actionX();
                 int ay = row.y() + 2;
@@ -1245,7 +1245,7 @@ public final class DihMultiConsoleScreen extends DihScreen {
             if (beginChatSelection(virtualEvent.x(), virtualEvent.y())) return true;
         }
         boolean handled = super.mouseClicked(virtualEvent, doubled);
-        if (!handled && virtualEvent.button() == 0) {
+        if (!handled && virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             clearInputFocus();
             if (!selectedIds.isEmpty()) chatScroll = 0;
             selectedIds.clear();
@@ -1678,7 +1678,7 @@ public final class DihMultiConsoleScreen extends DihScreen {
     private void handleViewClick(int handler, int button, boolean shift, boolean ctrl) {
         if (handler < 0) return;
         ItemStack stack = viewStackAt(handler);
-        if (button == 1 && ctrl && shift) {
+        if (button == InputConstants.MOUSE_BUTTON_RIGHT && ctrl && shift) {
             if (stack != null && !stack.isEmpty()) openNbt(stack);
             return;
         }

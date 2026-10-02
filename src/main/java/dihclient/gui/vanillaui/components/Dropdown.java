@@ -1,5 +1,6 @@
 package dihclient.gui.vanillaui.components;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiComponent;
 import dihclient.gui.vanillaui.UiContext;
@@ -184,7 +185,7 @@ public final class Dropdown implements UiComponent {
     @Override
     public UiInputResult mouseClicked(int mouseX, int mouseY, int button) {
         prepareInputLayout();
-        if (button != 0) {
+        if (button != InputConstants.MOUSE_BUTTON_LEFT) {
             if (!open) return UiInputResult.IGNORED;
             if (!bounds.contains(mouseX, mouseY) && !menuBounds.contains(mouseX, mouseY)) close();
             return UiInputResult.HANDLED;
@@ -230,7 +231,7 @@ public final class Dropdown implements UiComponent {
     @Override
     public UiInputResult mouseDragged(int mouseX, int mouseY, int button, double deltaX, double deltaY) {
         prepareInputLayout();
-        if (!draggingScrollbar || button != 0) return open ? UiInputResult.HANDLED : UiInputResult.IGNORED;
+        if (!draggingScrollbar || button != InputConstants.MOUSE_BUTTON_LEFT) return open ? UiInputResult.HANDLED : UiInputResult.IGNORED;
         updateScrollbar(mouseY);
         return UiInputResult.HANDLED;
     }

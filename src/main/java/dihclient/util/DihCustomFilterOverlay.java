@@ -409,7 +409,7 @@ public class DihCustomFilterOverlay extends DihOverlayBase {
         if (!visible) return false;
         if (packetSelectorOverlay.isVisible()) return packetSelectorOverlay.mouseClicked(mouseX, mouseY, button);
 
-        if (button == 0 && mouseX >= panelX && mouseX < panelX + panelWidth && mouseY >= panelY && mouseY < panelY + HEADER_HEIGHT) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && mouseX >= panelX && mouseX < panelX + panelWidth && mouseY >= panelY && mouseY < panelY + HEADER_HEIGHT) {
             DihWindowLayout bounds = getBounds();
             if (isOverCloseButton(mouseX, mouseY, bounds)) {
                 setVisible(false);
@@ -424,7 +424,7 @@ public class DihCustomFilterOverlay extends DihOverlayBase {
 
         if (collapsed) return false;
 
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             if (tryStartScrollbarDrag(c2sListState, SCROLLBAR_C2S, mouseX, mouseY)) return true;
             if (tryStartScrollbarDrag(s2cListState, SCROLLBAR_S2C, mouseX, mouseY)) return true;
         }
@@ -439,7 +439,7 @@ public class DihCustomFilterOverlay extends DihOverlayBase {
         }
 
         clearFocus();
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (ActionButton actionButton : buttons) {
                 if (actionButton.contains(mouseX, mouseY)) {
                     if (!actionButton.enabled()) return true;
@@ -466,11 +466,11 @@ public class DihCustomFilterOverlay extends DihOverlayBase {
         if (packetSelectorOverlay.isVisible() && packetSelectorOverlay.mouseReleased(mouseX, mouseY, button)) return true;
         if (c2sSearchField.mouseReleased(inputContext(mouseX, mouseY), (float) mouseX, (float) mouseY, button)) return true;
         if (s2cSearchField.mouseReleased(inputContext(mouseX, mouseY), (float) mouseX, (float) mouseY, button)) return true;
-        if (button == 0 && activeScrollbarDrag != SCROLLBAR_NONE) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && activeScrollbarDrag != SCROLLBAR_NONE) {
             activeScrollbarDrag = SCROLLBAR_NONE;
             return true;
         }
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             if (dragging) saveLayout();
             dragging = false;
         }
@@ -490,7 +490,7 @@ public class DihCustomFilterOverlay extends DihOverlayBase {
             s2cListState.scroll.setFromThumbStepped(s2cListState.scrollbarMetrics, mouseY, scrollbarGrabOffset, filterRowStep());
             return true;
         }
-        if (dragging && button == 0) {
+        if (dragging && button == InputConstants.MOUSE_BUTTON_LEFT) {
             DihWindowLayout nextBounds = clampToScreen(this,
                 new DihWindowLayout((int) (mouseX - dragOffsetX), (int) (mouseY - dragOffsetY),
                     panelWidth, panelHeight, visible, collapsed));

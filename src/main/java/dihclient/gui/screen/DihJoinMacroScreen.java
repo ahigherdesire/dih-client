@@ -288,7 +288,7 @@ public final class DihJoinMacroScreen extends DihScreen {
         if (searchField != null && searchField.mouseClicked(event.x(), event.y(), event.button())) {
             return true;
         }
-        if (event.button() == 0) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             CompactScrollbar.Metrics scrollbar = macroScrollbarMetrics();
             if (scrollbar.hasScroll() && scrollbar.contains(event.x(), event.y())) {
                 macroScrollbarDragging = true;

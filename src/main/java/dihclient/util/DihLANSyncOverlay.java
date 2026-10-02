@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.components.CompactControlGlyphs;
 import dihclient.gui.vanillaui.direct.DirectLayout;
@@ -1647,7 +1648,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!visible) return false;
 
-        if (button == 0 && mouseX >= panelX && mouseX <= panelX + PANEL_WIDTH
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && mouseX >= panelX && mouseX <= panelX + PANEL_WIDTH
             && mouseY >= panelY && mouseY <= panelY + HEADER_HEIGHT) {
             DihWindowLayout bounds = new DihWindowLayout(panelX, panelY, PANEL_WIDTH, collapsed ? HEADER_HEIGHT : getPanelHeight(), visible, collapsed);
 
@@ -1674,7 +1675,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
         }
 
         DihLANSync sync = DihLANSync.getInstance();
-        if (button == 0 && hasScrollableSessionContent(sync)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && hasScrollableSessionContent(sync)) {
             int panelHeight = getPanelHeight();
             int tabContentY = getTabContentY();
             int tabContentH = getTabContentHeight(panelHeight);
@@ -1689,7 +1690,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
             }
         }
 
-        if (button == 0 && activeTab == 2 && !perUserMode && hasSameMacrolistViewport() && sameMacroList.contains(mouseX, mouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && activeTab == 2 && !perUserMode && hasSameMacrolistViewport() && sameMacroList.contains(mouseX, mouseY)) {
 
             if (sameMacroList.mouseClicked(mouseX, mouseY, button)) {
 
@@ -1704,13 +1705,13 @@ public class DihLANSyncOverlay extends DihOverlayBase {
             }
         }
 
-        if (button == 0 && activeTab == 2 && perUserMode && hasperUserlistViewport() && perUserlistViewport.contains(mouseX, mouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && activeTab == 2 && perUserMode && hasperUserlistViewport() && perUserlistViewport.contains(mouseX, mouseY)) {
             if (perUserlistViewport.mouseClicked(mouseX, mouseY, button)) {
                 return true;
             }
         }
 
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (ClickRegion region : clickRegions) {
                 if (region.contains(mouseX, mouseY)) {
                     region.action.run();
@@ -1723,7 +1724,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
     }
 
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             if (hasSameMacrolistViewport()) sameMacroList.mouseReleased();
             if (hasperUserlistViewport()) perUserlistViewport.mouseReleased();
             if (scrollbarDragging) saveState();

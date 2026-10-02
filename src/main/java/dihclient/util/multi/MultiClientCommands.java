@@ -1,5 +1,6 @@
 package dihclient.util.multi;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import net.minecraft.world.inventory.ContainerInput;
 
 import java.util.Locale;
@@ -135,8 +136,8 @@ public final class MultiClientCommands {
     }
 
     public static ClickSpec fromMouse(int button, boolean shift, boolean ctrl) {
-        if (button == 2) return new ClickSpec(ContainerInput.CLONE, 2);
-        int mouseButton = button == 1 ? 1 : 0;
+        if (button == InputConstants.MOUSE_BUTTON_MIDDLE) return new ClickSpec(ContainerInput.CLONE, 2);
+        int mouseButton = button == InputConstants.MOUSE_BUTTON_RIGHT ? 1 : 0;
         return new ClickSpec(shift ? ContainerInput.QUICK_MOVE : ContainerInput.PICKUP, mouseButton);
     }
 

@@ -383,7 +383,7 @@ public final class ProfilesPanel {
 
     public boolean mouseClicked(int mx, int my, int button) {
         this.lastMx = mx; this.lastMy = my;
-        if (button == 0 && !suppressInput && listScrollbar != null && listScrollbar.contains(mx, my)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && !suppressInput && listScrollbar != null && listScrollbar.contains(mx, my)) {
             listDragging = true;
             listGrab = my - listScrollbar.thumbY();
             clearFocus();
@@ -398,7 +398,7 @@ public final class ProfilesPanel {
             }
         }
         clearFocus();
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (Hotspot hsp : hotspots) {
                 if (hsp.hit(mx, my)) {
                     try { hsp.action.run(); }

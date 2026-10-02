@@ -225,11 +225,11 @@ public final class RaceStepSelectorOverlay extends DihOverlayBase {
         DirectViewport viewport = surface.viewport();
         float uiMouseX = viewport.toUiX(mouseX);
         float uiMouseY = viewport.toUiY(mouseY);
-        if (button == 0 && isOverClose(uiMouseX, uiMouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverClose(uiMouseX, uiMouseY)) {
             close();
             return true;
         }
-        if (button == 0 && isOverHeader(uiMouseX, uiMouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverHeader(uiMouseX, uiMouseY)) {
             dragging = true;
             dragMoved = false;
             dragOffsetX = uiMouseX - panelX;
@@ -237,7 +237,7 @@ public final class RaceStepSelectorOverlay extends DihOverlayBase {
             return true;
         }
         if (!collapsed && surface.mouseClicked(mouseX, mouseY, button)) return true;
-        if (!collapsed && button == 0 && uiContains(listSlot.x(), listSlot.y(), listSlot.width(), listSlot.height(), uiMouseX, uiMouseY)) {
+        if (!collapsed && button == InputConstants.MOUSE_BUTTON_LEFT && uiContains(listSlot.x(), listSlot.y(), listSlot.width(), listSlot.height(), uiMouseX, uiMouseY)) {
             if (listViewport != null && listViewport.mouseClicked(uiMouseX, uiMouseY, button)) return true;
             int index = (int) ((uiMouseY - listSlot.y() + (listViewport == null ? 0 : listViewport.getScrollOffset())) / ROW_HEIGHT);
             if (index >= 0 && index < filteredOptions.size()) {
@@ -258,7 +258,7 @@ public final class RaceStepSelectorOverlay extends DihOverlayBase {
         DirectViewport viewport = surface.viewport();
         float uiMouseX = viewport.toUiX(mouseX);
         float uiMouseY = viewport.toUiY(mouseY);
-        if (button == 0 && dragging) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && dragging) {
             dragging = false;
             if (!dragMoved && isOverHeader(uiMouseX, uiMouseY) && !isOverClose(uiMouseX, uiMouseY)) {
                 setCollapsed(!collapsed);
@@ -266,7 +266,7 @@ public final class RaceStepSelectorOverlay extends DihOverlayBase {
             dragMoved = false;
             return true;
         }
-        if (button == 0 && listViewport != null) listViewport.mouseReleased();
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && listViewport != null) listViewport.mouseReleased();
         if (!collapsed && surface.mouseReleased(mouseX, mouseY, button)) return true;
         return visible;
     }
@@ -276,7 +276,7 @@ public final class RaceStepSelectorOverlay extends DihOverlayBase {
         DirectViewport viewport = surface.viewport();
         float uiMouseX = viewport.toUiX(mouseX);
         float uiMouseY = viewport.toUiY(mouseY);
-        if (dragging && button == 0) {
+        if (dragging && button == InputConstants.MOUSE_BUTTON_LEFT) {
             int nextX = Math.round(uiMouseX - dragOffsetX);
             int nextY = Math.round(uiMouseY - dragOffsetY);
             if (nextX != panelX || nextY != panelY) dragMoved = true;

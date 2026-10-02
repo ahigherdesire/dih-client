@@ -111,7 +111,7 @@ public final class DihTourScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() != 0) return false;
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) return false;
         int mx = (int) DihUiScale.toVirtual(event.x());
         int my = (int) DihUiScale.toVirtual(event.y());
         if (nextBounds.contains(mx, my)) { next(); return true; }

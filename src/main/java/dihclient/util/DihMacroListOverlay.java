@@ -804,12 +804,12 @@ public class DihMacroListOverlay extends DihOverlayBase {
         float uiMouseX = viewport.toUiX(mouseX);
         float uiMouseY = viewport.toUiY(mouseY);
 
-        if (button == 0 && isOverCloseButton(uiMouseX, uiMouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverCloseButton(uiMouseX, uiMouseY)) {
             setVisible(false);
             return true;
         }
 
-        if (button == 0 && isOverHeaderUi(uiMouseX, uiMouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverHeaderUi(uiMouseX, uiMouseY)) {
             dragging = true;
             dragOffsetX = uiMouseX - panelX;
             dragOffsetY = uiMouseY - panelY;
@@ -820,7 +820,7 @@ public class DihMacroListOverlay extends DihOverlayBase {
             return true;
         }
 
-        if (!collapsed && button == 0 && uiContains(listSlot.x(), listSlot.y(), listSlot.width(), listSlot.height(), uiMouseX, uiMouseY)) {
+        if (!collapsed && button == InputConstants.MOUSE_BUTTON_LEFT && uiContains(listSlot.x(), listSlot.y(), listSlot.width(), listSlot.height(), uiMouseX, uiMouseY)) {
             CompactScrollbar.Metrics metrics = getScrollbarMetrics(Math.round(listSlot.x()), Math.round(listSlot.y()), Math.round(listSlot.width()), Math.round(listSlot.height()));
             if (metrics.hasScroll() && metrics.contains(uiMouseX, uiMouseY)) {
                 scrollbarDragging = true;
@@ -830,7 +830,7 @@ public class DihMacroListOverlay extends DihOverlayBase {
             }
         }
 
-        if (!collapsed && button == 0) {
+        if (!collapsed && button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (int i = clickRegions.size() - 1; i >= 0; i--) {
                 ClickRegion region = clickRegions.get(i);
                 if (region.contains(uiMouseX, uiMouseY) && region.action != RowAction.ROW) {
@@ -840,7 +840,7 @@ public class DihMacroListOverlay extends DihOverlayBase {
             }
         }
 
-        if (!collapsed && button == 1 && !configurationOnly) {
+        if (!collapsed && button == InputConstants.MOUSE_BUTTON_RIGHT && !configurationOnly) {
             for (int i = clickRegions.size() - 1; i >= 0; i--) {
                 ClickRegion region = clickRegions.get(i);
                 if (region.contains(uiMouseX, uiMouseY) && region.item.type == ItemType.LOCAL_MACRO) {
@@ -859,14 +859,14 @@ public class DihMacroListOverlay extends DihOverlayBase {
         float uiMouseX = viewport.toUiX(mouseX);
         float uiMouseY = viewport.toUiY(mouseY);
 
-        if (button == 0 && dragging) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && dragging) {
 
             dragging = false;
             saveState();
             return true;
         }
 
-        if (button == 0 && scrollbarDragging) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && scrollbarDragging) {
             scrollbarDragging = false;
             saveState();
             return true;
@@ -887,7 +887,7 @@ public class DihMacroListOverlay extends DihOverlayBase {
         float uiMouseX = viewport.toUiX(mouseX);
         float uiMouseY = viewport.toUiY(mouseY);
 
-        if (dragging && button == 0) {
+        if (dragging && button == InputConstants.MOUSE_BUTTON_LEFT) {
             int nextX = Math.round(uiMouseX - dragOffsetX);
             int nextY = Math.round(uiMouseY - dragOffsetY);
             DihWindowLayout clamped = clampToViewport(new DihWindowLayout(nextX, nextY, panelWidth, panelHeight, visible, collapsed));
@@ -896,7 +896,7 @@ public class DihMacroListOverlay extends DihOverlayBase {
             return true;
         }
 
-        if (scrollbarDragging && button == 0) {
+        if (scrollbarDragging && button == InputConstants.MOUSE_BUTTON_LEFT) {
             CompactScrollbar.Metrics metrics = getScrollbarMetrics(Math.round(listSlot.x()), Math.round(listSlot.y()), Math.round(listSlot.width()), Math.round(listSlot.height()));
             listScroll.setFromThumb(metrics, uiMouseY, scrollbarGrabOffset);
             return true;

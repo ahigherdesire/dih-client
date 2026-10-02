@@ -377,12 +377,12 @@ public class DihPacketSelectorOverlay extends DihOverlayBase {
         float uiMouseX = viewport.toUiX(mouseX);
         float uiMouseY = viewport.toUiY(mouseY);
 
-        if (button == 0 && isOverCloseButton(uiMouseX, uiMouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverCloseButton(uiMouseX, uiMouseY)) {
             close();
             return true;
         }
 
-        if (button == 0 && isOverHeaderUi(uiMouseX, uiMouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverHeaderUi(uiMouseX, uiMouseY)) {
             dragging = true;
             dragMoved = false;
             dragOffsetX = uiMouseX - panelX;
@@ -398,13 +398,13 @@ public class DihPacketSelectorOverlay extends DihOverlayBase {
             return true;
         }
 
-        if (!collapsed && button == 0 && uiContains(listSlot.x(), listSlot.y(), listSlot.width(), listSlot.height(), uiMouseX, uiMouseY)) {
+        if (!collapsed && button == InputConstants.MOUSE_BUTTON_LEFT && uiContains(listSlot.x(), listSlot.y(), listSlot.width(), listSlot.height(), uiMouseX, uiMouseY)) {
             if (listViewport != null && listViewport.mouseClicked(uiMouseX, uiMouseY, button)) {
                 return true;
             }
         }
 
-        if (!collapsed && button == 0 && uiContains(listSlot.x(), listSlot.y(), listSlot.width(), listSlot.height(), uiMouseX, uiMouseY)) {
+        if (!collapsed && button == InputConstants.MOUSE_BUTTON_LEFT && uiContains(listSlot.x(), listSlot.y(), listSlot.width(), listSlot.height(), uiMouseX, uiMouseY)) {
             int index = (int) ((uiMouseY - listSlot.y() + listViewport.getScrollOffset()) / rowHeight());
             if (index >= 0 && index < filteredPackets.size()) {
                 Class<? extends Packet<?>> selectedPacket = filteredPackets.get(index);
@@ -449,7 +449,7 @@ public class DihPacketSelectorOverlay extends DihOverlayBase {
         float uiMouseX = viewport.toUiX(mouseX);
         float uiMouseY = viewport.toUiY(mouseY);
 
-        if (button == 0 && dragging) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && dragging) {
             boolean moved = dragMoved
                 || Math.abs(uiMouseX - pressStartUiX) >= HEADER_CLICK_DRAG_THRESHOLD
                 || Math.abs(uiMouseY - pressStartUiY) >= HEADER_CLICK_DRAG_THRESHOLD
@@ -463,7 +463,7 @@ public class DihPacketSelectorOverlay extends DihOverlayBase {
             return true;
         }
 
-        if (button == 0 && listViewport != null) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && listViewport != null) {
             listViewport.mouseReleased();
         }
 
@@ -480,7 +480,7 @@ public class DihPacketSelectorOverlay extends DihOverlayBase {
         float uiMouseX = viewport.toUiX(mouseX);
         float uiMouseY = viewport.toUiY(mouseY);
 
-        if (dragging && button == 0) {
+        if (dragging && button == InputConstants.MOUSE_BUTTON_LEFT) {
             int nextX = Math.round(uiMouseX - dragOffsetX);
             int nextY = Math.round(uiMouseY - dragOffsetY);
             if (nextX != panelX || nextY != panelY) dragMoved = true;

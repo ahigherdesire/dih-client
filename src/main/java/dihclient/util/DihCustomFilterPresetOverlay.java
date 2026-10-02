@@ -438,7 +438,7 @@ public class DihCustomFilterPresetOverlay extends DihOverlayBase {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!visible) return false;
 
-        if (button == 0 && mouseX >= panelX && mouseX < panelX + panelWidth && mouseY >= panelY && mouseY < panelY + HEADER_HEIGHT) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && mouseX >= panelX && mouseX < panelX + panelWidth && mouseY >= panelY && mouseY < panelY + HEADER_HEIGHT) {
             DihWindowLayout bounds = getBounds();
             if (isOverCloseButton(mouseX, mouseY, bounds)) {
                 setVisible(false);
@@ -453,7 +453,7 @@ public class DihCustomFilterPresetOverlay extends DihOverlayBase {
 
         if (collapsed) return false;
 
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             CompactScrollbar.Metrics scrollbar = presetListState.scrollbarMetrics;
             if (scrollbar != null && scrollbar.hasScroll() && scrollbar.contains(mouseX, mouseY)) {
                 presetScrollbarDragging = true;
@@ -467,7 +467,7 @@ public class DihCustomFilterPresetOverlay extends DihOverlayBase {
             return true;
         }
 
-        if (button == 0 && presetListState.contains(mouseX, mouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && presetListState.contains(mouseX, mouseY)) {
             PresetRow row = presetListState.getRowAt(mouseY);
             if (row != null && row.entry != null) {
                 selectedPresetName = row.entry.name();
@@ -478,7 +478,7 @@ public class DihCustomFilterPresetOverlay extends DihOverlayBase {
         }
 
         clearFocus();
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (ActionButton actionButton : buttons) {
                 if (actionButton.contains(mouseX, mouseY)) {
                     if (!actionButton.enabled()) {
@@ -505,11 +505,11 @@ public class DihCustomFilterPresetOverlay extends DihOverlayBase {
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (nameField.mouseReleased(inputContext(mouseX, mouseY), (float) mouseX, (float) mouseY, button)) return true;
-        if (button == 0 && presetScrollbarDragging) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && presetScrollbarDragging) {
             presetScrollbarDragging = false;
             return true;
         }
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             if (dragging) saveLayout();
             dragging = false;
         }
@@ -523,7 +523,7 @@ public class DihCustomFilterPresetOverlay extends DihOverlayBase {
             presetListState.scroll.setFromThumbStepped(presetListState.scrollbarMetrics, mouseY, presetScrollbarGrabOffset, presetRowStep());
             return true;
         }
-        if (dragging && button == 0) {
+        if (dragging && button == InputConstants.MOUSE_BUTTON_LEFT) {
             DihWindowLayout nextBounds = clampToScreen(this,
                 new DihWindowLayout((int) (mouseX - dragOffsetX), (int) (mouseY - dragOffsetY),
                     panelWidth, panelHeight, visible, collapsed));

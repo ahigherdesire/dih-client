@@ -231,7 +231,7 @@ public class DihWaypointsScreen extends DihScreen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         int mx = DihUiScale.toVirtualInt(event.x());
         int my = DihUiScale.toVirtualInt(event.y());
-        if (event.button() != 0) return true;
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) return true;
 
         DihChatField focused = focusedName == null ? null : rowFields.get(focusedName);
         if (focused != null && !contains(focused, mx, my)) commitRename();

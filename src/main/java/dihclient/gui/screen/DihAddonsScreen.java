@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.util.DihLinks;
 import dihclient.addons.AddonManager;
 import dihclient.addons.AddonManager.AddonLoadStatus;
@@ -257,7 +258,7 @@ public final class DihAddonsScreen extends DihScreen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         MouseButtonEvent virtual = virtualEvent(event);
-        if (virtual.button() != 0) return super.mouseClicked(virtual, doubleClick);
+        if (virtual.button() != InputConstants.MOUSE_BUTTON_LEFT) return super.mouseClicked(virtual, doubleClick);
         for (CompactOverlayButton button : buttons) {
             if (CompactOverlayButton.fireIfHit(button, virtual.x(), virtual.y(), virtual.button())) return true;
         }

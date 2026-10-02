@@ -162,7 +162,7 @@ public class DihChatField {
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button != 0) return false;
+        if (button != InputConstants.MOUSE_BUTTON_LEFT) return false;
         syncBounds();
         if (!contains(mouseX, mouseY)) {
             field.setFocused(false);

@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.modules.FreeLookModule;
 import dihclient.modules.ModuleRegistry;
 import dihclient.util.DihCpsTracker;
@@ -61,8 +62,8 @@ public abstract class DihMouseHandlerMixin {
         if (action != com.mojang.blaze3d.platform.InputConstants.PRESS || button == null) return;
         if (minecraft == null || minecraft.gui.screen() != null) return;
         int b = button.button();
-        if (b == 0) DihCpsTracker.recordLeft();
-        else if (b == 1) DihCpsTracker.recordRight();
+        if (b == InputConstants.MOUSE_BUTTON_LEFT) DihCpsTracker.recordLeft();
+        else if (b == InputConstants.MOUSE_BUTTON_RIGHT) DihCpsTracker.recordRight();
     }
 
     @Inject(method = "onScroll", at = @At("HEAD"), cancellable = true)

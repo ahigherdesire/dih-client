@@ -1,5 +1,6 @@
 package dihclient.gui.vanillaui.components;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContexts;
 import net.minecraft.client.gui.Font;
@@ -31,7 +32,7 @@ public final class ScreenButton {
     }
 
     public boolean click(double mouseX, double mouseY, int mouseButton) {
-        if (!active || mouseButton != 0 || !bounds.contains((int) mouseX, (int) mouseY)) return false;
+        if (!active || mouseButton != InputConstants.MOUSE_BUTTON_LEFT || !bounds.contains((int) mouseX, (int) mouseY)) return false;
         if (action != null) action.run();
         return true;
     }

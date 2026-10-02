@@ -460,19 +460,19 @@ public final class DihMultiGuiOverlay extends DihOverlayBase {
             setVisible(false);
             return true;
         }
-        if (button == 0 && scrollbarMetrics().overThumb(mouseX, mouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && scrollbarMetrics().overThumb(mouseX, mouseY)) {
             scrollbarDragging = true;
             scrollbarGrab = (int) Math.round(mouseY) - scrollbarMetrics().thumbY();
             return true;
         }
-        if (button == 0 && isOverDragBar(mouseX, mouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverDragBar(mouseX, mouseY)) {
             dragging = true;
             dragOffsetX = mouseX - panelX;
             dragOffsetY = mouseY - panelY;
             return true;
         }
         if (collapsed) return false;
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (ActionHit action : actions) {
                 if (action.hit(mouseX, mouseY)) {
                     action.callback().run();
@@ -482,7 +482,7 @@ public final class DihMultiGuiOverlay extends DihOverlayBase {
         }
         boolean insideGrid = mouseX >= gridX && mouseX < gridX + gridWidth
             && mouseY >= gridY && mouseY < gridY + gridHeight;
-        if (insideGrid && button == 0) {
+        if (insideGrid && button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (MultiMenuRenderer.MenuHit hit : widgetHits) {
                 if (mouseX < hit.x() || mouseX >= hit.x() + hit.w() || mouseY < hit.y() || mouseY >= hit.y() + hit.h()) continue;
                 dispatchWidget(hit.action());
@@ -492,7 +492,7 @@ public final class DihMultiGuiOverlay extends DihOverlayBase {
         if (insideGrid) {
             for (SlotHit slot : slotHits) {
                 if (!slot.hit(mouseX, mouseY)) continue;
-                if (button == 1 && ctrlDown() && shiftDown()) {
+                if (button == InputConstants.MOUSE_BUTTON_RIGHT && ctrlDown() && shiftDown()) {
                     if (!slot.stack().isEmpty()) openNbt(slot.stack(), (int) mouseX, (int) mouseY);
                     return true;
                 }

@@ -687,7 +687,7 @@ public class DihProxiesScreen extends DihScreen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         MouseButtonEvent virtualEvent = virtualEvent(event);
         if (importChooserOpen) {
-            if (virtualEvent.button() == 0) {
+            if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT) {
                 ensureImportChooserButtons();
                 positionImportChooserButtons(importChooserRects());
                 if (CompactOverlayButton.fireIfHit(importFileButton, virtualEvent.x(), virtualEvent.y(), virtualEvent.button())) return true;
@@ -697,7 +697,7 @@ public class DihProxiesScreen extends DihScreen {
             }
             return true;
         }
-        if (virtualEvent.button() != 0) return super.mouseClicked(virtualEvent, doubleClick);
+        if (virtualEvent.button() != InputConstants.MOUSE_BUTTON_LEFT) return super.mouseClicked(virtualEvent, doubleClick);
         if (compactLayout()) return super.mouseClicked(virtualEvent, doubleClick);
         CompactScrollbar.Metrics scrollbar = proxyScrollbarMetrics(displayProxies().size());
         if (scrollbar.hasScroll() && scrollbar.contains(virtualEvent.x(), virtualEvent.y())) {

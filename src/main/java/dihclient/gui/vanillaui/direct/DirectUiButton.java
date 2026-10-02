@@ -1,5 +1,6 @@
 package dihclient.gui.vanillaui.direct;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.components.*;
 
 import dihclient.gui.vanillaui.UiBounds;
@@ -305,7 +306,7 @@ public class DirectUiButton extends DirectUiNode {
 
     @Override
     public boolean mouseClicked(DirectRenderContext context, float mouseX, float mouseY, int button) {
-        if (!enabled || !contains(mouseX, mouseY) || button != 0) return false;
+        if (!enabled || !contains(mouseX, mouseY) || button != InputConstants.MOUSE_BUTTON_LEFT) return false;
         if (onPress != null) onPress.run();
         return true;
     }

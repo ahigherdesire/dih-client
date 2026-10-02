@@ -511,7 +511,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
             return;
         }
 
-        if (button == 1 && hoveredSlot != null && click.hasControlDown() && click.hasShiftDown()) {
+        if (button == InputConstants.MOUSE_BUTTON_RIGHT && hoveredSlot != null && click.hasControlDown() && click.hasShiftDown()) {
             net.minecraft.world.item.ItemStack stack = hoveredSlot.getItem();
             if (!stack.isEmpty()) {
                 if (itemNbtInspectOverlay == null) {
@@ -524,7 +524,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
             }
         }
 
-        if (button == 1 && hoveredSlot != null) {
+        if (button == InputConstants.MOUSE_BUTTON_RIGHT && hoveredSlot != null) {
             net.minecraft.world.item.ItemStack captureStack = hoveredSlot.getItem();
             String captureItemName   = captureStack.isEmpty() ? "" : captureStack.getHoverName().getString();
             String captureRegistryId = captureStack.isEmpty() ? "" :
@@ -566,7 +566,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
             }
         }
 
-        if (fabricatorOverlay != null && fabricatorOverlay.isVisible() && button == 1 && hoveredSlot != null) {
+        if (fabricatorOverlay != null && fabricatorOverlay.isVisible() && button == InputConstants.MOUSE_BUTTON_RIGHT && hoveredSlot != null) {
             fabricatorOverlay.onSlotClick(hoveredSlot, button);
             cir.setReturnValue(true);
         }

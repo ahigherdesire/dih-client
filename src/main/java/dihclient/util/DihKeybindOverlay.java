@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.direct.DirectUiLabel;
 import dihclient.gui.vanillaui.direct.DirectUiNode;
 import dihclient.gui.vanillaui.direct.DirectUiButton;
@@ -330,7 +331,7 @@ public class DihKeybindOverlay extends DihOverlayBase {
             return true;
         }
 
-        if (button == 0 && isOverDragBarUi(uiMouseX, uiMouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverDragBarUi(uiMouseX, uiMouseY)) {
             dragging = true;
             dragMoved = false;
             dragOffsetX = uiMouseX - panelX;
@@ -745,7 +746,7 @@ public class DihKeybindOverlay extends DihOverlayBase {
 
         @Override
         public boolean mouseClicked(DirectRenderContext context, float mouseX, float mouseY, int button) {
-            if (!enabled || !contains(mouseX, mouseY) || button != 0) return false;
+            if (!enabled || !contains(mouseX, mouseY) || button != InputConstants.MOUSE_BUTTON_LEFT) return false;
             if (onPress != null) onPress.run();
             return true;
         }
@@ -816,8 +817,8 @@ public class DihKeybindOverlay extends DihOverlayBase {
 
         @Override
         public boolean mouseClicked(DirectRenderContext context, float mouseX, float mouseY, int button) {
-            if ((button == 0 || button == 1) && scaleButton.contains(mouseX, mouseY)) {
-                step.accept(button == 0);
+            if ((button == InputConstants.MOUSE_BUTTON_LEFT || button == InputConstants.MOUSE_BUTTON_RIGHT) && scaleButton.contains(mouseX, mouseY)) {
+                step.accept(button == InputConstants.MOUSE_BUTTON_LEFT);
                 surface.invalidateLayout();
                 return true;
             }
@@ -866,7 +867,7 @@ public class DihKeybindOverlay extends DihOverlayBase {
 
         @Override
         public boolean mouseClicked(DirectRenderContext context, float mouseX, float mouseY, int button) {
-            if (button != 0 || !controlBounds.contains(Math.round(mouseX), Math.round(mouseY))) return false;
+            if (button != InputConstants.MOUSE_BUTTON_LEFT || !controlBounds.contains(Math.round(mouseX), Math.round(mouseY))) return false;
             prefixDropdown = new Dropdown(controlBounds, DihCompatManager.COMMAND_PREFIX_CHOICES,
                 DihCompatManager.effectiveCommandPrefix(), DihKeybindOverlay.this::selectCommandPrefix);
             prefixDropdown.open();
