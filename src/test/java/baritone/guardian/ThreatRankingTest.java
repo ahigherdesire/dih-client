@@ -112,8 +112,22 @@ final class ThreatRankingTest {
         assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response());
         s.mobs.set(0, creeper(1, 3, true));
         assertEquals(Response.BACK_OFF, ThreatRanking.decide(s.build(), CONFIG).response());
-        s.mobs.set(0, creeper(1, 6, true));
-        assertNull(ThreatRanking.decide(s.build(), CONFIG), "a creeper beyond 4 blocks can't hurt yet");
+        s.mobs.set(0, creeper(1, 6, false));
+        assertNull(ThreatRanking.decide(s.build(), CONFIG), "a quiet creeper beyond 4 blocks can't hurt yet");
+        s.mobs.set(0, creeper(1, 8, true));
+        assertNull(ThreatRanking.decide(s.build(), CONFIG), "a fuse stops beyond 7 blocks");
+    }
+
+    @Test
+    void aHissingCreeperIsBackedOffPastItsFuseRangeNotJustFourBlocks() {
+        // From BeatHome seed 8675309: backing off to just past 4 blocks dropped the creeper, the skeleton beside it was
+        // fought, the player stepped back in, and so on, tick by tick, until it blew.
+        S s = new S();
+        s.mobs.add(aimingSkeleton(1, 5));
+        s.mobs.add(creeper(2, 5, true));
+        Decision d = ThreatRanking.decide(s.build(), CONFIG);
+        assertEquals(Kind.CREEPER, d.threat().kind());
+        assertEquals(Response.BACK_OFF, d.response());
     }
 
     @Test
@@ -308,6 +322,21 @@ final class ThreatRankingTest {
         assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "a zombie can't reach into one");
     }
 
+    /**
+     * From a pearls game-test death: hurt among provoked endermen, it backed off from ones 1 and 2 blocks away, and they
+     * teleported after it and hit it from behind. It fights an enderman that is after it; a zombie is still outrun.
+     */
+    @Test
+    void hurtByAnEndermanFightsRatherThanRetreating() {
+        S s = new S();
+        s.health = 8;
+        s.canEat = true;
+        s.mobs.add(new Mob(1, "minecraft:enderman", 2, 2, true, true, false, false));
+        assertEquals(Response.FIGHT, ThreatRanking.decide(s.build(), CONFIG).response());
+        s.mobs.set(0, new Mob(1, "minecraft:zombie", 2, 2, true, false, false, false));
+        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response());
+    }
+
     /** Handed back out of a pit with nothing to heal with, digging a new one only hands it back again. */
     @Test
     void hurtWithNoWayToHealDoesNotDigInByDay() {
@@ -329,6 +358,21 @@ final class ThreatRankingTest {
         s.daylight = true;
         s.canRegen = true;
         assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "a pit to heal in");
+    }
+
+    /**
+     * From a BeatHome death: hurt, with a zombie about 3 blocks off, it switched between retreating and digging in as the
+     * gap went either side of 3, and the zombie reached the half-dug pit. Within 3.5 it keeps retreating.
+     */
+    @Test
+    void aZombieThreeBlocksOffIsOutrunNotDugInFrom() {
+        S s = new S();
+        s.canShelter = true;
+        s.health = CONFIG.fleeHealth();
+        s.mobs.add(zombie(1, 3.4));
+        assertEquals(Response.RETREAT, ThreatRanking.decide(s.build(), CONFIG).response());
+        s.mobs.set(0, zombie(1, 4));
+        assertEquals(Response.SHELTER, ThreatRanking.decide(s.build(), CONFIG).response(), "a lead to dig in with");
     }
 
     /** From a game-test death: a zombie dropped down the shaft while it was dug, and the seal shut it in with us. */

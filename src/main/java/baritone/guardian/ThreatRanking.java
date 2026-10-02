@@ -64,6 +64,11 @@ public final class ThreatRanking {
     }
 
     public static final double CREEPER_RADIUS = 4;
+    /**
+     * A hissing creeper counts this far out: its fuse burns on until the player is more than 7 blocks away, and the
+     * blast reaches about 6. Dropping it at {@link #CREEPER_RADIUS} turns the player back toward it mid-fuse.
+     */
+    public static final double SWELLING_CREEPER_RADIUS = 7;
     public static final double HOSTILE_RADIUS = 8;
     /** A mob that shoots counts once it is aiming this close (a skeleton's bow reaches about 15 blocks). */
     public static final double RANGED_RADIUS = 16;
@@ -82,8 +87,11 @@ public final class ThreatRanking {
     public static final int CROWD_HEALTH_MARGIN = 4;
     /** Stay sheltered until health is back to at least this (half-hearts). */
     public static final int RECOVERED_HEALTH = 16;
-    /** Start a pit only while every attacker is further than this: hits knock the player off the column. */
-    public static final double SHELTER_CLEARANCE = 3;
+    /**
+     * Start a pit only while every attacker is further than this: hits knock the player off the column, and one that
+     * reaches the pit before it is deep hits down into it. Closer, a retreat (a sprint outruns a zombie) opens the gap.
+     */
+    public static final double SHELTER_CLEARANCE = 3.5;
     /** Boxed in, sealed or digging, a mob this close is in the pit with the player (it dropped down the shaft). */
     public static final double IN_PIT_RADIUS = 1.5;
 
@@ -111,6 +119,8 @@ public final class ThreatRanking {
      * counts as aggressive.
      */
     static final java.util.Set<String> FIRES_ON_SIGHT = java.util.Set.of("minecraft:blaze");
+    /** Mobs that teleport after the player: there is no outrunning them. */
+    static final java.util.Set<String> TELEPORTS = java.util.Set.of("minecraft:enderman");
 
     /**
      * Everything the ranking looks at, as plain values.
@@ -167,7 +177,8 @@ public final class ThreatRanking {
             out.add(new Threat(Kind.FALLING, -1, "a " + Math.round(s.predictedFall()) + "-block fall", s.predictedFall()));
         for (Mob mob : s.mobs()) {
             if (mob.creeper()) {
-                if (mob.distance() <= CREEPER_RADIUS) out.add(new Threat(Kind.CREEPER, mob.id(), mob.type(), mob.distance()));
+                double radius = mob.swelling() ? SWELLING_CREEPER_RADIUS : CREEPER_RADIUS;
+                if (mob.distance() <= radius) out.add(new Threat(Kind.CREEPER, mob.id(), mob.type(), mob.distance()));
             } else if (hostile(mob) || lurking(mob, s) || closingIn(mob, s, c)) {
                 out.add(new Threat(Kind.HOSTILE, mob.id(), mob.type(), mob.distance()));
             }
@@ -271,6 +282,8 @@ public final class ThreatRanking {
                     if (!s.inCover() && s.coverNearby()) yield Response.COVER;
                     yield Response.FIGHT;
                 }
+                // An enderman teleports to whoever it is after: walking off only takes its hits in the back.
+                if (attacker != null && TELEPORTS.contains(attacker.type())) yield Response.FIGHT;
                 yield Response.RETREAT;
             }
             case PROJECTILE -> s.hasShield() ? Response.SHIELD : null;
