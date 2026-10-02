@@ -75,4 +75,13 @@ final class HealthPolicyTest {
         assertEquals("1 heart", HealthPolicy.hearts(2));
         assertEquals("0.5 hearts", HealthPolicy.hearts(1.2F));
     }
+
+    /** From a blaze-rod death: walked back into a spawner at 5 hearts, straight after backing out of it to heal. */
+    @Test
+    void restsBeforeADangerousFightWhileHurtAndHealing() {
+        assertTrue(HealthPolicy.restBeforeFight(10, 18, false), "regenerating: wait for it");
+        assertTrue(HealthPolicy.restBeforeFight(10, 12, true), "food held: eat and wait");
+        assertFalse(HealthPolicy.restBeforeFight(10, 12, false), "nothing to heal with: waiting gets nothing back");
+        assertFalse(HealthPolicy.restBeforeFight(HealthPolicy.FIGHT_READY_HEALTH, 18, true), "healed enough");
+    }
 }

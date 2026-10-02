@@ -18,6 +18,9 @@ public final class HealthPolicy {
     /** At or below this, harmful food (rotten flesh, ...) is allowed when nothing else is held. */
     public static final int STARVING_FOOD = 3;
 
+    /** Before a dangerous fight (a blaze spawner), rest until health is back to at least this. */
+    public static final int FIGHT_READY_HEALTH = 16;
+
     public enum Need {
         /** Nothing to do. */
         NONE,
@@ -57,6 +60,14 @@ public final class HealthPolicy {
     public static boolean wantsFood(float health, int food, int healHealth, boolean safeFoodHeld) {
         if (safeFoodHeld || health <= 0) return false;
         return health <= healHealth || food <= HUNGRY_FOOD;
+    }
+
+    /**
+     * Whether to wait before a dangerous fight: hurt below {@link #FIGHT_READY_HEALTH} and health is coming back
+     * (a food bar high enough to regenerate, or food held to eat).
+     */
+    public static boolean restBeforeFight(float health, int food, boolean foodHeld) {
+        return health > 0 && health < FIGHT_READY_HEALTH && (food >= REGEN_FOOD || foodHeld);
     }
 
     /** Food points worth getting on a detour: the missing points plus a spare meal, between 10 and 20. */

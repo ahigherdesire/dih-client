@@ -205,7 +205,55 @@ public final class DihSharedState {
     public int getMacroEditorPanelY() { return macroEditorPanelY; }
     public void setMacroEditorPanelY(int y) { this.macroEditorPanelY = y; }
 
+    private final java.util.Set<String> pinnedWindows = new java.util.HashSet<>();
+    private boolean windowLayoutsLoaded;
+
+    /** Loads the layouts saved in the config the first time any window asks for one. */
+    private void ensureWindowLayoutsLoaded() {
+        if (windowLayoutsLoaded) return;
+        windowLayoutsLoaded = true;
+        try {
+            java.util.Set<String> pinned = new java.util.HashSet<>();
+            for (Map.Entry<String, DihWindowLayout> entry : DihWindowLayoutStore.read(DihConfig.getGlobal(), pinned).entrySet()) {
+                windowLayouts.putIfAbsent(entry.getKey(), entry.getValue());
+            }
+            pinnedWindows.addAll(pinned);
+        } catch (Throwable t) {
+            dihclient.DihClientAddon.LOG.warn("[Overlay] could not load saved window layouts", t);
+        }
+    }
+
+    private void persistWindowLayout(String id) {
+        DihWindowLayout layout = windowLayouts.get(id);
+        if (layout == null) return;
+        try {
+            DihConfig config = DihConfig.getGlobal();
+            if (DihWindowLayoutStore.write(config, id, layout, pinnedWindows.contains(id))) config.save();
+        } catch (Throwable t) {
+            dihclient.DihClientAddon.LOG.warn("[Overlay] could not save the layout of {}", id, t);
+        }
+    }
+
+    public synchronized boolean isWindowPinned(String id) {
+        if (id == null || id.isEmpty()) return false;
+        ensureWindowLayoutsLoaded();
+        return pinnedWindows.contains(id);
+    }
+
+    public synchronized java.util.Set<String> pinnedWindowIds() {
+        ensureWindowLayoutsLoaded();
+        return new java.util.HashSet<>(pinnedWindows);
+    }
+
+    public synchronized void setWindowPinned(String id, boolean pinned) {
+        if (id == null || id.isEmpty()) return;
+        ensureWindowLayoutsLoaded();
+        boolean changed = pinned ? pinnedWindows.add(id) : pinnedWindows.remove(id);
+        if (changed) persistWindowLayout(id);
+    }
+
     public synchronized DihWindowLayout getWindowLayout(String id) {
+        ensureWindowLayoutsLoaded();
         DihWindowLayout layout = windowLayouts.get(id);
         if (layout == null) return null;
         return new DihWindowLayout(layout.x, layout.y, layout.width, layout.height, layout.visible, layout.collapsed);
@@ -219,7 +267,9 @@ public final class DihSharedState {
             layout = new DihWindowLayout(trueGeometry.x, trueGeometry.y, trueGeometry.width, trueGeometry.height,
                 layout.visible, layout.collapsed);
         }
+        ensureWindowLayoutsLoaded();
         windowLayouts.put(id, new DihWindowLayout(layout.x, layout.y, layout.width, layout.height, layout.visible, layout.collapsed));
+        persistWindowLayout(id);
     }
 
     public synchronized List<String> getOverlayOrder() {

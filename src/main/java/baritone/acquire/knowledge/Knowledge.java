@@ -1,5 +1,6 @@
 package baritone.acquire.knowledge;
 
+import baritone.acquire.model.Location;
 import baritone.acquire.model.Source;
 
 import java.util.List;
@@ -38,4 +39,17 @@ public interface Knowledge {
 
     /** Up to {@code limit} item ids that look like {@code userText}, best first, for "did you mean". */
     List<String> suggest(String userText, int limit);
+
+    /**
+     * Where a mine or kill source is: a dimension, a site inside one (a fortress), or null for anywhere (endermen).
+     * Crafting and smelting happen wherever the player is.
+     */
+    default Location locationOf(Source source) {
+        return Location.OVERWORLD;
+    }
+
+    /** Every known source of every item, for reverse lookups: what an item is used in, what a mob drops. */
+    default List<Source> allSources() {
+        return List.of();
+    }
 }

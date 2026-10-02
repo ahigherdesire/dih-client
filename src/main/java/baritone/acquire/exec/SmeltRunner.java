@@ -19,7 +19,8 @@ import java.util.Optional;
  * {@link Step.Smelt}: walk to the nearest usable furnace (or blast furnace / smoker), open it, put the
  * input in slot 0 and the fuel in slot 1, and stand by with the screen open, taking the output from
  * slot 2 as it comes. The screen closes when the input is used up or the count is reached. A furnace
- * busy with something else is skipped for the rest of the run.
+ * busy with something else is skipped for the rest of the run. For a smelt split across furnaces, {@link
+ * SplitSmeltRunner} runs one per furnace, first to load its share and then to collect it.
  *
  * <p>Slot layout of {@link AbstractFurnaceMenu} in 26.2: 0 ingredient, 1 fuel, 2 result, then the
  * player inventory. The runner finds inventory slots by container rather than by index.
@@ -27,6 +28,9 @@ import java.util.Optional;
 final class SmeltRunner extends RunnerBase {
 
     private enum State { FIND, WALK, OPEN, AWAIT_MENU, LOAD, COOK }
+
+    /** The whole smelt at the nearest furnace; or at a given one, only loading its share, or only collecting it. */
+    enum Mode { WHOLE, LOAD, COLLECT }
 
     private static final int INPUT = AbstractFurnaceMenu.INGREDIENT_SLOT;
     private static final int FUEL = AbstractFurnaceMenu.FUEL_SLOT;
@@ -38,6 +42,9 @@ final class SmeltRunner extends RunnerBase {
 
     private final Step.Smelt step;
     private final Block block;
+    private final Mode mode;
+    private final int times;
+    private final int fuelCount;
     private State state = State.FIND;
     private BlockPos furnace;
     private int ticks;
@@ -48,9 +55,19 @@ final class SmeltRunner extends RunnerBase {
     private int stall;
 
     SmeltRunner(ExecContext x, Step.Smelt step) {
+        this(x, step, Mode.WHOLE, null, step.times(), step.fuelCount());
+    }
+
+    /** One furnace's part of a split smelt: {@code times} of the input and {@code fuelCount} of the fuel, at {@code furnace}. */
+    SmeltRunner(ExecContext x, Step.Smelt step, Mode mode, BlockPos furnace, int times, int fuelCount) {
         super(x);
         this.step = step;
         this.block = StationFinder.block(step.recipe().station());
+        this.mode = mode;
+        this.furnace = furnace;
+        this.times = times;
+        this.fuelCount = fuelCount;
+        this.loaded = mode == Mode.COLLECT;
     }
 
     @Override
@@ -63,6 +80,11 @@ final class SmeltRunner extends RunnerBase {
         for (int guard = 0; guard < 5; guard++) {
             switch (state) {
                 case FIND -> {
+                    if (mode != Mode.WHOLE) {
+                        if (!ctx.world().getBlockState(furnace).is(block)) return Result.failed("the furnace at " + furnace.toShortString() + " is gone");
+                        state = State.WALK;
+                        continue;
+                    }
                     if (!loaded && x.have(step.input()) <= 0) return Result.failed("no " + Step.shortId(step.input()) + " to smelt");
                     List<BlockPos> found = x.stations.find(step.recipe().station(), x.stationRadius());
                     if (found.isEmpty()) return Result.failed("no " + Step.shortId(step.recipe().station()) + " within " + x.stationRadius() + " blocks");
@@ -81,6 +103,7 @@ final class SmeltRunner extends RunnerBase {
                         continue;
                     }
                     if (walking.kind() == Result.Kind.FAILED) {
+                        if (mode != Mode.WHOLE) return Result.failed("no way to the furnace at " + furnace.toShortString());
                         x.stations.markUnusable(furnace);
                         state = State.FIND;
                         return Result.pause();
@@ -93,6 +116,7 @@ final class SmeltRunner extends RunnerBase {
                     Optional<BlockHitResult> hit = aim(furnace);
                     if (++ticks < 3 || hit.isEmpty()) {
                         if (ticks > 20) {
+                            if (mode != Mode.WHOLE) return Result.failed("no clear look at the furnace at " + furnace.toShortString());
                             // Never got a clean look at it: try another furnace.
                             x.stations.markUnusable(furnace);
                             state = loaded ? State.WALK : State.FIND;
@@ -132,6 +156,10 @@ final class SmeltRunner extends RunnerBase {
                     Result busy = load(menu);
                     if (busy != null) return busy;
                     loaded = true;
+                    if (mode == Mode.LOAD) {
+                        closeOurs();
+                        return Result.done();
+                    }
                     state = State.COOK;
                     stall = 0;
                     return Result.pause();
@@ -166,7 +194,7 @@ final class SmeltRunner extends RunnerBase {
         return Result.pause();
     }
 
-    /** Takes old output, then tops slot 0 up to {@code times} of the input and slot 1 up to {@code fuelCount} of the fuel. */
+    /** Takes old output, then tops slot 0 up to {@link #times} of the input and slot 1 up to {@link #fuelCount} of the fuel. */
     private Result load(AbstractFurnaceMenu menu) {
         if (!menu.getSlot(RESULT).getItem().isEmpty()) InventoryOps.quickMove(ctx, menu.containerId, RESULT);
         Item inputItem = InventoryReader.itemOf(step.input());
@@ -177,13 +205,18 @@ final class SmeltRunner extends RunnerBase {
             closeOurs();
             return Result.failed("the furnace at " + furnace.toShortString() + " is busy with " + InventoryReader.idOf(in));
         }
-        fill(menu, inputItem, INPUT, step.times() - in.getCount(), in);
+        fill(menu, inputItem, INPUT, times - in.getCount(), in);
 
         Item fuelItem = InventoryReader.itemOf(step.fuel());
         ItemStack fuel = menu.getSlot(FUEL).getItem();
-        // A different fuel already in the slot stays; the furnace burns it and the stall check catches a shortfall.
-        if (step.fuelCount() > 0 && fuelItem != null && (fuel.isEmpty() || fuel.is(fuelItem))) {
-            fill(menu, fuelItem, FUEL, step.fuelCount() - fuel.getCount(), fuel);
+        // A different fuel left from an earlier smelt (a stick the last one didn't need) would keep the planned fuel
+        // out and burn short: take it back first. If the inventory has no room it stays, and the stall check catches it.
+        if (fuelCount > 0 && fuelItem != null && !fuel.isEmpty() && !fuel.is(fuelItem)) {
+            InventoryOps.quickMove(ctx, menu.containerId, FUEL);
+            fuel = menu.getSlot(FUEL).getItem();
+        }
+        if (fuelCount > 0 && fuelItem != null && (fuel.isEmpty() || fuel.is(fuelItem))) {
+            fill(menu, fuelItem, FUEL, fuelCount - fuel.getCount(), fuel);
         }
         return null;
     }

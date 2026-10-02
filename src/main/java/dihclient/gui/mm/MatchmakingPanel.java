@@ -755,11 +755,13 @@ public final class MatchmakingPanel {
         if (sharePicker == null) sharePicker = new DihSharePickerOverlay(font);
         sharePicker.open("Share Macro", "Search macros...", filter -> {
             List<DihSharePickerOverlay.Row> out = new ArrayList<>();
-            String f = filter.toLowerCase(Locale.ROOT);
-            for (DihMacro m : DihMacroManager.get().getAll()) {
-                if (!f.isEmpty() && !m.name.toLowerCase(Locale.ROOT).contains(f)) continue;
-                DihMacro macro = m;
-                out.add(DihSharePickerOverlay.Row.item(m.name, m.actions.size() + " steps", () -> shareMacro(macro)));
+            for (dihclient.util.MacroFolderView.Row row : dihclient.util.MacroFolderView.build(DihMacroManager.get().getAll(), filter, java.util.Set.of())) {
+                if (row instanceof dihclient.util.MacroFolderView.FolderRow folder) {
+                    out.add(DihSharePickerOverlay.Row.header(folder.folder()));
+                } else if (row instanceof dihclient.util.MacroFolderView.MacroRow entry) {
+                    DihMacro macro = entry.macro();
+                    out.add(DihSharePickerOverlay.Row.item(macro.name, macro.actions.size() + " steps", () -> shareMacro(macro)));
+                }
             }
             return out;
         });

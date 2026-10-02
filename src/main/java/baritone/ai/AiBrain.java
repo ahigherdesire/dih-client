@@ -19,9 +19,17 @@ package baritone.ai;
 
 import baritone.Baritone;
 import baritone.acquire.AcquireControl;
-import baritone.api.command.ICommand;
+import baritone.acquire.knowledge.VanillaKnowledge;
+import baritone.ai.director.BasicDirector;
+import baritone.ai.director.BasicRules;
+import baritone.ai.director.Director;
+import baritone.ai.director.DirectorLimits;
+import baritone.ai.director.DirectorRunner;
+import baritone.ai.director.LiveDirectorHost;
+import baritone.ai.director.LlmDirector;
+import baritone.ai.tool.ToolRegistry;
+import baritone.ai.tool.ToolSession;
 import baritone.api.utils.Helper;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
@@ -67,8 +75,12 @@ public final class AiBrain implements Helper {
 
     private final Baritone baritone;
     private final AiConfig config;
-    private final AiMemory memory;
+    private final AiMemories memories;
     private final LlmClient llm;
+    /** Requests from the player that came while a turn was running. */
+    private final TurnQueue queue = new TurnQueue(3);
+    /** The {@code .ai start} run, if one was started. */
+    private volatile DirectorRunner run;
     private final AcquireFollowUps followUps = new AcquireFollowUps();
 
     private final ExecutorService worker = Executors.newSingleThreadExecutor(runnable -> {
@@ -89,10 +101,10 @@ public final class AiBrain implements Helper {
     private volatile long lastSpokeAt = 0L;
     private volatile String lastError = null;
 
-    public AiBrain(Baritone baritone, AiConfig config, AiMemory memory) {
+    public AiBrain(Baritone baritone, AiConfig config, AiMemories memories) {
         this.baritone = baritone;
         this.config = config;
-        this.memory = memory;
+        this.memories = memories;
         this.llm = new LlmClient(config);
     }
 
@@ -118,9 +130,77 @@ public final class AiBrain implements Helper {
         this.followUps.reset();
     }
 
-    /** The world was left: whatever acquire the AI owned is gone with it. */
+    /** The world was left: whatever acquire the AI owned is gone with it, and so is a run. */
     public void onWorldUnloaded() {
         this.followUps.reset();
+        this.queue.clear();
+        DirectorRunner current = this.run;
+        if (current != null) current.director().stop("Left the world.");
+    }
+
+    /** A world was joined: its memory becomes the current one. Game thread. */
+    public void onWorldLoaded() {
+        this.memories.setWorld(currentWorldKey());
+    }
+
+    /** The key of the world or server being played, as memories and #beat campaigns are filed under. */
+    public static String currentWorldKey() {
+        Minecraft mc = Minecraft.getInstance();
+        try {
+            if (mc.getSingleplayerServer() != null) {
+                java.nio.file.Path root = mc.getSingleplayerServer().getWorldPath(net.minecraft.world.level.storage.LevelResource.ROOT)
+                        .toAbsolutePath().normalize();
+                return AiMemories.worldKey(root.getFileName().toString(), null);
+            }
+            if (mc.getCurrentServer() != null) {
+                return AiMemories.worldKey(null, mc.getCurrentServer().ip);
+            }
+        } catch (RuntimeException e) {
+            System.err.println("[DIH] could not tell which world this is: " + e);
+        }
+        return AiMemories.GLOBAL;
+    }
+
+    // ── .ai start runs ──────────────────────────────────────────────────────
+
+    /** Starts a run for {@code objective}: the smart director with a key, basic mode without. Returns an error, or null. */
+    public String startRun(String objective) {
+        return startRun(objective, this.config.hasKey() ? this.llm : null);
+    }
+
+    /** Starts a run planned by {@code model}, or in basic mode when it is null. Returns an error, or null. */
+    public synchronized String startRun(String objective, ChatModel model) {
+        DirectorRunner current = this.run;
+        if (current != null && current.isActive()) {
+            return "A run is going (" + current.director().state().objective() + "). Stop it with .ai stop first.";
+        }
+        if (objective == null || objective.isBlank()) return "What should it do? .ai start <objective>";
+        onGameThread(() -> {
+            onWorldLoaded();
+            return null;
+        }, null);
+        LiveDirectorHost host = new LiveDirectorHost(this, this.baritone.getDirectory().resolve("ai_runs"));
+        DirectorLimits limits = DirectorLimits.from(this.config);
+        Director director;
+        if (model != null) {
+            director = new LlmDirector(model, ToolRegistry.standard(), host, limits, this.memories.digest(),
+                    Baritone.settings().acquireHealHealth.value);
+        } else {
+            director = new BasicDirector(new BasicRules(text -> VanillaKnowledge.get().resolveItem(text)), host, limits);
+        }
+        this.run = DirectorRunner.start(director, objective.trim());
+        return null;
+    }
+
+    /** The current or last run's director, or null when there has been none. */
+    public Director director() {
+        DirectorRunner current = this.run;
+        return current == null ? null : current.director();
+    }
+
+    public boolean runActive() {
+        DirectorRunner current = this.run;
+        return current != null && current.isActive();
     }
 
     // ── Input ───────────────────────────────────────────────────────────────
@@ -159,8 +239,18 @@ public final class AiBrain implements Helper {
             logDirect("No API key. Set one with #ai key <key> or the " + AiConfig.KEY_ENV_VAR + " environment variable.", ChatFormatting.RED);
             return;
         }
+        if (origin == Origin.USER && runActive()) {
+            // A run is going: what the player says steers it instead of starting a separate turn.
+            director().onEvent(prompt);
+            logDirect("[ai] Passed to the running objective.", ChatFormatting.GRAY);
+            return;
+        }
         if (!this.thinking.compareAndSet(false, true)) {
-            logDirect("Still thinking about the last thing — ignored: " + prompt, ChatFormatting.GRAY);
+            if (origin == Origin.USER) {
+                String dropped = this.queue.offer(prompt);
+                logDirect("[ai] Busy; queued (" + this.queue.size() + " waiting)"
+                        + (dropped == null ? "." : ", dropping the oldest: " + dropped), ChatFormatting.GRAY);
+            }
             return;
         }
         if (!allowCall()) {
@@ -186,7 +276,10 @@ public final class AiBrain implements Helper {
                 logAsync("AI error: " + t.getMessage(), ChatFormatting.RED);
             } finally {
                 this.thinking.set(false);
-                if (this.followUps.isFollowUpOwed()) {
+                String next = this.queue.poll();
+                if (next != null) {
+                    Minecraft.getInstance().execute(() -> submit(next, Origin.USER));
+                } else if (this.followUps.isFollowUpOwed()) {
                     // An acquire ended while this turn was already past its last tool call.
                     Minecraft.getInstance().execute(this::runOwedFollowUp);
                 }
@@ -275,69 +368,80 @@ public final class AiBrain implements Helper {
             trimTranscript();
         }
 
-        JsonArray tools = AiTools.definitions();
-
         int maxSteps = Math.max(1, this.config.maxSteps);
-        for (int step = 0; step < maxSteps; step++) {
-            if (!this.config.enabled) {
-                logAsync("AI was turned off; stopping mid-turn.", ChatFormatting.GRAY);
-                return;
+        ToolSession session = new ToolSession(ToolRegistry.standard());
+        ToolLoop.End end = ToolLoop.run(this.llm, session, new ToolLoop.Host() {
+            @Override
+            public boolean enabled() {
+                if (!AiBrain.this.config.enabled) {
+                    logAsync("AI was turned off; stopping mid-turn.", ChatFormatting.GRAY);
+                    return false;
+                }
+                return true;
             }
-            JsonArray messages = new JsonArray();
-            messages.add(message("system", systemPrompt()));
-            synchronized (this.transcript) {
-                for (JsonObject entry : this.transcript) {
-                    messages.add(entry);
+
+            @Override
+            public String systemPrompt() {
+                return AiBrain.this.systemPrompt();
+            }
+
+            @Override
+            public List<JsonObject> transcript() {
+                synchronized (AiBrain.this.transcript) {
+                    return new ArrayList<>(AiBrain.this.transcript);
                 }
             }
 
-            LlmClient.Reply reply;
-            try {
-                reply = this.llm.chat(messages, tools);
-            } catch (Exception e) {
-                this.lastError = e.getMessage();
+            @Override
+            public void append(JsonObject message) {
+                synchronized (AiBrain.this.transcript) {
+                    AiBrain.this.transcript.add(message);
+                }
+            }
+
+            @Override
+            public void amend(JsonObject toolResult, String extra) {
+                synchronized (AiBrain.this.transcript) {
+                    toolResult.addProperty("content", toolResult.get("content").getAsString() + "\n\n" + extra);
+                }
+            }
+
+            @Override
+            public String lateEvents() {
+                return AiBrain.this.followUps.drainNotes();
+            }
+
+            @Override
+            public void trim() {
+                synchronized (AiBrain.this.transcript) {
+                    trimTranscript();
+                }
+            }
+
+            @Override
+            public void answer(String text) {
+                speak(text);
+            }
+
+            @Override
+            public void failed(Exception e) {
+                AiBrain.this.lastError = e.getMessage();
                 logAsync("AI request failed: " + e.getMessage(), ChatFormatting.RED);
-                return;
             }
 
-            synchronized (this.transcript) {
-                this.transcript.add(reply.rawMessage);
-            }
-
-            if (!reply.hasToolCalls()) {
-                if (!reply.content.isEmpty()) {
-                    speak(reply.content);
-                }
-                return;
-            }
-
-            JsonObject lastResult = null;
-            for (LlmClient.ToolCall call : reply.toolCalls) {
-                String result = AiTools.execute(this, call);
-                lastResult = toolResult(call.id, result);
-                synchronized (this.transcript) {
-                    this.transcript.add(lastResult);
-                }
-                if (this.config.autonomous || Baritone.settings().chatDebug.value) {
+            @Override
+            public String runTool(LlmClient.ToolCall call, ToolSession run) {
+                String result = AiTools.execute(AiBrain.this, call, run);
+                if (AiBrain.this.config.autonomous || Baritone.settings().chatDebug.value) {
                     logAsync("[ai] " + call.name + " -> " + result, ChatFormatting.DARK_GRAY);
                 }
+                return result;
             }
-            // Acquire events that arrived mid-turn ride along with the last tool result, as long
-            // as the model still has a step left to act on them; otherwise they earn a new turn.
-            if (lastResult != null && step < maxSteps - 1) {
-                String lateEvents = this.followUps.drainNotes();
-                if (!lateEvents.isEmpty()) {
-                    synchronized (this.transcript) {
-                        lastResult.addProperty("content", lastResult.get("content").getAsString() + "\n\n" + lateEvents);
-                    }
-                }
-            }
-            synchronized (this.transcript) {
-                trimTranscript();
-            }
-        }
+        }, maxSteps);
 
-        logAsync("AI hit its " + this.config.maxSteps + "-step limit and stopped.", ChatFormatting.GRAY);
+        if (end == ToolLoop.End.STEP_LIMIT) {
+            logAsync("AI hit its " + this.config.maxSteps + "-step limit and stopped.", ChatFormatting.GRAY);
+        }
     }
 
     private String systemPrompt() {
@@ -364,45 +468,14 @@ public final class AiBrain implements Helper {
         if (this.config.isCommandAllowed("acquire")) {
             sb.append(AiTools.acquireGuide(this.config.followUpsActive())).append('\n');
         }
-        sb.append("Use find to locate the nearest block, mob or player of a kind before going there.\n\n");
+        sb.append("Use find to locate the nearest block, mob or player of a kind before going there.\n");
+        sb.append("More tools: list_tools shows the other categories (combat, mining, crafting, ...) and load_tools ")
+                .append("adds one for the rest of this turn. Prefer a purpose-built tool over run_command.\n\n");
 
-        sb.append("WHAT YOU REMEMBER:\n").append(this.memory.digest()).append("\n\n");
+        sb.append("run_command runs one of the mod's # commands (without the #); load_tools with category \"raw\" gives ")
+                .append("each command as its own tool with its description.\n\n");
 
-        sb.append("AVAILABLE COMMANDS (pass to run_command without the # prefix):\n");
-        sb.append(commandCatalog());
-        return sb.toString();
-    }
-
-    private String commandCatalog() {
-        StringBuilder sb = new StringBuilder();
-        for (ICommand command : this.baritone.getCommandManager().getRegistry().entries) {
-            List<String> names = command.getNames();
-            if (names.isEmpty()) {
-                continue;
-            }
-            String primary = names.get(0);
-            if (!this.config.allowsCommand(primary, names)) {
-                continue;
-            }
-            if (names.contains("acquire")) {
-                sb.append("- acquire: not through run_command; use the acquire and plan_item tools\n");
-                continue;
-            }
-            sb.append("- ").append(primary);
-            if (names.size() > 1) {
-                sb.append(" (aka ").append(String.join(", ", names.subList(1, names.size()))).append(')');
-            }
-            String description;
-            try {
-                description = command.getShortDesc();
-            } catch (Exception e) {
-                description = null;
-            }
-            if (description != null && !description.isEmpty()) {
-                sb.append(": ").append(description);
-            }
-            sb.append('\n');
-        }
+        sb.append("WHAT YOU REMEMBER:\n").append(this.memories.digest());
         return sb.toString();
     }
 
@@ -476,14 +549,31 @@ public final class AiBrain implements Helper {
         return this.config;
     }
 
+    /** This world's memory, where remember writes by default. */
     public AiMemory getMemory() {
-        return this.memory;
+        return this.memories.world();
+    }
+
+    public AiMemories getMemories() {
+        return this.memories;
     }
 
     /** Runs work on the client thread and waits for the answer. Called from the worker. */
     public <T> T onGameThread(Supplier<T> supplier, T fallback) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc == null) {
+            return fallback;
+        }
+        if (mc.isSameThread()) {
+            // Already there (a tool run from a keybind or the game thread): waiting on ourselves would deadlock.
+            try {
+                return supplier.get();
+            } catch (Throwable t) {
+                return fallback;
+            }
+        }
         CompletableFuture<T> future = new CompletableFuture<>();
-        Minecraft.getInstance().execute(() -> {
+        mc.execute(() -> {
             try {
                 future.complete(supplier.get());
             } catch (Throwable t) {
@@ -523,14 +613,14 @@ public final class AiBrain implements Helper {
         }
     }
 
-    static JsonObject message(String role, String content) {
+    public static JsonObject message(String role, String content) {
         JsonObject object = new JsonObject();
         object.addProperty("role", role);
         object.addProperty("content", content);
         return object;
     }
 
-    static JsonObject toolResult(String callId, String content) {
+    public static JsonObject toolResult(String callId, String content) {
         JsonObject object = new JsonObject();
         object.addProperty("role", "tool");
         object.addProperty("tool_call_id", callId);

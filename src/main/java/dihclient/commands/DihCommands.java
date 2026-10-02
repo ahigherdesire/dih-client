@@ -36,6 +36,7 @@ public final class DihCommands {
         if (initialized) return;
         initialized = true;
         register(new dihclient.commands.impl.MacroCommand());
+        register(new dihclient.commands.impl.EnchantCommand());
         register(new dihclient.commands.impl.SyncCommand());
         register(new dihclient.commands.impl.DelayCommand());
         register(new dihclient.commands.impl.SendCommand());
@@ -82,6 +83,9 @@ public final class DihCommands {
             register(new dihclient.commands.impl.XCarryCommand());
             register(new dihclient.commands.impl.RemoteViewCommand());
             register(new dihclient.commands.impl.NameScrapeCommand());
+            register(new dihclient.commands.impl.ToolsCommand());
+            register(new dihclient.commands.impl.AiRunCommand());
+            dihclient.ai.ClientToolCatalog.install();
         }
     }
 

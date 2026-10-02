@@ -158,6 +158,7 @@ public abstract class DihInGameHudMixin {
 
             if (esp2dVisible) ModuleScreenRenderer.render(context);
             if (nametagsVisible) ModuleNameTagRenderer.render(context);
+            dihclient.trade.TradeLabels.render(context);
         };
 
         if (mainHudVisible) {

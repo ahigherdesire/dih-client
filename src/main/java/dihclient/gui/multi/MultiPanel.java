@@ -966,7 +966,7 @@ public final class MultiPanel {
         for (DihMacro macro : macros) {
             if (ry + ROW > y && ry < y + listH) {
                 boolean selected = macro.name.equals(selectedMacroName);
-                row(g, x, ry, listW, ROW - 2, macro.name, selected ? success() : border(), mx, my,
+                row(g, x, ry, listW, ROW - 2, dihclient.util.MacroFolderView.label(macro), selected ? success() : border(), mx, my,
                     () -> { selectedMacroName = macro.name; pendingMacroDelete = ""; });
             }
             ry += ROW;
@@ -2230,9 +2230,10 @@ public final class MultiPanel {
         cachedMacroRevision = revision;
         cachedMacroQuery = query;
 
-        cachedMacros = DihMacroManager.get().getAll().stream()
-            .filter(m -> m != null && m.name != null && m.name.toLowerCase(Locale.ROOT).contains(query))
-            .toList();
+        cachedMacros = dihclient.util.MacroFolderView.ordered(DihMacroManager.get().getAll().stream()
+            .filter(m -> m != null && m.name != null && (m.name.toLowerCase(Locale.ROOT).contains(query)
+                || m.folder != null && m.folder.toLowerCase(Locale.ROOT).contains(query)))
+            .toList());
         return cachedMacros;
     }
 

@@ -8,9 +8,12 @@ import baritone.acquire.model.InventorySnapshot;
 import baritone.acquire.model.SmeltSource;
 import baritone.acquire.model.Step;
 import baritone.acquire.model.ToolReq;
+import baritone.acquire.model.ToolDurability;
 
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.List;
 import java.util.Set;
 
@@ -48,6 +51,9 @@ final class PlanReplay {
         InventorySnapshot inv = start.copy();
         Set<String> ready = new HashSet<>();
         Set<String> active = new HashSet<>();
+        Set<String> owned = new HashSet<>();
+        Map<String, Integer> usedDurability = new HashMap<>();
+        boolean moved = false;
         List<Step> out = new ArrayList<>(entries.size());
         for (int i = 0; i < entries.size(); i++) {
             Step step = entries.get(i).step();
@@ -56,11 +62,14 @@ final class PlanReplay {
             switch (step) {
                 case Step.Mine m -> {
                     if (gained <= 0) error = "mines nothing";
-                    else if (!toolHeld(inv, m.tool())) error = "no " + m.tool().type() + " to mine with";
+                    else if (!reserveToolUses(inv, usedDurability, m.tool(), m.expectedBlocks()))
+                        error = "not enough " + m.tool().type() + " durability to mine with";
                     else {
                         inv.add(m.item(), gained);
                         out.add(new Step.Mine(m.blocks(), m.item(), inv.count(m.item()), m.tool(), m.expectedBlocks()));
                         active.clear();
+                        ready.clear();
+                        moved = true;
                     }
                 }
                 case Step.Kill k -> {
@@ -69,6 +78,19 @@ final class PlanReplay {
                         inv.add(k.item(), gained);
                         out.add(new Step.Kill(k.entity(), k.item(), inv.count(k.item()), k.expectedKills()));
                         active.clear();
+                        ready.clear();
+                        moved = true;
+                    }
+                }
+                case Step.Barter b -> {
+                    if (gained <= 0) error = "gains nothing";
+                    else if (inv.take(b.currency(), b.trades()) < b.trades()) error = "short of " + b.currency();
+                    else {
+                        inv.add(b.item(), gained);
+                        out.add(new Step.Barter(b.entity(), b.currency(), b.item(), inv.count(b.item()), b.trades()));
+                        active.clear();
+                        ready.clear();
+                        moved = true;
                     }
                 }
                 case Step.Craft c -> {
@@ -96,15 +118,60 @@ final class PlanReplay {
                     else if (inv.take(sm.fuel(), sm.fuelCount()) < sm.fuelCount()) error = "short of fuel " + sm.fuel();
                     else {
                         inv.add(r.output(), sm.times() * r.outputCount());
-                        out.add(new Step.Smelt(r, sm.times(), sm.input(), sm.fuel(), sm.fuelCount(), inv.count(r.output())));
+                        // Extra furnaces not held any more (used up since) leave fewer to split across.
+                        int furnaces = Math.min(sm.furnaces(), 1 + inv.count(stationOf(r)));
+                        out.add(new Step.Smelt(r, sm.times(), sm.input(), sm.fuel(), sm.fuelCount(), inv.count(r.output()), furnaces));
+                    }
+                }
+                case Step.Travel t -> {
+                    for (Map.Entry<String, Integer> use : t.consumes().entrySet()) {
+                        if (error == null && inv.take(use.getKey(), use.getValue()) < use.getValue()) error = "short of " + use.getKey();
+                    }
+                    if (error == null && !owned.isEmpty()) error = "leaves " + owned + " behind";
+                    if (error == null) {
+                        out.add(t);
+                        active.clear();
+                        ready.clear();
+                        moved = true;
+                    }
+                }
+                case Step.Locate l -> {
+                    if (!owned.isEmpty()) error = "leaves " + owned + " behind";
+                    else {
+                        out.add(l);
+                        active.clear();
+                        ready.clear();
+                        moved = true;
+                    }
+                }
+                case Step.SlayDragon d -> {
+                    out.add(d);
+                    active.clear();
+                    ready.clear();
+                    moved = true;
+                }
+                case Step.CollectEgg e -> {
+                    inv.add(e.item(), 1);
+                    out.add(new Step.CollectEgg(inv.count(e.item())));
+                }
+                case Step.RetrieveStation r -> {
+                    if (!owned.remove(r.station())) error = "station was not placed by this plan";
+                    else {
+                        inv.add(r.station(), 1);
+                        ready.remove(r.station());
+                        active.remove(r.station());
+                        out.add(r);
                     }
                 }
                 case Step.PlaceStation p -> {
                     String station = p.station();
                     if (!ready.contains(station)) {
                         // First set-up: a nearby one, or the item from the inventory.
-                        if (world.stationNearby(station) || inv.take(station, 1) == 1) ready.add(station);
-                        else error = "no " + station + " to place";
+                        if (!moved && world.stationNearby(station)) ready.add(station);
+                        else if (inv.take(station, 1) == 1) {
+                            ready.add(station);
+                            owned.add(station);
+                        } else error = "no " + station + " to place";
                     }
                     if (error == null) {
                         active.add(station);
@@ -114,6 +181,7 @@ final class PlanReplay {
             }
             if (error != null) return new Result(out, "step " + (i + 1) + " (" + step.describe() + "): " + error);
         }
+        if (!owned.isEmpty()) return new Result(out, "the end: leaves " + owned + " behind");
         return new Result(out, null);
     }
 
@@ -159,24 +227,56 @@ final class PlanReplay {
                 case Step.Kill kill -> {
                     return false;
                 }
+                case Step.Barter barter -> {
+                    return false;
+                }
                 case Step.Craft c -> {
                     if (c.recipe().needsTable() && CRAFTING_TABLE.equals(station)) return true;
                 }
                 case Step.Smelt sm -> {
                     if (stationOf(sm.recipe()).equals(station)) return true;
                 }
+                case Step.RetrieveStation r -> {}
                 case Step.PlaceStation p -> {
+                }
+                case Step.Travel t -> {
+                    return false;
+                }
+                case Step.Locate l -> {
+                    return false;
+                }
+                case Step.SlayDragon d -> {
+                    return false;
+                }
+                case Step.CollectEgg e -> {
                 }
             }
         }
         return false;
     }
 
-    private boolean toolHeld(InventorySnapshot inv, ToolReq tool) {
+    private boolean reserveToolUses(InventorySnapshot inv, Map<String, Integer> spent, ToolReq tool, int blocks) {
         if (tool == null || !tool.required() || tool.type() == null) return true;
         List<String> tools = knowledge.toolsOf(tool.type(), tool.minTier());
         if (tools == null) return false;
-        for (String t : tools) if (inv.count(t) > 0) return true;
+        int needed = ToolDurability.budget(blocks);
+        int available = 0;
+        for (String id : tools) {
+            int max = ToolDurability.maxUses(id);
+            if (max <= 0 && inv.count(id) > 0) return true;
+            int reserve = (int) Math.ceil(max * 0.10) * inv.count(id);
+            available += Math.max(0, inv.remainingUses(id) - spent.getOrDefault(id, 0) - reserve);
+        }
+        if (available < needed) return false;
+        for (String id : tools) {
+            int max = ToolDurability.maxUses(id);
+            int reserve = (int) Math.ceil(max * 0.10) * inv.count(id);
+            int usable = Math.max(0, inv.remainingUses(id) - spent.getOrDefault(id, 0) - reserve);
+            int take = Math.min(needed, usable);
+            if (take > 0) spent.merge(id, take, Integer::sum);
+            needed -= take;
+            if (needed == 0) return true;
+        }
         return false;
     }
 }

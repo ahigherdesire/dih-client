@@ -254,7 +254,7 @@ public class StructureCommand extends Command {
      * @return the nearest match, or {@code null} if none within 8192 blocks
      * @throws IllegalStateException with a user-facing message for unknown names / unavailable worldgen
      */
-    static SeedStructureScanner.Found findNearestSeeded(String query, long seed,
+    public static SeedStructureScanner.Found findNearestSeeded(String query, long seed,
                                                         net.minecraft.resources.ResourceKey<net.minecraft.world.level.Level> dim,
                                                         int x, int z) {
         SeedStructureScanner.Found best = null;
@@ -309,7 +309,7 @@ public class StructureCommand extends Command {
      * @param level    server level (used for its registry access)
      * @return the holder set, or {@code null} if the tag/id does not exist
      */
-    static HolderSet<Structure> resolveStructures(String query, ServerLevel level) {
+    public static HolderSet<Structure> resolveStructures(String query, ServerLevel level) {
         HolderLookup.RegistryLookup<Structure> lookup =
             level.registryAccess().lookupOrThrow(Registries.STRUCTURE);
 

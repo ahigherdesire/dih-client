@@ -1075,7 +1075,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
         CompactListRenderer.drawHeader(ctx, textRenderer, "Local Macros", lx, cy);
         cy += 14;
 
-        List<DihMacro> localMacros = DihMacroManager.get().getAll();
+        List<DihMacro> localMacros = MacroFolderView.ordered(DihMacroManager.get().getAll());
         if (localMacros.isEmpty()) {
             clearSameMacrolistViewport();
             drawUiText(ctx, "No macros", UiTone.MUTED, DihColors.textDim(), lx, cy);
@@ -1091,7 +1091,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
                 || sameMacroList.getWidth() != sameMacroListWidth || sameMacroList.getHeight() != sameMacroListHeight) {
                 sameMacroList = new DirectScrollList<>(sameMacroListX, sameMacroListY, sameMacroListWidth, sameMacroListHeight,
                     sameMacroListRowPitch(), SAME_MACRO_LIST_SCROLLBAR_WIDTH,
-                    macro -> macro.name,
+                    MacroFolderView::label,
                     (macro, selected) -> {
                         if (selected) selectedMacroName = macro.name;
                     });
@@ -1304,7 +1304,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
 
                     if (isMe) {
 
-                        for (DihMacro macro : myMacroList) {
+                        for (DihMacro macro : MacroFolderView.ordered(myMacroList)) {
                             cy = renderPickerRowClipped(ctx, mx, my, cy, detailLx, detailRx, rowW,
                                 macro.name, assigned, null, peerKey, sync, false, clipTop, clipBottom, rowPitch);
                         }

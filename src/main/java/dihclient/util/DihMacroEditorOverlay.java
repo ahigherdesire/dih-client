@@ -2465,6 +2465,8 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
          this.addStepPickerEntry(entries, "flow", "Assert", "Validate preconditions.", () -> this.addAction(new AssertAction()));
 
          this.addStepPickerEntry(entries, "flow", "Pay", "Send payments to a player list.", () -> this.addAction(new PayAction()));
+         this.addStepPickerEntry(entries, "flow", "Trade", "Buy matching offers from the open villager trade screen; sets trade_count, trade_spent, trade_status.", () -> this.addAction(new dihclient.util.macro.TradeAction()));
+         this.addStepPickerEntry(entries, "flow", "AI Tool", "Run any AI tool with typed arguments, like .tools; sets tool_status and tool_output.", () -> this.addAction(new dihclient.util.macro.AiToolAction()));
          this.addStepPickerEntry(entries, "interaction", "InstaBreak", "Instant rebreak for one captured block.", this::addDefaultInstaBreakAction);
          this.addStepPickerEntry(entries, "interaction", "Break", "Legit vanilla break with break-progress tracking + optional GUI-race interact.", this::addDefaultBreakAction);
          this.addStepPickerEntry(entries, "flow", "Race", "Run grouped actions when a condition fires.", () -> this.addAction(new RaceAction()));

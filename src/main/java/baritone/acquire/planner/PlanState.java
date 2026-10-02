@@ -1,6 +1,7 @@
 package baritone.acquire.planner;
 
 import baritone.acquire.model.InventorySnapshot;
+import baritone.acquire.model.Location;
 import baritone.acquire.model.Step;
 
 import java.util.ArrayList;
@@ -37,6 +38,8 @@ final class PlanState {
     InventorySnapshot inv;
     /** Items obtained for a step that has not run yet; sub-goals must not use them. */
     Map<String, Integer> reserved;
+    /** Estimated tool uses already committed to earlier mine steps. */
+    Map<String, Integer> usedDurability;
     List<Entry> steps;
     Set<String> missing;
     /** Stations that need no item any more: known nearby, or placed earlier in this plan. */
@@ -45,31 +48,53 @@ final class PlanState {
     Set<String> pending;
     /** Stations set up since the last Mine or Kill step; crafting or smelting there needs no new set-up. */
     Set<String> active;
+    /** Stations this plan placed and can retrieve before moving. */
+    Set<String> owned;
+    /** A Mine or Kill may have taken us away from stations observed at the starting position. */
+    boolean moved;
+    /** Where the player is after the drafted steps. */
+    Location location = Location.OVERWORLD;
+    /** Portals this plan has opened, by the dimension they lead to: later trips need nothing. */
+    Set<Location> portals = new HashSet<>();
+    /**
+     * Portals whose items (and gear checkpoint) are obtained and held back, by the dimension they lead to, with the
+     * items: the kit the portal is made from.
+     */
+    Map<Location, Map<String, Integer>> portalReady = new HashMap<>();
+    boolean dragonDead;
     double cost;
     /** Trials that get more expensive than this are abandoned (branch and bound). Not taken over by {@link #become}. */
     double limit = Double.POSITIVE_INFINITY;
 
     PlanState(InventorySnapshot inv) {
-        this(inv, new HashMap<>(), new ArrayList<>(), new LinkedHashSet<>(), new HashSet<>(), new HashSet<>(),
-                new HashSet<>(), 0);
+        this(inv, new HashMap<>(), new HashMap<>(), new ArrayList<>(), new LinkedHashSet<>(), new HashSet<>(), new HashSet<>(),
+                new HashSet<>(), new HashSet<>(), false, 0);
     }
 
-    private PlanState(InventorySnapshot inv, Map<String, Integer> reserved, List<Entry> steps, Set<String> missing,
-                      Set<String> ready, Set<String> pending, Set<String> active, double cost) {
+    private PlanState(InventorySnapshot inv, Map<String, Integer> reserved, Map<String, Integer> usedDurability,
+                      List<Entry> steps, Set<String> missing,
+                      Set<String> ready, Set<String> pending, Set<String> active, Set<String> owned, boolean moved, double cost) {
         this.inv = inv;
         this.reserved = reserved;
+        this.usedDurability = usedDurability;
         this.steps = steps;
         this.missing = missing;
         this.ready = ready;
         this.pending = pending;
         this.active = active;
+        this.owned = owned;
+        this.moved = moved;
         this.cost = cost;
     }
 
     PlanState copy() {
-        PlanState c = new PlanState(inv.copy(), new HashMap<>(reserved), new ArrayList<>(steps),
-                new LinkedHashSet<>(missing), new HashSet<>(ready), new HashSet<>(pending), new HashSet<>(active), cost);
+        PlanState c = new PlanState(inv.copy(), new HashMap<>(reserved), new HashMap<>(usedDurability), new ArrayList<>(steps),
+                new LinkedHashSet<>(missing), new HashSet<>(ready), new HashSet<>(pending), new HashSet<>(active), new HashSet<>(owned), moved, cost);
         c.limit = limit;
+        c.location = location;
+        c.portals = new HashSet<>(portals);
+        c.portalReady = new HashMap<>(portalReady);
+        c.dragonDead = dragonDead;
         return c;
     }
 
@@ -77,12 +102,19 @@ final class PlanState {
     void become(PlanState o) {
         inv = o.inv;
         reserved = o.reserved;
+        usedDurability = o.usedDurability;
         steps = o.steps;
         missing = o.missing;
         ready = o.ready;
         pending = o.pending;
         active = o.active;
+        owned = o.owned;
+        moved = o.moved;
         cost = o.cost;
+        location = o.location;
+        portals = o.portals;
+        portalReady = o.portalReady;
+        dragonDead = o.dragonDead;
     }
 
     /** Held and not reserved for anything. */

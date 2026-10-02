@@ -72,6 +72,17 @@ final class StationFinder {
         return out;
     }
 
+    /** Stations this acquire placed itself, not player-owned or world-generated blocks. */
+    List<BlockPos> findOwned(String station, int radius) {
+        Set<BlockPos> own = placed.getOrDefault(key(station), Set.of());
+        return find(station, radius).stream().filter(own::contains).toList();
+    }
+
+    void forgetOwned(String station, BlockPos pos) {
+        Set<BlockPos> own = placed.get(key(station));
+        if (own != null) own.remove(pos);
+    }
+
     void remember(String station, BlockPos pos) {
         placed.computeIfAbsent(key(station), k -> new LinkedHashSet<>()).add(pos.immutable());
     }

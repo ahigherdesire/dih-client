@@ -4,12 +4,14 @@ import baritone.Baritone;
 import baritone.acquire.AcquireControl;
 import baritone.acquire.knowledge.Knowledge;
 import baritone.acquire.knowledge.VanillaKnowledge;
+import baritone.acquire.model.BarterSource;
+import baritone.acquire.model.Goal;
 import baritone.acquire.model.InventorySnapshot;
+import baritone.acquire.model.Location;
 import baritone.acquire.model.Plan;
 import baritone.acquire.model.Step;
 import baritone.acquire.planner.AcquirePlanner;
 import baritone.acquire.planner.PlannerOptions;
-import baritone.api.pathing.goals.GoalRunAway;
 import baritone.api.process.IBaritoneProcess;
 import baritone.api.process.PathingCommand;
 import baritone.api.process.PathingCommandType;
@@ -18,15 +20,13 @@ import baritone.utils.BaritoneProcessHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.item.Item;
 
 import java.util.ArrayList;
-import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -48,7 +48,7 @@ import java.util.function.Supplier;
  *
  * <p><b>Health comes first</b> ({@code acquireHeal}). Every tick, before the step runs, it eats when
  * {@link HealthPolicy} says so (through {@link EatBehavior}, whose pause process holds mining without
- * cancelling it), backs away from a close attacker first at emergency health during a Kill step, and
+ * cancelling it), and
  * with no safe food held and health or food low, runs a food detour: the cheapest {@link FoodGoal}
  * plan, then eat, then re-plan the main goal.
  *
@@ -60,15 +60,16 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     private static final int TICKS_PER_SECOND = 20;
     /** Food detours per acquire before it stops trying. */
     static final int MAX_FOOD_DETOURS = 3;
-    /** Consecutive failed meals before it stops trying to eat for the rest of the acquire. */
+    /** Consecutive failed meals before it waits {@link #EAT_BACKOFF_TICKS} to try again. */
     private static final int MAX_EAT_FAILURES = 3;
     private static final int EAT_RETRY_TICKS = 5 * TICKS_PER_SECOND;
-    /** At emergency health in a fight: back away from an attacker this close, for at most this long. */
-    private static final double THREAT_RADIUS = 5;
-    private static final int BACK_OFF_TICKS = 2 * TICKS_PER_SECOND;
-    private static final int BACK_OFF_DISTANCE = 8;
-    /** At emergency health in a fight with nothing to eat, wait this long for regeneration before fighting on. */
-    private static final int REGEN_WAIT_TICKS = 20 * TICKS_PER_SECOND;
+    /**
+     * The wait after {@link #MAX_EAT_FAILURES} failed meals. Never for the rest of the run: a fight (a bow drawn, a
+     * shield up) cuts meals short, and the low health it leaves is when eating matters most.
+     */
+    private static final int EAT_BACKOFF_TICKS = 30 * TICKS_PER_SECOND;
+    /** How long a path may hold the player in place before the step is told it failed. */
+    private static final int STALL_TICKS = 60 * TICKS_PER_SECOND;
 
     private final List<Consumer<AcquireEvent>> listeners = new CopyOnWriteArrayList<>();
     private final StationFinder stations;
@@ -78,6 +79,9 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     private AcquireRun run;
     private StepRunner runner;
     private int stepTicks;
+    private int stepTimeoutTicks;
+    private final StallWatch stall = new StallWatch(STALL_TICKS);
+    private boolean stalled;
     private boolean waitingForRespawn;
     private LocalPlayer lastPlayer;
 
@@ -94,8 +98,6 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     private int eatFailures;
     private long ticks;
     private long nextEatTick;
-    private int backOffTicks;
-    private int regenWaitTicks;
 
     public AcquireProcess(Baritone baritone) {
         super(baritone);
@@ -107,6 +109,17 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     @Override
     public String start(String itemText, int count) {
         return onGameThread(() -> start0(itemText, count));
+    }
+
+    @Override
+    public String startGoal(Goal goal) {
+        if (goal instanceof Goal.ItemGoal item) return start(item.item(), item.count());
+        return onGameThread(() -> startGoal0(goal));
+    }
+
+    @Override
+    public String startBarter(String itemText, int count) {
+        return onGameThread(() -> startBarter0(itemText, count));
     }
 
     @Override
@@ -161,19 +174,62 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         } else {
             item = resolve(k, itemText);
             want = count;
-            plan = newPlan(k, item, count);
+            plan = newPlan(k, new Goal.ItemGoal(item, count));
             if (plan.alreadyDone()) return "You already have " + count + " " + Step.shortId(item) + ".";
             if (!plan.complete()) {
                 throw new IllegalArgumentException("Can't get " + count + " " + Step.shortId(item) + ": " + String.join("; ", plan.missing()));
             }
         }
+        return begin(k, new Goal.ItemGoal(item, want), plan, food);
+    }
+
+    /** A goal that isn't an item. Its label never counts as held, so the run walks its steps (and stops honestly). */
+    private String startGoal0(Goal goal) {
+        if (ctx.player() == null || ctx.world() == null) throw new IllegalArgumentException("Join a world first.");
+        Knowledge k = knowledge();
+        Plan plan = newPlan(k, goal);
+        if (plan.alreadyDone()) return "Already done: " + goal.label() + ".";
+        if (!plan.complete()) throw new IllegalArgumentException("Can't plan " + goal.label() + ": " + String.join("; ", plan.missing()));
+        return begin(k, goal, plan, false);
+    }
+
+    /** One barter step, with every gold ingot held; if it runs out first, the run re-plans the rest like any step. */
+    private String startBarter0(String itemText, int count) {
+        if (count < 1) throw new IllegalArgumentException("The count must be at least 1.");
+        if (ctx.player() == null || ctx.world() == null) throw new IllegalArgumentException("Join a world first.");
+        Knowledge k = knowledge();
+        String item = resolve(k, itemText);
+        BarterSource source = k.sourcesFor(item).stream().filter(s -> s instanceof BarterSource)
+                .map(s -> (BarterSource) s).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Piglins don't barter " + Step.shortId(item) + "."));
+        int have = InventoryReader.count(ctx.player(), item);
+        if (have >= count) return "You already have " + count + " " + Step.shortId(item) + ".";
+        if (!TravelRunner.dimensionId(ctx.world()).equals("the_nether")) {
+            throw new IllegalArgumentException("Piglins live in the Nether: go there first (build_portal).");
+        }
+        int gold = InventoryReader.count(ctx.player(), source.currency());
+        if (gold == 0) throw new IllegalArgumentException("No " + Step.shortId(source.currency()) + " to barter with.");
+        if (!net.minecraft.world.entity.monster.piglin.PiglinAi.isWearingSafeArmor(ctx.player())
+                && BarterRunner.goldArmourHeld(ctx.player()) < 0) {
+            throw new IllegalArgumentException("Piglins attack a player wearing no gold: get a piece of gold armour "
+                    + "first (golden_boots take 4 gold ingots).");
+        }
+        Step.Barter step = new Step.Barter(source.entity(), source.currency(), item, count, gold);
+        Plan plan = new Plan(item, count, List.of(step), List.of(), 0);
+        return begin(k, new Goal.ItemGoal(item, count), plan, false);
+    }
+
+    private String begin(Knowledge k, Goal goal, Plan plan, boolean food) {
+        String item = goal.label();
+        int want = goal.count();
         if (run != null) finish(AcquireEvent.Kind.STOPPED, "Stopped acquiring " + run.count + " " + Step.shortId(run.goal) + ".");
         // Starting a task replaces whatever Baritone was doing, like every other Baritone command.
         if (baritone.getPathingControlManager().mostRecentInControl().isPresent()) baritone.getPathingBehavior().cancelEverything();
 
         stations.newRun();
         exec = new ExecContext(baritone, k, stations, this::neededItems);
-        run = new AcquireRun(item, want, plan);
+        run = new AcquireRun(goal, plan);
+        baritone.getInventoryBehavior().setReservedBlocks(this::reservedBlocks);
         runner = null;
         waitingForRespawn = false;
         lastPlayer = ctx.player();
@@ -197,7 +253,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             return String.join("\n", lines);
         }
         String item = resolve(k, itemText);
-        Plan plan = newPlan(k, item, count);
+        Plan plan = newPlan(k, new Goal.ItemGoal(item, count));
         String name = count + " " + Step.shortId(item);
         if (plan.alreadyDone()) return "You already have " + name + ".";
         List<String> lines = new ArrayList<>();
@@ -223,7 +279,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
 
     private FoodGoal.Choice chooseFood(int points, int items, Set<String> exclude) {
         InventorySnapshot inventory = InventoryReader.snapshot(ctx.player());
-        BaritoneWorldView world = new BaritoneWorldView(ctx, stations, Baritone.settings().acquireStationRadius.value);
+        BaritoneWorldView world = new BaritoneWorldView(ctx, stations, Baritone.settings().acquireStationRadius.value, unreachableBlocks());
         try {
             return FoodGoal.choose(new AcquirePlanner(knowledge(), world, options()), inventory, points, items, exclude);
         } catch (RuntimeException | LinkageError e) {
@@ -256,33 +312,54 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         });
     }
 
-    private Plan newPlan(Knowledge k, String item, int count) {
+    /** Blocks a mine step found no way to in this run, which the planner counts as not there. */
+    private Set<String> unreachableBlocks() {
+        return exec == null ? Set.of() : exec.unreachableBlocks;
+    }
+
+    private Plan newPlan(Knowledge k, Goal goal) {
         InventorySnapshot inventory = InventoryReader.snapshot(ctx.player());
-        BaritoneWorldView world = new BaritoneWorldView(ctx, stations, Baritone.settings().acquireStationRadius.value);
+        BaritoneWorldView world = new BaritoneWorldView(ctx, stations, Baritone.settings().acquireStationRadius.value, unreachableBlocks());
         try {
-            return new AcquirePlanner(k, world, options()).plan(item, count, inventory);
+            return new AcquirePlanner(k, world, options()).plan(goal, inventory, here());
         } catch (RuntimeException | LinkageError e) {
-            throw new IllegalArgumentException("Couldn't plan " + Step.shortId(item) + ": " + e, e);
+            throw new IllegalArgumentException("Couldn't plan " + Step.shortId(goal.label()) + ": " + e, e);
         }
     }
 
-    static PlannerOptions options() {
+    /** Where the player is, for the planner: the dimension, or a nether fortress. */
+    Location here() {
+        return BaritoneWorldView.here(ctx);
+    }
+
+    /** The planner options from the Baritone settings. */
+    public static PlannerOptions options() {
         Settings s = Baritone.settings();
         return new PlannerOptions(s.acquirePlaceStations.value, s.acquireKillMobs.value,
-                PlannerOptions.DEFAULT.maxDepth(), PlannerOptions.DEFAULT.maxSteps());
+                PlannerOptions.DEFAULT.maxDepth(), PlannerOptions.DEFAULT.maxSteps(), s.acquireGearUp.value);
     }
 
     // ---------------------------------------------------------------- IBaritoneProcess
 
     @Override
     public PathingCommand onTick(boolean calcFailed, boolean isSafeToCancel) {
+        PathingCommand command;
         try {
-            return tick(calcFailed, isSafeToCancel);
+            command = tick(calcFailed, isSafeToCancel);
         } catch (RuntimeException | LinkageError e) {
             e.printStackTrace();
             finish(AcquireEvent.Kind.FAILED, "Acquire failed: internal error (" + e + ").");
-            return null; // inactive now, so the manager accepts null
+            command = null;
         }
+        return ended(command, isActive());
+    }
+
+    /**
+     * A null command (the run ended) is only accepted from an inactive process. A listener told of the end may have
+     * started the next acquire already (#beat chains them), and an active process must not return null: pause a tick.
+     */
+    static PathingCommand ended(PathingCommand command, boolean active) {
+        return command == null && active ? pause() : command;
     }
 
     private PathingCommand tick(boolean calcFailed, boolean safeToCancel) {
@@ -301,10 +378,13 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             boolean died = waitingForRespawn;
             waitingForRespawn = false;
             lastPlayer = player;
-            cancelRunner();
-            detour = null;
-            pendingReplan = null;
-            if (!replanMain(died ? "you died" : "you changed worlds")) return null;
+            // A portal trip landing where it was going carries on: it remembers the portals and steps out first.
+            if (died || !(runner instanceof TravelRunner travel && travel.landed())) {
+                cancelRunner();
+                detour = null;
+                pendingReplan = null;
+                if (!replanMain(died ? "you died" : "you changed worlds")) return null;
+            }
         }
         lastPlayer = player;
 
@@ -312,6 +392,8 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         if (eatingForUs || eater().isBusy()) return pause();
         PathingCommand heal = heal(player);
         if (heal != null) return heal;
+        if (Baritone.settings().acquireGearUp.value && (runner == null || !runner.busy()) && GearEquip.tick(ctx))
+            return pause();
         if (pendingReplan != null) {
             String reason = pendingReplan;
             pendingReplan = null;
@@ -321,23 +403,39 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         // Several steps can finish in one tick (skips, instant checks); the guard bounds a buggy loop.
         for (int guard = 0; guard < 16; guard++) {
             if (runner == null && !startNextStep()) return idle();
-            if (++stepTicks > Baritone.settings().acquireStepTimeoutSeconds.value * TICKS_PER_SECOND) {
+            if (++stepTicks > stepTimeoutTicks) {
                 AcquireRun active = active();
                 Step step = active.current();
+                if (runner instanceof MineRunner mine) mine.gaveUp();
                 cancelRunner();
                 if (!replan("step " + (active.index() + 1) + " (" + step.describe() + ") timed out")) return idle();
                 continue;
             }
-            StepRunner.Result result = runner.tick(calcFailed && guard == 0, safeToCancel);
+            boolean failed = guard == 0 && (calcFailed || stalled);
+            stalled = false;
+            StepRunner.Result result = runner.tick(failed, safeToCancel);
             switch (result.kind()) {
                 case RUNNING -> {
-                    return result.command();
+                    PathingCommand command = result.command();
+                    boolean pathing = command != null && command.goal != null
+                            && command.commandType != PathingCommandType.REQUEST_PAUSE && command.commandType != PathingCommandType.DEFER
+                            && !command.goal.isInGoal(ctx.playerFeet());
+                    if (stall.stalled(ctx.playerFeet(), pathing)) {
+                        logDebug("No headway for " + STALL_TICKS / TICKS_PER_SECOND + "s at " + ctx.playerFeet().toShortString()
+                                + ": the path counts as failed.");
+                        stalled = true;
+                    }
+                    return command;
                 }
                 case DONE -> {
                     Step step = active().current();
                     runner = null;
-                    if (!(step instanceof Step.PlaceStation) && have(step.item()) < step.untilCount()) {
+                    active().markProgress();
+                    if (!(step instanceof Step.PlaceStation) && !(step instanceof Step.RetrieveStation)
+                            && have(step.item()) < step.untilCount()) {
                         if (!replan(step.describe() + " ended with " + have(step.item()) + "/" + step.untilCount())) return idle();
+                    } else if (Baritone.settings().acquireGearUp.value && GearEquip.tick(ctx)) {
+                        return pause();
                     }
                 }
                 case FAILED -> {
@@ -369,14 +467,22 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
                     endDetour("Got " + have(detour.goal) + " " + Step.shortId(detour.goal) + ".");
                     return false;
                 }
-                finish(AcquireEvent.Kind.DONE, "Done: you have " + have(run.goal) + " " + Step.shortId(run.goal) + ".");
+                finish(AcquireEvent.Kind.DONE, doneLine());
                 return false;
             }
             return replan("the plan ran out with " + have(active.goal) + "/" + active.count + " " + Step.shortId(active.goal)) && startNextStep();
         }
         Step step = active.current();
+        String blocked = active.blocked();
+        if (blocked != null) {
+            // No runner for this step yet (portals, structures, the dragon): stop here instead of re-planning.
+            finish(AcquireEvent.Kind.FAILED, blocked);
+            return false;
+        }
         runner = createRunner(step);
         stepTicks = 0;
+        stall.reset();
+        stepTimeoutTicks = timeoutFor(step);
         String line = (active == detour ? "Food step " : "Step ") + (index + 1) + "/" + active.stepCount() + ": " + step.describe();
         logDirect(line);
         fire(AcquireEvent.Kind.STEP, line);
@@ -385,12 +491,40 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
 
     private StepRunner createRunner(Step step) {
         return switch (step) {
-            case Step.Mine mine -> new MineRunner(exec, mine);
+            // Carrying two buckets, obsidian is cast from lava rather than mined out of a lava pool.
+            case Step.Mine mine -> ObsidianRunner.supports(mine, exec.have(ObsidianRunner.BUCKET),
+                    exec.have(ObsidianRunner.WATER_BUCKET), exec.have(ObsidianRunner.LAVA_BUCKET))
+                    ? new ObsidianRunner(exec, mine) : new MineRunner(exec, mine);
             case Step.Craft craft -> new CraftRunner(exec, craft);
-            case Step.Smelt smelt -> new SmeltRunner(exec, smelt);
+            case Step.Smelt smelt -> smelt.furnaces() > 1 ? new SplitSmeltRunner(exec, smelt) : new SmeltRunner(exec, smelt);
             case Step.Kill kill -> new KillRunner(exec, kill);
+            case Step.Barter barter -> new BarterRunner(exec, barter);
             case Step.PlaceStation station -> new StationRunner(exec, station);
+            case Step.RetrieveStation station -> new RetrieveStationRunner(exec, station);
+            case Step.Travel travel -> new TravelRunner(exec, travel);
+            case Step.Locate locate -> new LocateRunner(exec, locate);
+            case Step.SlayDragon dragon -> throw new IllegalStateException("no runner for " + step.describe());
+            case Step.CollectEgg egg -> throw new IllegalStateException("no runner for " + step.describe());
         };
+    }
+
+    private int timeoutFor(Step step) {
+        BaritoneWorldView world = new BaritoneWorldView(ctx, stations, Baritone.settings().acquireStationRadius.value, unreachableBlocks());
+        double distance = 0;
+        double depth = 0;
+        if (step instanceof Step.Mine mine) {
+            distance = Double.POSITIVE_INFINITY;
+            for (String block : mine.blocks()) {
+                double candidate = world.distanceToBlock(block);
+                if (candidate < distance) {
+                    distance = candidate;
+                    depth = world.verticalDistanceToBlock(block);
+                }
+            }
+        } else if (step instanceof Step.Kill kill) {
+            distance = world.distanceToEntity(kill.entity());
+        }
+        return StepTimeout.ticks(step, distance, depth, Baritone.settings().acquireStepTimeoutSeconds.value);
     }
 
     /**
@@ -398,7 +532,12 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
      * the acquire ended (re-plan budget used up, no complete plan), or the food detour was dropped.
      */
     private boolean replan(String reason) {
-        return detour != null ? replanDetour(reason) : replanMain(reason);
+        if (detour != null) return replanDetour(reason);
+        Step step = run.current();
+        boolean expected = step instanceof Step.RetrieveStation
+                || reason != null && (reason.contains("worn below 10%") || reason.contains("tool broke"));
+        boolean free = expected && run.expectedFreeAvailable();
+        return replanMain(reason, !free, free);
     }
 
     /** Re-plans the main goal. False (and the run is over) when the budget is used up or no complete plan exists. */
@@ -411,6 +550,10 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
      *               food detour, which is not a failure
      */
     private boolean replanMain(String reason, boolean counts) {
+        return replanMain(reason, counts, false);
+    }
+
+    private boolean replanMain(String reason, boolean counts, boolean expected) {
         int max = Baritone.settings().acquireMaxReplans.value;
         if (counts && run.replans() >= max) {
             finish(AcquireEvent.Kind.FAILED, "Acquire gave up after " + max + " re-plans. Last problem: " + reason + ".");
@@ -418,13 +561,13 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         }
         Plan plan;
         try {
-            plan = newPlan(knowledge(), run.goal, run.count);
+            plan = newPlan(knowledge(), run.target);
         } catch (IllegalArgumentException e) {
             finish(AcquireEvent.Kind.FAILED, "Acquire failed: " + reason + ", and " + e.getMessage());
             return false;
         }
         if (plan.alreadyDone()) {
-            finish(AcquireEvent.Kind.DONE, "Done: you have " + have(run.goal) + " " + Step.shortId(run.goal) + ".");
+            finish(AcquireEvent.Kind.DONE, doneLine());
             return false;
         }
         if (!plan.complete()) {
@@ -432,6 +575,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             return false;
         }
         if (counts) run.replace(plan);
+        else if (expected) run.resumeExpected(plan);
         else run.resume(plan);
         runner = null;
         logDirect("Re-planning (" + reason + "): " + plan.steps().size() + " steps.", ChatFormatting.YELLOW);
@@ -447,7 +591,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             problem = "gave up after " + max + " re-plans";
         } else {
             try {
-                plan = newPlan(knowledge(), detour.goal, detour.count);
+                plan = newPlan(knowledge(), detour.target);
                 if (plan.alreadyDone()) {
                     endDetour("Got " + have(detour.goal) + " " + Step.shortId(detour.goal) + ".");
                     return false;
@@ -485,25 +629,14 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         HealthPolicy.Need need = HealthPolicy.need(health, player.getAbsorptionAmount(), player.getMaxHealth(), food,
                 s.acquireEmergencyHealth.value);
         boolean emergency = need == HealthPolicy.Need.EMERGENCY;
-        if (!emergency) {
-            backOffTicks = 0;
-            regenWaitTicks = 0;
-        }
         if (need == HealthPolicy.Need.NONE && health > healHealth && food > HealthPolicy.HUNGRY_FOOD) return null;
         if (runner != null && runner.busy()) return null;
         Minecraft mc = ctx.minecraft();
         if (mc.gui.screen() != null && emergency && player.containerMenu != player.inventoryMenu) player.closeContainer();
         if (mc.gui.screen() != null) return null;
 
-        boolean fighting = runner instanceof KillRunner;
-        if (emergency && fighting && backOffTicks < BACK_OFF_TICKS) {
-            Entity threat = nearestThreat(player);
-            if (threat != null) {
-                if (backOffTicks++ == 0) logDirect("Low health (" + HealthPolicy.hearts(health) + "): backing off to eat.", ChatFormatting.YELLOW);
-                return new PathingCommand(new GoalRunAway(BACK_OFF_DISTANCE, threat.blockPosition()), PathingCommandType.REVALIDATE_GOAL_AND_PATH);
-            }
-        }
-
+        // Fighting back, retreating and waiting out low health around mobs belong to the Guardian
+        // (baritone.guardian.GuardianProcess), which pauses this process while it deals with a threat.
         List<FoodChoice.Food> held = Foods.held(player);
         Set<String> needed = neededItems();
         if (need != HealthPolicy.Need.NONE && ticks >= nextEatTick) {
@@ -523,8 +656,6 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
             startDetour(health, food, healHealth);
             return null;
         }
-        // Fighting at emergency health with nothing to eat now: hold off while it regenerates.
-        if (emergency && fighting && food >= HealthPolicy.REGEN_FOOD && regenWaitTicks++ < REGEN_WAIT_TICKS) return pause();
         return null;
     }
 
@@ -574,8 +705,10 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         }
         nextEatTick = ticks + EAT_RETRY_TICKS;
         if (++eatFailures >= MAX_EAT_FAILURES) {
-            nextEatTick = Long.MAX_VALUE;
-            logDirect("Couldn't eat " + MAX_EAT_FAILURES + " times (last: " + failure + "); acquire stops trying to eat this run.", ChatFormatting.YELLOW);
+            eatFailures = 0;
+            nextEatTick = ticks + EAT_BACKOFF_TICKS;
+            logDirect("Couldn't eat " + MAX_EAT_FAILURES + " times (last: " + failure + "); trying again in "
+                    + EAT_BACKOFF_TICKS / TICKS_PER_SECOND + "s.", ChatFormatting.YELLOW);
         }
     }
 
@@ -588,18 +721,6 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         eatingForUs = false;
         eatFailures = 0;
         nextEatTick = 0;
-        backOffTicks = 0;
-        regenWaitTicks = 0;
-    }
-
-    /** The nearest hostile, or mob targeting the player, within {@link #THREAT_RADIUS}. */
-    private Entity nearestThreat(LocalPlayer player) {
-        return ctx.entitiesStream()
-                .filter(e -> e instanceof LivingEntity living && living.isAlive() && e != player)
-                .filter(e -> e instanceof Enemy || e instanceof Mob mob && mob.getTarget() == player)
-                .filter(e -> e.distanceToSqr(player) <= THREAT_RADIUS * THREAT_RADIUS)
-                .min(Comparator.comparingDouble(e -> e.distanceToSqr(player)))
-                .orElse(null);
     }
 
     private EatBehavior eater() {
@@ -683,6 +804,30 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         AcquireRun food = detour;
         if (food != null) needed.addAll(JunkPolicy.neededItems(food.goal, food.plan().steps(), Math.max(0, food.index())));
         return needed;
+    }
+
+    private String doneLine() {
+        if (run.target instanceof Goal.AtLocation at) return "Done: in " + at.location().label() + ".";
+        return "Done: you have " + have(run.goal) + " " + Step.shortId(run.goal) + ".";
+    }
+
+    /** What the main plan and the food detour still use up, which pathing must not build with. */
+    private Map<Item, Integer> reservedBlocks() {
+        AcquireRun current = run;
+        if (current == null) return Map.of();
+        Map<String, Integer> counts = new HashMap<>(JunkPolicy.reservedCounts(current.goal, current.count,
+                current.plan().steps(), Math.max(0, current.index())));
+        AcquireRun food = detour;
+        if (food != null) {
+            JunkPolicy.reservedCounts(food.goal, food.count, food.plan().steps(), Math.max(0, food.index()))
+                    .forEach((id, n) -> counts.merge(id, n, Integer::sum));
+        }
+        Map<Item, Integer> reserved = new HashMap<>();
+        counts.forEach((id, n) -> {
+            Item item = InventoryReader.itemOf(id);
+            if (item != null) reserved.merge(item, n, Integer::sum);
+        });
+        return reserved;
     }
 
     private int have(String item) {

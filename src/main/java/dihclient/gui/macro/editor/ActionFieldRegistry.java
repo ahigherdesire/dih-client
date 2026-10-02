@@ -505,6 +505,19 @@ public final class ActionFieldRegistry {
                 .stringList("players",         "Players")  .dynamic().addLabel("Add Player")
                 .build());
 
+        SCHEMAS.put(MacroActionType.TRADE, ActionFieldSchema.builder()
+                .text      ("rule",      "Match").dynamic()
+                .number    ("maxPrice",  "Max Price (0 = any)").range(0, 64)
+                .number    ("count",     "Purchases (0 = all)").range(0, 64)
+                .number    ("timeoutMs", "Wait For Screen (ms)").range(0, 60_000)
+                .build());
+
+        SCHEMAS.put(MacroActionType.AI_TOOL, ActionFieldSchema.builder()
+                .text  ("tool",           "Tool").dynamic()
+                .text  ("args",           "Arguments").dynamic()
+                .toggle("allowDangerous", "Allow Dangerous")
+                .build());
+
         SCHEMAS.put(MacroActionType.SEND_CHAT, ActionFieldSchema.builder()
                 .text  ("message",   "Message").dynamic()
                 .toggle("waitForGuiBefore", "Before")

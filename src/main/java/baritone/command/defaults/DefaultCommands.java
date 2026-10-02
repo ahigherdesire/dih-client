@@ -88,6 +88,7 @@ public final class DefaultCommands {
                 new MenuCommand(baritone),
                 new FleeCommand(baritone),
                 new AcquireCommand(baritone),
+                new BeatCommand(baritone),
                 new EatCommand(baritone)
         ));
         ExecutionControlCommands prc = new ExecutionControlCommands(baritone);

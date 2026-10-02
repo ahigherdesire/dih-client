@@ -52,7 +52,7 @@ The client is made to be expandable. If the base client is not enough, addons ca
 
 DIH Client now ships with a full Baritone-based pathfinding engine and the MinecraftAI feature set built directly into the jar — no second mod required. These are driven with the `#` command prefix in chat:
 
-* `#ai` — hand the controls to a language model: it reads server chat and plays by running Baritone commands. Configure with `#ai key <api-key>` (or the `MINECRAFTAI_LLM_KEY` env var), `#ai url <openai-compatible-endpoint>`, `#ai model <name>`, then `#ai on`. Defaults to an OpenAI-compatible endpoint running `qwen-plus`.
+* `#ai` — hand the controls to a language model: it reads server chat and plays by running Baritone commands. Easiest: `.ai setup` opens a setup screen with provider presets and a Test button. From chat: `#ai key <api-key>` (a Groq, OpenAI, OpenRouter, Claude or Gemini key switches to its provider by itself), `#ai provider [name]` to list or pick a provider, `#ai model <name>`, then `#ai on`. Any OpenAI-compatible endpoint works through `#ai url`; the default is Qwen (`qwen-plus`).
 * `#goto` / `#mine` / `#follow` / `#elytra` and the rest of the Baritone command surface — pathfinding, mining, and Overworld/Nether elytra travel.
 * `#threats` / `#players` — proximity alerts plus a persistent player-sighting log.
 * `#chest <item>` — silently records every container you open; search by item name and navigate to the result.

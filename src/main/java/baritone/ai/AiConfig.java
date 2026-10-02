@@ -76,10 +76,17 @@ public final class AiConfig {
     public int historyLimit = 24;
     public int maxCallsPerMinute = 12;
     public int maxChatContextLines = 15;
+    /** Model calls one .ai start run may make before it pauses and asks (it plans once, then only when something breaks). */
+    public int maxModelCallsPerRun = 20;
+    /** A .ai start run stops after this long. */
+    public int maxRunMinutes = 90;
     /** Commands the AI may never run, whatever it decides it wants. */
     public List<String> deniedCommands = new ArrayList<>(Arrays.asList(
             "activate", "set", "setting", "settings", "reloadall", "saveall", "gc", "render", "ai"
     ));
+
+    /** Let the AI search and read the web (web_search, web_fetch). Off by default: pages can say anything. */
+    public boolean webTools = false;
 
     // ── #acquire follow-ups ─────────────────────────────────────────────────
     /**

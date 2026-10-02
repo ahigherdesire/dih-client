@@ -59,7 +59,10 @@ public class DihMacroListOverlay extends DihOverlayBase {
     private final DirectSurface surface = new DirectSurface(theme, windowNode);
     private final CompactTextInput searchField = new CompactTextInput();
     private final CompactTextInput pasteNameField = new CompactTextInput();
+    private final CompactTextInput folderField = new CompactTextInput();
     private final DirectViewportSlot listSlot = new DirectViewportSlot();
+    /** The macro being moved to a folder (right-click a macro), or null. */
+    private DihMacro movingMacro;
 
     private int panelX = 500;
     private int panelY = 250;
@@ -124,6 +127,12 @@ public class DihMacroListOverlay extends DihOverlayBase {
             .setGrowX(true)
             .setOnSubmit(text -> pasteMacroFromClipboard());
 
+        folderField
+            .setPlaceholder("Folder name (empty for none)...")
+            .setFieldHeight(searchFieldHeight())
+            .setGrowX(true)
+            .setOnSubmit(text -> applyMove(folderField.text()));
+
         rebuildUi();
     }
 
@@ -152,7 +161,15 @@ public class DihMacroListOverlay extends DihOverlayBase {
             windowNode.content().add(listSlot);
         }
 
-        if (pasteMode) {
+        if (movingMacro != null) {
+            windowNode.content().add(folderField);
+
+            DirectRow actions = new DirectRow().setGap(actionRowGap());
+            actions.add(new DirectUiButton("Move", DirectUiButton.Variant.SUCCESS, () -> applyMove(folderField.text())).setGrowX(true).setButtonHeight(actionButtonHeight()));
+            actions.add(new DirectUiButton("Cancel", DirectUiButton.Variant.SECONDARY, this::cancelMoveMode).setGrowX(true).setButtonHeight(actionButtonHeight()));
+            windowNode.content().add(actions);
+            windowNode.content().add(new DirectUiLabel("Move \"" + movingMacro.name + "\": type a new folder or click one above.", UiTone.MUTED).setTrimToBounds(true));
+        } else if (pasteMode) {
             windowNode.content().add(pasteNameField);
 
             DirectRow actions = new DirectRow().setGap(actionRowGap());
@@ -401,6 +418,8 @@ public class DihMacroListOverlay extends DihOverlayBase {
                 DisplayItem item = currentItems.get(i);
                 if (item.type == ItemType.SECTION_HEADER) {
                     renderSectionHeader(context, rowContext, item, viewX + VIEWPORT_BORDER, rowY, listLayout.contentWidth());
+                } else if (item.type == ItemType.FOLDER_HEADER) {
+                    renderFolderHeader(context, rowContext, item, viewX + VIEWPORT_BORDER, rowY, listLayout.contentWidth());
                 } else {
                     renderMacroRow(context, rowContext, item, viewX + VIEWPORT_BORDER, rowY, listLayout.contentWidth());
                 }
@@ -449,10 +468,38 @@ public class DihMacroListOverlay extends DihOverlayBase {
         );
     }
 
+    /** A folder heading: chevron, name and macro count. Click toggles it, or files the macro being moved into it. */
+    private void renderFolderHeader(GuiGraphicsExtractor context, DirectRenderContext rowContext, DisplayItem item, int x, int y, int width) {
+        boolean hovered = uiContains(x, y, width, rowHeight(), rowContext.mouseX(), rowContext.mouseY());
+        if (hovered || movingMacro != null) {
+            int tint = movingMacro != null && hovered ? 0x3A33D968 : movingMacro != null ? 0x1433D968 : 0x14FFFFFF;
+            CompactSurfaces.tintedRow(context, x, y, width, rowHeight(), rowContext.applyAlpha(tint));
+        }
+        int ink = rowContext.applyAlpha(theme.color(UiTone.LABEL));
+        int chevronSize = 8;
+        int chevronTop = y + UiSizing.alignMiddle(0, rowHeight(), chevronSize);
+        UiRenderer.chevron(context, UiBounds.of(x + rowTextInset() - 4, chevronTop, chevronSize, chevronSize), !item.folderCollapsed, ink);
+        int textLeft = x + rowTextInset() + chevronSize;
+        int textY = UiSizing.alignTextY(y, rowHeight(), theme.fontHeight(UiTone.BODY), theme.bodyTextNudge());
+        String count = String.valueOf(item.folderCount);
+        int mutedColor = rowContext.applyAlpha(theme.color(UiTone.MUTED));
+        int countWidth = UiText.width(textRenderer, count, theme.fontFor(UiTone.BODY), mutedColor);
+        int countX = x + width - rowTextInset() - countWidth;
+        String name = UiText.trimToWidth(textRenderer, item.label, Math.max(20, countX - textLeft - 6), theme.fontFor(UiTone.BODY), ink);
+        UiText.draw(context, textRenderer, name, theme.fontFor(UiTone.BODY), ink, textLeft, textY, false);
+        UiText.draw(context, textRenderer, count, theme.fontFor(UiTone.BODY), mutedColor, countX, textY, false);
+        clickRegions.add(new ClickRegion(x, y, width, rowHeight(), item, RowAction.FOLDER));
+    }
+
     private void renderMacroRow(GuiGraphicsExtractor context, DirectRenderContext rowContext, DisplayItem item, int x, int y, int width) {
         boolean hovered = uiContains(x, y, width, rowHeight(), rowContext.mouseX(), rowContext.mouseY());
         if (hovered) {
             CompactSurfaces.tintedRow(context, x, y, width, rowHeight(), rowContext.applyAlpha(DihTheme.recolor(0x1AFF4A4A, DihTheme.Channel.ACCENT)));
+        }
+        if (item.type == ItemType.LOCAL_MACRO) clickRegions.add(new ClickRegion(x, y, width, rowHeight(), item, RowAction.ROW));
+        if (item.inFolder) {
+            x += folderIndent();
+            width -= folderIndent();
         }
 
         List<RowButton> buttons = buildRowButtons(item);
@@ -620,7 +667,48 @@ public class DihMacroListOverlay extends DihOverlayBase {
             }
             case IMPORT_REMOTE -> importRemoteMacro(item);
             case IMPORT_METEOR -> importMeteorMacro(item);
+            case FOLDER -> {
+                if (movingMacro != null) {
+                    applyMove(item.label);
+                    return;
+                }
+                DihConfig config = DihConfig.getGlobal();
+                if (MacroFolderView.setCollapsed(config.collapsedMacroFolders, item.label, !item.folderCollapsed)) {
+                    config.save();
+                }
+                needsUiRebuild = true;
+            }
+            case ROW -> {
+            }
         }
+    }
+
+    private void beginMoveMode(DihMacro macro) {
+        if (macro == null) return;
+        pasteMode = false;
+        movingMacro = macro;
+        folderField.setText(macro.folder == null ? "" : macro.folder);
+        needsUiRebuild = true;
+    }
+
+    private void cancelMoveMode() {
+        movingMacro = null;
+        folderField.setText("");
+        folderField.setFocused(false);
+        needsUiRebuild = true;
+    }
+
+    /** Files the macro being moved under {@code folder} (blank takes it out of any folder) and opens that folder. */
+    private void applyMove(String folder) {
+        DihMacro macro = movingMacro;
+        if (macro == null) return;
+        String clean = DihMacro.normalizeFolder(folder);
+        macro.folder = clean;
+        DihMacroManager.get().save();
+        DihConfig config = DihConfig.getGlobal();
+        if (!clean.isEmpty() && MacroFolderView.setCollapsed(config.collapsedMacroFolders, clean, false)) config.save();
+        DihNotifications.show(clean.isEmpty() ? "Moved " + macro.name + " out of its folder" : "Moved " + macro.name + " to " + clean, 0xFF57F287);
+        cancelMoveMode();
     }
 
     private static boolean macroRunningForCurrentControl(String name) {
@@ -670,6 +758,7 @@ public class DihMacroListOverlay extends DihOverlayBase {
     }
 
     private void beginPasteMode() {
+        movingMacro = null;
         pasteMode = true;
         pasteNameField.setText("");
         listScroll.jumpTo(0, 0);
@@ -744,8 +833,18 @@ public class DihMacroListOverlay extends DihOverlayBase {
         if (!collapsed && button == 0) {
             for (int i = clickRegions.size() - 1; i >= 0; i--) {
                 ClickRegion region = clickRegions.get(i);
-                if (region.contains(uiMouseX, uiMouseY)) {
+                if (region.contains(uiMouseX, uiMouseY) && region.action != RowAction.ROW) {
                     handleRowAction(region.item, region.action);
+                    return true;
+                }
+            }
+        }
+
+        if (!collapsed && button == 1 && !configurationOnly) {
+            for (int i = clickRegions.size() - 1; i >= 0; i--) {
+                ClickRegion region = clickRegions.get(i);
+                if (region.contains(uiMouseX, uiMouseY) && region.item.type == ItemType.LOCAL_MACRO) {
+                    beginMoveMode(region.item.macro);
                     return true;
                 }
             }
@@ -841,6 +940,10 @@ public class DihMacroListOverlay extends DihOverlayBase {
         if (!visible) return false;
         if (collapsed) return false;
         if (surface.keyPressed(keyCode, scanCode, modifiers)) return true;
+        if (keyCode == InputConstants.KEY_ESCAPE && movingMacro != null) {
+            cancelMoveMode();
+            return true;
+        }
         if (keyCode == InputConstants.KEY_ESCAPE && pasteMode) {
             cancelPasteMode();
             return true;
@@ -863,11 +966,19 @@ public class DihMacroListOverlay extends DihOverlayBase {
         String filter = searchField.text().trim().toLowerCase(Locale.ROOT);
         List<DisplayItem> items = new ArrayList<>();
 
-        List<DisplayItem> localSection = new ArrayList<>();
+        List<DihMacro> listed = new ArrayList<>();
         for (DihMacro macro : localMacros) {
-            if (AutoFishStopMacroFactory.isGeneratedStopMacro(macro)) continue;
-            if (!matchesFilter(macro.name, filter)) continue;
-            localSection.add(DisplayItem.localMacro(macro));
+            if (!AutoFishStopMacroFactory.isGeneratedStopMacro(macro)) listed.add(macro);
+        }
+        List<DisplayItem> localSection = new ArrayList<>();
+        for (MacroFolderView.Row row : MacroFolderView.build(listed, filter, DihConfig.getGlobal().collapsedMacroFolders)) {
+            if (row instanceof MacroFolderView.FolderRow folder) {
+                localSection.add(DisplayItem.folder(folder.folder(), folder.count(), folder.collapsed()));
+            } else if (row instanceof MacroFolderView.MacroRow macroRow) {
+                DisplayItem item = DisplayItem.localMacro(macroRow.macro());
+                item.inFolder = macroRow.inFolder();
+                localSection.add(item);
+            }
         }
         if (!localSection.isEmpty()) {
             items.add(DisplayItem.section("DIH Client Macros", DihTheme.recolor(0xFFFF5555, DihTheme.Channel.ACCENT)));
@@ -1045,8 +1156,13 @@ public class DihMacroListOverlay extends DihOverlayBase {
         return 4;
     }
 
+    private int folderIndent() {
+        return 8;
+    }
+
     private enum ItemType {
         SECTION_HEADER,
+        FOLDER_HEADER,
         LOCAL_MACRO,
         REMOTE_MACRO,
         METEOR_MACRO
@@ -1058,7 +1174,9 @@ public class DihMacroListOverlay extends DihOverlayBase {
         COPY,
         DELETE,
         IMPORT_REMOTE,
-        IMPORT_METEOR
+        IMPORT_METEOR,
+        FOLDER,
+        ROW
     }
 
     private static final class DisplayItem {
@@ -1068,6 +1186,18 @@ public class DihMacroListOverlay extends DihOverlayBase {
         private DihMacro macro;
         private String remoteSource;
         private boolean remoteMeteor;
+        private boolean inFolder;
+        private int folderCount;
+        private boolean folderCollapsed;
+
+        private static DisplayItem folder(String name, int count, boolean collapsed) {
+            DisplayItem item = new DisplayItem();
+            item.type = ItemType.FOLDER_HEADER;
+            item.label = name;
+            item.folderCount = count;
+            item.folderCollapsed = collapsed;
+            return item;
+        }
 
         private static DisplayItem section(String label, int color) {
             DisplayItem item = new DisplayItem();

@@ -118,6 +118,7 @@ public final class VanillaModuleMenuController {
 
     private static final String MODE_SETTING_ID = "mode";
     private static final List<UtilityAction> UTILITY_ACTIONS = List.of(
+        UtilityAction.button("ai_setup", "AI Setup", UiAssets.ICON_CHAT_CATEGORY, Button.Tone.NORMAL),
         UtilityAction.button("macros", "Macros", UiAssets.ICON_MACROS, Button.Tone.NORMAL),
         UtilityAction.button("admin", "Admin Tools", UiAssets.ICON_FABRICATOR, Button.Tone.NORMAL),
         UtilityAction.button("lan", "LAN Sync", UiAssets.ICON_LANSYNC, Button.Tone.NORMAL),
@@ -135,6 +136,7 @@ public final class VanillaModuleMenuController {
         UtilityAction.button("clear", "Clear", null, Button.Tone.NORMAL)
     );
     private static final List<UtilityAction> OFFLINE_UTILITY_ACTIONS = List.of(
+        UtilityAction.button("ai_setup", "AI Setup", UiAssets.ICON_CHAT_CATEGORY, Button.Tone.NORMAL),
         UtilityAction.button("macros", "Macros", UiAssets.ICON_MACROS, Button.Tone.NORMAL),
         UtilityAction.button("lan", "LAN Sync", UiAssets.ICON_LANSYNC, Button.Tone.NORMAL),
         UtilityAction.button("queue", "Packet Q", UiAssets.ICON_PACKET_Q_EDITOR, Button.Tone.NORMAL),
@@ -2644,7 +2646,9 @@ public final class VanillaModuleMenuController {
                     boolean selected = macro.equalsIgnoreCase(module.value(option.id()));
                     boolean preset = isPresetChoice(macro);
                     UiRenderer.rect(context.graphics(), rowBounds, selected ? theme.colors().accentSoft : (hovered ? theme.colors().rowHover : theme.colors().row));
-                    context.text().drawFitted(context.graphics(), macro, rowBounds.x() + 4, context.text().centeredY(rowBounds),
+                    DihMacro saved = preset ? null : DihMacroManager.get().get(macro);
+                    String shown = saved == null ? macro : dihclient.util.MacroFolderView.label(saved);
+                    context.text().drawFitted(context.graphics(), shown, rowBounds.x() + 4, context.text().centeredY(rowBounds),
                         Math.max(1, rowBounds.width() - 8), preset ? theme.colors().success : theme.colors().text);
                 }
                 if (visible.size() > rows) {
@@ -2720,13 +2724,15 @@ public final class VanillaModuleMenuController {
                 addPresetIfVisible(presets, PRESET_FREE_SLOTS, needle);
                 addPresetIfVisible(presets, PRESET_DURABILITY, needle);
             }
+            List<DihMacro> matching = new ArrayList<>();
             for (DihMacro macro : DihMacroManager.get().getAll()) {
                 if (macro == null || macro.name == null || macro.name.isBlank()) continue;
                 if (isConditionalPicker() && isGeneratedAutoFishPresetName(macro.name)) continue;
                 if (isConditionalPicker() && !MacroConditionUtil.startsWithWaitCondition(macro)) continue;
-                if (needle.isEmpty() || macro.name.toLowerCase(Locale.ROOT).contains(needle)) names.add(macro.name);
+                if (needle.isEmpty() || dihclient.util.MacroFolderView.label(macro).toLowerCase(Locale.ROOT).contains(needle)) matching.add(macro);
             }
-            names.sort(String.CASE_INSENSITIVE_ORDER);
+            matching.sort((a, b) -> String.CASE_INSENSITIVE_ORDER.compare(a.name, b.name));
+            for (DihMacro macro : dihclient.util.MacroFolderView.ordered(matching)) names.add(macro.name);
             if (!presets.isEmpty()) names.addAll(0, presets);
             return names;
         }

@@ -1,5 +1,7 @@
 package baritone.acquire.knowledge;
 
+import baritone.acquire.model.Location;
+
 /**
  * What the planner may ask about the world to estimate costs. Implementations read Baritone's world
  * cache and loaded entities; tests use fixed values.
@@ -14,6 +16,11 @@ public interface WorldView {
 
     /** Whether a usable {@code station} block is close enough to walk to instead of placing one. */
     boolean stationNearby(String station);
+
+    /** Whether a working portal to {@code dimension} is already known (built earlier, or remembered by a campaign). */
+    default boolean portalKnown(Location dimension) {
+        return false;
+    }
 
     /** A world where nothing is known; the planner falls back to default costs. */
     WorldView UNKNOWN = new WorldView() {

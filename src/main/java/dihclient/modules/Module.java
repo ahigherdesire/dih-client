@@ -90,8 +90,10 @@ public abstract class Module implements SettingOwner {
         save();
         String message = replacementToggleMessage;
         replacementToggleMessage = null;
-        if (emitsToggleMessage() && !PackHideState.isSilenced()) {
-            DihClientMessaging.sendPrefixed(message == null || message.isBlank()
+        // A replacement message explains an automatic stop, so it shows even with Chat Feedback off.
+        boolean plainToggle = message == null || message.isBlank();
+        if (emitsToggleMessage() && !PackHideState.isSilenced() && (!plainToggle || toggleChatEnabled())) {
+            DihClientMessaging.sendPrefixed(plainToggle
                 ? name + ": " + (isEnabled() ? "enabled" : "disabled")
                 : message);
         }
@@ -585,6 +587,16 @@ public abstract class Module implements SettingOwner {
 
     private void save() {
         DihConfig.getGlobal().save();
+    }
+
+    /** The Chat Feedback setting: whether plain "Module: enabled/disabled" lines go to chat. */
+    static boolean toggleChatEnabled() {
+        try {
+            DihConfig config = DihConfig.getGlobal();
+            return config == null || config.moduleToggleChat;
+        } catch (Throwable t) {
+            return true;
+        }
     }
 
     private static double clamp(double value, double min, double max) {

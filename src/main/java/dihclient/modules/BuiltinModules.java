@@ -192,6 +192,8 @@ public final class BuiltinModules {
         ModuleRegistry.register(new CrystalAuraModule());
         ModuleRegistry.register(new AutoTrapModule());
         ModuleRegistry.register(new KillAuraModule());
+        ModuleRegistry.register(new MaceKillModule());
+        ModuleRegistry.register(new SpearKillModule());
         ModuleRegistry.register(new AutoFarmModule());
         ModuleRegistry.register(new AutoArmorModule());
         ModuleRegistry.register(new AutoSignModule());
@@ -211,6 +213,7 @@ public final class BuiltinModules {
         ModuleRegistry.register(new OffhandInteractModule());
         ModuleRegistry.register(new SpamModule());
         ModuleRegistry.register(new PayAllModule());
+        ModuleRegistry.register(new AutoTradeModule());
         ModuleRegistry.register(new BookBotModule());
         ModuleRegistry.register(new PacketCancellerModule());
         ModuleRegistry.register(new AutoReconnectModule());

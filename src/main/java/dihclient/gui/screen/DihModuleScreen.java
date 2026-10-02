@@ -183,6 +183,8 @@ public class DihModuleScreen extends DihScreen {
 
     @Override
     public boolean keyPressed(KeyEvent input) {
+        if (!blocksGlobalKeybinds() && dihclient.palette.DihCommandPalette.isShortcut(input.key(), input.modifiers())
+            && dihclient.palette.DihCommandPalette.openFromKey()) return true;
         if (packetSelectorOverlay != null && packetSelectorOverlay.isVisible() && packetSelectorOverlay.keyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) return true;
         if (menu != null && !menu.hasTopLayer() && DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) return true;
         if (menu != null && menu.keyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) return true;
@@ -495,6 +497,10 @@ public class DihModuleScreen extends DihScreen {
     }
 
     private void runUtility(String id) {
+        if ("ai_setup".equals(id)) {
+            if (minecraft != null) minecraft.gui.setScreen(new DihAiSetupScreen(this));
+            return;
+        }
         if ("macros".equals(id)) {
             toggleMacroPanel();
             return;

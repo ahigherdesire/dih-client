@@ -40,14 +40,17 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.OptionalInt;
 import java.util.Random;
 import java.util.function.Predicate;
+import java.util.function.Supplier;
 
 public final class InventoryBehavior extends Behavior implements Helper {
 
     int ticksSinceLastInventoryMove;
     int[] lastTickRequestedMove; // not everything asks every tick, so remember the request while coming to a halt
+    private volatile Supplier<Map<Item, Integer>> reserved = Map::of;
 
     public InventoryBehavior(Baritone baritone) {
         super(baritone);
@@ -188,7 +191,31 @@ public final class InventoryBehavior extends Behavior implements Helper {
         return throwaway(select, desired, Baritone.settings().allowInventory.value);
     }
 
-    public boolean throwaway(boolean select, Predicate<? super ItemStack> desired, boolean allowInventory) {
+    /**
+     * Blocks a running task still has a use for, as item to count: only what is held past that count is placed as
+     * scaffolding. ({@code #acquire} keeps the cobblestone a pickaxe needs: pillaring with it and mining it back
+     * looped.) Asked each time, so a finished task leaves nothing reserved.
+     */
+    public void setReservedBlocks(Supplier<Map<Item, Integer>> reserved) {
+        this.reserved = reserved == null ? Map::of : reserved;
+    }
+
+    /** Whether {@code stack} may be placed: not a block, or one held past what is reserved of it. */
+    private boolean spare(ItemStack stack, Map<Item, Integer> keep) {
+        if (stack.isEmpty() || !(stack.getItem() instanceof BlockItem)) return true;
+        Integer kept = keep.get(stack.getItem());
+        if (kept == null) return true;
+        LocalPlayer p = ctx.player();
+        int held = p.getItemBySlot(EquipmentSlot.OFFHAND).is(stack.getItem()) ? p.getItemBySlot(EquipmentSlot.OFFHAND).getCount() : 0;
+        for (ItemStack s : p.getInventory().getNonEquipmentItems()) {
+            if (s.is(stack.getItem())) held += s.getCount();
+        }
+        return held > kept;
+    }
+
+    public boolean throwaway(boolean select, Predicate<? super ItemStack> wanted, boolean allowInventory) {
+        Map<Item, Integer> keep = reserved.get();
+        Predicate<? super ItemStack> desired = keep.isEmpty() ? wanted : stack -> wanted.test(stack) && spare(stack, keep);
         LocalPlayer p = ctx.player();
         NonNullList<ItemStack> inv = p.getInventory().getNonEquipmentItems();
         for (int i = 0; i < 9; i++) {

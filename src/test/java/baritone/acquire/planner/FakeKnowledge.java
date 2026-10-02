@@ -1,15 +1,18 @@
 package baritone.acquire.planner;
 
 import baritone.acquire.knowledge.Knowledge;
+import baritone.acquire.model.BarterSource;
 import baritone.acquire.model.CraftSource;
 import baritone.acquire.model.Ingredient;
 import baritone.acquire.model.KillSource;
+import baritone.acquire.model.Location;
 import baritone.acquire.model.MineSource;
 import baritone.acquire.model.SmeltSource;
 import baritone.acquire.model.Source;
 import baritone.acquire.model.ToolReq;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,6 +38,9 @@ final class FakeKnowledge implements Knowledge {
     static final String IRON_BLOCK = "minecraft:iron_block";
     static final String COAL = "minecraft:coal";
     static final String IRON_PICKAXE = "minecraft:iron_pickaxe";
+    static final String STONE_SWORD = "minecraft:stone_sword";
+    static final String SHIELD = "minecraft:shield";
+    static final String IRON_HELMET = "minecraft:iron_helmet";
     static final String TORCH = "minecraft:torch";
     static final String STRING = "minecraft:string";
     static final String FLINT = "minecraft:flint";
@@ -43,13 +49,97 @@ final class FakeKnowledge implements Knowledge {
     static final String LAVA_BUCKET = "minecraft:lava_bucket";
     static final String WALL_TORCH = "minecraft:wall_torch";
 
+    // With dimensions only.
+    static final String DIAMOND = "minecraft:diamond";
+    static final String DIAMOND_PICKAXE = "minecraft:diamond_pickaxe";
+    static final String OBSIDIAN = "minecraft:obsidian";
+    static final String FLINT_AND_STEEL = "minecraft:flint_and_steel";
+    static final String BUCKET = "minecraft:bucket";
+    static final String WATER_BUCKET = "minecraft:water_bucket";
+    static final String BLAZE_ROD = "minecraft:blaze_rod";
+    static final String BLAZE_POWDER = "minecraft:blaze_powder";
+    static final String ENDER_PEARL = "minecraft:ender_pearl";
+    static final String ENDER_EYE = "minecraft:ender_eye";
+    static final String END_STONE = "minecraft:end_stone";
+    static final String QUARTZ = "minecraft:quartz";
+    static final String IRON_CHESTPLATE = "minecraft:iron_chestplate";
+    static final String IRON_LEGGINGS = "minecraft:iron_leggings";
+    static final String IRON_BOOTS = "minecraft:iron_boots";
+    static final String IRON_SWORD = "minecraft:iron_sword";
+    static final String BOW = "minecraft:bow";
+    static final String ARROW = "minecraft:arrow";
+    static final String FEATHER = "minecraft:feather";
+    static final String GOLD_INGOT = "minecraft:gold_ingot";
+    static final String GOLDEN_BOOTS = "minecraft:golden_boots";
+    static final String GOLDEN_HELMET = "minecraft:golden_helmet";
+    static final String PIGLIN = "minecraft:piglin";
+    /** Pearls per gold ingot bartered: 10 in 469 barters give 2 to 4. */
+    static final double PEARLS_PER_INGOT = 10.0 / 469 * 3;
+
     private static final ToolReq PICK_1 = new ToolReq("pickaxe", 1, true);
     private static final ToolReq PICK_2 = new ToolReq("pickaxe", 2, true);
+    private static final ToolReq PICK_3 = new ToolReq("pickaxe", 3, true);
+    private static final ToolReq PICK_4 = new ToolReq("pickaxe", 4, true);
 
     private final Map<String, List<Source>> sources = new LinkedHashMap<>();
     private final Map<String, Integer> pickaxes = new LinkedHashMap<>();
     private final Map<String, Integer> fuels = new LinkedHashMap<>();
     private final Set<String> items = new HashSet<>();
+    private final Map<String, Location> locations = new HashMap<>();
+
+    /** The Overworld-only knowledge where iron blocks can also be mined (placed in structures, crafted from ingots). */
+    static FakeKnowledge withIronBlocks() {
+        FakeKnowledge k = new FakeKnowledge();
+        k.mine(IRON_BLOCK, IRON_BLOCK, 1.0, PICK_2);
+        return k;
+    }
+
+    /** The Overworld-only knowledge plus the Nether and End: portals, blaze rods, pearls, eyes, end stone, gear. */
+    static FakeKnowledge withDimensions() {
+        return withDimensions(true);
+    }
+
+    /** {@code portal} false leaves out every way to get obsidian or a bucket, so the Nether can't be reached. */
+    static FakeKnowledge withDimensions(boolean portal) {
+        FakeKnowledge k = new FakeKnowledge();
+        k.mine(DIAMOND, "minecraft:diamond_ore", 1.0, PICK_3);
+        k.craft(DIAMOND_PICKAXE, 1, true, ing(DIAMOND, 3), ing(STICK, 2));
+        k.pickaxes.put(DIAMOND_PICKAXE, 4);
+        if (portal) {
+            k.mine(OBSIDIAN, "minecraft:obsidian", 1.0, PICK_4);
+            k.craft(BUCKET, 1, true, ing(IRON_INGOT, 3));
+        } else {
+            k.items.add(OBSIDIAN);
+            k.items.add(BUCKET);
+        }
+        k.items.add(WATER_BUCKET);
+        k.craft(FLINT_AND_STEEL, 1, false, ing(IRON_INGOT, 1), ing(FLINT, 1));
+        k.add(new KillSource("minecraft:blaze", BLAZE_ROD, 0.5, true));
+        k.locations.put("minecraft:blaze", Location.FORTRESS);
+        k.craft(BLAZE_POWDER, 2, false, ing(BLAZE_ROD, 1));
+        k.add(new KillSource("minecraft:enderman", ENDER_PEARL, 0.5, false));
+        k.locations.put("minecraft:enderman", null);
+        k.craft(ENDER_EYE, 1, false, ing(ENDER_PEARL, 1), ing(BLAZE_POWDER, 1));
+        // Piglins barter pearls for gold; there is no way to make gold here, only held gold is bartered.
+        k.add(new BarterSource(PIGLIN, GOLD_INGOT, ENDER_PEARL, PEARLS_PER_INGOT));
+        k.locations.put(PIGLIN, Location.NETHER);
+        k.items.add(GOLD_INGOT);
+        k.craft(GOLDEN_BOOTS, 1, true, ing(GOLD_INGOT, 4));
+        k.craft(GOLDEN_HELMET, 1, true, ing(GOLD_INGOT, 5));
+        k.mine(END_STONE, "minecraft:end_stone", 1.0, PICK_1);
+        k.locations.put("minecraft:end_stone", Location.END);
+        k.mine(QUARTZ, "minecraft:nether_quartz_ore", 1.0, PICK_1);
+        k.locations.put("minecraft:nether_quartz_ore", Location.NETHER);
+        k.craft(IRON_CHESTPLATE, 1, true, ing(IRON_INGOT, 8));
+        k.craft(IRON_LEGGINGS, 1, true, ing(IRON_INGOT, 7));
+        k.craft(IRON_BOOTS, 1, true, ing(IRON_INGOT, 4));
+        k.craft(IRON_SWORD, 1, true, ing(IRON_INGOT, 2), ing(STICK, 1));
+        k.craft(BOW, 1, true, ing(STICK, 3), ing(STRING, 3));
+        k.add(new KillSource("minecraft:chicken", FEATHER, 1.0, false));
+        k.craft(ARROW, 4, true, ing(FLINT, 1), ing(STICK, 1), ing(FEATHER, 1));
+        k.items.add("minecraft:dragon_egg");
+        return k;
+    }
 
     FakeKnowledge() {
         mine(LOG, "minecraft:oak_log", 1.0, new ToolReq("axe", 0, false));
@@ -59,6 +149,7 @@ final class FakeKnowledge implements Knowledge {
         craft(WOODEN_PICKAXE, 1, true, ing(PLANKS, 3), ing(STICK, 2));
         mine(COBBLESTONE, "minecraft:stone", 1.0, PICK_1);
         craft(STONE_PICKAXE, 1, true, ing(COBBLESTONE, 3), ing(STICK, 2));
+        craft(STONE_SWORD, 1, true, ing(COBBLESTONE, 2), ing(STICK, 1));
         craft(FURNACE, 1, true, ing(COBBLESTONE, 8));
         mine(RAW_IRON, "minecraft:iron_ore", 1.0, PICK_2);
         mine(RAW_IRON, "minecraft:deepslate_iron_ore", 1.0, PICK_2);
@@ -68,6 +159,8 @@ final class FakeKnowledge implements Knowledge {
         craft(IRON_BLOCK, 1, true, ing(IRON_INGOT, 9));
         mine(COAL, "minecraft:coal_ore", 1.0, PICK_1);
         craft(IRON_PICKAXE, 1, true, ing(IRON_INGOT, 3), ing(STICK, 2));
+        craft(SHIELD, 1, true, ing(PLANKS, 6), ing(IRON_INGOT, 1));
+        craft(IRON_HELMET, 1, true, ing(IRON_INGOT, 5));
         craft(TORCH, 4, false, ing(COAL, 1), ing(STICK, 1));
         add(new KillSource("minecraft:spider", STRING, 1.0, false));
         mine(FLINT, "minecraft:gravel", 0.1, new ToolReq("shovel", 0, false));
@@ -114,6 +207,17 @@ final class FakeKnowledge implements Knowledge {
     private void add(Source source) {
         sources.computeIfAbsent(source.output(), k -> new ArrayList<>()).add(source);
         items.add(source.output());
+    }
+
+    @Override
+    public Location locationOf(Source source) {
+        String key = switch (source) {
+            case MineSource m -> m.block();
+            case KillSource k -> k.entity();
+            case BarterSource b -> b.entity();
+            default -> null;
+        };
+        return key != null && locations.containsKey(key) ? locations.get(key) : Location.OVERWORLD;
     }
 
     @Override

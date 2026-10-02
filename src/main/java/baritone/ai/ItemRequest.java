@@ -18,6 +18,7 @@
 package baritone.ai;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
 
 import java.util.regex.Matcher;
@@ -28,17 +29,34 @@ import java.util.regex.Pattern;
  * models send counts as numbers, as strings, inside the item text ("3 iron_ingot"), or not at all.
  * Exactly one of {@code item} and {@code error} is meaningful: a request with an error is refused.
  */
-record ItemRequest(String item, int count, String error) {
+public record ItemRequest(String item, int count, String error) {
 
     /** A full inventory of one stackable item. Anything larger is almost certainly a mistake. */
-    static final int MAX_COUNT = 64 * 36;
+    public static final int MAX_COUNT = 64 * 36;
     static final int MAX_ITEM_CHARS = 80;
 
     private static final Pattern LEADING_COUNT = Pattern.compile("^(\\d{1,5})\\s*[x×]?\\s+(.+)$");
     private static final Pattern TRAILING_COUNT = Pattern.compile("^(.+?)\\s+[x×]\\s*(\\d{1,5})$");
 
+    /** Free text with an optional count in it: "10 oak logs", "torch x3". */
+    public static ItemRequest fromText(String text) {
+        JsonObject args = new JsonObject();
+        args.addProperty("item", text == null ? "" : text);
+        return parse(args);
+    }
+
     static ItemRequest parse(LlmClient.ToolCall call) {
-        String item = call.string("item", "");
+        return parse(call.arguments);
+    }
+
+    static ItemRequest parse(JsonObject arguments) {
+        JsonElement rawItem = arguments == null ? null : arguments.get("item");
+        String item;
+        try {
+            item = rawItem == null || rawItem.isJsonNull() ? "" : rawItem.getAsString();
+        } catch (RuntimeException e) {
+            item = "";
+        }
         item = item == null ? "" : item.replaceAll("\\s+", " ").trim();
 
         // A count written into the item text: "3 iron_ingot", "3x torch", "torch x3".
@@ -60,7 +78,7 @@ record ItemRequest(String item, int count, String error) {
             return error("That item name is too long. Use the item id, e.g. \"diamond_pickaxe\".");
         }
 
-        JsonElement raw = call.arguments.get("count");
+        JsonElement raw = arguments == null ? null : arguments.get("count");
         int count;
         if (raw == null || raw.isJsonNull()) {
             count = embedded == null ? 1 : embedded;
@@ -80,7 +98,7 @@ record ItemRequest(String item, int count, String error) {
         return new ItemRequest(item, count, null);
     }
 
-    boolean ok() {
+    public boolean ok() {
         return this.error == null;
     }
 

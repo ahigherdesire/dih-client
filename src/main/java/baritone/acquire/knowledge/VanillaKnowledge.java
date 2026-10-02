@@ -1,5 +1,7 @@
 package baritone.acquire.knowledge;
 
+import baritone.acquire.model.BarterSource;
+import baritone.acquire.model.Location;
 import baritone.acquire.model.CraftSource;
 import baritone.acquire.model.Ingredient;
 import baritone.acquire.model.KillSource;
@@ -94,6 +96,8 @@ public final class VanillaKnowledge implements Knowledge {
     private static Knowledge instance;
 
     private final Map<String, List<Source>> sources;
+    /** {@link #sources} flattened, in item id order. */
+    private final List<Source> allSources;
     private final Map<String, String> toolTypes;
     private final Map<String, Integer> toolTiers;
     private final Map<String, List<String>> toolsByType;
@@ -106,6 +110,9 @@ public final class VanillaKnowledge implements Knowledge {
         Map<String, List<Source>> frozen = new HashMap<>();
         b.sources.forEach((item, list) -> frozen.put(item, List.copyOf(list)));
         this.sources = Map.copyOf(frozen);
+        List<Source> all = new ArrayList<>();
+        new java.util.TreeMap<>(frozen).values().forEach(all::addAll);
+        this.allSources = List.copyOf(all);
         this.toolTypes = Map.copyOf(b.toolTypes);
         this.toolTiers = Map.copyOf(b.toolTiers);
         Map<String, List<String>> byType = new HashMap<>();
@@ -191,6 +198,52 @@ public final class VanillaKnowledge implements Knowledge {
     }
 
     @Override
+    public List<Source> allSources() {
+        return allSources;
+    }
+
+    /** Blocks and mobs found only in the Nether, at a fortress, or in the End. Everything else counts as the Overworld. */
+    private static final Map<String, Location> PLACES = places();
+    /** The loot table rolled once per gold ingot a piglin is given. */
+    private static final String PIGLIN_BARTERING = "minecraft:gameplay/piglin_bartering";
+    /** Mobs found everywhere (endermen): no trip needed. */
+    private static final Set<String> ANYWHERE = Set.of("minecraft:enderman");
+
+    private static Map<String, Location> places() {
+        Map<String, Location> places = new HashMap<>();
+        for (String id : List.of("netherrack", "nether_quartz_ore", "nether_gold_ore", "ancient_debris", "soul_sand",
+                "soul_soil", "glowstone", "basalt", "polished_basalt", "blackstone", "gilded_blackstone", "crimson_stem",
+                "warped_stem", "crimson_hyphae", "warped_hyphae", "crimson_nylium", "warped_nylium", "shroomlight",
+                "crimson_fungus", "warped_fungus", "weeping_vines", "weeping_vines_plant", "twisting_vines",
+                "twisting_vines_plant", "nether_wart_block", "warped_wart_block", "crimson_roots", "warped_roots",
+                "nether_sprouts", "ghast", "magma_cube", "piglin", "hoglin", "strider", "zoglin")) {
+            places.put("minecraft:" + id, Location.NETHER);
+        }
+        for (String id : List.of("nether_bricks", "nether_brick_fence", "nether_brick_stairs", "nether_wart", "blaze",
+                "wither_skeleton")) {
+            places.put("minecraft:" + id, Location.FORTRESS);
+        }
+        for (String id : List.of("end_stone", "end_stone_bricks", "chorus_plant", "chorus_flower", "purpur_block",
+                "purpur_pillar", "end_rod", "shulker", "dragon_egg", "ender_dragon")) {
+            places.put("minecraft:" + id, Location.END);
+        }
+        return Map.copyOf(places);
+    }
+
+    @Override
+    public Location locationOf(Source source) {
+        String key = switch (source) {
+            case MineSource mine -> mine.block();
+            case KillSource kill -> kill.entity();
+            case BarterSource barter -> barter.entity();
+            default -> null;
+        };
+        if (key == null) return null;
+        if (ANYWHERE.contains(key)) return null;
+        return PLACES.getOrDefault(key, Location.OVERWORLD);
+    }
+
+    @Override
     public String toolType(String item) {
         return item == null ? null : toolTypes.get(id(item));
     }
@@ -268,7 +321,7 @@ public final class VanillaKnowledge implements Knowledge {
         final Set<String> items = new HashSet<>();
         final Map<String, String> displayNames = new HashMap<>();
         Map<String, Integer> skippedRecipes = Map.of();
-        int crafts, smelts, blockTables, mineSources, mobTables, killSources;
+        int crafts, smelts, blockTables, mineSources, mobTables, killSources, barterSources;
 
         Builder(Map<String, String> files, GameFacts facts) {
             this.facts = facts;
@@ -307,6 +360,7 @@ public final class VanillaKnowledge implements Knowledge {
             LootReader loot = new LootReader(lootTables, itemTags);
             readBlockDrops(loot);
             readMobDrops(loot);
+            readBarters(loot);
             readItems();
             readFuels();
             return new VanillaKnowledge(this);
@@ -447,6 +501,16 @@ public final class VanillaKnowledge implements Knowledge {
             }
         }
 
+        /** What piglins give for one gold ingot: one roll of the bartering table per ingot. */
+        private void readBarters(LootReader loot) {
+            if (!lootTables.containsKey(PIGLIN_BARTERING)) return;
+            loot.expectedDrops(PIGLIN_BARTERING, new LootReader.Scenario(null, false, false)).forEach((item, n) -> {
+                if (n <= 0) return;
+                add(new BarterSource("minecraft:piglin", "minecraft:gold_ingot", item, n));
+                barterSources++;
+            });
+        }
+
         /** "minecraft:blocks/stone" with "blocks/" -> "minecraft:stone"; null for other folders and nested tables. */
         private static String directChild(String table, String folder) {
             int colon = table.indexOf(':');
@@ -503,7 +567,7 @@ public final class VanillaKnowledge implements Knowledge {
         String summary() {
             return crafts + " crafting + " + smelts + " cooking recipes (skipped " + skippedRecipes + "), "
                     + mineSources + " block drops from " + blockTables + " block tables, "
-                    + killSources + " mob drops from " + mobTables + " mob tables, "
+                    + killSources + " mob drops from " + mobTables + " mob tables, " + barterSources + " barters, "
                     + items.size() + " items, " + toolTypes.size() + " tools, " + fuels.size() + " fuels";
         }
     }

@@ -1,5 +1,6 @@
 package baritone.acquire.exec;
 
+import baritone.acquire.model.Goal;
 import baritone.acquire.model.Plan;
 import baritone.acquire.model.Step;
 
@@ -13,13 +14,21 @@ import java.util.function.ToIntFunction;
 final class AcquireRun {
     final String goal;
     final int count;
+    /** What is being planned: {@link #goal} is its label. */
+    final Goal target;
     private Plan plan;
     private int index = -1;
     private int replans;
+    private int expectedRetries;
 
     AcquireRun(String goal, int count, Plan plan) {
-        this.goal = goal;
-        this.count = count;
+        this(new Goal.ItemGoal(goal, count), plan);
+    }
+
+    AcquireRun(Goal target, Plan plan) {
+        this.target = target;
+        this.goal = target.label();
+        this.count = target.count();
         this.plan = plan;
     }
 
@@ -35,6 +44,15 @@ final class AcquireRun {
     int replans() {
         return replans;
     }
+
+    boolean expectedFreeAvailable() { return expectedRetries < 2; }
+
+    void resumeExpected(Plan next) {
+        resume(next);
+        expectedRetries++;
+    }
+
+    void markProgress() { expectedRetries = 0; }
 
     int stepCount() {
         return plan.steps().size();
@@ -85,7 +103,38 @@ final class AcquireRun {
     }
 
     static boolean met(Step step, ToIntFunction<String> have) {
-        return !(step instanceof Step.PlaceStation) && have.applyAsInt(step.item()) >= step.untilCount();
+        return switch (step) {
+            case Step.PlaceStation p -> false;
+            case Step.RetrieveStation r -> false;
+            // Trips and the dragon have no item to count: never already done.
+            case Step.Travel t -> false;
+            case Step.Locate l -> false;
+            case Step.SlayDragon d -> false;
+            default -> have.applyAsInt(step.item()) >= step.untilCount();
+        };
+    }
+
+    /**
+     * Why {@code step} can't run yet, or null when it has a runner. Portals, finding structures and the dragon come
+     * with the Nether and End updates; until then a plan stops there instead of re-planning.
+     */
+    static String unsupported(Step step) {
+        return switch (step) {
+            case Step.Travel t -> TravelRunner.supports(t) ? null : "going to " + t.to().label() + " isn't built yet";
+            case Step.Locate l -> LocateRunner.supports(l.site()) ? null : "finding " + l.site().label() + " isn't built yet";
+            case Step.SlayDragon d -> "fighting the ender dragon isn't built yet";
+            case Step.CollectEgg e -> "collecting the dragon egg isn't built yet";
+            default -> null;
+        };
+    }
+
+    /** "Stopped at step 2/4 (...): going to the Nether isn't built yet. ..." when the current step can't run, else null. */
+    String blocked() {
+        Step step = current();
+        String why = step == null ? null : unsupported(step);
+        if (why == null) return null;
+        return "Stopped at step " + (index + 1) + "/" + stepCount() + " (" + step.describe() + "): " + why
+                + ". Everything before it is done; #beat plan shows the whole route.";
     }
 
     boolean goalMet(ToIntFunction<String> have) {
@@ -111,7 +160,7 @@ final class AcquireRun {
         Step step = current();
         if (step == null) return head;
         String line = head + ": step " + (index + 1) + "/" + stepCount() + ", " + step.describe();
-        if (!(step instanceof Step.PlaceStation)) {
+        if (!(step instanceof Step.PlaceStation) && !(step instanceof Step.RetrieveStation)) {
             line += " (" + have.applyAsInt(step.item()) + "/" + step.untilCount() + ")";
         }
         return line;

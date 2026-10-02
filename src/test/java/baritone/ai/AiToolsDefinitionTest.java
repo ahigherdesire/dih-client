@@ -38,8 +38,28 @@ final class AiToolsDefinitionTest {
     @Test
     void offersTheExpectedTools() {
         assertEquals(
-                List.of("run_command", "acquire", "plan_item", "find", "say", "look_around", "wait", "remember"),
+                List.of("run_command", "acquire", "plan_item", "find", "say", "look_around", "wait", "remember",
+                        "load_tools", "list_tools", "goto", "goto_structure", "explore", "farm", "flee_to_safety", "stop",
+                        "build_schematic", "gear_up", "beat_stage"),
                 List.copyOf(functionsByName().keySet()));
+    }
+
+    @Test
+    void theSameToolsComeFromTheRegistry() {
+        for (String name : functionsByName().keySet()) {
+            baritone.ai.tool.AiTool tool = baritone.ai.tool.ToolRegistry.standard().get(name);
+            assertTrue(tool != null && tool.job(), name + " is a job tool in the registry");
+        }
+    }
+
+    @Test
+    void loadToolsOffersEveryCategoryButJobs() {
+        JsonObject category = functionsByName().get("load_tools").getAsJsonObject("parameters")
+                .getAsJsonObject("properties").getAsJsonObject("category");
+        List<String> values = new java.util.ArrayList<>();
+        category.getAsJsonArray("enum").forEach(value -> values.add(value.getAsString()));
+        assertTrue(values.contains("combat") && values.contains("mining") && values.contains("raw"), values.toString());
+        assertFalse(values.contains("job"));
     }
 
     @Test

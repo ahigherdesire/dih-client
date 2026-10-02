@@ -123,7 +123,7 @@ public class DihOverlayManager {
     public void clear() {
 
         overlays.removeIf(overlay -> {
-            if (overlay.persistsAcrossScreenClose()) return false;
+            if (overlay.persistsAcrossScreenClose() || overlay.isPinned()) return false;
             overlayComponents.remove(overlay);
             overlayScopes.remove(overlay);
             return true;
@@ -211,6 +211,7 @@ public class DihOverlayManager {
             overlay == null ? IDihOverlay.OverlayScope.HOST_SCREEN : overlay.getDefaultOverlayScope()
         );
         if (scope == IDihOverlay.OverlayScope.BACKGROUND_STATUS) return true;
+        if (overlay != null && overlay.isPinned()) return true;
         if (screen == null || screen instanceof ChatScreen || screen instanceof InBedChatScreen) return false;
 
         if (!dihclient.util.DihLiteVariant.enabled() && screen instanceof DihModuleScreen)
@@ -246,7 +247,8 @@ public class DihOverlayManager {
 
     public void hideAllInteractiveOverlays() {
         for (IDihOverlay overlay : overlays) {
-            if (overlay == null || overlayScopes.getOrDefault(overlay, overlay.getDefaultOverlayScope()) == IDihOverlay.OverlayScope.BACKGROUND_STATUS) {
+            if (overlay == null || overlayScopes.getOrDefault(overlay, overlay.getDefaultOverlayScope()) == IDihOverlay.OverlayScope.BACKGROUND_STATUS
+                || overlay.isPinned()) {
                 continue;
             }
             if (overlay.isVisible()) overlay.setVisible(false);
@@ -692,6 +694,12 @@ public class DihOverlayManager {
         }
 
         clearFocusedTextFields();
+        if (button == 0 && topOverlay instanceof DihWindow window && window.isOverPinButton(mouseX, mouseY, topOverlay.getBounds())) {
+            topOverlay.setPinned(!topOverlay.isPinned());
+            bringToFront(topOverlay);
+            invalidateHoverBlockCache();
+            return true;
+        }
         if (button == 0) {
             if (topOverlay.isOverResizeHandle(mouseX, mouseY)) {
                 resizingOverlay = topOverlay;
@@ -774,7 +782,10 @@ public class DihOverlayManager {
             headerCollapseStartBounds = null;
         }
 
-        if (prevDragging != null) adapterFor(prevDragging).mouseReleased((int) mouseX, (int) mouseY, button);
+        if (prevDragging != null) {
+            adapterFor(prevDragging).mouseReleased((int) mouseX, (int) mouseY, button);
+            prevDragging.saveLayout();
+        }
         if (prevResizing != null && prevResizing != prevDragging) adapterFor(prevResizing).mouseReleased((int) mouseX, (int) mouseY, button);
 
         if (shouldToggleHeaderCollapse && isOverlayInteractive(prevDragging)) {
@@ -881,6 +892,9 @@ public class DihOverlayManager {
 
     public boolean handleKeyPressed(int keyCode, int scanCode, int modifiers) {
         if (PackHideState.isActive()) return false;
+        if (dihclient.palette.DihCommandPalette.isShortcut(keyCode, modifiers) && dihclient.palette.DihCommandPalette.openFromKey()) {
+            return true;
+        }
         for (int i = overlays.size() - 1; i >= 0; i--) {
             IDihOverlay overlay = overlays.get(i);
             if (isOverlayInteractive(overlay) && overlay.wantsKeyboardCapture()) {

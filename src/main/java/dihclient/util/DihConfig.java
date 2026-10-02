@@ -123,6 +123,10 @@ public final class DihConfig implements Cloneable {
     public Map<String, List<String>> moduleCategoryOrder = new LinkedHashMap<>();
     public Map<String, HudElementState> hudElements = new LinkedHashMap<>();
     public boolean hudLayoutMigrated = false;
+    /** Where each DIH window was left and whether it is pinned, so both survive a restart. */
+    public Map<String, SavedWindowLayout> windowLayouts = new LinkedHashMap<>();
+    /** Macro folders the user collapsed in the macro list. */
+    public List<String> collapsedMacroFolders = new ArrayList<>();
 
     public boolean hudLayoutNormalizedV2 = false;
     public int hudSnapRange = 10;
@@ -136,6 +140,12 @@ public final class DihConfig implements Cloneable {
     public int keybindToggleLogger = -1;
     public int keybindToggleSend = -1;
     public int keybindToggleDelay = -1;
+    /** Opens the command palette; a printable key needs Ctrl held (so the default is Ctrl+K). */
+    public int keybindCommandPalette = com.mojang.blaze3d.platform.InputConstants.KEY_K;
+    /** Palette entries run most recently (action ids, newest first), which rank higher next time. */
+    public List<String> paletteRecent = new ArrayList<>();
+    /** The first-run tour version this player has seen; below {@code DihTour.TOUR_VERSION} shows it. */
+    public int tourCompletedVersion = 0;
 
     public boolean keybindInsideGui = false;
 
@@ -143,6 +153,10 @@ public final class DihConfig implements Cloneable {
 
     public boolean infiniChat = true;
     public double overlayScale = 1.0;
+    /** Print "Module enabled/disabled" in chat when a module is toggled. Toasts are unaffected. */
+    public boolean moduleToggleChat = true;
+    /** Size of text in DIH's own screens and windows, 0.8-1.5. */
+    public double uiTextScale = 1.0;
 
     public int tpMaxPackets = 20;
     public int tpPauseMs = 500;
@@ -203,6 +217,16 @@ public final class DihConfig implements Cloneable {
         public boolean enabled = false;
         public int keybind = -1;
         public Map<String, String> settings = new LinkedHashMap<>();
+    }
+
+    public static final class SavedWindowLayout {
+        public int x;
+        public int y;
+        public int width;
+        public int height;
+        public boolean visible;
+        public boolean collapsed;
+        public boolean pinned;
     }
 
     public static final class ModuleCategoryLayout {
@@ -465,6 +489,11 @@ public final class DihConfig implements Cloneable {
         if (hideRestoreModules == null) hideRestoreModules = new ArrayList<>();
         if (hideRestoreMeteorModules == null) hideRestoreMeteorModules = new ArrayList<>();
         if (moduleCategoryLayouts == null) moduleCategoryLayouts = new LinkedHashMap<>();
+        if (windowLayouts == null) windowLayouts = new LinkedHashMap<>();
+        windowLayouts.values().removeIf(java.util.Objects::isNull);
+        if (collapsedMacroFolders == null) collapsedMacroFolders = new ArrayList<>();
+        if (paletteRecent == null) paletteRecent = new ArrayList<>();
+        uiTextScale = DihUiScale.normalizeTextScale(uiTextScale);
         if (moduleCategoryOrder == null) moduleCategoryOrder = new LinkedHashMap<>();
         if (hudElements == null) hudElements = new LinkedHashMap<>();
         if (serverPluginScans == null) serverPluginScans = new LinkedHashMap<>();

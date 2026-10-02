@@ -71,11 +71,13 @@ final class AcquirePlannerTest {
         assertTrue(indexOf(plan, places(TABLE)) > indexOf(plan, crafts(TABLE)));
         int woodenPick = indexOf(plan, crafts(WOODEN_PICKAXE));
         assertTrue(woodenPick >= 0 && woodenPick < indexOf(plan, mines(COBBLESTONE)));
-        assertTrue(crafts(STONE_PICKAXE).test(plan.steps().get(plan.steps().size() - 1)));
+        int stonePick = indexOf(plan, crafts(STONE_PICKAXE));
+        assertTrue(stonePick > indexOf(plan, mines(COBBLESTONE)));
+        assertTrue(plan.steps().get(plan.steps().size() - 1) instanceof Step.RetrieveStation);
 
-        // The chain from the feature plan, with repeated crafts merged.
-        assertEquals(List.of(LOG, PLANKS, STICK, TABLE, TABLE, WOODEN_PICKAXE, COBBLESTONE, TABLE, STONE_PICKAXE),
-                plan.steps().stream().map(Step::item).toList(), AcquirePlanner.explain(plan));
+        // The table travels with the player before the stone trip.
+        int retrieval = indexOf(plan, step -> step instanceof Step.RetrieveStation r && r.station().equals(TABLE));
+        assertTrue(retrieval > woodenPick && retrieval < indexOf(plan, mines(COBBLESTONE)), AcquirePlanner.explain(plan));
     }
 
     @Test
@@ -108,7 +110,8 @@ final class AcquirePlannerTest {
         assertTrue(step.fuelCount() > 0 && KNOWLEDGE.fuels().containsKey(step.fuel()), explained);
         int stonePick = indexOf(plan, crafts(STONE_PICKAXE));
         assertTrue(stonePick >= 0 && stonePick < indexOf(plan, mines(RAW_IRON)), explained);
-        assertTrue(crafts(IRON_PICKAXE).test(plan.steps().get(plan.steps().size() - 1)), explained);
+        assertTrue(indexOf(plan, crafts(IRON_PICKAXE)) > smelt, explained);
+        assertTrue(plan.steps().get(plan.steps().size() - 1) instanceof Step.RetrieveStation, explained);
         // Neither the iron_block -> 9 ingots recipe nor the 0.0083 zombie drop is worth it here.
         assertEquals(-1, indexOf(plan, crafts(IRON_BLOCK)));
         assertEquals(-1, indexOf(plan, s -> s instanceof Step.Kill), explained);
@@ -136,7 +139,7 @@ final class AcquirePlannerTest {
         assertTimeoutPreemptively(Duration.ofSeconds(10), () -> {
             Plan block = planner().plan(IRON_BLOCK, 1, InventorySnapshot.empty());
             PlanSimulator.Result result = valid(block, InventorySnapshot.empty(), WorldView.UNKNOWN);
-            assertEquals(9, result.mined(RAW_IRON));
+            assertTrue(result.mined(RAW_IRON) >= 9, AcquirePlanner.explain(block));
 
             Plan ingots = planner().plan(IRON_INGOT, 2, InventorySnapshot.empty());
             valid(ingots, InventorySnapshot.empty(), WorldView.UNKNOWN);
@@ -162,13 +165,49 @@ final class AcquirePlannerTest {
     }
 
     @Test
-    void nearbyTableIsUsedInsteadOfCrafted() {
+    void nearbyTableIsUsedForCraftingAtTheStartingPosition() {
+        FakeWorld world = new FakeWorld().station(TABLE);
+        InventorySnapshot start = inv(PLANKS, 3, STICK, 2, COBBLESTONE, 3);
+        Plan plan = new AcquirePlanner(KNOWLEDGE, world, NO_STATIONS).plan(STONE_PICKAXE, 1, start);
+        valid(plan, start, world);
+        assertEquals(-1, indexOf(plan, crafts(TABLE)), AcquirePlanner.explain(plan));
+        assertEquals(1, plan.steps().stream().filter(places(TABLE)).count());
+    }
+
+    @Test
+    void stoneSwordPrecedesTheFirstOreTrip() {
+        Plan plan = planner().plan(IRON_PICKAXE, 1, InventorySnapshot.empty());
+        valid(plan, InventorySnapshot.empty(), WorldView.UNKNOWN);
+        assertTrue(indexOf(plan, crafts(STONE_SWORD)) >= 0, AcquirePlanner.explain(plan));
+        assertTrue(indexOf(plan, crafts(STONE_SWORD)) < indexOf(plan, mines(RAW_IRON)), AcquirePlanner.explain(plan));
+    }
+
+    @Test
+    void gearCanBeDisabled() {
+        PlannerOptions options = new PlannerOptions(true, true, 24, 200, false);
+        Plan plan = new AcquirePlanner(KNOWLEDGE, WorldView.UNKNOWN, options)
+                .plan(IRON_PICKAXE, 1, InventorySnapshot.empty());
+        valid(plan, InventorySnapshot.empty(), WorldView.UNKNOWN);
+        assertEquals(-1, indexOf(plan, crafts(STONE_SWORD)), AcquirePlanner.explain(plan));
+    }
+
+    @Test
+    void affordableIronGearFollowsAnIronPlan() {
+        Plan plan = planner().plan(IRON_INGOT, 30, InventorySnapshot.empty());
+        valid(plan, InventorySnapshot.empty(), WorldView.UNKNOWN);
+        assertTrue(indexOf(plan, crafts(SHIELD)) >= 0, AcquirePlanner.explain(plan));
+        assertTrue(indexOf(plan, crafts(IRON_HELMET)) >= 0, AcquirePlanner.explain(plan));
+        assertTrue(plan.cost() <= 2 * new AcquirePlanner(KNOWLEDGE, WorldView.UNKNOWN,
+                new PlannerOptions(true, true, 24, 200, false))
+                .plan(IRON_INGOT, 30, InventorySnapshot.empty()).cost());
+    }
+
+    @Test
+    void initialNearbyTableIsNotAssumedNearbyAfterMining() {
         FakeWorld world = new FakeWorld().station(TABLE);
         Plan plan = new AcquirePlanner(KNOWLEDGE, world, NO_STATIONS).plan(STONE_PICKAXE, 1, InventorySnapshot.empty());
-        valid(plan, InventorySnapshot.empty(), world);
-        assertEquals(-1, indexOf(plan, crafts(TABLE)), AcquirePlanner.explain(plan));
-        assertTrue(indexOf(plan, places(TABLE)) >= 0);
-        assertEquals(2, plan.steps().stream().filter(places(TABLE)).count(), "once per batch of table crafts");
+        assertFalse(plan.complete());
+        assertTrue(plan.missing().contains("no crafting table nearby and placing stations is off"));
     }
 
     @Test
@@ -183,6 +222,22 @@ final class AcquirePlannerTest {
         assertTrue(result.crafted(STICK) >= 18, "16 for torches, 2 for the wooden pickaxe");
         assertEquals(64, result.count(TORCH));
         assertEquals(-1, indexOf(plan, mines(TORCH)), "placed torches are not hunted for");
+    }
+
+    /**
+     * From a game test: unseen, iron blocks were planned from 512 blocks off (a guess for placed blocks), still cheaper
+     * than smelting ore, and every re-plan went hunting for a structure that was nowhere near. Only a seen one is mined.
+     */
+    @Test
+    void anUnseenPlacedBlockIsNotHuntedFor() {
+        FakeKnowledge k = FakeKnowledge.withIronBlocks();
+        InventorySnapshot start = inv(IRON_PICKAXE, 1, LOG, 16, COBBLESTONE, 16);
+        Plan unseen = new AcquirePlanner(k, WorldView.UNKNOWN, PlannerOptions.DEFAULT).plan(IRON_INGOT, 18, start);
+        assertTrue(unseen.complete(), () -> AcquirePlanner.explain(unseen));
+        assertEquals(-1, indexOf(unseen, mines(IRON_BLOCK)), AcquirePlanner.explain(unseen));
+        FakeWorld world = new FakeWorld().block(IRON_BLOCK, 6);
+        Plan seen = new AcquirePlanner(k, world, PlannerOptions.DEFAULT).plan(IRON_INGOT, 18, start);
+        assertTrue(indexOf(seen, mines(IRON_BLOCK)) >= 0, AcquirePlanner.explain(seen));
     }
 
     @Test
@@ -258,9 +313,9 @@ final class AcquirePlannerTest {
         InventorySnapshot start = inv(STONE_PICKAXE, 1);
         Plan plan = new AcquirePlanner(KNOWLEDGE, world, PlannerOptions.DEFAULT).plan(RAW_IRON, 5, start);
         valid(plan, start, world);
-        Step.Mine mine = (Step.Mine) plan.steps().get(0);
+        Step.Mine mine = (Step.Mine) plan.steps().get(indexOf(plan, mines(RAW_IRON)));
         assertEquals(List.of("minecraft:deepslate_iron_ore", "minecraft:iron_ore"), mine.blocks());
-        assertEquals(5, mine.expectedBlocks());
+        assertTrue(mine.expectedBlocks() >= 5);
     }
 
     @Test
@@ -316,5 +371,40 @@ final class AcquirePlannerTest {
         assertEquals(plan.steps().size(), lines.size());
         assertTrue(lines.get(0).startsWith("1. mine "), lines.get(0));
         assertEquals("already have 1 stick", AcquirePlanner.explain(planner().plan(STICK, 1, inv(STICK, 1))));
+    }
+
+    @Test
+    void carriesCraftingTableAcrossDistantMiningLegs() {
+        Plan plan = planner().plan(IRON_PICKAXE, 1, InventorySnapshot.empty());
+        valid(plan, InventorySnapshot.empty(), WorldView.UNKNOWN);
+        int cobble = indexOf(plan, mines(COBBLESTONE));
+        int iron = indexOf(plan, mines(RAW_IRON));
+        assertTrue(cobble >= 0 && iron > cobble, AcquirePlanner.explain(plan));
+        assertTrue(plan.steps().subList(0, iron).stream().anyMatch(step -> step.describe().startsWith("retrieve ")),
+                "the first table must travel underground with the player:\n" + AcquirePlanner.explain(plan));
+        assertTrue(plan.steps().subList(iron, plan.steps().size()).stream().anyMatch(places(TABLE)),
+                "the table must be placed again after the distant mining leg:\n" + AcquirePlanner.explain(plan));
+    }
+
+    @Test
+    void budgetsASecondToolBeforeSeventyCobblestoneBreaks() {
+        InventorySnapshot start = inv(WOODEN_PICKAXE, 1);
+        Plan plan = planner().plan(COBBLESTONE, 70, start);
+        valid(plan, start, WorldView.UNKNOWN);
+        int mine = indexOf(plan, mines(COBBLESTONE));
+        long replacements = plan.steps().subList(0, mine).stream()
+                .filter(step -> crafts(WOODEN_PICKAXE).test(step) || crafts(STONE_PICKAXE).test(step)).count();
+        assertTrue(replacements > 0,
+                "one wooden pickaxe has only 59 uses, before pathing allowance:\n" + AcquirePlanner.explain(plan));
+    }
+
+    @Test
+    void plansReplacementForARealNearlyBrokenPickaxe() {
+        InventorySnapshot start = new InventorySnapshot(Map.of(WOODEN_PICKAXE, 1), Map.of(WOODEN_PICKAXE, 4));
+        Plan plan = planner().plan(COBBLESTONE, 12, start);
+        valid(plan, start, WorldView.UNKNOWN);
+        int mine = indexOf(plan, mines(COBBLESTONE));
+        assertTrue(plan.steps().subList(0, mine).stream().anyMatch(crafts(WOODEN_PICKAXE)),
+                "the held pickaxe has only four uses left:\n" + AcquirePlanner.explain(plan));
     }
 }
