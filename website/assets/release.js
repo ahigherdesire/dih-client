@@ -69,11 +69,9 @@ window.DIH_RELEASE = {
           "tag": "v5.1-beta.3"
         },
         "26.3-fabric": {
-          "file": "DIH-Client-5.1-beta.3-26.3.jar",
-          "size": "21.1 MB",
-          "sha256": "daf5f6624d697f9934479f5e8809c2bf6957dd94cd034edf17410dc05767e5f8",
-          "version": "5.1-beta.3",
-          "tag": "v5.1-beta.3"
+          "file": "DIH-Client-5.1-beta.5a-26.3.jar",
+          "size": "21.7 MB",
+          "sha256": "00806858020856b84ad85bc3e4e1173b8140eaabeb35b2b6ef8c5c4e272299c0"
         },
         "26.3-forge": {
           "file": "DIH-Client-5.1-beta.3-26.3-forge.jar",
