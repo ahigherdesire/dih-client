@@ -177,7 +177,7 @@ public final class LlmClient implements ChatModel {
             String responseBody = read(status / 100 == 2 ? connection.getInputStream() : connection.getErrorStream());
             if (status / 100 != 2) {
                 String snippet = responseBody.length() > 400 ? responseBody.substring(0, 400) : responseBody;
-                String message = Redact.text("model returned HTTP " + status + ": " + snippet + hint(status),
+                String message = Redact.text("model returned HTTP " + status + ": " + snippet + hint(status, this.config),
                         this.config.resolveKey());
                 throw new RequestFailed(status, RETRYABLE.contains(status), message);
             }
@@ -188,9 +188,12 @@ public final class LlmClient implements ChatModel {
     }
 
     /** What to check for the errors a setup mistake causes. */
-    static String hint(int status) {
+    static String hint(int status, AiConfig config) {
         return switch (status) {
-            case 401 -> " (the key was refused: check #ai key)";
+            case 401 -> {
+                String reason = AiProviders.refusedKeyReason(config.resolveKey(), config.baseUrl);
+                yield reason.isEmpty() ? " (the key was refused: check #ai key)" : " (the key was refused: " + reason + ")";
+            }
             case 403 -> " (the key can't use this: check the key and #ai model)";
             case 404 -> " (nothing there: check #ai url and #ai model)";
             default -> "";

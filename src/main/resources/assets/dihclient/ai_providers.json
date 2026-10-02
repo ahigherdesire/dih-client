@@ -1,11 +1,12 @@
 {
-  "_checked": "2026-09-29 against each provider's docs (see the source field). Prices are USD per million input/output tokens, standard tier.",
+  "_checked": "2026-09-29 against each provider's docs (see the source field); Qwen 2026-10-02. keyPrefixes: how that provider's keys start, to tell a pasted key's provider. Prices are USD per million input/output tokens, standard tier.",
   "providers": [
     {
       "id": "openrouter",
       "name": "OpenRouter",
       "baseUrl": "https://openrouter.ai/api/v1",
       "needsKey": true,
+      "keyPrefixes": ["sk-or-"],
       "keyUrl": "https://openrouter.ai/keys",
       "source": "https://openrouter.ai/docs/quickstart",
       "models": [
@@ -19,6 +20,7 @@
       "name": "OpenAI",
       "baseUrl": "https://api.openai.com/v1",
       "needsKey": true,
+      "keyPrefixes": ["sk-proj-", "sk-svcacct-", "sk-admin-"],
       "keyUrl": "https://platform.openai.com/api-keys",
       "source": "https://developers.openai.com/api/docs/pricing",
       "models": [
@@ -32,6 +34,7 @@
       "name": "Anthropic (Claude)",
       "baseUrl": "https://api.anthropic.com/v1/",
       "needsKey": true,
+      "keyPrefixes": ["sk-ant-"],
       "keyUrl": "https://platform.claude.com/settings/keys",
       "source": "https://platform.claude.com/docs/en/api/openai-sdk",
       "models": [
@@ -45,6 +48,7 @@
       "name": "Google Gemini",
       "baseUrl": "https://generativelanguage.googleapis.com/v1beta/openai/",
       "needsKey": true,
+      "keyPrefixes": ["AIza"],
       "keyUrl": "https://aistudio.google.com/apikey",
       "source": "https://ai.google.dev/gemini-api/docs/openai",
       "models": [
@@ -58,6 +62,7 @@
       "name": "Groq",
       "baseUrl": "https://api.groq.com/openai/v1",
       "needsKey": true,
+      "keyPrefixes": ["gsk_"],
       "keyUrl": "https://console.groq.com/keys",
       "source": "https://console.groq.com/docs/tool-use",
       "models": [
@@ -76,6 +81,20 @@
       "models": [
         {"id": "deepseek-flash", "in": 0.30, "out": 1.20},
         {"id": "deepseek-v4-pro", "in": 1.32, "out": 3.96}
+      ]
+    },
+    {
+      "id": "qwen",
+      "name": "Qwen (Alibaba)",
+      "baseUrl": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+      "needsKey": true,
+      "keyUrl": "https://modelstudio.console.alibabacloud.com/model/settings/api-key",
+      "source": "https://www.alibabacloud.com/help/en/model-studio/compatibility-of-openai-with-dashscope",
+      "keyNote": "Qwen keys only work in the region they were made in: an international key with this URL, a China or US key with that region's URL",
+      "models": [
+        {"id": "qwen-plus"},
+        {"id": "qwen-flash"},
+        {"id": "qwen-max"}
       ]
     },
     {

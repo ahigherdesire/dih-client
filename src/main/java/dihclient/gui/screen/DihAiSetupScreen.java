@@ -63,6 +63,7 @@ public final class DihAiSetupScreen extends DihScreen {
         key = field(fieldX, y + 2 * ROW, fieldW - 78, "API key", saved.apiKey);
         key.setMaxLength(4096);
         key.addFormatter((value, offset) -> FormattedCharSequence.forward(reveal ? value : "*".repeat(value.length()), Style.EMPTY));
+        key.setResponder(this::keyChanged);
         addButton(fieldX + fieldW - 74, y + 2 * ROW, 74, "Show / Hide", Button.Tone.SECONDARY, () -> reveal = !reveal);
         int footer = footerTop();
         addButton(x + 12, footer, 70, "Test", Button.Tone.PRIMARY, this::test);
@@ -96,6 +97,15 @@ public final class DihAiSetupScreen extends DihScreen {
         url.setValue(enteredUrl);
         model.setValue(enteredModel);
         key.setValue(enteredKey);
+    }
+
+    /** A pasted key that says whose it is ("gsk_" is Groq's) picks that provider, URL and model with it. */
+    private void keyChanged(String value) {
+        AiProviders.Provider owner = AiProviders.forKey(providers, value);
+        int index = owner == null ? -1 : providers.indexOf(owner);
+        if (index < 0 || index == selected) return;
+        choose(index);
+        result = "That's " + owner.name() + "'s key: switched to " + owner.name() + ".";
     }
 
     private void nextModel() {
