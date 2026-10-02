@@ -70,6 +70,8 @@ final class Buckets {
     private BlockPos fluid;
     private int sinceScan = RESCAN_TICKS;
     private GoalXZ explore;
+    /** Quarter turns away from the way the player faces, one for each way out found blocked. */
+    private int exploreTurns;
     private int tries;
     private int pending;
     private int pathFails;
@@ -154,7 +156,7 @@ final class Buckets {
                         + " from " + ctx.playerFeet().toShortString());
             }
         }
-        if (fluid == null) return explore(tag == FluidTags.LAVA);
+        if (fluid == null) return explore(tag == FluidTags.LAVA, calcFailed);
         explore = null;
         // Any source of the pool will do, whichever the ray meets first.
         StepRunner.Result scooped = scoop(fluid, tag, false);
@@ -237,11 +239,18 @@ final class Buckets {
         return null;
     }
 
-    /** No source in view: heads down to lava level, then along the way the player faces, rescanning as it goes. */
-    StepRunner.Result explore(boolean lava) {
+    /**
+     * No source in view: heads down to lava level, then along the way the player faces, rescanning as it goes. A
+     * quarter turn to the right whenever the way it was going fails.
+     */
+    StepRunner.Result explore(boolean lava, boolean calcFailed) {
         if (lava && ctx.playerFeet().getY() > LAVA_LEVEL + 2) return walk.apply(new GoalYLevel(LAVA_LEVEL));
+        if (calcFailed && explore != null) {
+            exploreTurns++;
+            explore = null;
+        }
         if (explore == null || explore.isInGoal(ctx.playerFeet())) {
-            explore = GoalXZ.fromDirection(ctx.player().position(), ctx.player().getYRot(), 48);
+            explore = GoalXZ.fromDirection(ctx.player().position(), ctx.player().getYRot() + 90 * exploreTurns, 48);
         }
         return walk.apply(explore);
     }

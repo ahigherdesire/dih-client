@@ -2,6 +2,9 @@ package baritone.acquire.exec;
 
 import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.utils.Helper;
+import baritone.api.utils.RotationUtils;
+import baritone.api.utils.VecUtils;
+import baritone.api.utils.input.Input;
 import baritone.api.process.IBuilderProcess;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -47,6 +50,10 @@ final class PortalCaster extends RunnerBase {
     /** Failed paths to a stand waited out (each for a second) before the site is given up. */
     private static final int STAND_TRIES = 8;
     private static final int SETTLE_TICKS = 20;
+    /** How far the poured water may carry the player off the stand and still be waded back against. */
+    private static final int WADE_RADIUS = 6;
+    /** Ticks spent wading back to one stand before it's left to the pathing again. */
+    private static final int WADE_TICKS = 200;
     /** Blocks the wall may be made of, most common first. */
     static final Set<String> MOULD = Set.of("minecraft:cobblestone", "minecraft:cobbled_deepslate",
             "minecraft:netherrack", "minecraft:dirt", "minecraft:stone", "minecraft:andesite", "minecraft:diorite",
@@ -66,6 +73,8 @@ final class PortalCaster extends RunnerBase {
     private int tries;
     private int standFails;
     private int settling;
+    private boolean wading;
+    private int waded;
     /** Lava pools turned down for want of room. */
     private int pools;
     private BlockPos portal;
@@ -113,7 +122,7 @@ final class PortalCaster extends RunnerBase {
                 // From the pool by the site, which each bucket goes back to, not whichever is nearest on the way there.
                 yield buckets.fetch(Blocks.LAVA, FluidTags.LAVA, calcFailed, cast.stand(false));
             }
-            case SITE -> site();
+            case SITE -> site(calcFailed);
             case DIG -> dig();
             case MOULD -> mould(calcFailed);
             case POUR_WATER -> {
@@ -122,7 +131,7 @@ final class PortalCaster extends RunnerBase {
                     yield Result.pause();
                 }
                 if (!solid(cell.waterVia())) yield mouldAgain();
-                Result away = toStand(cell.stand(), calcFailed);
+                Result away = carried(cell.waterVia(), cell.waterFace()) ? null : toStand(cell.stand(), calcFailed);
                 if (away != null) yield away;
                 yield buckets.pour(cell.waterVia(), cell.waterFace(), Items.WATER_BUCKET, "water");
             }
@@ -141,7 +150,7 @@ final class PortalCaster extends RunnerBase {
                     yield Result.pause();
                 }
                 if (!solid(cell.lavaVia())) yield mouldAgain();
-                Result away = toStand(cell.stand(), calcFailed);
+                Result away = carried(cell.lavaVia(), cell.lavaFace()) ? null : toStand(cell.stand(), calcFailed);
                 if (away != null) yield away;
                 yield buckets.pour(cell.lavaVia(), cell.lavaFace(), Items.LAVA_BUCKET, "lava");
             }
@@ -263,6 +272,7 @@ final class PortalCaster extends RunnerBase {
         }
         state = next;
         tries = 0;
+        waded = 0;
         buckets.reset();
     }
 
@@ -271,12 +281,12 @@ final class PortalCaster extends RunnerBase {
      * it. A pool with no room is never looked at for a site again in this run, even by a re-plan's caster (it may still
      * be filled from), and the next nearest is tried; with none in view it goes looking for lava.
      */
-    private Result site() {
+    private Result site(boolean calcFailed) {
         if (cast != null) return again();
         BlockPos lava = buckets.nearestSource(Blocks.LAVA, FluidTags.LAVA, null, x.noRoomLava);
         if (lava == null) {
             if (tries++ % 100 == 0) logDebug("portal cast: no lava in view from " + ctx.playerFeet().toShortString() + ", looking");
-            return buckets.explore(true);
+            return buckets.explore(true, calcFailed);
         }
         PortalCast.Found found = PortalCast.find(lava, SITE_RADIUS, MAX_DIGS, x.badCastSites, terrain());
         if (found != null) {
@@ -339,8 +349,11 @@ final class PortalCaster extends RunnerBase {
     private Result toStand(BlockPos stand, boolean calcFailed) {
         if (ctx.playerFeet().equals(stand) && ctx.player().onGround()) {
             standFails = 0;
+            waded = 0;
+            stopWading();
             return null;
         }
+        if ((wading || calcFailed) && wade(stand)) return Result.pause();
         if (settling > 0) {
             settling--;
             return Result.pause();
@@ -352,12 +365,54 @@ final class PortalCaster extends RunnerBase {
             return Result.pause();
         }
         if (calcFailed) {
-            x.badCastSites.add(cast.origin());
+            // A frame with cells cast is picked up again by the re-plan's caster rather than started over elsewhere.
+            if (cellsLeft() == cast.frame().size()) x.badCastSites.add(cast.origin());
             cast = null;
             state = null;
             return Result.failed("no path to the portal site at " + stand.toShortString());
         }
         return walk(new GoalBlock(stand));
+    }
+
+    /**
+     * Whether the water poured beside a cell has carried the player off the stand to where {@code face} of
+     * {@code via} is still in reach and sight: it pours from there. Lava can't reach a player standing in water.
+     */
+    private boolean carried(BlockPos via, Direction face) {
+        if (!ctx.player().isInWater() || buckets.visibleFace(via, face) == null) return false;
+        stopWading();
+        return true;
+    }
+
+    /**
+     * The water poured beside a cell runs over the stand rows and carries the player off them, or covers the stand
+     * the player has just stepped off, and Baritone won't path through flowing water: walks straight back against
+     * the flow. False when neither the player nor the stand is in water, when it was carried too far or off the
+     * stand's level, or after {@link #WADE_TICKS} of trying, for the pathing to handle.
+     */
+    private boolean wade(BlockPos stand) {
+        Vec3 at = ctx.player().position();
+        double dx = stand.getX() + 0.5 - at.x, dz = stand.getZ() + 0.5 - at.z;
+        boolean wet = ctx.player().isInWater() || !ctx.world().getFluidState(stand).isEmpty();
+        if (!wet || dx * dx + dz * dz > WADE_RADIUS * WADE_RADIUS || Math.abs(at.y - stand.getY()) > 1.5
+                || ++waded > WADE_TICKS) {
+            stopWading();
+            return false;
+        }
+        if (!wading) logDebug("portal cast: wading back to " + stand.toShortString() + " against the water");
+        wading = true;
+        x.look(RotationUtils.calcRotationFromVec3d(ctx.playerHead(), VecUtils.getBlockPosCenter(stand), ctx.playerRotations())
+                .withPitch(ctx.playerRotations().getPitch()), false);
+        x.baritone.getInputOverrideHandler().setInputForceState(Input.MOVE_FORWARD, true);
+        x.baritone.getInputOverrideHandler().setInputForceState(Input.JUMP, ctx.player().horizontalCollision);
+        return true;
+    }
+
+    private void stopWading() {
+        if (!wading) return;
+        wading = false;
+        x.baritone.getInputOverrideHandler().setInputForceState(Input.MOVE_FORWARD, false);
+        x.baritone.getInputOverrideHandler().setInputForceState(Input.JUMP, false);
     }
 
     /** The stand in front of the half of the frame {@code pos} is in. */
@@ -442,6 +497,7 @@ final class PortalCaster extends RunnerBase {
 
     @Override
     public void cancel() {
+        stopWading();
         IBuilderProcess builder = x.baritone.getBuilderProcess();
         if (digging && builder.isActive()) builder.onLostControl();
         digging = false;

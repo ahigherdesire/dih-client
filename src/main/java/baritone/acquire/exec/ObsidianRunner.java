@@ -155,7 +155,7 @@ final class ObsidianRunner extends RunnerBase {
             site = CastSite.find(ctx.playerFeet(), SITE_RADIUS, terrain());
             if (site == null) {
                 if (++tries > TRIES) return Result.failed("no flat open row of 3 blocks away from lava to cast obsidian on");
-                return buckets.explore(false);
+                return buckets.explore(false, calcFailed);
             }
         }
         if (calcFailed) {
