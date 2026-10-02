@@ -38,7 +38,8 @@ async function download(request, env, ctx, channel, build) {
   if (request.method === 'GET' && isPerson(request)) {
     ctx.waitUntil(count(env, request, b.file).catch(e => console.error('count failed', b.file, e)));
   }
-  return redirect(R.repo + '/releases/download/' + ch.tag + '/' + b.file);
+  // a build not yet ported to the channel's newest version names its own release
+  return redirect(R.repo + '/releases/download/' + (b.tag || ch.tag) + '/' + b.file);
 }
 
 function redirect(url) {

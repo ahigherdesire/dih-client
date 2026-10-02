@@ -51,7 +51,7 @@
     document.querySelectorAll('[data-pick-text]').forEach(el => {
       const ch = channelOf(el), b = buildOf(ch), key = el.dataset.pickText;
       if (!C[ch]) return;
-      if (key === 'version') el.textContent = C[ch].version;
+      if (key === 'version') el.textContent = (b && b.version) || C[ch].version;
       else if (key === 'summary') el.textContent = b ? LOADERS[sel.loader] + ' ' + sel.mc + ' · ' + b.size : 'Not built for ' + LOADERS[sel.loader] + ' ' + sel.mc;
       else el.textContent = b ? b[key] : '—';
     });

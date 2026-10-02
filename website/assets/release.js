@@ -1,4 +1,5 @@
 /* Release data for the download pickers: one entry per channel, one build per "<minecraft>-<loader>".
+   A build not yet on its channel's newest version names its own "version" and "tag".
    Generated from the GitHub release assets (sizes and SHA-256 digests as published); regenerate per release.
    JourneyMap can't be bundled (All Rights Reserved), so its own Modrinth file is linked per build. */
 window.DIH_RELEASE = {
@@ -43,40 +44,50 @@ window.DIH_RELEASE = {
       }
     },
     "beta": {
-      "version": "5.1-beta.3",
+      "version": "5.1-beta.5a",
       "label": "5.1 beta",
-      "tag": "v5.1-beta.3",
-      "notes": "https://github.com/ahigherdesire/dih-client/releases/tag/v5.1-beta.3",
+      "tag": "v5.1-beta.5a",
+      "notes": "https://github.com/ahigherdesire/dih-client/releases/tag/v5.1-beta.5a",
       "builds": {
         "26.2-fabric": {
-          "file": "DIH-Client-5.1-beta.3-26.2.jar",
-          "size": "20.8 MB",
-          "sha256": "e553d76b6a285250027f00de8cbd3bf222c08188ea7e47834ccd5b9ccbea7f45"
+          "file": "DIH-Client-5.1-beta.5a-26.2.jar",
+          "size": "21.4 MB",
+          "sha256": "7b4d28202ec87b2267962d8c5aa1ed66611bc5b08cb1a664b8d6da20364b0b93"
         },
         "26.2-forge": {
           "file": "DIH-Client-5.1-beta.3-26.2-forge.jar",
           "size": "20.8 MB",
-          "sha256": "a2854c2f1c193bbde8877ebf3af6a0f6d76bb476fedcaec4c11e4440bf667cf0"
+          "sha256": "a2854c2f1c193bbde8877ebf3af6a0f6d76bb476fedcaec4c11e4440bf667cf0",
+          "version": "5.1-beta.3",
+          "tag": "v5.1-beta.3"
         },
         "26.2-neoforge": {
           "file": "DIH-Client-5.1-beta.3-26.2-neoforge.jar",
           "size": "20.1 MB",
-          "sha256": "4f44376c0c9f84918b027903cf6cdcb1f49cd67b8eae5dbf4443c8b2a2ab7413"
+          "sha256": "4f44376c0c9f84918b027903cf6cdcb1f49cd67b8eae5dbf4443c8b2a2ab7413",
+          "version": "5.1-beta.3",
+          "tag": "v5.1-beta.3"
         },
         "26.3-fabric": {
           "file": "DIH-Client-5.1-beta.3-26.3.jar",
           "size": "21.1 MB",
-          "sha256": "daf5f6624d697f9934479f5e8809c2bf6957dd94cd034edf17410dc05767e5f8"
+          "sha256": "daf5f6624d697f9934479f5e8809c2bf6957dd94cd034edf17410dc05767e5f8",
+          "version": "5.1-beta.3",
+          "tag": "v5.1-beta.3"
         },
         "26.3-forge": {
           "file": "DIH-Client-5.1-beta.3-26.3-forge.jar",
           "size": "20.7 MB",
-          "sha256": "53eb72322d8835c70be7f0a6b7420af282e3182902825f7affb0e299fbbea705"
+          "sha256": "53eb72322d8835c70be7f0a6b7420af282e3182902825f7affb0e299fbbea705",
+          "version": "5.1-beta.3",
+          "tag": "v5.1-beta.3"
         },
         "26.3-neoforge": {
           "file": "DIH-Client-5.1-beta.3-26.3-neoforge.jar",
           "size": "20.1 MB",
-          "sha256": "6a8eb1a751e8f9f66e30c6c37430cba71cbe058c6a7e1c63baafd1ac45e406b1"
+          "sha256": "6a8eb1a751e8f9f66e30c6c37430cba71cbe058c6a7e1c63baafd1ac45e406b1",
+          "version": "5.1-beta.3",
+          "tag": "v5.1-beta.3"
         }
       }
     }
