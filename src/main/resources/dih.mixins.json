@@ -224,6 +224,7 @@
     "DihSodiumFluidRendererImplMixin",
     "DihSodiumRenderSectionManagerMixin",
     "DihSodiumDefaultChunkRendererMixin",
+    "DihSodiumDefaultChunkRendererOitMixin",
     "DihSodiumTranslucentSortMixin",
     "indigo.DihIndigoAltModelBlockRendererMixin",
     "lithium.DihLithiumSweeperBlockPosMixin",
