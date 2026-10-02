@@ -19,7 +19,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 /**
  * WP 05 in a real client: no tour or palette appears by itself in automated runs; Ctrl+K opens the palette in-game,
@@ -73,10 +73,10 @@ public final class PaletteTourGameTest implements FabricClientGameTest {
         try {
             context.setScreen(TitleScreen::new);
             context.waitFor(client -> client.gui.screen() instanceof DihDonateScreen, 40);
-            context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+            context.getInput().pressKey(InputConstants.KEY_ESCAPE);
             context.waitFor(client -> client.gui.screen() instanceof DihTourScreen, 40);
             context.takeScreenshot("tour-after-donate");
-            context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+            context.getInput().pressKey(InputConstants.KEY_ESCAPE);
             context.waitFor(client -> client.gui.screen() instanceof TitleScreen, 40);
             context.runOnClient(client -> {
                 if (DihConfig.getGlobal().tourCompletedVersion != DihTour.TOUR_VERSION) throw new AssertionError("skipping didn't record the tour");
@@ -105,9 +105,9 @@ public final class PaletteTourGameTest implements FabricClientGameTest {
     }
 
     private static void ctrlK(ClientGameTestContext context) {
-        context.getInput().holdKey(GLFW.GLFW_KEY_LEFT_CONTROL);
-        context.getInput().holdKeyFor(GLFW.GLFW_KEY_K, 3);
-        context.getInput().releaseKey(GLFW.GLFW_KEY_LEFT_CONTROL);
+        context.getInput().holdKey(InputConstants.KEY_LCONTROL);
+        context.getInput().holdKeyFor(InputConstants.KEY_K, 3);
+        context.getInput().releaseKey(InputConstants.KEY_LCONTROL);
         context.waitTicks(3);
     }
 
@@ -120,7 +120,7 @@ public final class PaletteTourGameTest implements FabricClientGameTest {
     }
 
     private static void paletteInGame(ClientGameTestContext context) {
-        context.getInput().holdKeyFor(GLFW.GLFW_KEY_K, 3);
+        context.getInput().holdKeyFor(InputConstants.KEY_K, 3);
         context.waitTicks(3);
         context.runOnClient(client -> {
             if (client.gui.screen() != null) throw new AssertionError("a plain K opened " + client.gui.screen());
@@ -138,7 +138,7 @@ public final class PaletteTourGameTest implements FabricClientGameTest {
             }
             if (ModuleRegistry.get("anti-hunger").isEnabled()) throw new AssertionError("AntiHunger started on");
         });
-        context.getInput().pressKey(GLFW.GLFW_KEY_ENTER);
+        context.getInput().pressKey(InputConstants.KEY_RETURN);
         context.waitTicks(3);
         context.runOnClient(client -> {
             if (!ModuleRegistry.get("anti-hunger").isEnabled()) throw new AssertionError("Enter didn't toggle AntiHunger");
@@ -153,7 +153,7 @@ public final class PaletteTourGameTest implements FabricClientGameTest {
         context.waitTicks(5);
         ctrlK(context);
         context.waitFor(client -> client.gui.screen() instanceof DihCommandPaletteScreen, 20);
-        context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
         context.waitFor(client -> client.gui.screen() instanceof DihModuleScreen, 20);
         context.setScreen(() -> null);
     }
@@ -170,7 +170,7 @@ public final class PaletteTourGameTest implements FabricClientGameTest {
         ctrlK(context);
         context.waitFor(client -> client.gui.screen() instanceof DihCommandPaletteScreen, 20);
         context.takeScreenshot("palette-over-chest");
-        context.getInput().pressKey(GLFW.GLFW_KEY_ESCAPE);
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
         context.waitFor(client -> client.gui.screen() instanceof ContainerScreen, 20);
         context.runOnClient(client -> client.player.closeContainer());
         context.waitFor(client -> client.gui.screen() == null, 20);
@@ -196,7 +196,7 @@ public final class PaletteTourGameTest implements FabricClientGameTest {
         context.waitFor(client -> client.gui.screen() instanceof DihTourScreen, 20);
         context.takeScreenshot("tour-card-1");
         for (int card = 0; card < 4; card++) {
-            context.getInput().pressKey(GLFW.GLFW_KEY_ENTER);
+            context.getInput().pressKey(InputConstants.KEY_RETURN);
             context.waitTicks(2);
         }
         context.runOnClient(client -> {
@@ -205,7 +205,7 @@ public final class PaletteTourGameTest implements FabricClientGameTest {
             }
         });
         context.takeScreenshot("tour-card-5");
-        context.getInput().pressKey(GLFW.GLFW_KEY_ENTER);
+        context.getInput().pressKey(InputConstants.KEY_RETURN);
         context.waitFor(client -> client.gui.screen() == null, 20);
         context.runOnClient(client -> {
             if (DihConfig.getGlobal().tourCompletedVersion != DihTour.TOUR_VERSION) throw new AssertionError("finishing didn't record the tour");
