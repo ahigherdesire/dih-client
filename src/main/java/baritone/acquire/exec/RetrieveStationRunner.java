@@ -1,5 +1,6 @@
 package baritone.acquire.exec;
 
+import dihclient.util.DihEntities;
 import baritone.acquire.model.Step;
 import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.utils.RayTraceUtils;
@@ -75,7 +76,7 @@ final class RetrieveStationRunner extends RunnerBase {
             } else {
                 ctx.playerController().onPlayerDamageBlock(target, hit.getDirection());
             }
-            ctx.player().swing(InteractionHand.MAIN_HAND);
+            DihEntities.swing(ctx.player(), InteractionHand.MAIN_HAND);
             return Result.pause();
         }
         if (breaking) {

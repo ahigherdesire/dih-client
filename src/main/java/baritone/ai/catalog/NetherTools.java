@@ -1,5 +1,6 @@
 package baritone.ai.catalog;
 
+import dihclient.util.DihEntities;
 import baritone.acquire.exec.InventoryOps;
 import baritone.acquire.model.Goal;
 import baritone.acquire.model.Location;
@@ -108,7 +109,7 @@ final class NetherTools {
         if (!ctx.playerController().processRightClickBlock(player, level, InteractionHand.MAIN_HAND, hit).consumesAction()) {
             return ToolResult.failed("The flint and steel didn't strike on the frame at " + base.toShortString() + ".");
         }
-        player.swing(InteractionHand.MAIN_HAND);
+        DihEntities.swing(player, InteractionHand.MAIN_HAND);
         return ToolResult.ok("Lit the portal frame at " + base.above().toShortString()
                 + " (the portal fills in once the server confirms).").fact("portal", base.above().toShortString());
     }

@@ -1,5 +1,6 @@
 package baritone.guardian;
 
+import dihclient.util.DihEntities;
 import baritone.Baritone;
 import baritone.acquire.exec.FoodChoice;
 import baritone.acquire.exec.Foods;
@@ -621,7 +622,7 @@ public final class GuardianProcess extends BaritoneProcessHelper {
             } else {
                 gameMode.continueDestroyBlock(below, Direction.UP);
             }
-            player.swing(InteractionHand.MAIN_HAND);
+            DihEntities.swing(player, InteractionHand.MAIN_HAND);
             return pause();
         }
         if (!level.getBlockState(shelterSeal).canBeReplaced()) return giveUpShelter(feet, "the pit is open to the side");
@@ -635,7 +636,7 @@ public final class GuardianProcess extends BaritoneProcessHelper {
             Vec3 hit = Vec3.atCenterOf(wall).add(face.getStepX() * 0.5, 0, face.getStepZ() * 0.5);
             lookAt(hit);
             gameMode.useItemOn(player, InteractionHand.MAIN_HAND, new BlockHitResult(hit, face, wall, false));
-            player.swing(InteractionHand.MAIN_HAND);
+            DihEntities.swing(player, InteractionHand.MAIN_HAND);
             return pause();
         }
         return giveUpShelter(feet, "no wall to seal against");

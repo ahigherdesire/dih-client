@@ -1,5 +1,6 @@
 package dihclient.trade;
 
+import dihclient.util.DihEntities;
 import baritone.api.BaritoneAPI;
 import baritone.api.pathing.goals.GoalBlock;
 import baritone.api.utils.RotationUtils;
@@ -216,7 +217,7 @@ public final class Reroller {
                 lookAt(mc, Vec3.atCenterOf(workstation));
                 if (ticks == 1) mc.gameMode.startDestroyBlock(workstation, Direction.UP);
                 else mc.gameMode.continueDestroyBlock(workstation, Direction.UP);
-                player.swing(InteractionHand.MAIN_HAND);
+                DihEntities.swing(player, InteractionHand.MAIN_HAND);
                 if (ticks > BREAK_TIMEOUT) return fail("couldn't break the workstation");
                 status = "reroll " + (rerolls + 1) + ": breaking the workstation";
             }
@@ -283,7 +284,7 @@ public final class Reroller {
                     Vec3 face = Vec3.atCenterOf(below).add(0, 0.5, 0);
                     lookAt(mc, face);
                     mc.gameMode.useItemOn(player, InteractionHand.MAIN_HAND, new BlockHitResult(face, Direction.UP, below, false));
-                    player.swing(InteractionHand.MAIN_HAND);
+                    DihEntities.swing(player, InteractionHand.MAIN_HAND);
                 }
                 status = "reroll " + rerolls + ": putting the workstation back";
             }

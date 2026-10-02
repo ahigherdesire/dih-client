@@ -1,5 +1,6 @@
 package baritone.combat;
 
+import dihclient.util.DihEntities;
 import baritone.Baritone;
 import baritone.acquire.exec.InventoryOps;
 import baritone.api.pathing.goals.Goal;
@@ -160,7 +161,7 @@ public final class CombatRunner {
                 look(centre);
                 if (++lookTicks >= 2 && player.getAttackStrengthScale(0.5F) >= CombatTactics.READY) {
                     ctx.minecraft().gameMode.attack(player, target);
-                    player.swing(InteractionHand.MAIN_HAND);
+                    DihEntities.swing(player, InteractionHand.MAIN_HAND);
                 }
                 return null;
             }
