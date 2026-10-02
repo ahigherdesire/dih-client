@@ -53,7 +53,7 @@ final class AiSetupTest {
     @Test
     void everyPresetHasAUrlAndCloudOnesHaveModels() {
         List<AiProviders.Provider> providers = AiProviders.all();
-        assertEquals(List.of("openrouter", "openai", "anthropic", "gemini", "groq", "deepseek", "ollama", "lmstudio", "custom"),
+        assertEquals(List.of("openrouter", "openai", "anthropic", "gemini", "groq", "deepseek", "qwen", "ollama", "lmstudio", "custom"),
                 providers.stream().map(AiProviders.Provider::id).toList());
         for (AiProviders.Provider provider : providers) {
             if (provider.id().equals("custom")) continue;
@@ -67,6 +67,47 @@ final class AiSetupTest {
         assertEquals("ollama", AiProviders.forUrl(providers, "http://LOCALHOST:11434/v1/").id());
         assertFalse(AiProviders.forUrl(providers, "http://localhost:11434/v1").needsKey());
         assertNull(AiProviders.forUrl(providers, "https://example.com/v1"));
+    }
+
+    @Test
+    void theDefaultUrlIsAPreset() {
+        assertEquals("qwen", AiProviders.forUrl(new AiConfig().baseUrl).id(), "the setup screen shows Qwen, not Custom");
+    }
+
+    @Test
+    void aKeyThatSaysWhoseItIsNamesItsProvider() {
+        List<AiProviders.Provider> providers = AiProviders.all();
+        assertEquals("groq", AiProviders.forKey(providers, "gsk_abc123").id());
+        assertEquals("openrouter", AiProviders.forKey(providers, "sk-or-v1-abc").id(), "longer prefix than OpenAI's sk-");
+        assertEquals("anthropic", AiProviders.forKey(providers, "sk-ant-api03-abc").id());
+        assertEquals("openai", AiProviders.forKey(providers, "  sk-proj-abc").id());
+        assertEquals("gemini", AiProviders.forKey(providers, "AIzaSyAbc").id());
+        assertNull(AiProviders.forKey(providers, "sk-0123456789abcdef"), "plain sk- keys: OpenAI, DeepSeek, Qwen...");
+        assertNull(AiProviders.forKey(providers, ""));
+        assertEquals("groq", AiProviders.named(providers, "Groq").id());
+        assertEquals("anthropic", AiProviders.named(providers, "anthropic (claude)").id());
+        assertNull(AiProviders.named(providers, "nope"));
+    }
+
+    /** From a beta report: a Groq key saved with the default Qwen URL and model, and only "HTTP 401" back. */
+    @Test
+    void aGroqKeySentToQwenSaysSo() {
+        List<AiProviders.Provider> providers = AiProviders.all();
+        String qwen = new AiConfig().baseUrl;
+        assertEquals("groq", AiProviders.keyMismatch(providers, "gsk_abc", qwen).id());
+        assertNull(AiProviders.keyMismatch(providers, "gsk_abc", "https://api.groq.com/openai/v1/"));
+        assertNull(AiProviders.keyMismatch(providers, "sk-plain", qwen), "a key that doesn't say whose it is");
+        assertEquals("that's a Groq key, but requests go to dashscope-intl.aliyuncs.com: run #ai provider groq (or .ai setup)",
+                AiProviders.refusedKeyReason(providers, "gsk_abc", qwen));
+        assertTrue(AiProviders.refusedKeyReason(providers, "sk-plain", qwen).startsWith("Qwen keys only work in the region"),
+                "a Qwen-looking key refused by Qwen: the region");
+        assertEquals("", AiProviders.refusedKeyReason(providers, "sk-plain", "https://api.deepseek.com"));
+
+        AiConfig groqKey = config(qwen, "qwen-plus", "gsk_abc");
+        assertEquals("Key rejected: that's a Groq key, but requests go to dashscope-intl.aliyuncs.com: run #ai provider groq"
+                + " (or .ai setup).", ConnectionCheck.explain(401, "Incorrect API key provided", groqKey, AiProviders.forUrl(qwen)));
+        assertTrue(LlmClient.hint(401, groqKey).contains("#ai provider groq"));
+        assertEquals(" (the key was refused: check #ai key)", LlmClient.hint(401, config("https://api.deepseek.com", "m", "sk-x")));
     }
 
     @Test

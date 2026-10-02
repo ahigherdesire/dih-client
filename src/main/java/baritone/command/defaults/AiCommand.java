@@ -20,6 +20,7 @@ package baritone.command.defaults;
 import baritone.Baritone;
 import baritone.ai.AiBrain;
 import baritone.ai.AiConfig;
+import baritone.ai.AiProviders;
 import baritone.api.IBaritone;
 import baritone.api.command.Command;
 import baritone.api.command.argument.IArgConsumer;
@@ -39,7 +40,7 @@ import java.util.stream.Stream;
 public class AiCommand extends Command {
 
     private static final List<String> SUBCOMMANDS = Arrays.asList(
-            "on", "off", "status", "key", "url", "model", "extra", "trust", "untrust",
+            "on", "off", "status", "key", "provider", "url", "model", "extra", "trust", "untrust",
             "trigger", "goal", "persona", "chat", "auto", "followups", "forget", "clear", "deny", "allow"
     );
 
@@ -82,9 +83,48 @@ public class AiCommand extends Command {
                     return;
                 }
                 config.apiKey = key;
+                // A key says whose it is ("gsk_" is Groq's): sent to the default Qwen URL it only gets a 401.
+                AiProviders.Provider owner = AiProviders.keyMismatch(key, config.baseUrl);
+                boolean switched = owner != null && AiProviders.forUrl(config.baseUrl) != null;
+                if (switched) use(config, owner);
                 config.save();
                 logDirect("Key saved to ai.json (" + mask(key) + ").", ChatFormatting.GREEN);
+                if (switched) {
+                    logDirect("That's " + owner.name() + "'s key: switched to " + owner.name() + ", model " + config.model
+                            + ". #ai model <name> to change it.", ChatFormatting.GREEN);
+                } else if (owner != null) {
+                    logDirect("That looks like " + owner.name() + "'s key, but requests go to " + config.baseUrl
+                            + ". #ai provider " + owner.id() + " to use " + owner.name() + ".", ChatFormatting.YELLOW);
+                } else {
+                    logDirect("Requests go to " + providerLabel(config) + ". If the key is from somewhere else: #ai provider <name>"
+                            + " (#ai provider lists them).", ChatFormatting.GRAY);
+                }
                 logDirect("It is stored in plain text. Prefer the " + AiConfig.KEY_ENV_VAR + " environment variable if that bothers you.", ChatFormatting.GRAY);
+                return;
+            }
+            case "provider": {
+                String name = args.rawRest().trim();
+                AiProviders.Provider provider = AiProviders.named(AiProviders.all(), name);
+                if (provider == null || provider.baseUrl().isBlank()) {
+                    if (!name.isEmpty()) logDirect("No provider called \"" + name + "\".", ChatFormatting.RED);
+                    logDirect("Now: " + providerLabel(config) + ", model " + config.model);
+                    for (AiProviders.Provider p : AiProviders.all()) {
+                        if (p.baseUrl().isBlank()) continue;
+                        logDirect("  #ai provider " + p.id() + "  - " + p.name()
+                                + (p.local() ? " (free, runs on this PC)" : p.keyUrl().isEmpty() ? "" : ", keys: " + p.keyUrl()));
+                    }
+                    logDirect("Or .ai setup for the setup screen.", ChatFormatting.GRAY);
+                    return;
+                }
+                use(config, provider);
+                config.save();
+                logDirect("Using " + provider.name() + ", model " + config.model + ".", ChatFormatting.GREEN);
+                if (provider.needsKey() && !config.hasKey()) {
+                    logDirect("Now #ai key <key>" + (provider.keyUrl().isEmpty() ? "" : " (get one at " + provider.keyUrl() + ")") + ".");
+                } else if (AiProviders.keyMismatch(config.resolveKey(), config.baseUrl) != null) {
+                    logDirect("Your saved key is " + AiProviders.forKey(AiProviders.all(), config.resolveKey()).name()
+                            + "'s: #ai key <key> with a " + provider.name() + " key.", ChatFormatting.YELLOW);
+                }
                 return;
             }
             case "url": {
@@ -256,7 +296,7 @@ public class AiCommand extends Command {
         logDirect("  state: " + (config.enabled ? "on" : "off")
                 + (brain.isThinking() ? " (thinking)" : "")
                 + (config.autonomous ? ", autonomous" : ""));
-        logDirect("  model: " + config.model + " @ " + config.baseUrl);
+        logDirect("  model: " + config.model + " @ " + providerLabel(config));
         logDirect("  key: " + (config.hasKey() ? mask(config.resolveKey()) : "MISSING"));
         logDirect("  trusted: " + (config.trusted.isEmpty() ? "(nobody)" : String.join(", ", config.trusted)));
         logDirect("  trigger: " + (config.triggerWord == null || config.triggerWord.isEmpty() ? "(any message)" : config.triggerWord));
@@ -267,6 +307,18 @@ public class AiCommand extends Command {
         if (brain.getLastError() != null) {
             logDirect("  last error: " + brain.getLastError(), ChatFormatting.RED);
         }
+    }
+
+    /** Points the AI at {@code provider}: its URL and its first suggested model. */
+    private static void use(AiConfig config, AiProviders.Provider provider) {
+        config.baseUrl = provider.baseUrl();
+        if (!provider.models().isEmpty()) config.model = provider.models().get(0).id();
+    }
+
+    /** "Groq (https://api.groq.com/openai/v1)", or the bare URL for one that isn't a preset. */
+    private static String providerLabel(AiConfig config) {
+        AiProviders.Provider at = AiProviders.forUrl(config.baseUrl);
+        return at == null ? config.baseUrl : at.name() + " (" + config.baseUrl + ")";
     }
 
     private static String followUpsLine(AiConfig config) {
@@ -296,9 +348,12 @@ public class AiCommand extends Command {
     }
 
     @Override
-    public Stream<String> tabComplete(String label, IArgConsumer args) {
+    public Stream<String> tabComplete(String label, IArgConsumer args) throws CommandException {
         if (args.hasExactlyOne()) {
             return SUBCOMMANDS.stream();
+        }
+        if (args.getString().equalsIgnoreCase("provider") && args.hasExactlyOne()) {
+            return AiProviders.all().stream().filter(p -> !p.baseUrl().isBlank()).map(AiProviders.Provider::id);
         }
         return Stream.empty();
     }
@@ -316,10 +371,11 @@ public class AiCommand extends Command {
                 "It watches every message the server sends. Messages from trusted players are",
                 "instructions; everything else is context it can read but must not obey.",
                 "",
-                "Setup:",
-                "> ai key <api-key>        - store your key (or set MINECRAFTAI_LLM_KEY)",
+                "Setup (easiest: .ai setup opens a setup screen):",
+                "> ai key <api-key>        - store your key; Groq, OpenAI, OpenRouter, Claude and Gemini keys pick their provider",
+                "> ai provider [name]      - list the providers, or switch to one (sets the URL and a model)",
                 "> ai url <base-url>       - any OpenAI-compatible endpoint",
-                "> ai model <name>         - e.g. qwen-plus",
+                "> ai model <name>         - e.g. openai/gpt-oss-120b on Groq",
                 "> ai trust <player>       - let that player command the bot in chat",
                 "> ai on                   - start listening",
                 "",

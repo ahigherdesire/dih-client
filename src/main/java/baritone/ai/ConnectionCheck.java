@@ -69,7 +69,10 @@ public final class ConnectionCheck {
         boolean aboutModel = lower.contains("model") && (lower.contains("not found") || lower.contains("not_found")
                 || lower.contains("does not exist") || lower.contains("invalid") || lower.contains("unknown")
                 || lower.contains("not a valid") || lower.contains("no such"));
-        if (status == 401) return "Key rejected.";
+        if (status == 401) {
+            String reason = AiProviders.refusedKeyReason(candidate.resolveKey(), candidate.baseUrl);
+            return reason.isEmpty() ? "Key rejected." : "Key rejected: " + reason + ".";
+        }
         if (status == 403) return aboutModel ? "This key can't use " + candidate.model + "." : "Key rejected (no access).";
         if (status == 404 && !aboutModel) return "Nothing at that URL: check it (and the model).";
         if (status == 404 || (status == 400 && aboutModel)) return "Model not found: " + candidate.model + ".";
