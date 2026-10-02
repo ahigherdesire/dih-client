@@ -20,10 +20,13 @@ import baritone.utils.BaritoneProcessHelper;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.world.item.Item;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletionException;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -226,6 +229,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         stations.newRun();
         exec = new ExecContext(baritone, k, stations, this::neededItems);
         run = new AcquireRun(goal, plan);
+        baritone.getInventoryBehavior().setReservedBlocks(this::reservedBlocks);
         runner = null;
         waitingForRespawn = false;
         lastPlayer = ctx.player();
@@ -805,6 +809,25 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     private String doneLine() {
         if (run.target instanceof Goal.AtLocation at) return "Done: in " + at.location().label() + ".";
         return "Done: you have " + have(run.goal) + " " + Step.shortId(run.goal) + ".";
+    }
+
+    /** What the main plan and the food detour still use up, which pathing must not build with. */
+    private Map<Item, Integer> reservedBlocks() {
+        AcquireRun current = run;
+        if (current == null) return Map.of();
+        Map<String, Integer> counts = new HashMap<>(JunkPolicy.reservedCounts(current.goal, current.count,
+                current.plan().steps(), Math.max(0, current.index())));
+        AcquireRun food = detour;
+        if (food != null) {
+            JunkPolicy.reservedCounts(food.goal, food.count, food.plan().steps(), Math.max(0, food.index()))
+                    .forEach((id, n) -> counts.merge(id, n, Integer::sum));
+        }
+        Map<Item, Integer> reserved = new HashMap<>();
+        counts.forEach((id, n) -> {
+            Item item = InventoryReader.itemOf(id);
+            if (item != null) reserved.merge(item, n, Integer::sum);
+        });
+        return reserved;
     }
 
     private int have(String item) {

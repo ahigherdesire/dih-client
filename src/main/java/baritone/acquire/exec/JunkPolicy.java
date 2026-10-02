@@ -2,8 +2,10 @@ package baritone.acquire.exec;
 
 import baritone.acquire.model.Step;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -52,6 +54,42 @@ final class JunkPolicy {
             }
         }
         return needed;
+    }
+
+    /**
+     * How many of each item the steps from {@code from} on still use up (craft inputs, smelt inputs and fuel, a station
+     * to place, gold to barter, a portal's obsidian), plus {@code goalCount} of the goal: held up to these counts, an
+     * item is the plan's, not scaffolding.
+     */
+    static Map<String, Integer> reservedCounts(String goal, int goalCount, List<Step> steps, int from) {
+        Map<String, Integer> reserved = new HashMap<>();
+        if (goal != null) reserved.merge(goal, goalCount, Integer::sum);
+        for (int i = Math.max(0, from); i < steps.size(); i++) {
+            switch (steps.get(i)) {
+                case Step.Craft craft -> {
+                    for (int j = 0; j < craft.inputs().size() && j < craft.recipe().ingredients().size(); j++) {
+                        reserved.merge(craft.inputs().get(j), craft.recipe().ingredients().get(j).count() * craft.times(),
+                                Integer::sum);
+                    }
+                }
+                case Step.Smelt smelt -> {
+                    reserved.merge(smelt.input(), smelt.times(), Integer::sum);
+                    reserved.merge(smelt.fuel(), smelt.fuelCount(), Integer::sum);
+                    // A split smelt places its extra furnaces beside the station.
+                    if (smelt.furnaces() > 1) reserved.merge(smelt.recipe().station(), smelt.furnaces() - 1, Integer::sum);
+                }
+                case Step.PlaceStation station -> reserved.merge(station.station(), 1, Integer::sum);
+                case Step.Barter barter -> reserved.merge(barter.currency(), barter.trades(), Integer::sum);
+                case Step.Travel travel -> travel.consumes().forEach((id, n) -> reserved.merge(id, n, Integer::sum));
+                case Step.Mine mine -> { }
+                case Step.Kill kill -> { }
+                case Step.RetrieveStation station -> { }
+                case Step.Locate locate -> { }
+                case Step.SlayDragon dragon -> { }
+                case Step.CollectEgg egg -> { }
+            }
+        }
+        return reserved;
     }
 
     static boolean isJunk(String item, Set<String> needed) {
