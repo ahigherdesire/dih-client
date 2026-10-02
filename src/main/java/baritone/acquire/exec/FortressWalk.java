@@ -28,6 +28,16 @@ final class FortressWalk {
         return nearest;
     }
 
+    /**
+     * How good {@code spot} is to head for when no floor is within a leg: the nearer the better, or -1 when too near
+     * to be a step on. The fortress check counts bricks out to three chunks, so it can call the fortress reached with
+     * its nearest floor a leg and more away.
+     */
+    static double nearest(BlockPos spot, BlockPos feet) {
+        double leg = horizontal(spot, feet);
+        return leg < MIN_LEG ? -1 : 1_000_000 - leg;
+    }
+
     private static double horizontal(BlockPos a, BlockPos b) {
         double dx = a.getX() - b.getX(), dz = a.getZ() - b.getZ();
         return Math.sqrt(dx * dx + dz * dz);

@@ -3,6 +3,7 @@ package baritone.acquire.exec;
 import baritone.acquire.model.Step;
 import baritone.acquire.planner.AcquirePlanner;
 import baritone.api.pathing.goals.GoalBlock;
+import baritone.api.utils.Helper;
 import baritone.api.pathing.goals.GoalNear;
 import baritone.api.pathing.goals.GoalXZ;
 import baritone.combat.CombatRunner;
@@ -76,6 +77,8 @@ final class KillRunner extends RunnerBase {
     private final java.util.List<BlockPos> walked = new java.util.ArrayList<>();
     private BlockPos walkTo;
     private int legs;
+    /** No floor was left to walk to: not looked for again this step. */
+    private boolean noFloor;
     private final CombatRunner combat;
     private State state = State.SEEK;
     private LivingEntity target;
@@ -227,14 +230,20 @@ final class KillRunner extends RunnerBase {
             walkTo = null;
         }
         if (walkTo == null) {
-            if (legs >= EXPLORE_LEGS) return null;
+            if (legs >= EXPLORE_LEGS || noFloor) return null;
             Level level = ctx.world();
-            walkTo = NearestBlock.best(level, feet, Blocks.NETHER_BRICKS, 4, 16,
-                    p -> FortressWalk.score(p, feet, walked, EXPLORE_LEG),
-                    p -> level.getBlockState(p.above()).isAir() && level.getBlockState(p.above(2)).isAir());
-            if (walkTo == null) return null;
+            java.util.function.Predicate<BlockPos> floor = p -> level.getBlockState(p.above()).isAir() && level.getBlockState(p.above(2)).isAir();
+            walkTo = NearestBlock.best(level, feet, Blocks.NETHER_BRICKS, 4, 48,
+                    p -> FortressWalk.score(p, feet, walked, EXPLORE_LEG), floor);
+            if (walkTo == null) walkTo = NearestBlock.best(level, feet, Blocks.NETHER_BRICKS, 4, 48, p -> FortressWalk.nearest(p, feet), floor);
+            if (walkTo == null) {
+                noFloor = true;
+                Helper.HELPER.logDebug("fortress walk: no nether-brick floor left to walk to from " + feet.toShortString());
+                return null;
+            }
             walkTo = walkTo.above();
             legs++;
+            Helper.HELPER.logDebug("fortress walk: leg " + legs + " to " + walkTo.toShortString() + ", looking for a spawner");
         }
         return walk(new GoalNear(walkTo, 2));
     }
