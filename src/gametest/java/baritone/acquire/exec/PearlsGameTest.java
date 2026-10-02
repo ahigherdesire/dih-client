@@ -15,12 +15,13 @@ import net.minecraft.world.entity.monster.piglin.Piglin;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.levelgen.Heightmap;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * WP 11 part 4: pearls, both ways. {@code endermen}: at night on an open pad in the Overworld with Nether gear and no
+ * WP 11 part 4: pearls, both ways. {@code endermen}: at night on an open pad on the ground in the Overworld with Nether gear and no
  * gold, {@code #acquire ender_pearl 12} hunts the endermen about until it holds 12. {@code barter}: in a glass pen in
  * the Nether with six piglins, 256 gold ingots and a pair of gold boots carried but not worn, {@code #acquire
  * ender_pearl 2} plans a barter, puts the boots on, throws the piglins gold and picks up the pearls; no piglin is
@@ -122,21 +123,33 @@ public final class PearlsGameTest implements FabricClientGameTest {
     private static String endermen(ClientGameTestContext context) {
         try (TestSingleplayerContext world = world(context)) {
             context.waitFor(client -> client.player != null && client.level != null);
-            TestPads.load(context, world, Level.OVERWORLD, -24, -24, 24, 24);
+            TestPads.load(context, world, Level.OVERWORLD, -32, -32, 32, 32);
+            // On the ground, not up in the air: an enderman hit teleports, and one that lands below a raised pad is out
+            // of reach of a player with no blocks to climb back with, which no real hunt runs into.
+            int y = world.getServer().computeOnServer(server -> server.getLevel(Level.OVERWORLD)
+                    .getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, 0, 0));
             List<String> commands = new ArrayList<>(List.of(
                     "/gamerule advance_time false",
                     "/gamerule advance_weather false",
                     "/gamerule spawn_mobs false",
                     "/weather clear",
                     "/time set 18000",
-                    "/execute in minecraft:overworld run fill -24 98 -24 24 99 24 minecraft:smooth_stone",
-                    "/execute in minecraft:overworld run fill -24 100 -24 24 115 24 minecraft:air",
-                    "/tp @p 0 100 0 0 0"));
+                    "/execute in minecraft:overworld run fill -32 " + (y - 2) + " -32 32 " + (y - 1) + " 32 minecraft:smooth_stone"));
+            // In slices: one fill may change at most 32768 blocks, and a single one over the whole pad was turned down,
+            // leaving the trees and hills standing.
+            for (int slice = 0; slice < 4; slice++) {
+                commands.add("/execute in minecraft:overworld run fill -32 " + (y + slice * 4) + " -32 32 "
+                        + (y + slice * 4 + 3) + " 32 minecraft:air");
+            }
+            commands.add("/tp @p 0 " + y + " 0 0 0");
             commands.addAll(GEAR);
-            for (int i = 0; i < 40; i++) {
-                int x = -21 + (i % 8) * 6, z = -20 + (i / 8) * 10;
-                if (Math.abs(x) < 4 && Math.abs(z) < 4) z += 5;
-                commands.add("/summon minecraft:enderman " + x + " 100 " + z + " {PersistenceRequired:1b}");
+            // 40 of them 9 blocks apart, none within 9 of the start: still more than a warped forest holds, but each
+            // apart enough to be fought on its own.
+            for (int x = -27; x <= 27; x += 9) {
+                for (int z = -27; z <= 27; z += 9) {
+                    if (Math.abs(x) < 10 && Math.abs(z) < 10) continue;
+                    commands.add("/summon minecraft:enderman " + x + " " + y + " " + z + " {PersistenceRequired:1b}");
+                }
             }
             for (String command : commands) world.getServer().runCommand(command);
             context.waitFor(client -> client.player.getInventory().getNonEquipmentItems().stream().anyMatch(stack -> stack.is(Items.COOKED_BEEF)));
