@@ -2,8 +2,10 @@ package baritone.acquire.exec;
 
 import baritone.acquire.model.Step;
 
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -46,6 +48,33 @@ final class JunkPolicy {
             }
         }
         return needed;
+    }
+
+    /**
+     * How many of each item the steps from {@code from} on still use up (craft inputs, smelt inputs and fuel, a station
+     * to place), plus {@code goalCount} of the goal: held up to these counts, an item is the plan's, not scaffolding.
+     */
+    static Map<String, Integer> reservedCounts(String goal, int goalCount, List<Step> steps, int from) {
+        Map<String, Integer> reserved = new HashMap<>();
+        reserved.merge(goal, goalCount, Integer::sum);
+        for (int i = Math.max(0, from); i < steps.size(); i++) {
+            switch (steps.get(i)) {
+                case Step.Craft craft -> {
+                    for (int j = 0; j < craft.inputs().size() && j < craft.recipe().ingredients().size(); j++) {
+                        reserved.merge(craft.inputs().get(j), craft.recipe().ingredients().get(j).count() * craft.times(),
+                                Integer::sum);
+                    }
+                }
+                case Step.Smelt smelt -> {
+                    reserved.merge(smelt.input(), smelt.times(), Integer::sum);
+                    reserved.merge(smelt.fuel(), smelt.fuelCount(), Integer::sum);
+                }
+                case Step.PlaceStation station -> reserved.merge(station.station(), 1, Integer::sum);
+                case Step.Mine mine -> { }
+                case Step.Kill kill -> { }
+            }
+        }
+        return reserved;
     }
 
     static boolean isJunk(String item, Set<String> needed) {
