@@ -57,9 +57,16 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     private static final int TICKS_PER_SECOND = 20;
     /** Food detours per acquire before it stops trying. */
     static final int MAX_FOOD_DETOURS = 3;
-    /** Consecutive failed meals before it stops trying to eat for the rest of the acquire. */
+    /** Consecutive failed meals before it waits {@link #EAT_BACKOFF_TICKS} to try again. */
     private static final int MAX_EAT_FAILURES = 3;
     private static final int EAT_RETRY_TICKS = 5 * TICKS_PER_SECOND;
+    /**
+     * The wait after {@link #MAX_EAT_FAILURES} failed meals. Never for the rest of the run: a fight (a bow drawn, a
+     * shield up) cuts meals short, and the low health it leaves is when eating matters most.
+     */
+    private static final int EAT_BACKOFF_TICKS = 30 * TICKS_PER_SECOND;
+    /** How long a path may hold the player in place before the step is told it failed. */
+    private static final int STALL_TICKS = 60 * TICKS_PER_SECOND;
 
     private final List<Consumer<AcquireEvent>> listeners = new CopyOnWriteArrayList<>();
     private final StationFinder stations;
@@ -70,6 +77,8 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     private StepRunner runner;
     private int stepTicks;
     private int stepTimeoutTicks;
+    private final StallWatch stall = new StallWatch(STALL_TICKS);
+    private boolean stalled;
     private boolean waitingForRespawn;
     private LocalPlayer lastPlayer;
 
@@ -398,10 +407,21 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
                 if (!replan("step " + (active.index() + 1) + " (" + step.describe() + ") timed out")) return idle();
                 continue;
             }
-            StepRunner.Result result = runner.tick(calcFailed && guard == 0, safeToCancel);
+            boolean failed = guard == 0 && (calcFailed || stalled);
+            stalled = false;
+            StepRunner.Result result = runner.tick(failed, safeToCancel);
             switch (result.kind()) {
                 case RUNNING -> {
-                    return result.command();
+                    PathingCommand command = result.command();
+                    boolean pathing = command != null && command.goal != null
+                            && command.commandType != PathingCommandType.REQUEST_PAUSE && command.commandType != PathingCommandType.DEFER
+                            && !command.goal.isInGoal(ctx.playerFeet());
+                    if (stall.stalled(ctx.playerFeet(), pathing)) {
+                        logDebug("No headway for " + STALL_TICKS / TICKS_PER_SECOND + "s at " + ctx.playerFeet().toShortString()
+                                + ": the path counts as failed.");
+                        stalled = true;
+                    }
+                    return command;
                 }
                 case DONE -> {
                     Step step = active().current();
@@ -457,6 +477,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         }
         runner = createRunner(step);
         stepTicks = 0;
+        stall.reset();
         stepTimeoutTicks = timeoutFor(step);
         String line = (active == detour ? "Food step " : "Step ") + (index + 1) + "/" + active.stepCount() + ": " + step.describe();
         logDirect(line);
@@ -680,8 +701,10 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         }
         nextEatTick = ticks + EAT_RETRY_TICKS;
         if (++eatFailures >= MAX_EAT_FAILURES) {
-            nextEatTick = Long.MAX_VALUE;
-            logDirect("Couldn't eat " + MAX_EAT_FAILURES + " times (last: " + failure + "); acquire stops trying to eat this run.", ChatFormatting.YELLOW);
+            eatFailures = 0;
+            nextEatTick = ticks + EAT_BACKOFF_TICKS;
+            logDirect("Couldn't eat " + MAX_EAT_FAILURES + " times (last: " + failure + "); trying again in "
+                    + EAT_BACKOFF_TICKS / TICKS_PER_SECOND + "s.", ChatFormatting.YELLOW);
         }
     }
 
