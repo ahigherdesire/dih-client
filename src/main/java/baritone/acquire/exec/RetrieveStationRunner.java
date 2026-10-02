@@ -27,10 +27,17 @@ final class RetrieveStationRunner extends RunnerBase {
     private boolean breaking;
 
     RetrieveStationRunner(ExecContext x, Step.RetrieveStation step) {
+        this(x, step, null);
+    }
+
+    /** Takes back the one at {@code target}, or the nearest this acquire placed when null. */
+    RetrieveStationRunner(ExecContext x, Step.RetrieveStation step, BlockPos target) {
         super(x);
         this.step = step;
         this.block = StationFinder.block(step.station());
         this.item = InventoryReader.itemOf(step.station());
+        this.target = target;
+        if (target != null) this.expected = x.have(step.station()) + 1;
     }
 
     @Override

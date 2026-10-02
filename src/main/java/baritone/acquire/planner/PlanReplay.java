@@ -118,7 +118,9 @@ final class PlanReplay {
                     else if (inv.take(sm.fuel(), sm.fuelCount()) < sm.fuelCount()) error = "short of fuel " + sm.fuel();
                     else {
                         inv.add(r.output(), sm.times() * r.outputCount());
-                        out.add(new Step.Smelt(r, sm.times(), sm.input(), sm.fuel(), sm.fuelCount(), inv.count(r.output())));
+                        // Extra furnaces not held any more (used up since) leave fewer to split across.
+                        int furnaces = Math.min(sm.furnaces(), 1 + inv.count(stationOf(r)));
+                        out.add(new Step.Smelt(r, sm.times(), sm.input(), sm.fuel(), sm.fuelCount(), inv.count(r.output()), furnaces));
                     }
                 }
                 case Step.Travel t -> {

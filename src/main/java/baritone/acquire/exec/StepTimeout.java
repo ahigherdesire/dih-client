@@ -17,7 +17,9 @@ final class StepTimeout {
             case Step.Kill kill -> kill.expectedKills() * (KillRunner.roams(kill.entity()) ? 600.0 : 120.0);
             // A piglin looks each ingot over for six seconds; finding them comes on top.
             case Step.Barter barter -> barter.trades() * 80.0 + 1200.0;
-            case Step.Smelt smelt -> smelt.times() * Math.max(1, smelt.recipe().cookTicks()) + 1200.0;
+            // Split across furnaces, the biggest share sets the pace; each extra one is placed, loaded and taken back.
+            case Step.Smelt smelt -> smelt.shares()[0] * Math.max(1, smelt.recipe().cookTicks()) + 1200.0
+                    + (smelt.furnaces() - 1) * 600.0;
             case Step.Craft craft -> craft.times() * 60.0;
             case Step.PlaceStation place -> 600.0;
             case Step.RetrieveStation retrieve -> 900.0;

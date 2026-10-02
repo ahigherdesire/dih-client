@@ -492,7 +492,7 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
                     exec.have(ObsidianRunner.WATER_BUCKET), exec.have(ObsidianRunner.LAVA_BUCKET))
                     ? new ObsidianRunner(exec, mine) : new MineRunner(exec, mine);
             case Step.Craft craft -> new CraftRunner(exec, craft);
-            case Step.Smelt smelt -> new SmeltRunner(exec, smelt);
+            case Step.Smelt smelt -> smelt.furnaces() > 1 ? new SplitSmeltRunner(exec, smelt) : new SmeltRunner(exec, smelt);
             case Step.Kill kill -> new KillRunner(exec, kill);
             case Step.Barter barter -> new BarterRunner(exec, barter);
             case Step.PlaceStation station -> new StationRunner(exec, station);

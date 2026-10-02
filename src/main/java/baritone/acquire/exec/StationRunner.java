@@ -48,11 +48,23 @@ final class StationRunner extends RunnerBase {
     private int attempts;
     private BlockPos roomAt;
     private int roomMoves;
+    /** Places one more even with one in reach (an extra furnace for a split smelt). */
+    private final boolean placeNew;
 
     StationRunner(ExecContext x, Step.PlaceStation step) {
+        this(x, step, false);
+    }
+
+    StationRunner(ExecContext x, Step.PlaceStation step, boolean placeNew) {
         super(x);
         this.step = step;
         this.block = StationFinder.block(step.station());
+        this.placeNew = placeNew;
+    }
+
+    /** Where it placed the station, once done placing one. */
+    BlockPos placed() {
+        return placeAt != null && ctx.world().getBlockState(placeAt).is(block) ? placeAt : null;
     }
 
     @Override
@@ -61,7 +73,7 @@ final class StationRunner extends RunnerBase {
         for (int guard = 0; guard < 4; guard++) {
             switch (state) {
                 case FIND -> {
-                    List<BlockPos> found = x.stations.find(step.station(), x.stationRadius());
+                    List<BlockPos> found = placeNew ? List.of() : x.stations.find(step.station(), x.stationRadius());
                     if (!found.isEmpty()) {
                         target = found.get(0);
                         state = State.WALK;

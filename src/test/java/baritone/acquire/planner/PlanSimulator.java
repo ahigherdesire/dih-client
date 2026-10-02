@@ -132,7 +132,10 @@ final class PlanSimulator {
                     assertNotEquals(s.input(), s.fuel(), at + ": burns its own input");
                     Integer burn = knowledge.fuels().get(s.fuel());
                     assertNotNull(burn, at + ": " + s.fuel() + " is not a fuel");
-                    assertTrue((long) burn * s.fuelCount() >= (long) s.times() * r.cookTicks(), at + ": not enough fuel");
+                    long fuelNeeded = 0;
+                    for (int share : s.shares()) fuelNeeded += Step.Smelt.fuelFor(share, r.cookTicks(), burn);
+                    assertTrue(s.fuelCount() >= fuelNeeded, at + ": not enough fuel for each furnace");
+                    assertTrue(count(inv, r.station()) >= s.furnaces() - 1, at + ": the extra furnaces aren't held");
                     take(inv, s.input(), s.times(), at);
                     take(inv, s.fuel(), s.fuelCount(), at);
                     inv.merge(r.output(), s.times() * r.outputCount(), Integer::sum);

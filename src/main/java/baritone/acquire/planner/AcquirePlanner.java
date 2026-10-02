@@ -37,6 +37,7 @@ import static baritone.acquire.planner.PlannerCosts.BARTER_TICKS;
 import static baritone.acquire.planner.PlannerCosts.BREAK_TICKS;
 import static baritone.acquire.planner.PlannerCosts.CRAFT_TICKS;
 import static baritone.acquire.planner.PlannerCosts.DRAGON_TICKS;
+import static baritone.acquire.planner.PlannerCosts.EXTRA_FURNACE_TICKS;
 import static baritone.acquire.planner.PlannerCosts.FORTRESS_TICKS;
 import static baritone.acquire.planner.PlannerCosts.CAST_OBSIDIAN_TICKS;
 import static baritone.acquire.planner.PlannerCosts.CAST_PORTAL_TICKS;
@@ -80,6 +81,9 @@ public final class AcquirePlanner {
             Set.of(CRAFTING_TABLE, FURNACE, "minecraft:blast_furnace", "minecraft:smoker");
     /** Stations that cook twice as fast and burn fuel twice as fast. */
     private static final Set<String> FAST_STATIONS = Set.of("minecraft:blast_furnace", "minecraft:smoker");
+    /** Furnaces a big smelt may be split across, and the fewest cooks worth a furnace of their own. */
+    private static final int MAX_FURNACES = 4;
+    private static final int FURNACE_SHARE = 6;
     /** Fuels never obtained just to burn (a lava bucket leaves the bucket behind and needs lava). */
     private static final Set<String> NEVER_OBTAIN_AS_FUEL = Set.of("minecraft:lava_bucket");
     /** Mine and kill sources below this drop rate (zombie -> iron_ingot) only count when nothing else makes the item. */
@@ -753,22 +757,39 @@ public final class AcquirePlanner {
             return emit(s, new Step.Craft(r, times, inputs, s.inv.count(r.output())), 0, false);
         }
 
+        /**
+         * Smelts in one furnace, or a big batch in up to four side by side (a share each, at least {@link
+         * #FURNACE_SHARE}), whichever is cheaper: the extra furnaces cost eight cobblestone each and come back after.
+         */
         private boolean smelt(PlanState s, SmeltSource r, int need) {
             int times = divideUp(need, r.outputCount());
+            int most = FURNACE.equals(PlanReplay.stationOf(r)) ? Math.min(MAX_FURNACES, times / FURNACE_SHARE) : 1;
+            if (most <= 1) return smelt(s, r, times, 1);
+            return cheapest(s, List.of(most, 1), (t, furnaces) -> smelt(t, r, times, furnaces)) >= 0;
+        }
+
+        private boolean smelt(PlanState s, SmeltSource r, int times, int furnaces) {
             String input = pick(s, r.input().anyOf(), times);
             if (input == null) return false;
             s.reserve(input, times);
             String station = PlanReplay.stationOf(r);
             if (!prepareStation(s, station)) return false;
-            Fuel fuel = fuel(s, input, times, r.cookTicks(), station);
+            // The first is the station set up as usual; the others are held for the smelt, placed and taken back.
+            int extra = furnaces - 1;
+            if (extra > 0) {
+                if (!obtain(s, station, extra)) return false;
+                s.reserve(station, extra);
+            }
+            Fuel fuel = fuel(s, input, times, furnaces, r.cookTicks(), station);
             if (fuel == null) return false;
             s.reserve(fuel.item(), fuel.count());
             s.consume(input, times);
             s.consume(fuel.item(), fuel.count());
             if (!setUpStation(s, station)) return false;
+            s.release(station, extra);
             s.inv.add(r.output(), times * r.outputCount());
-            s.addCost((double) times * Math.max(0, r.cookTicks()));
-            return emit(s, new Step.Smelt(r, times, input, fuel.item(), fuel.count(), s.inv.count(r.output())), 0, false);
+            s.addCost((double) Step.Smelt.shares(times, furnaces)[0] * Math.max(0, r.cookTicks()) + extra * EXTRA_FURNACE_TICKS);
+            return emit(s, new Step.Smelt(r, times, input, fuel.item(), fuel.count(), s.inv.count(r.output()), furnaces), 0, false);
         }
 
         // ---- choices inside a source: ingredient item, fuel, tool, station ----
@@ -791,9 +812,13 @@ public final class AcquirePlanner {
             return i < 0 ? null : tries.get(i);
         }
 
-        /** Fuel for {@code times} smelts: a held one if enough of it is spare, else the cheapest to obtain (obtained). */
-        private Fuel fuel(PlanState s, String input, int times, int cookTicks, String station) {
-            long heat = (long) times * Math.max(1, cookTicks) * (FAST_STATIONS.contains(station) ? 2 : 1);
+        /**
+         * Fuel for {@code times} smelts split across {@code furnaces} (each burns its own): a held one if enough of it
+         * is spare, else the cheapest to obtain (obtained).
+         */
+        private Fuel fuel(PlanState s, String input, int times, int furnaces, int cookTicks, String station) {
+            long heat = (long) Math.max(1, cookTicks) * (FAST_STATIONS.contains(station) ? 2 : 1);
+            int[] shares = Step.Smelt.shares(times, furnaces);
             List<Fuel> candidates = new ArrayList<>();
             Map<String, Integer> all = knowledge.fuels();
             if (all != null) {
@@ -804,7 +829,9 @@ public final class AcquirePlanner {
                     Integer burn = all.get(f);
                     if (burn == null || burn <= 0 || f.equals(input) || f.equals(goal) || stack.contains(f)
                             || STATIONS.contains(f) || knowledge.toolType(f) != null) continue;
-                    candidates.add(new Fuel(f, (int) Math.max(1, (heat + burn - 1) / burn)));
+                    int count = 0;
+                    for (int share : shares) count += Step.Smelt.fuelFor(share, heat, burn);
+                    candidates.add(new Fuel(f, count));
                 }
             }
             // Prefer what is already held, burning the cheapest to replace, unless that is worth more than

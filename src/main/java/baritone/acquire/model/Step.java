@@ -61,17 +61,47 @@ public sealed interface Step permits Step.Mine, Step.Craft, Step.Smelt, Step.Kil
         }
     }
 
-    /** Cook {@code times} of {@code input} in {@code recipe.station()}, burning {@code fuelCount} of {@code fuel}. */
-    record Smelt(SmeltSource recipe, int times, String input, String fuel, int fuelCount, int untilCount) implements Step {
+    /**
+     * Cook {@code times} of {@code input} in {@code recipe.station()}, burning {@code fuelCount} of {@code fuel}: split
+     * across {@code furnaces} of them side by side when more than one, the others placed for it and taken back after.
+     */
+    record Smelt(SmeltSource recipe, int times, String input, String fuel, int fuelCount, int untilCount, int furnaces)
+            implements Step {
+        public Smelt {
+            furnaces = Math.max(1, Math.min(furnaces, times));
+        }
+
+        public Smelt(SmeltSource recipe, int times, String input, String fuel, int fuelCount, int untilCount) {
+            this(recipe, times, input, fuel, fuelCount, untilCount, 1);
+        }
+
         @Override
         public String item() {
             return recipe.output();
         }
 
+        /** What each furnace cooks, as even as it goes, the larger shares first. */
+        public int[] shares() {
+            return shares(times, furnaces);
+        }
+
+        public static int[] shares(int times, int furnaces) {
+            int n = Math.max(1, Math.min(furnaces, Math.max(1, times)));
+            int[] out = new int[n];
+            for (int i = 0; i < n; i++) out[i] = times / n + (i < times % n ? 1 : 0);
+            return out;
+        }
+
+        /** Fuel items of {@code burn} ticks each for {@code times} cooks of {@code heat} ticks in one furnace. */
+        public static int fuelFor(int times, long heat, int burn) {
+            if (times <= 0) return 0;
+            return (int) Math.max(1, (times * heat + burn - 1) / burn);
+        }
+
         @Override
         public String describe() {
             return "smelt " + times + " " + shortId(input) + " into " + shortId(recipe.output())
-                    + " (fuel: " + fuelCount + " " + shortId(fuel) + ")";
+                    + (furnaces > 1 ? " in " + furnaces + " furnaces" : "") + " (fuel: " + fuelCount + " " + shortId(fuel) + ")";
         }
     }
 

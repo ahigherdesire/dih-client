@@ -33,6 +33,8 @@ public final class PlannerCosts {
     public static final double STATION_TICKS = 20;
     /** Break and pick up a station already placed by this acquire. */
     public static final double RETRIEVE_TICKS = 12;
+    /** An extra furnace for a split smelt: placed, loaded, emptied, broken and picked up. */
+    public static final double EXTRA_FURNACE_TICKS = 100;
     // Smelting costs the recipe's cookTicks per item.
     /** Going through a portal once it is there (walking to it included). */
     public static final double PORTAL_TICKS = 2400;
