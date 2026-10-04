@@ -102,6 +102,7 @@ public class Baritone implements IBaritone {
     private final AcquireProcess acquireProcess;
     private baritone.beat.BeatCampaign beatCampaign;
     private baritone.construct.ConstructJob constructJob;
+    private baritone.parkour.ParkourProcess parkourProcess;
     private final GuardianProcess guardianProcess;
 
     private final PathingControlManager pathingControlManager;
@@ -155,6 +156,7 @@ public class Baritone implements IBaritone {
             this.registerProcess(BackfillProcess::new);
             this.acquireProcess          = this.registerProcess(AcquireProcess::new);
             this.guardianProcess         = this.registerProcess(GuardianProcess::new);
+            this.parkourProcess          = this.registerProcess(baritone.parkour.ParkourProcess::new);
             this.pathingControlManager.registerProcess(this.eatBehavior.pauser()); // pauses pathing while #eat or #acquire eats
             // #beat drives #acquire phase by phase, so it comes after the processes.
             this.beatCampaign = this.registerBehavior(baritone.beat.BeatCampaign::new);
@@ -263,6 +265,11 @@ public class Baritone implements IBaritone {
     /** {@code #construct}: builds a schematic from an empty inventory. */
     public baritone.construct.ConstructJob getConstructJob() {
         return this.constructJob;
+    }
+
+    /** {@code #parkour}: runs parkour courses with solved jumps. */
+    public baritone.parkour.ParkourProcess getParkourProcess() {
+        return this.parkourProcess;
     }
 
     public AcquireProcess getAcquireProcess() {
