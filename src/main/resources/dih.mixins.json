@@ -148,6 +148,8 @@
     "DihKeyMappingMixin",
     "DihKeyboardHandlerMixin",
     "accessor.DihScreenAccessor",
+    "accessor.DihSupportingBlockAccessor",
+    "accessor.DihJumpDelayAccessor",
     "accessor.DihDialogScreenAccessor",
     "accessor.DihHandledScreenAccessor",
     "accessor.AbstractContainerScreenAccessor",

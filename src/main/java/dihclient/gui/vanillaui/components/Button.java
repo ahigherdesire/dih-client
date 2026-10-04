@@ -9,6 +9,8 @@ import dihclient.util.DihThemeTextures;
 import net.minecraft.resources.Identifier;
 
 public final class Button {
+    static final int RADIUS = 3;
+
     private Button() {
     }
 
@@ -34,7 +36,7 @@ public final class Button {
         float progress = Math.min(1.0f, Math.max(0.0f, activeProgress));
         boolean coloredTone = tone == Tone.SUCCESS || tone == Tone.DANGER || tone == Tone.PRIMARY;
 
-        UiRenderer.frame(context.graphics(), bounds, 0xC01E242D, colors.buttonBorder);
+        UiRenderer.roundedFrame(context.graphics(), bounds, RADIUS, 0xE81A1D24, 0x24FFFFFF);
         if (progress > 0.001f) {
             if (coloredTone) {
                 int toneFill = switch (tone) {
@@ -49,18 +51,17 @@ public final class Button {
                     case PRIMARY -> colors.accent;
                     default -> colors.borderSoft;
                 };
-                UiRenderer.rect(context.graphics(), bounds.inset(1), UiRenderer.applyAlpha(toneFill, progress));
-                UiRenderer.outline(context.graphics(), bounds, UiRenderer.applyAlpha(onBorder, progress));
+                UiRenderer.roundedFrame(context.graphics(), bounds, RADIUS, UiRenderer.applyAlpha(toneFill, progress),
+                    UiRenderer.applyAlpha(onBorder, progress));
             } else {
-
-                UiRenderer.rect(context.graphics(), bounds.inset(1), UiRenderer.applyAlpha(0xCC282E39, progress));
+                UiRenderer.rounded(context.graphics(), bounds.inset(1), RADIUS - 1, UiRenderer.applyAlpha(0xCC2A303B, progress));
             }
         }
 
         float hoverT = dihclient.gui.vanillaui.HoverFades.get(dihclient.gui.vanillaui.HoverFades.key(bounds), hovered);
         if (hoverT > 0.001f) {
-            UiRenderer.rect(context.graphics(), bounds.inset(1),
-                (((int) Math.round(0x14 * hoverT)) << 24) | 0x00FFFFFF);
+            UiRenderer.rounded(context.graphics(), bounds.inset(1), RADIUS - 1,
+                (((int) Math.round(0x16 * hoverT)) << 24) | 0x00FFFFFF);
         }
         if (icon == null) {
             context.text().drawCentered(context.graphics(), label, bounds, colors.text);

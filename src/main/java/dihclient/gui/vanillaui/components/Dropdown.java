@@ -123,7 +123,7 @@ public final class Dropdown implements UiComponent {
         var colors = context.theme().colors();
         int fill = !enabled ? colors.field : open ? colors.fieldFocused : (hovered ? colors.rowHover : colors.field);
 
-        UiRenderer.frame(context.graphics(), bounds, fill, open && enabled ? colors.accent : colors.borderSoft);
+        UiRenderer.roundedFrame(context.graphics(), bounds, Button.RADIUS, fill, open && enabled ? colors.accent : 0x1CFFFFFF);
         int textColor = enabled ? colors.text : colors.disabled;
         if (centered) {
             context.text().drawCentered(context.graphics(), label, bounds, textColor);
@@ -151,7 +151,7 @@ public final class Dropdown implements UiComponent {
         float fade = openedAtNanos == 0L ? 1.0f
             : Math.max(0.0f, Math.min(1.0f, (System.nanoTime() - openedAtNanos) / 70_000_000.0f));
         UiRenderer.frame(context.graphics(), menuBounds,
-            UiRenderer.applyAlpha(colors.windowStrong, fade), UiRenderer.applyAlpha(colors.borderSoft, fade));
+            UiRenderer.applyAlpha(colors.windowStrong, fade), UiRenderer.applyAlpha(colors.windowEdge, fade));
         int contentWidth = options.size() > visibleRows ? menuBounds.width() - context.theme().spacing().scrollbarWidth - 3 : menuBounds.width() - 2;
         for (int rowIndex = 0; rowIndex < visibleRows; rowIndex++) {
             int optionIndex = scroll + rowIndex;

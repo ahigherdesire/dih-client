@@ -111,6 +111,17 @@ public class DihKeybindOverlay extends DihOverlayBase {
                     config.save();
                 }
             ));
+
+            windowNode.content().add(new ToggleRowNode(
+                "Classic Menu",
+                "Use the old floating category windows instead of the single module window.",
+                () -> getConfig().classicModuleMenu,
+                v -> {
+                    DihConfig config = getConfig();
+                    config.classicModuleMenu = v;
+                    config.save();
+                }
+            ));
         }
 
         windowNode.content().add(new ScaleRowNode(
@@ -564,6 +575,7 @@ public class DihKeybindOverlay extends DihOverlayBase {
         List<String> labels = new ArrayList<>(entries.size() + 3);
         labels.add("Inside GUI");
         labels.add("Custom Menu");
+        labels.add("Classic Menu");
         labels.add("Overlay Scale");
         labels.add("Auto Probe");
         labels.add("Command Prefix");

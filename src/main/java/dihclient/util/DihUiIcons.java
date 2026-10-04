@@ -19,6 +19,17 @@ public final class DihUiIcons {
     public static final Identifier EDIT = icon("edit");
     public static final Identifier DUPLICATE = icon("duplicate");
     public static final Identifier PLUS = icon("plus");
+    public static final Identifier SEARCH = icon("search");
+    /** A full-bleed disc; its quadrants are the corners of {@link dihclient.gui.vanillaui.UiRenderer#rounded}. */
+    public static final Identifier ROUND = icon("round");
+    public static final Identifier CAT_ALL = icon("cat_all");
+    public static final Identifier CAT_ENABLED = icon("cat_enabled");
+    public static final Identifier CAT_COMBAT = icon("cat_combat");
+    public static final Identifier CAT_MOVEMENT = icon("cat_movement");
+    public static final Identifier CAT_PLAYER = icon("cat_player");
+    public static final Identifier CAT_MISC = icon("cat_misc");
+    public static final Identifier CAT_RENDER = icon("cat_render");
+    public static final Identifier CAT_ADDON = icon("cat_addon");
 
     private static final int ICON_TEX = 512;
     private static final int PILL_TEX_W = 2048;
@@ -53,5 +64,16 @@ public final class DihUiIcons {
 
         graphics.blit(pipeline, PILL, x + w - cap, y, (float) (PILL_TEX_W - srcCap), 0.0F, cap, h,
             srcCap, PILL_TEX_H, PILL_TEX_W, PILL_TEX_H, color);
+    }
+
+    /**
+     * Draws one quarter of {@link #ROUND} as an {@code r}x{@code r} corner. Quadrants: 0 top-left, 1 top-right,
+     * 2 bottom-left, 3 bottom-right.
+     */
+    public static void blitCorner(GuiGraphicsExtractor graphics, int x, int y, int r, int quadrant, int color) {
+        if (r <= 0) return;
+        int half = ICON_TEX / 2;
+        graphics.blit(RenderPipelines.GUI_TEXTURED, ROUND, x, y, (quadrant & 1) * (float) half, (quadrant >> 1) * (float) half,
+            r, r, half, half, ICON_TEX, ICON_TEX, color);
     }
 }

@@ -103,6 +103,25 @@ final class JobTools {
                     return List.of("build " + file + (all ? " " + Cmd.xyz(args, "") : ""));
                 }));
 
+        registry.register(Cmd.start(AiTool.builder("construct_schematic", ToolCategory.JOB)
+                .summary("Build a schematic file from scratch: gather every block it needs, then build it.")
+                .description("Build a schematic from the schematics folder at the player's position or at x y z, starting "
+                        + "with nothing: it works out the blocks, gathers them with acquire (mining, crafting, smelting) "
+                        + "in batches that fit the inventory, and builds between batches until the build is done.")
+                .schema(ToolSchema.builder()
+                        .string("file", "The schematic's file name, as in the schematics folder.").required()
+                        .integer("x", "Where to build: X (default: here).")
+                        .integer("y", "Where to build: Y.")
+                        .integer("z", "Where to build: Z.")
+                        .build()), "construct", args -> {
+                    String file = args.string("file").trim();
+                    if (file.isEmpty() || file.contains(" ")) throw new IllegalArgumentException("file must be one word.");
+                    boolean any = args.has("x") || args.has("y") || args.has("z");
+                    boolean all = args.has("x") && args.has("y") && args.has("z");
+                    if (any && !all) throw new IllegalArgumentException("Give all of x, y and z, or none.");
+                    return List.of("construct " + file + (all ? " " + Cmd.xyz(args, "") : ""));
+                }));
+
         registry.register(AiTool.builder("gear_up", ToolCategory.JOB)
                 .summary("Get a full set of tools (and armour) of a tier, one piece at a time.")
                 .description("Get the sword, pickaxe and axe of a tier, and for iron and up the four armour pieces, "

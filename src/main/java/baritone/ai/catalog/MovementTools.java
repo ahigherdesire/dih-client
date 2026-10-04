@@ -32,6 +32,26 @@ final class MovementTools {
                         .integer("distance", "How many blocks.").range(1, 30000000).required()
                         .build()), "goto", args -> List.of("thisway " + args.integer("distance"), "path")));
 
+        registry.register(Cmd.start(AiTool.builder("parkour_course", ToolCategory.MOVEMENT)
+                .summary("Run the parkour course the player stands on, jump by jump, until no jumps are left ahead.")
+                .schema(ToolSchema.EMPTY), "parkour", args -> List.of("parkour")));
+
+        registry.register(Cmd.start(AiTool.builder("parkour_goto", ToolCategory.MOVEMENT)
+                .summary("Get to a block by parkour: solved sprint-jumps, neos, ladder and momentum jumps.")
+                .schema(ToolSchema.builder()
+                        .integer("x", "Target block X.").required()
+                        .integer("y", "Target block Y (the block to stand on).").required()
+                        .integer("z", "Target block Z.").required()
+                        .build()), "parkour", args -> List.of("parkour goto " + Cmd.xyz(args, ""))));
+
+        registry.register(Cmd.run(AiTool.builder("solve_jump", ToolCategory.MOVEMENT)
+                .summary("Work out whether (and how) one jump from here onto a block can be made, without moving.")
+                .schema(ToolSchema.builder()
+                        .integer("x", "Target block X.").required()
+                        .integer("y", "Target block Y.").required()
+                        .integer("z", "Target block Z.").required()
+                        .build()), args -> List.of("parkour solve " + Cmd.xyz(args, ""))));
+
         registry.register(Cmd.start(AiTool.builder("go_to_surface", ToolCategory.MOVEMENT)
                 .summary("Get out of a cave or mine to open sky.")
                 .schema(ToolSchema.EMPTY), "goto", args -> List.of("surface")));

@@ -27,13 +27,20 @@
       "dihclient.trade.TradeGameTest",
       "dihclient.gui.UiWinsGameTest",
       "dihclient.gui.PaletteTourGameTest",
+      "dihclient.gui.ModulePanelGameTest",
+      "dihclient.modules.CombatModulesGameTest",
+      "baritone.construct.ConstructGameTest",
       "dihclient.ai.ToolsGameTest",
       "dihclient.ai.ToolCatalogGameTest",
       "dihclient.ai.AiRunGameTest",
       "dihclient.ai.AiPanelGameTest",
       "baritone.beat.BeatGameTest",
       "baritone.beat.BeatHomeGameTest",
-      "baritone.guardian.AcquireRealWorldGameTest"
+      "baritone.guardian.AcquireRealWorldGameTest",
+      "baritone.parkour.ParkourTraceGameTest",
+      "baritone.parkour.ParkourJumpGameTest",
+      "baritone.parkour.ParkourCourseGameTest",
+      "baritone.parkour.ParkourHandoffGameTest"
     ]
   },
   "depends": {

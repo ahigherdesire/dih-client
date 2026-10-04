@@ -160,11 +160,11 @@ public final class CompactTheme {
     }
 
     public int borderColor() {
-        return rc(0xFFD24848, Channel.OUTLINE);
+        return rc(0x99D24848, Channel.OUTLINE);
     }
 
     public int borderSoft() {
-        return rc(lessTransparent30(0xC0993A3A), Channel.OUTLINE);
+        return rc(0x55993A3A, Channel.OUTLINE);
     }
 
     public int hoverFill() {
@@ -206,19 +206,19 @@ public final class CompactTheme {
 
     public int buttonBorder(DirectUiButton.Variant variant) {
         return switch (variant) {
-            case PRIMARY        -> rc(0xFFFF8787, Channel.OUTLINE);
+            case PRIMARY        -> rc(0x99FF8787, Channel.OUTLINE);
             case SECONDARY, GHOST -> borderSoft();
-            case DANGER        -> rc(0xFFB54848, Channel.DANGER);
-            case SUCCESS       -> rc(0xFF4FD986, Channel.SUCCESS);
+            case DANGER        -> rc(0x99B54848, Channel.DANGER);
+            case SUCCESS       -> rc(0x994FD986, Channel.SUCCESS);
         };
     }
 
     public int buttonBorderInactive(DirectUiButton.Variant variant) {
         return switch (variant) {
-            case PRIMARY        -> rc(0xFFFF8787, Channel.OUTLINE);
-            case SECONDARY, GHOST -> rc(0xFF6B5050, Channel.OUTLINE);
-            case DANGER        -> rc(0xFFB54848, Channel.DANGER);
-            case SUCCESS       -> rc(0xFF4FD986, Channel.SUCCESS);
+            case PRIMARY        -> rc(0x99FF8787, Channel.OUTLINE);
+            case SECONDARY, GHOST -> rc(0x556B5050, Channel.OUTLINE);
+            case DANGER        -> rc(0x99B54848, Channel.DANGER);
+            case SUCCESS       -> rc(0x994FD986, Channel.SUCCESS);
         };
     }
 
@@ -260,8 +260,8 @@ public final class CompactTheme {
     }
 
     public int overlayButtonBorder(CompactOverlayButton.Variant variant, boolean active) {
-        if (variant == CompactOverlayButton.Variant.FILTER_ON) return 0xFF6F8DFF;
-        if (variant == CompactOverlayButton.Variant.FILTER_OFF) return 0xFF565D66;
+        if (variant == CompactOverlayButton.Variant.FILTER_ON) return 0x996F8DFF;
+        if (variant == CompactOverlayButton.Variant.FILTER_OFF) return 0x66565D66;
         return active ? buttonBorder(toButtonVariant(variant)) : buttonBorderInactive(toButtonVariant(variant));
     }
 

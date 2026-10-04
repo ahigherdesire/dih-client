@@ -1,6 +1,5 @@
 package dihclient.gui.vanillaui.module;
 
-import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
 import dihclient.gui.vanillaui.UiContexts;
@@ -53,6 +52,7 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.resources.Identifier;
 import net.minecraft.network.protocol.Packet;
+import com.mojang.blaze3d.platform.InputConstants;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -115,6 +115,11 @@ public final class VanillaModuleMenuController {
     private static final String MAIN_MENU = "MAIN_MENU";
     private static final String LEGACY_UTILITIES = "UTILITIES";
     private static final String SEARCH_WINDOW = "SEARCH";
+    private static final String PANEL_RAIL = "PANEL_RAIL";
+    private static final String PANEL_LIST = "PANEL_LIST";
+    private static final String SETTINGS_SCROLL = "settings";
+    private static final String TAB_ALL = "ALL";
+    private static final String TAB_ENABLED = "ENABLED";
 
     private static final String MODE_SETTING_ID = "mode";
     private static final List<UtilityAction> UTILITY_ACTIONS = List.of(
@@ -206,11 +211,35 @@ public final class VanillaModuleMenuController {
     }
 
     public boolean hasTopLayer() {
+        if (panelMode()) {
+            return dropdown != null || colorPicker != null || macroPicker != null || editing != null
+                || bindingModule != null || bindingOption != null;
+        }
         return dropdown != null || colorPicker != null || macroPicker != null || editing != null || selectedModule != null;
     }
 
+    /** Whether the open windows (macros, logger, ...) should step aside: in the panel, only for popups. */
+    public boolean hidesOverlays() {
+        if (panelMode()) return dropdown != null || colorPicker != null || macroPicker != null;
+        return hasTopLayer();
+    }
+
+    /** Whether input skips the open windows and goes straight to the menu (popups and key capture). */
+    public boolean blocksOverlayInput() {
+        if (panelMode()) {
+            return dropdown != null || colorPicker != null || macroPicker != null || bindingModule != null || bindingOption != null;
+        }
+        return hasTopLayer();
+    }
+
+    /** A settings window covers the menu (classic layout only; the panel shows settings inline). */
     public boolean hasSelectedModule() {
-        return selectedModule != null;
+        return selectedModule != null && !panelMode();
+    }
+
+    /** The single-window module menu, unless the player picked the classic floating windows. */
+    private static boolean panelMode() {
+        return !DihConfig.getGlobal().classicModuleMenu;
     }
 
     public void openSettingsByModuleId(String moduleId) {
@@ -230,7 +259,10 @@ public final class VanillaModuleMenuController {
         int baseMouseX = topPopup ? -10000 : mouseX;
         int baseMouseY = topPopup ? -10000 : mouseY;
         UiContext context = new UiContext(graphics, theme, text, screenWidth, screenHeight, baseMouseX, baseMouseY, delta);
-        if (selectedModule == null) {
+        if (panelMode()) {
+            if (selectedModule != null && PackHideState.isActive() && !PackHideState.isHideModule(selectedModule)) selectedModule = null;
+            renderPanel(context);
+        } else if (selectedModule == null) {
             renderCategoryWindows(context);
         } else {
             if (PackHideState.isActive() && !PackHideState.isHideModule(selectedModule)) selectedModule = null;
@@ -467,6 +499,11 @@ public final class VanillaModuleMenuController {
 
     private void focusSearchWindow() {
         finishEditing(true);
+        if (panelMode()) {
+            editing = new Editing(null, null, searchQuery, searchQuery.length());
+            if (!searchQuery.isEmpty()) editing.selectAll();
+            return;
+        }
         selectedModule = null;
         DihConfig.ModuleCategoryLayout layout = layout(SEARCH_WINDOW);
         layout.collapsed = false;
@@ -882,6 +919,12 @@ public final class VanillaModuleMenuController {
         int toolbarBottom = Math.max(Math.max(activeButton.bottom(), bindButton.bottom()), Math.max(macroButton.bottom(), resetButton.bottom()));
 
         UiBounds searchField = UiBounds.of(bounds.x() + 5, toolbarBottom + 5, Math.max(1, bounds.width() - 10), buttonH);
+        UiBounds body = UiBounds.of(bounds.x() + 5, searchField.bottom() + 5, Math.max(1, bounds.width() - 10), Math.max(1, bounds.bottom() - searchField.bottom() - 10));
+        renderSettingsSearchAndRows(context, module, searchField, body);
+    }
+
+    /** The settings search field and the scrolling setting rows under it (shared by both layouts). */
+    private void renderSettingsSearchAndRows(UiContext context, Module module, UiBounds searchField, UiBounds body) {
         boolean searchFocused = isSettingsSearchEditing();
         String searchText = searchFocused ? editing.text : settingsSearchQuery;
         TextField.render(context, searchField, searchText, "Search settings...", searchFocused,
@@ -890,7 +933,7 @@ public final class VanillaModuleMenuController {
             searchFocused ? editing.selectionEnd() : -1);
         addHit(HitType.SETTINGS_SEARCH_FIELD, searchField, module, null, null, "", -1);
 
-        UiBounds body = UiBounds.of(bounds.x() + 5, searchField.bottom() + 5, Math.max(1, bounds.width() - 10), Math.max(1, bounds.bottom() - searchField.bottom() - 10));
+        settingsRowsWidth = body.width();
         CachedSettingRows rows = cachedRows(module, body.width());
         int scroll = clampSettingsScroll(module, rows.contentHeight, body.height());
         UiBounds viewport = rows.contentHeight > body.height()
@@ -915,6 +958,539 @@ public final class VanillaModuleMenuController {
                 scrollbarDrag != null && "settings".equals(scrollbarDrag.id));
             addHit(HitType.SCROLLBAR, scrollbarHitBounds(track), module, null, null, "settings", -1);
         }
+    }
+
+    // ---- Panel layout: one window with a category rail, a module list and the selected module's settings ----
+
+    private static final int PANEL_MAX_W = 660;
+    private static final int PANEL_MAX_H = 410;
+    private static final int PANEL_RADIUS = 6;
+    private static final int PANEL_HEADER_H = 27;
+    private static final int RAIL_ROW_H = 17;
+    private static final int RAIL_LABEL_H = 17;
+    private static final int LIST_ROW_H = 25;
+    private static final int UTILITY_ICON_TEX = 256;
+
+    private int settingsRowsWidth = SETTINGS_W - 10;
+    private UiBounds panelRailView = UiBounds.of(0, 0, 0, 0);
+    private UiBounds panelListView = UiBounds.of(0, 0, 0, 0);
+    private UiBounds panelSettingsView = UiBounds.of(0, 0, 0, 0);
+    private List<Module> panelModules = List.of();
+
+    private enum RailKind { TAB, TOOL, LABEL, PACKETS }
+
+    private record RailEntry(RailKind kind, String id, String label, Identifier icon, int count) {
+    }
+
+    private void renderPanel(UiContext context) {
+        var colors = theme.colors();
+        var graphics = context.graphics();
+        int w = Math.max(Math.min(300, screenWidth - 4), Math.min(PANEL_MAX_W, screenWidth - 16));
+        int h = Math.max(Math.min(200, screenHeight - 4), Math.min(PANEL_MAX_H, screenHeight - 16));
+        UiBounds panel = UiBounds.of((screenWidth - w) / 2, (screenHeight - h) / 2, w, h);
+        boolean iconRail = w < 470;
+        int railW = iconRail ? 30 : w >= 600 ? 126 : 110;
+        int listW = clamp((w - railW) * 2 / 5, 150, 236);
+
+        UiRenderer.rounded(graphics, UiBounds.of(panel.x() - 2, panel.y() - 1, w + 4, h + 4), PANEL_RADIUS + 2, 0x55000000);
+        UiRenderer.roundedFrame(graphics, panel, PANEL_RADIUS, colors.windowStrong, colors.windowEdge);
+        UiBounds rail = UiBounds.of(panel.x() + 1, panel.y() + 1, railW, h - 2);
+        UiRenderer.roundedLeft(graphics, rail, PANEL_RADIUS - 1, 0x0DFFFFFF);
+        UiRenderer.verticalEdge(graphics, rail.right(), panel.y() + 1, h - 2, colors.hairline);
+
+        // Brand mark over the rail.
+        int brandY = panel.y() + (PANEL_HEADER_H - 9) / 2 + 1;
+        UiRenderer.disc(graphics, rail.x() + (iconRail ? railW / 2.0F : 11.5F), brandY + 4.0F, 3.0F, colors.accent);
+        if (!iconRail) context.text().draw(graphics, "DIH Client", rail.x() + 19, brandY, colors.text);
+
+        int contentX = rail.right() + 1;
+        UiBounds header = UiBounds.of(contentX, panel.y() + 1, panel.right() - 1 - contentX, PANEL_HEADER_H - 1);
+        UiRenderer.horizontalEdge(graphics, contentX, header.bottom(), header.width(), colors.hairline);
+
+        UiBounds search = UiBounds.of(contentX + 7, header.y() + (header.height() - 15) / 2 + 1, listW - 14, 15);
+        renderPanelSearch(context, search);
+
+        UiBounds close = UiBounds.of(header.right() - 18, header.y() + (header.height() - 14) / 2 + 1, 14, 14);
+        boolean closeHover = close.contains(context.mouseX(), context.mouseY());
+        if (closeHover) UiRenderer.disc(graphics, close.x() + 7.0F, close.y() + 7.0F, 7.0F, (colors.bad & 0x00FFFFFF) | 0x66000000);
+        dihclient.util.DihUiIcons.blit(graphics, dihclient.util.DihUiIcons.X, close.x() + 3, close.y() + 3, 8, 8,
+            closeHover ? 0xFFFFFFFF : colors.muted);
+        addHit(HitType.CLOSE, close, null, null, null, "", -1);
+
+        int enabledCount = 0;
+        for (ModuleCategory category : ModuleCategory.values()) {
+            for (Module module : orderedModules(category)) if (module.isEnabled()) enabledCount++;
+        }
+        String summary = enabledCount == 1 ? "1 module on" : enabledCount + " modules on";
+        int summaryW = context.text().width(summary);
+        int summaryX = close.x() - 8 - summaryW;
+        if (summaryX > search.right() + 12) context.text().draw(graphics, summary, summaryX, context.text().centeredY(header), colors.muted);
+
+        int bodyY = header.bottom() + 1;
+        UiBounds railBody = UiBounds.of(rail.x(), bodyY, rail.width(), panel.bottom() - 1 - bodyY);
+        renderPanelRail(context, railBody, iconRail);
+
+        UiBounds list = UiBounds.of(contentX, bodyY, listW, panel.bottom() - 1 - bodyY);
+        renderPanelList(context, list);
+        UiRenderer.verticalEdge(graphics, list.right(), bodyY, list.height(), colors.hairline);
+
+        UiBounds settings = UiBounds.of(list.right() + 1, bodyY, panel.right() - 2 - list.right(), panel.bottom() - 1 - bodyY);
+        renderPanelSettings(context, settings);
+    }
+
+    private void renderPanelSearch(UiContext context, UiBounds field) {
+        boolean focused = isSearchEditing();
+        String value = focused ? editing.text : searchQuery;
+        TextField.render(context, field, value, "", focused,
+            focused ? editing.cursor : value.length(),
+            focused ? editing.selectionStart() : -1,
+            focused ? editing.selectionEnd() : -1);
+        if (value.isEmpty() && !focused) {
+            dihclient.util.DihUiIcons.blit(context.graphics(), dihclient.util.DihUiIcons.SEARCH, field.x() + 5, field.y() + 4, 7, 7, theme.colors().muted);
+            context.text().drawEllipsized(context.graphics(), "Search modules", field.x() + 16, context.text().centeredY(field),
+                Math.max(1, field.width() - 46), theme.colors().muted);
+            String hint = "Ctrl+F";
+            int hintW = context.text().width(hint);
+            if (field.width() > hintW + 110) {
+                context.text().draw(context.graphics(), hint, field.right() - hintW - 5, context.text().centeredY(field), theme.colors().disabled);
+            }
+        }
+        addHit(HitType.SEARCH_FIELD, field, null, null, null, SEARCH_WINDOW, -1);
+    }
+
+    private List<RailEntry> railEntries() {
+        List<RailEntry> entries = new ArrayList<>();
+        int all = 0;
+        int enabled = 0;
+        List<RailEntry> categories = new ArrayList<>();
+        for (ModuleCategory category : ModuleCategory.values()) {
+            List<Module> modules = orderedModules(category);
+            if (modules.isEmpty()) continue;
+            int on = 0;
+            for (Module module : modules) if (module.isEnabled()) on++;
+            all += modules.size();
+            enabled += on;
+            categories.add(new RailEntry(RailKind.TAB, category.name(), category.label(), categoryIcon(category), on));
+        }
+        entries.add(new RailEntry(RailKind.TAB, TAB_ALL, "All modules", dihclient.util.DihUiIcons.CAT_ALL, all));
+        entries.add(new RailEntry(RailKind.TAB, TAB_ENABLED, "Enabled", dihclient.util.DihUiIcons.CAT_ENABLED, enabled));
+        entries.add(new RailEntry(RailKind.LABEL, "", "Categories", null, 0));
+        entries.addAll(categories);
+        if (PackHideState.isActive()) return entries;
+        entries.add(new RailEntry(RailKind.LABEL, "", "Tools", null, 0));
+        boolean packets = false;
+        for (UtilityAction action : utilityActions()) {
+            if (action.category() || action.toggle() || action.icon() == null) {
+                if (!action.category()) packets = true;
+                continue;
+            }
+            entries.add(new RailEntry(RailKind.TOOL, action.id(), action.label(), action.icon(), 0));
+        }
+        if (packets) {
+            entries.add(new RailEntry(RailKind.LABEL, "", "Packets", null, 0));
+            entries.add(new RailEntry(RailKind.PACKETS, "", "", null, 0));
+        }
+        return entries;
+    }
+
+    private int railEntryHeight(RailEntry entry, boolean iconsOnly) {
+        return switch (entry.kind()) {
+            case TAB, TOOL -> RAIL_ROW_H;
+            case LABEL -> iconsOnly ? 7 : RAIL_LABEL_H;
+            case PACKETS -> iconsOnly ? 0 : theme.spacing().buttonHeight * 2 + 3;
+        };
+    }
+
+    private void renderPanelRail(UiContext context, UiBounds rail, boolean iconsOnly) {
+        var colors = theme.colors();
+        var graphics = context.graphics();
+        List<RailEntry> entries = railEntries();
+        int contentH = 6;
+        for (RailEntry entry : entries) contentH += railEntryHeight(entry, iconsOnly);
+        int scroll = clampWindowScroll(PANEL_RAIL, contentH, rail.height());
+        panelRailView = rail;
+        addHit(HitType.SCROLL_AREA, rail, null, null, null, PANEL_RAIL, -1);
+        String tab = panelTab();
+        boolean searching = !currentSearchQuery().trim().isEmpty();
+        scissors.push(graphics, rail);
+        try {
+            int y = rail.y() + 4 - scroll;
+            for (RailEntry entry : entries) {
+                int entryH = railEntryHeight(entry, iconsOnly);
+                if (y + entryH < rail.y() || y > rail.bottom()) {
+                    y += entryH;
+                    continue;
+                }
+                switch (entry.kind()) {
+                    case LABEL -> {
+                        if (iconsOnly) UiRenderer.horizontalEdge(graphics, rail.x() + 7, y + 3, rail.width() - 14, colors.hairline);
+                        else context.text().draw(graphics, entry.label().toUpperCase(Locale.ROOT), rail.x() + 10, y + 6, colors.disabled);
+                    }
+                    case TAB, TOOL -> {
+                        UiBounds row = UiBounds.of(rail.x() + 4, y, rail.width() - 8, RAIL_ROW_H - 1);
+                        boolean hovered = row.contains(context.mouseX(), context.mouseY());
+                        boolean selected = entry.kind() == RailKind.TAB && entry.id().equals(tab) && !searching;
+                        float hoverT = hoverFade("rail:" + entry.id(), hovered);
+                        if (selected) UiRenderer.rounded(graphics, row, 4, alphaColor(colors.accent, 0.24f));
+                        else if (hoverT > 0.01f) UiRenderer.rounded(graphics, row, 4, ((int) (0x12 * hoverT) << 24) | 0x00FFFFFF);
+                        int ink = selected ? colors.text : lerpColor(colors.muted, colors.text, hoverT);
+                        int iconSize = 9;
+                        int iconX = iconsOnly ? row.x() + (row.width() - iconSize) / 2 : row.x() + 6;
+                        int iconY = row.y() + (row.height() - iconSize) / 2;
+                        int iconTint = selected ? colors.accent : ink;
+                        if (entry.kind() == RailKind.TAB) {
+                            dihclient.util.DihUiIcons.blit(graphics, entry.icon(), iconX, iconY, iconSize, iconSize, iconTint);
+                        } else {
+                            graphics.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED,
+                                dihclient.util.DihThemeTextures.whitened(entry.icon()), iconX, iconY, 0.0F, 0.0F, iconSize, iconSize,
+                                UTILITY_ICON_TEX, UTILITY_ICON_TEX, UTILITY_ICON_TEX, UTILITY_ICON_TEX, iconTint);
+                        }
+                        if (!iconsOnly) {
+                            int labelX = row.x() + 20;
+                            String count = entry.kind() == RailKind.TAB && entry.count() > 0 ? Integer.toString(entry.count()) : "";
+                            int countW = count.isEmpty() ? 0 : context.text().width(count) + 6;
+                            context.text().drawEllipsized(graphics, entry.label(), labelX, context.text().centeredY(row),
+                                Math.max(1, row.right() - 4 - countW - labelX), ink);
+                            if (!count.isEmpty()) {
+                                context.text().draw(graphics, count, row.right() - 4 - context.text().width(count),
+                                    context.text().centeredY(row), selected ? colors.text : colors.disabled);
+                            }
+                        } else if (hovered) {
+                            tooltip = entry.label();
+                        }
+                        addHit(entry.kind() == RailKind.TAB ? HitType.PANEL_TAB : HitType.UTILITY, row, null, null, null, entry.id(), -1);
+                    }
+                    case PACKETS -> renderRailPackets(context, UiBounds.of(rail.x() + 6, y, rail.width() - 12, entryH));
+                }
+                y += entryH;
+            }
+        } finally {
+            scissors.pop(graphics);
+        }
+        if (contentH > rail.height()) renderPanelScrollbar(context, rail, PANEL_RAIL, contentH, scroll);
+    }
+
+    private void renderRailPackets(UiContext context, UiBounds area) {
+        int buttonH = theme.spacing().buttonHeight;
+        int half = (area.width() - 3) / 2;
+        String[][] cells = {{"send", "delay"}, {"flush", "clear"}};
+        for (int row = 0; row < 2; row++) {
+            for (int col = 0; col < 2; col++) {
+                String id = cells[row][col];
+                UtilityAction action = null;
+                for (UtilityAction candidate : utilityActions()) if (candidate.id().equals(id)) action = candidate;
+                if (action == null) continue;
+                UiBounds button = UiBounds.of(area.x() + col * (half + 3), area.y() + row * (buttonH + 3),
+                    col == 0 ? half : area.width() - half - 3, buttonH);
+                boolean hovered = button.contains(context.mouseX(), context.mouseY());
+                if (action.toggle()) {
+                    boolean on = utilityActive(id);
+                    Button.render(context, button, action.label(), action.tone(), hovered, on);
+                } else {
+                    Button.render(context, button, action.label(), Button.Tone.NORMAL, hovered, false);
+                }
+                addHit(HitType.UTILITY, button, null, null, null, id, -1);
+            }
+        }
+    }
+
+    private void renderPanelScrollbar(UiContext context, UiBounds view, String id, int contentH, int scroll) {
+        UiBounds track = UiBounds.of(view.right() - theme.spacing().scrollbarWidth - 1, view.y() + 2, theme.spacing().scrollbarWidth, view.height() - 4);
+        Scrollbar.Metrics metrics = Scrollbar.metrics(track, contentH, view.height(), scroll);
+        Scrollbar.render(context, metrics, metrics.track().contains(context.mouseX(), context.mouseY()),
+            scrollbarDrag != null && id.equals(scrollbarDrag.id));
+        addHit(HitType.SCROLLBAR, scrollbarHitBounds(track), null, null, null, id, -1);
+    }
+
+    /** The modules the list shows: search matches across every category, else the selected tab. */
+    private List<Module> computePanelModules() {
+        if (!currentSearchQuery().trim().isEmpty()) {
+            List<Module> matches = new ArrayList<>();
+            for (SearchMatch match : searchMatches()) matches.add(match.module());
+            return matches;
+        }
+        String tab = panelTab();
+        List<Module> modules = new ArrayList<>();
+        for (ModuleCategory category : ModuleCategory.values()) {
+            if (!TAB_ALL.equals(tab) && !TAB_ENABLED.equals(tab) && !category.name().equals(tab)) continue;
+            for (Module module : orderedModules(category)) {
+                if (TAB_ENABLED.equals(tab) && !module.isEnabled()) continue;
+                modules.add(module);
+            }
+        }
+        if (TAB_ALL.equals(tab) || TAB_ENABLED.equals(tab)) {
+            modules.sort(Comparator.comparing(module -> module.name().toLowerCase(Locale.ROOT)));
+        }
+        return modules;
+    }
+
+    private void renderPanelList(UiContext context, UiBounds area) {
+        var colors = theme.colors();
+        var graphics = context.graphics();
+        List<Module> modules = computePanelModules();
+        panelModules = modules;
+        boolean searching = !currentSearchQuery().trim().isEmpty();
+        UiBounds view = area.inset(0, 3, 0, 3);
+        int contentH = modules.size() * LIST_ROW_H;
+        int scroll = clampWindowScroll(PANEL_LIST, contentH, view.height());
+        panelListView = view;
+        addHit(HitType.SCROLL_AREA, view, null, null, null, PANEL_LIST, -1);
+        if (modules.isEmpty()) {
+            String empty = searching ? "No modules match \"" + currentSearchQuery().trim() + "\""
+                : TAB_ENABLED.equals(panelTab()) ? "Nothing is on yet" : "No modules here";
+            context.text().drawEllipsized(graphics, empty, view.x() + 10, view.y() + 8, Math.max(1, view.width() - 20), colors.muted);
+            return;
+        }
+        boolean scrollbar = contentH > view.height();
+        int rowRight = view.right() - (scrollbar ? theme.spacing().scrollbarWidth + 3 : 4);
+        String query = currentSearchQuery().trim().toLowerCase(Locale.ROOT);
+        scissors.push(graphics, view);
+        try {
+            int first = ScrollContainer.firstVisibleRow(scroll, LIST_ROW_H, modules.size());
+            int last = ScrollContainer.lastVisibleRow(scroll, view.height(), LIST_ROW_H, modules.size());
+            for (int i = first; i <= last; i++) {
+                Module module = modules.get(i);
+                int y = view.y() - scroll + i * LIST_ROW_H;
+                UiBounds row = UiBounds.of(view.x() + 4, y, rowRight - view.x() - 4, LIST_ROW_H - 1);
+                renderPanelModuleRow(context, module, row, searching, query);
+            }
+        } finally {
+            scissors.pop(graphics);
+        }
+        if (scrollbar) renderPanelScrollbar(context, view, PANEL_LIST, contentH, scroll);
+    }
+
+    private void renderPanelModuleRow(UiContext context, Module module, UiBounds row, boolean searching, String query) {
+        var colors = theme.colors();
+        var graphics = context.graphics();
+        boolean hovered = row.contains(context.mouseX(), context.mouseY());
+        boolean selected = module == selectedModule;
+        float hoverT = hoverFade("panel:" + module.id(), hovered);
+        float on = animatedEnabledProgress(module);
+        if (selected) UiRenderer.rounded(graphics, row, 4, alphaColor(colors.accent, 0.20f));
+        else if (hoverT > 0.01f) UiRenderer.rounded(graphics, row, 4, ((int) (0x10 * hoverT) << 24) | 0x00FFFFFF);
+        if (on > 0.01f) {
+            UiRenderer.rounded(graphics, UiBounds.of(row.x() + 1, row.y() + 5, 2, row.height() - 10), 1, alphaColor(colors.accent, on));
+        }
+
+        boolean toggle = module.hasActivationToggle();
+        UiBounds switchBounds = UiBounds.of(row.right() - 26, row.y() + (row.height() - 10) / 2, 20, 10);
+        int right = toggle ? switchBounds.x() - 5 : row.right() - 6;
+        boolean bound = module.keybind() != -1;
+        boolean capturing = bindingModule == module;
+        UiBounds chip = UiBounds.of(right - CompactKeybindButton.WIDTH, row.y() + (row.height() - CompactKeybindButton.HEIGHT) / 2,
+            CompactKeybindButton.WIDTH, CompactKeybindButton.HEIGHT);
+        boolean showChip = bound || capturing || hovered;
+        int textRight = showChip ? chip.x() - 5 : right;
+
+        int nameColor = module.isEnabled() ? colors.text : lerpColor(colors.muted, colors.text, 0.45f);
+        drawHighlighted(context, module.name(), row.x() + 9, row.y() + 4, Math.max(1, textRight - row.x() - 9), nameColor, query);
+        String detail = module.description() == null ? "" : module.description().trim();
+        if (searching) {
+            ModuleCategory category = categoryOf(module);
+            String label = category == null ? "" : category.label();
+            detail = detail.isEmpty() ? label : label + " · " + detail;
+        }
+        if (!detail.isEmpty()) {
+            context.text().drawEllipsized(graphics, detail, row.x() + 9, row.y() + 14, Math.max(1, textRight - row.x() - 9),
+                colors.disabled);
+        }
+        addHit(HitType.MODULE, row, module, null, categoryOf(module), "", -1);
+        if (showChip) {
+            CompactKeybindButton.render(context, chip, module.keybind(), capturing, chip.contains(context.mouseX(), context.mouseY()), hovered);
+            addHit(HitType.MODULE_BIND, chip, module, null, null, "", -1);
+        }
+        if (toggle) {
+            Toggle.render(context, switchBounds, module.isEnabled(), switchBounds.contains(context.mouseX(), context.mouseY()),
+                "panel/" + module.id());
+            addHit(HitType.PANEL_TOGGLE, switchBounds.inset(-3, -4, -3, -4), module, null, null, "", -1);
+        }
+    }
+
+    private void renderPanelSettings(UiContext context, UiBounds area) {
+        var colors = theme.colors();
+        var graphics = context.graphics();
+        panelSettingsView = area;
+        Module module = selectedModule;
+        if (module == null) {
+            int cy = area.y() + area.height() / 2 - 14;
+            String title = "Pick a module";
+            String hint = "Click a row to see its settings.";
+            String hint2 = "Right-click toggles, middle-click binds a key.";
+            context.text().draw(graphics, title, area.x() + (area.width() - context.text().width(title)) / 2, cy, colors.text);
+            context.text().drawEllipsized(graphics, hint, area.x() + Math.max(8, (area.width() - context.text().width(hint)) / 2), cy + 14,
+                area.width() - 16, colors.muted);
+            context.text().drawEllipsized(graphics, hint2, area.x() + Math.max(8, (area.width() - context.text().width(hint2)) / 2), cy + 26,
+                area.width() - 16, colors.disabled);
+            return;
+        }
+        int pad = 10;
+        int x = area.x() + pad;
+        int w = Math.max(1, area.width() - pad * 2);
+        int y = area.y() + 9;
+
+        // Title, at 1.25x, with the category beside it.
+        float scale = 1.25f;
+        graphics.pose().pushMatrix();
+        try {
+            graphics.pose().translate(x, y);
+            graphics.pose().scale(scale, scale);
+            context.text().drawEllipsized(graphics, module.name(), 0, 0, Math.max(1, (int) ((w - 70) / scale)), colors.text);
+        } finally {
+            graphics.pose().popMatrix();
+        }
+        ModuleCategory category = categoryOf(module);
+        if (category != null) {
+            int nameW = Math.min(w - 70, Math.round(context.text().width(module.name()) * scale));
+            String label = category.label();
+            UiBounds chipBounds = UiBounds.of(x + nameW + 7, y, context.text().width(label) + 10, 12);
+            if (chipBounds.right() <= area.right() - pad) {
+                UiRenderer.rounded(graphics, chipBounds, 6, 0x14FFFFFF);
+                context.text().draw(graphics, label, chipBounds.x() + 5, chipBounds.y() + 2, colors.muted);
+            }
+        }
+        y += 16;
+
+        String description = module.description() == null ? "" : module.description().trim();
+        if (!description.isEmpty()) {
+            List<String> lines = context.text().wrapFully(description, w);
+            int shown = Math.min(2, lines.size());
+            for (int i = 0; i < shown; i++) {
+                String line = lines.get(i);
+                if (i == shown - 1 && lines.size() > shown) line = context.text().trimEllipsis(line + " ...", w);
+                context.text().draw(graphics, line, x, y + i * 11, colors.muted);
+            }
+            if (lines.size() > shown && UiBounds.of(x, y, w, shown * 11).contains(context.mouseX(), context.mouseY())) tooltip = description;
+            y += shown * 11 + 4;
+        }
+
+        int buttonH = theme.spacing().buttonHeight;
+        int gap = 4;
+        int actionW = 46;
+        UiBounds reset = UiBounds.of(x + w - actionW, y, actionW, buttonH);
+        UiBounds macro = UiBounds.of(reset.x() - gap - actionW, y, actionW, buttonH);
+        int leftW = Math.max(1, macro.x() - gap - x);
+        int enabledW = module.hasActivationToggle() ? Math.min(52, Math.max(1, (leftW - gap) / 2)) : 0;
+        if (module.hasActivationToggle()) {
+            UiBounds enabled = UiBounds.of(x, y, enabledW, buttonH);
+            boolean hover = enabled.contains(context.mouseX(), context.mouseY());
+            UiRenderer.roundedFrame(graphics, enabled, 3, hover ? 0xE8222630 : 0xE81A1D24, 0x24FFFFFF);
+            UiBounds pill = UiBounds.of(enabled.right() - 24, enabled.y() + (buttonH - 10) / 2, 20, 10);
+            Toggle.render(context, pill, module.isEnabled(), hover, "module:" + module.id());
+            context.text().draw(graphics, module.isEnabled() ? "On" : "Off", enabled.x() + 5, context.text().centeredY(enabled),
+                module.isEnabled() ? colors.text : colors.muted);
+            if (hover) tooltip = module.isEnabled() ? "Turn " + module.name() + " off" : "Turn " + module.name() + " on";
+            addHit(HitType.TOGGLE_MODULE, enabled, module, null, null, "", -1);
+        }
+        int bindX = x + (enabledW > 0 ? enabledW + gap : 0);
+        UiBounds bind = UiBounds.of(bindX, y, Math.max(1, Math.min(96, macro.x() - gap - bindX)), buttonH);
+        Button.render(context, bind, bindingModule == module ? "Press a key" : "Key: " + DihBindUtil.getBindName(module.keybind()),
+            Button.Tone.NORMAL, bind.contains(context.mouseX(), context.mouseY()), bindingModule == module);
+        addHit(HitType.BIND_MODULE, bind, module, null, null, "", -1);
+        Button.render(context, macro, "Macro", Button.Tone.NORMAL, macro.contains(context.mouseX(), context.mouseY()), false);
+        addHit(HitType.MACRO, macro, module, null, null, "", -1);
+        if (macro.contains(context.mouseX(), context.mouseY())) tooltip = "Make a macro that toggles " + module.name();
+        Button.render(context, reset, "Reset", Button.Tone.DANGER, reset.contains(context.mouseX(), context.mouseY()), false);
+        addHit(HitType.RESET_MODULE_SETTINGS, reset, module, null, null, "", -1);
+        if (reset.contains(context.mouseX(), context.mouseY())) tooltip = "Put every setting of " + module.name() + " back to its default";
+        y = reset.bottom() + 8;
+
+        if (!hasVisibleSettings(module)) {
+            context.text().draw(graphics, "No settings.", x, y + 2, colors.disabled);
+            return;
+        }
+        UiBounds searchField = UiBounds.of(x, y, w, buttonH);
+        UiBounds body = UiBounds.of(area.x() + pad - 3, searchField.bottom() + 6, area.width() - pad * 2 + 6,
+            Math.max(1, area.bottom() - 6 - (searchField.bottom() + 6)));
+        renderSettingsSearchAndRows(context, module, searchField, body);
+    }
+
+    private ModuleCategory categoryOf(Module module) {
+        for (ModuleCategory category : ModuleCategory.values()) {
+            if (ModuleRegistry.byCategory(category).contains(module)) return category;
+        }
+        return null;
+    }
+
+    private static Identifier categoryIcon(ModuleCategory category) {
+        if (category.isAddon()) return dihclient.util.DihUiIcons.CAT_ADDON;
+        return switch (category.name()) {
+            case "COMBAT" -> dihclient.util.DihUiIcons.CAT_COMBAT;
+            case "MOVEMENT" -> dihclient.util.DihUiIcons.CAT_MOVEMENT;
+            case "PLAYER" -> dihclient.util.DihUiIcons.CAT_PLAYER;
+            case "RENDER" -> dihclient.util.DihUiIcons.CAT_RENDER;
+            default -> dihclient.util.DihUiIcons.CAT_MISC;
+        };
+    }
+
+    private static String panelTab() {
+        String tab = DihConfig.getGlobal().moduleMenuTab;
+        if (TAB_ALL.equals(tab) || TAB_ENABLED.equals(tab)) return tab;
+        for (ModuleCategory category : ModuleCategory.values()) {
+            if (category.name().equals(tab)) return tab;
+        }
+        return TAB_ALL;
+    }
+
+    private void selectPanelTab(String tab) {
+        finishEditing(true);
+        searchQuery = "";
+        DihConfig.getGlobal().moduleMenuTab = tab;
+        windowScroll.put(PANEL_LIST, 0);
+        host.saveConfig();
+    }
+
+    private void selectPanelModule(Module module) {
+        if (module == null || module == selectedModule) return;
+        if (isSettingsSearchEditing()) {
+            editing = null;
+            editingFieldBounds = null;
+            draggingTextSelection = false;
+        }
+        settingsSearchQuery = "";
+        selectedModule = module;
+    }
+
+    private String panelScrollIdAt(int mx, int my) {
+        if (panelRailView.contains(mx, my)) return PANEL_RAIL;
+        if (panelListView.contains(mx, my)) return PANEL_LIST;
+        if (selectedModule != null && panelSettingsView.contains(mx, my)) return SETTINGS_SCROLL;
+        return null;
+    }
+
+    /** Arrow keys walk the module list, Enter toggles the highlighted module (or the top search hit). */
+    private boolean handlePanelNavKey(int key) {
+        List<Module> modules = panelModules;
+        switch (key) {
+            case InputConstants.KEY_DOWN, InputConstants.KEY_UP -> {
+                if (modules.isEmpty()) return true;
+                int index = modules.indexOf(selectedModule);
+                int next = index < 0 ? 0 : clamp(index + (key == InputConstants.KEY_DOWN ? 1 : -1), 0, modules.size() - 1);
+                selectPanelModule(modules.get(next));
+                revealPanelRow(next);
+                return true;
+            }
+            case InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> {
+                if (modules.isEmpty()) return isSearchEditing();
+                Module target = modules.contains(selectedModule) ? selectedModule : modules.get(0);
+                selectPanelModule(target);
+                if (target.hasActivationToggle()) toggleModule(target);
+                return true;
+            }
+            default -> {
+                return false;
+            }
+        }
+    }
+
+    private void revealPanelRow(int index) {
+        int viewH = panelListView.height();
+        if (viewH <= 0) return;
+        int top = index * LIST_ROW_H;
+        int scroll = windowScroll.getOrDefault(PANEL_LIST, 0);
+        if (top < scroll) scroll = top;
+        else if (top + LIST_ROW_H > scroll + viewH) scroll = top + LIST_ROW_H - viewH;
+        windowScroll.put(PANEL_LIST, Math.max(0, scroll));
     }
 
     private void renderGroupHeader(UiContext context, Module module, String group, UiBounds bounds) {
@@ -1214,6 +1790,12 @@ public final class VanillaModuleMenuController {
                     return true;
                 }
                 case MODULE -> {
+                    if (panelMode()) {
+                        if (button == InputConstants.MOUSE_BUTTON_MIDDLE) bindingModule = hit.module;
+                        else if (button == InputConstants.MOUSE_BUTTON_RIGHT && hit.module.hasActivationToggle()) toggleModule(hit.module);
+                        else selectPanelModule(hit.module);
+                        return true;
+                    }
                     bringWindowToFront(hit.category != null ? hit.category.name() : SEARCH_WINDOW);
                     if (button == InputConstants.MOUSE_BUTTON_RIGHT) openSettings(hit.module);
                     else if (button == InputConstants.MOUSE_BUTTON_MIDDLE) bindingModule = hit.module;
@@ -1232,6 +1814,18 @@ public final class VanillaModuleMenuController {
                     if (button == InputConstants.MOUSE_BUTTON_LEFT) host.runUtility(hit.id);
                     return true;
                 }
+                case PANEL_TAB -> {
+                    if (button == InputConstants.MOUSE_BUTTON_LEFT) selectPanelTab(hit.id);
+                    return true;
+                }
+                case PANEL_TOGGLE -> {
+                    if (hit.module.hasActivationToggle()) toggleModule(hit.module);
+                    return true;
+                }
+                case CLOSE -> {
+                    host.closeMenu();
+                    return true;
+                }
                 case BACK -> {
                     selectedModule = null;
                     return true;
@@ -1246,7 +1840,7 @@ public final class VanillaModuleMenuController {
                 }
                 case MACRO -> {
                     Module module = hit.module;
-                    selectedModule = null;
+                    if (!panelMode()) selectedModule = null;
                     host.addToggleMacro(module);
                     return true;
                 }
@@ -1467,6 +2061,11 @@ public final class VanillaModuleMenuController {
             macroPicker.mouseScrolled(mx, my, amount);
             return true;
         }
+        if (panelMode()) {
+            String id = panelScrollIdAt(mx, my);
+            if (id != null) scrollBy(id, selectedModule, amount < 0 ? theme.spacing().rowHeight * 2 : -theme.spacing().rowHeight * 2);
+            return true;
+        }
         Hit target = scrollTargetAt(mx, my);
         if (target != null) {
             String scrollId = selectedModule != null ? "settings" : (target.category != null ? target.category.name() : target.id);
@@ -1498,6 +2097,10 @@ public final class VanillaModuleMenuController {
             focusSearchWindow();
             return true;
         }
+        if (panelMode() && (editing == null || isSearchEditing()) && dropdown == null && colorPicker == null && macroPicker == null
+            && handlePanelNavKey(key)) {
+            return true;
+        }
         if (editing != null) {
             handleEditingKey(key, modifiers);
             return true;
@@ -1514,7 +2117,7 @@ public final class VanillaModuleMenuController {
         if (key == InputConstants.KEY_ESCAPE) {
             if (dropdown != null) clearDropdown();
             else if (macroPicker != null) clearMacroPicker();
-            else if (selectedModule != null) selectedModule = null;
+            else if (selectedModule != null && !panelMode()) selectedModule = null;
             else host.closeMenu();
             return true;
         }
@@ -1524,7 +2127,7 @@ public final class VanillaModuleMenuController {
         if (key == DihConfig.getGlobal().keybindModuleMenu || key == InputConstants.KEY_E) {
 
             if (dropdown == null && key >= InputConstants.KEY_A && key <= InputConstants.KEY_Z) return false;
-            if (selectedModule != null) selectedModule = null;
+            if (selectedModule != null && !panelMode()) selectedModule = null;
             else host.closeMenu();
             return true;
         }
@@ -1562,7 +2165,7 @@ public final class VanillaModuleMenuController {
 
             if (dropdown == null && !dihclient.util.DihOverlayManager.get().hasVisibleOverlay()
                     && (chr >= 'a' && chr <= 'z' || chr >= 'A' && chr <= 'Z')) {
-                if (selectedModule != null) {
+                if (selectedModule != null && !panelMode()) {
                     editing = new Editing(selectedModule, null, settingsSearchQuery, settingsSearchQuery.length());
                 } else {
                     focusSearchWindow();
@@ -2038,11 +2641,16 @@ public final class VanillaModuleMenuController {
         if (hit == null || hit.type != HitType.SCROLLBAR) return null;
         if ("settings".equals(hit.id) && selectedModule != null) {
 
-            int settingsBodyWidth = Math.min(SETTINGS_W, Math.max(1, screenWidth - 8)) - 10;
-            CachedSettingRows rows = cachedRows(selectedModule, settingsBodyWidth);
+            CachedSettingRows rows = cachedRows(selectedModule, settingsRowsWidth);
             int scroll = ScrollContainer.clampScroll(settingsScroll.getOrDefault(selectedModule, 0),
                 rows.contentHeight, hit.bounds.height());
             return Scrollbar.metrics(hit.bounds, rows.contentHeight, hit.bounds.height(), scroll);
+        }
+        if (PANEL_LIST.equals(hit.id) || PANEL_RAIL.equals(hit.id)) {
+            int[] stored = windowScrollMetrics.get(hit.id);
+            int contentH = stored == null ? 0 : stored[0];
+            int scroll = ScrollContainer.clampScroll(windowScroll.getOrDefault(hit.id, 0), contentH, hit.bounds.height());
+            return Scrollbar.metrics(hit.bounds, contentH, hit.bounds.height(), scroll);
         }
         ModuleCategory category = hit.category;
         int contentH;
@@ -2483,7 +3091,10 @@ public final class VanillaModuleMenuController {
         RESET_OPTION_BIND,
         SCROLL_AREA,
         SCROLLBAR,
-        CATEGORY_RESIZE
+        CATEGORY_RESIZE,
+        PANEL_TAB,
+        PANEL_TOGGLE,
+        CLOSE
     }
 
     private static final class Hit {
