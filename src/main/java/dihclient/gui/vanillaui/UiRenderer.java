@@ -55,6 +55,51 @@ public final class UiRenderer {
         }
     }
 
+    /**
+     * A filled rectangle with anti-aliased round corners of {@code radius} (clamped to half the shorter side). The
+     * pieces don't overlap, so translucent colours blend once.
+     */
+    public static void rounded(GuiGraphicsExtractor graphics, UiBounds bounds, int radius, int color) {
+        roundedCorners(graphics, bounds, radius, color, true, true, true, true);
+    }
+
+    /** {@link #rounded} with only the top corners rounded (window headers). */
+    public static void roundedTop(GuiGraphicsExtractor graphics, UiBounds bounds, int radius, int color) {
+        roundedCorners(graphics, bounds, radius, color, true, true, false, false);
+    }
+
+    /** {@link #rounded} with only the left corners rounded (side rails). */
+    public static void roundedLeft(GuiGraphicsExtractor graphics, UiBounds bounds, int radius, int color) {
+        roundedCorners(graphics, bounds, radius, color, true, false, true, false);
+    }
+
+    /** Rounds only the flagged corners: top-left, top-right, bottom-left, bottom-right. */
+    public static void roundedCorners(GuiGraphicsExtractor graphics, UiBounds bounds, int radius, int color,
+                                      boolean topLeft, boolean topRight, boolean bottomLeft, boolean bottomRight) {
+        int x = bounds.x(), y = bounds.y(), w = bounds.width(), h = bounds.height();
+        if (w <= 0 || h <= 0) return;
+        int r = Math.max(0, Math.min(radius, Math.min(w, h) / 2));
+        if (r == 0 || (color >>> 24) == 0) {
+            rect(graphics, bounds, color);
+            return;
+        }
+        rect(graphics, UiBounds.of(x + r, y, w - 2 * r, h), color);
+        int leftTop = topLeft ? r : 0, leftBottom = bottomLeft ? r : 0;
+        int rightTop = topRight ? r : 0, rightBottom = bottomRight ? r : 0;
+        rect(graphics, UiBounds.of(x, y + leftTop, r, h - leftTop - leftBottom), color);
+        rect(graphics, UiBounds.of(x + w - r, y + rightTop, r, h - rightTop - rightBottom), color);
+        if (topLeft) dihclient.util.DihUiIcons.blitCorner(graphics, x, y, r, 0, color);
+        if (topRight) dihclient.util.DihUiIcons.blitCorner(graphics, x + w - r, y, r, 1, color);
+        if (bottomLeft) dihclient.util.DihUiIcons.blitCorner(graphics, x, y + h - r, r, 2, color);
+        if (bottomRight) dihclient.util.DihUiIcons.blitCorner(graphics, x + w - r, y + h - r, r, 3, color);
+    }
+
+    /** A rounded rectangle with a 1px rounded border. */
+    public static void roundedFrame(GuiGraphicsExtractor graphics, UiBounds bounds, int radius, int fill, int border) {
+        rounded(graphics, bounds, radius, border);
+        rounded(graphics, bounds.inset(1), Math.max(0, radius - 1), fill);
+    }
+
     public static void frame(GuiGraphicsExtractor graphics, UiBounds bounds, int fill, int border) {
         rect(graphics, bounds, fill);
         outline(graphics, bounds, border);

@@ -796,11 +796,23 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
         }
     }
 
+    /**
+     * Items another job (a build) is holding on to while it runs #acquire for more, by id with how many: never thrown
+     * away as junk and never used as scaffolding. Asked each time; set back to empty when the job ends.
+     */
+    private static volatile java.util.function.Supplier<Map<String, Integer>> otherNeeds = Map::of;
+
+    public static void setOtherNeeds(java.util.function.Supplier<Map<String, Integer>> needs) {
+        otherNeeds = needs == null ? Map::of : needs;
+    }
+
     /** What the main plan and the food detour still use: never thrown away as junk, never eaten outside an emergency. */
     private Set<String> neededItems() {
         AcquireRun current = run;
-        if (current == null) return Set.of();
+        Set<String> others = otherNeeds.get().keySet();
+        if (current == null) return new HashSet<>(others);
         Set<String> needed = JunkPolicy.neededItems(current.goal, current.plan().steps(), Math.max(0, current.index()));
+        needed.addAll(others);
         AcquireRun food = detour;
         if (food != null) needed.addAll(JunkPolicy.neededItems(food.goal, food.plan().steps(), Math.max(0, food.index())));
         return needed;
@@ -814,9 +826,12 @@ public final class AcquireProcess extends BaritoneProcessHelper implements Acqui
     /** What the main plan and the food detour still use up, which pathing must not build with. */
     private Map<Item, Integer> reservedBlocks() {
         AcquireRun current = run;
-        if (current == null) return Map.of();
-        Map<String, Integer> counts = new HashMap<>(JunkPolicy.reservedCounts(current.goal, current.count,
-                current.plan().steps(), Math.max(0, current.index())));
+        Map<String, Integer> counts = new HashMap<>(otherNeeds.get());
+        if (current == null && counts.isEmpty()) return Map.of();
+        if (current != null) {
+            JunkPolicy.reservedCounts(current.goal, current.count, current.plan().steps(), Math.max(0, current.index()))
+                    .forEach((id, n) -> counts.merge(id, n, Integer::sum));
+        }
         AcquireRun food = detour;
         if (food != null) {
             JunkPolicy.reservedCounts(food.goal, food.count, food.plan().steps(), Math.max(0, food.index()))

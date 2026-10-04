@@ -150,6 +150,10 @@ public final class DihConfig implements Cloneable {
     public boolean keybindInsideGui = false;
 
     public boolean customMainMenu = true;
+    /** Use the old floating category windows instead of the single module window. */
+    public boolean classicModuleMenu = false;
+    /** The module window's selected rail tab: ALL, ENABLED or a category key. */
+    public String moduleMenuTab = "ALL";
 
     public boolean infiniChat = true;
     public double overlayScale = 1.0;

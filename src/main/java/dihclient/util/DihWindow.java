@@ -65,14 +65,11 @@ public abstract class DihWindow {
     private static void renderPinButton(UiContext ui, UiBounds pin, boolean pinned) {
         var graphics = ui.graphics();
         var colors = ui.theme().colors();
-        int ink = dihclient.gui.vanillaui.components.TopBar.onAccent(colors.accent);
         boolean hovered = pin.contains(ui.mouseX(), ui.mouseY());
-        UiRenderer.rect(graphics, pin, (colors.accent & 0x00FFFFFF) | 0xF0000000);
-        if (pinned || hovered) {
-            UiRenderer.disc(graphics, pin.x() + pin.width() / 2.0F, pin.y() + pin.height() / 2.0F, 6.0F,
-                pinned ? (ink & 0x00FFFFFF) | 0x50000000 : colors.accentSoft);
+        if (hovered) {
+            UiRenderer.disc(graphics, pin.x() + pin.width() / 2.0F, pin.y() + pin.height() / 2.0F, 6.0F, 0x22FFFFFF);
         }
-        int color = pinned || hovered ? ink : (ink & 0x00FFFFFF) | 0xB0000000;
+        int color = pinned ? colors.accent : hovered ? colors.text : colors.muted;
         int cx = pin.x() + pin.width() / 2;
         int top = pin.y() + (pin.height() - 9) / 2;
         UiRenderer.rect(graphics, UiBounds.of(cx - 3, top, 6, 2), color);

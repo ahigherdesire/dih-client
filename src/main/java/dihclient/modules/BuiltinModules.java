@@ -191,6 +191,8 @@ public final class BuiltinModules {
         ModuleRegistry.register(new KillAuraModule());
         ModuleRegistry.register(new MaceKillModule());
         ModuleRegistry.register(new SpearKillModule());
+        ModuleRegistry.register(new CriticalsModule());
+        ModuleRegistry.register(new ReachModule());
         ModuleRegistry.register(new AutoFarmModule());
         ModuleRegistry.register(new AutoArmorModule());
         ModuleRegistry.register(new AutoSignModule());

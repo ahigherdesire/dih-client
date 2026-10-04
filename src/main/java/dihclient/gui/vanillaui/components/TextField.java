@@ -14,7 +14,8 @@ public final class TextField {
 
     public static void render(UiContext context, UiBounds bounds, String text, String placeholder, boolean focused, int cursor, int selectionStart, int selectionEnd) {
         var colors = context.theme().colors();
-        UiRenderer.frame(context.graphics(), bounds, focused ? colors.fieldFocused : colors.field, focused ? colors.accent : colors.borderSoft);
+        UiRenderer.roundedFrame(context.graphics(), bounds, Button.RADIUS, focused ? colors.fieldFocused : colors.field,
+            focused ? colors.accent : 0x1CFFFFFF);
         String value = text == null ? "" : text;
         String shown = value.isEmpty() && !focused ? placeholder : value;
         int textX = bounds.x() + 4;
