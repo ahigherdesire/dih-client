@@ -5,6 +5,9 @@ import dihclient.gui.vanillaui.UiContext;
 import dihclient.gui.vanillaui.UiRenderer;
 
 public final class CompactWindow {
+    /** Corner radius of every DIH window. */
+    public static final int RADIUS = 4;
+
     private CompactWindow() {
     }
 
@@ -36,9 +39,9 @@ public final class CompactWindow {
                                    int titleLeftInset, int titleRightInset, int headerHeight) {
         var colors = context.theme().colors();
 
-        // soft drop shadow + body; the accent header carries the window's identity (no hard outline)
-        UiRenderer.softRect(context.graphics(), UiBounds.of(bounds.x() - 1, bounds.y(), bounds.width() + 2, bounds.height() + 2), 2, 0x38000000);
-        UiRenderer.softRect(context.graphics(), bounds, 1, colors.window);
+        // soft drop shadow, then a rounded body with a hairline edge
+        UiRenderer.rounded(context.graphics(), UiBounds.of(bounds.x() - 1, bounds.y(), bounds.width() + 2, bounds.height() + 2), RADIUS + 1, 0x40000000);
+        UiRenderer.roundedFrame(context.graphics(), bounds, RADIUS, colors.window, colors.windowEdge);
         OverlayTopBar.render(context, bounds, headerHeight, title, collapsed, collapse, close,
             headerHovered, active, titleLeftInset, titleRightInset);
     }

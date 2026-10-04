@@ -44,7 +44,7 @@ public final class CompactKeybindButton {
         var colors = context.theme().colors();
         int fill = capturing ? (colors.accent & 0x00FFFFFF) | 0x80000000
             : hovered ? 0x3AFFFFFF : 0x1CFFFFFF;
-        dihclient.gui.vanillaui.UiRenderer.softRect(context.graphics(), bounds, 1, fill);
+        dihclient.gui.vanillaui.UiRenderer.rounded(context.graphics(), bounds, 2, fill);
         String text = capturing ? "..." : unbound ? "+ key" : label(bindCode, false);
         int color = unbound && !hovered ? colors.muted : colors.text;
         context.text().drawCentered(context.graphics(), text, bounds, color);

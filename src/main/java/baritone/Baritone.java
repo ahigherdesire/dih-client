@@ -101,6 +101,7 @@ public class Baritone implements IBaritone {
     private final IElytraProcess elytraProcess;
     private final AcquireProcess acquireProcess;
     private baritone.beat.BeatCampaign beatCampaign;
+    private baritone.construct.ConstructJob constructJob;
     private final GuardianProcess guardianProcess;
 
     private final PathingControlManager pathingControlManager;
@@ -157,6 +158,8 @@ public class Baritone implements IBaritone {
             this.pathingControlManager.registerProcess(this.eatBehavior.pauser()); // pauses pathing while #eat or #acquire eats
             // #beat drives #acquire phase by phase, so it comes after the processes.
             this.beatCampaign = this.registerBehavior(baritone.beat.BeatCampaign::new);
+            // #construct drives #acquire and the builder in turns.
+            this.constructJob = this.registerBehavior(baritone.construct.ConstructJob::new);
         }
         // #acquire for #ai and other callers. The first Baritone built is the primary one (BaritoneProvider
         // creates it before any other), so only that one is registered.
@@ -255,6 +258,11 @@ public class Baritone implements IBaritone {
     /** {@code #beat}: the campaign that beats the game. */
     public baritone.beat.BeatCampaign getBeatCampaign() {
         return this.beatCampaign;
+    }
+
+    /** {@code #construct}: builds a schematic from an empty inventory. */
+    public baritone.construct.ConstructJob getConstructJob() {
+        return this.constructJob;
     }
 
     public AcquireProcess getAcquireProcess() {

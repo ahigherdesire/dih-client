@@ -12,19 +12,17 @@ public final class CollapsibleSection {
 
     public static void renderHeader(UiContext context, UiBounds bounds, String title, boolean collapsed, boolean hovered) {
         var colors = context.theme().colors();
-
-        UiRenderer.frame(context.graphics(), bounds, hovered ? colors.rowHover : colors.row, colors.borderSoft);
-        UiRenderer.rect(context.graphics(), UiBounds.of(bounds.x(), bounds.y(), 2, bounds.height()), colors.accent);
+        if (hovered) UiRenderer.rounded(context.graphics(), bounds, Button.RADIUS, 0x10FFFFFF);
         UiRenderer.chevron(context.graphics(),
-            UiBounds.of(bounds.x() + 5, bounds.y() + Math.max(0, (bounds.height() - 8) / 2), 8, 8), !collapsed, colors.text);
-        context.text().drawFitted(
-            context.graphics(),
-            safe(title).toUpperCase(Locale.ROOT),
-            bounds.x() + 17,
-            context.text().centeredY(bounds),
-            Math.max(1, bounds.width() - 22),
-            colors.muted
-        );
+            UiBounds.of(bounds.x() + 3, bounds.y() + Math.max(0, (bounds.height() - 7) / 2), 7, 7), !collapsed, colors.accent);
+        String label = safe(title).toUpperCase(Locale.ROOT);
+        int textX = bounds.x() + 14;
+        int maxW = Math.max(1, bounds.width() - 20);
+        context.text().drawFitted(context.graphics(), label, textX, context.text().centeredY(bounds), maxW, colors.muted);
+        int ruleX = textX + Math.min(maxW, context.text().width(label)) + 6;
+        if (ruleX < bounds.right() - 4) {
+            UiRenderer.horizontalEdge(context.graphics(), ruleX, bounds.y() + bounds.height() / 2, bounds.right() - 4 - ruleX, colors.hairline);
+        }
     }
 
     private static String safe(String value) {

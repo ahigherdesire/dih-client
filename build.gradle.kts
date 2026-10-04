@@ -147,6 +147,8 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // A real AI key in the developer's environment overrides the tests' fake keys; tests must not see it.
+    environment("MINECRAFTAI_LLM_KEY", "")
 }
 
 // Run acquire scenarios against an integrated singleplayer server, separately from JUnit.

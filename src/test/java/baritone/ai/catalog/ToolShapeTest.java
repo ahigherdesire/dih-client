@@ -68,6 +68,8 @@ final class ToolShapeTest {
                 call("stop", "", "stop"),
                 call("build_schematic", "house", "build house"),
                 call("build_schematic", "house 1 2 3", "build house 1 2 3"),
+                call("construct_schematic", "house", "construct house"),
+                call("construct_schematic", "house 1 2 3", "construct house 1 2 3"),
                 call("run_command", "goto 1 2 3", "goto 1 2 3"),
                 // movement
                 call("follow_player", "Steve", "follow player Steve"),
@@ -143,6 +145,7 @@ final class ToolShapeTest {
                 Arguments.of("explore", "x=10", "both x and z"),
                 Arguments.of("tunnel", "2", "height, width and depth together"),
                 Arguments.of("build_schematic", "house 1", "all of x, y and z"),
+                Arguments.of("construct_schematic", "house 1", "all of x, y and z"),
                 Arguments.of("waypoint_add", "base 1 2", "all of x, y and z"),
                 Arguments.of("follow_player", "\"bad name!\"", "one word"),
                 Arguments.of("mine_block", "\"iron ore; stop\"", "must be an id"),
