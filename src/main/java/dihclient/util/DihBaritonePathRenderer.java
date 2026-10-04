@@ -3,6 +3,7 @@ package dihclient.util;
 import baritone.api.BaritoneAPI;
 import baritone.api.IBaritone;
 import baritone.api.Settings;
+import baritone.parkour.exec.ParkourExecutor;
 import baritone.api.behavior.IPathingBehavior;
 import baritone.api.pathing.goals.Goal;
 import baritone.api.pathing.goals.GoalComposite;
@@ -129,6 +130,7 @@ public final class DihBaritonePathRenderer {
                 f.addGoal(goal, argb(s.colorGoalBox.value, 0.9f), camPos, new int[]{0});
             }
 
+            if (s.parkourPreview.value) f.addParkour(ParkourExecutor.preview());
             if (!s.renderPath.value) return f;
 
             IPathExecutor current = behavior.getCurrent();
@@ -206,6 +208,22 @@ public final class DihBaritonePathRenderer {
                 fills.add(new Box(box, scaleAlpha(color, 0.18f)));
                 addEdges(box, scaleAlpha(color, 0.9f), goalWidth);
             }
+        }
+
+        /** A solved parkour jump in progress: the predicted feet path and the landing block's top. */
+        void addParkour(ParkourExecutor.Preview preview) {
+            if (preview == null) return;
+            int color = DihTheme.recolor(0xFFFF3B3B, DihTheme.Channel.ACCENT);
+            List<Vec3> path = preview.path();
+            for (int i = 0; i + 1 < path.size(); i++) {
+                Vec3 a = path.get(i).add(0, 0.05, 0), b = path.get(i + 1).add(0, 0.05, 0);
+                lines.add(new Seg(a, b, scaleAlpha(color, 0.25f), pathWidth * 2.2f));
+                lines.add(new Seg(a, b, color, pathWidth));
+            }
+            BlockPos t = preview.target();
+            AABB top = new AABB(t.getX(), t.getY() + 1.0, t.getZ(), t.getX() + 1.0, t.getY() + 1.02, t.getZ() + 1.0);
+            fills.add(new Box(top, scaleAlpha(color, 0.18f)));
+            addEdges(top, color, goalWidth);
         }
 
         // ── Goal ──────────────────────────────────────────────────────────────

@@ -22,6 +22,7 @@ import baritone.api.behavior.IPathingBehavior;
 import baritone.api.event.events.*;
 import baritone.api.pathing.calc.IPath;
 import baritone.api.pathing.goals.Goal;
+import baritone.parkour.exec.ParkourExecutor;
 import baritone.api.pathing.goals.GoalXZ;
 import baritone.api.process.PathingCommand;
 import baritone.api.utils.BetterBlockPos;
@@ -111,7 +112,8 @@ public final class PathingBehavior extends Behavior implements IPathingBehavior,
 
     @Override
     public void onPlayerSprintState(SprintStateEvent event) {
-        if (isPathing()) {
+        // A solved parkour jump's input says when to sprint; the path's own sprint choice doesn't apply to it.
+        if (isPathing() && !ParkourExecutor.isPlanInput(ctx.player().input)) {
             event.setState(current.isSprinting());
         }
     }

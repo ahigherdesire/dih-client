@@ -31,7 +31,11 @@
       "dihclient.ai.AiPanelGameTest",
       "baritone.beat.BeatGameTest",
       "baritone.beat.BeatHomeGameTest",
-      "baritone.guardian.AcquireRealWorldGameTest"
+      "baritone.guardian.AcquireRealWorldGameTest",
+      "baritone.parkour.ParkourTraceGameTest",
+      "baritone.parkour.ParkourJumpGameTest",
+      "baritone.parkour.ParkourCourseGameTest",
+      "baritone.parkour.ParkourHandoffGameTest"
     ]
   },
   "depends": {

@@ -362,6 +362,16 @@ public final class Settings {
     public final Setting<Boolean> allowParkour = new Setting<>(false);
 
     /**
+     * With allowParkour on, also plan jumps Baritone's own parkour can't do (diagonal and odd-angled jumps, round a
+     * wall, onto fences and slabs) and make them with DIH's exact jump solver. A jump the solver rules out is dropped
+     * and the path recalculated.
+     */
+    public final Setting<Boolean> allowHardParkour = new Setting<>(false);
+
+    /** Draw the line a solved parkour jump will follow, and outline where it lands, while it is being made. */
+    public final Setting<Boolean> parkourPreview = new Setting<>(true);
+
+    /**
      * Actually pretty reliable.
      * <p>
      * Doesn't make it any more dangerous compared to just normal allowParkour th

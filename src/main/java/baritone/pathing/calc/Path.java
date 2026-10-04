@@ -137,6 +137,16 @@ class Path extends PathBase {
                 return move;
             }
         }
+        // A jump only the solver makes (allowHardParkour).
+        int dx = dest.x - src.x, dz = dest.z - src.z;
+        for (int[] offset : baritone.pathing.movement.movements.MovementSolvedJump.OFFSETS) {
+            if (offset[0] != dx || offset[1] != dz) continue;
+            Movement move = baritone.pathing.movement.movements.MovementSolvedJump.of(context, src, dx, dz);
+            if (move.getDest().equals(dest)) {
+                move.override(Math.min(move.calculateCost(context), cost));
+                return move;
+            }
+        }
         // this is no longer called from bestPathSoFar, now it's in postprocessing
         Helper.HELPER.logDebug("Movement became impossible during calculation " + src + " " + dest + " " + dest.subtract(src));
         return null;
