@@ -1,5 +1,6 @@
 package dihclient.ai;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import baritone.ai.AiBrain;
 import baritone.ai.AiConfig;
 import baritone.ai.ChatModel;
@@ -225,7 +226,7 @@ public final class AiPanelGameTest implements FabricClientGameTest {
 
     private static void clickAt(ClientGameTestContext context, int virtualX, int virtualY) {
         context.getInput().setCursorPos(DihUiScale.virtualToFramebufferX(virtualX), DihUiScale.virtualToFramebufferY(virtualY));
-        context.getInput().pressMouse(0);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(2);
     }
 

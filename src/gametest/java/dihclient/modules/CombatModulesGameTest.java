@@ -1,5 +1,6 @@
 package dihclient.modules;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.util.DihConfig;
 import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
@@ -112,7 +113,7 @@ public final class CombatModulesGameTest implements FabricClientGameTest {
         context.waitTicks(3);
         boolean aimed = context.computeOnClient(client -> client.hitResult instanceof EntityHitResult);
         System.out.println(TAG + "distance " + distance + " targeted=" + aimed);
-        context.getInput().pressMouse(0);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(25);
         return world.getServer().computeOnServer(server -> {
             List<? extends LivingEntity> pigs = server.getLevel(Level.OVERWORLD).getEntities(EntityTypes.PIG, pig -> true);

@@ -61,7 +61,7 @@ public final class DonateScreenGameTest implements FabricClientGameTest {
         context.waitTicks(3);
         int[] center = context.computeOnClient(client -> buttonCenter((DihDonateScreen) client.gui.screen(), "later"));
         context.getInput().setCursorPos(DihUiScale.virtualToFramebufferX(center[0]), DihUiScale.virtualToFramebufferY(center[1]));
-        context.getInput().pressMouse(0);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitFor(client -> client.gui.screen() instanceof DihTitleScreen);
 
         context.runOnClient(client -> DihConfig.getGlobal().customMainMenu = false);

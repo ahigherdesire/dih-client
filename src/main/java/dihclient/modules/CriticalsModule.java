@@ -1,13 +1,13 @@
 package dihclient.modules;
 
 import dihclient.api.module.ChoiceSetting;
+import dihclient.util.DihPackets;
 import dihclient.util.multi.PacketTeleportController;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ServerboundAttackPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
@@ -31,7 +31,7 @@ public final class CriticalsModule extends Module {
 
     private ServerboundAttackPacket heldAttack;
     /** The swing that went with the held hit: the server resets the attack charge on a swing, so it waits too. */
-    private ServerboundSwingPacket heldSwing;
+    private Packet<?> heldSwing;
     private boolean holdingSwing;
     private int heldTicks;
 
@@ -55,8 +55,8 @@ public final class CriticalsModule extends Module {
 
     @Override
     public boolean onPacketSend(Packet<?> packet) {
-        if (packet instanceof ServerboundSwingPacket swing && holdingSwing && heldAttack != null && heldSwing == null) {
-            heldSwing = swing;
+        if (DihPackets.isSwing(packet) && holdingSwing && heldAttack != null && heldSwing == null) {
+            heldSwing = packet;
             return true;
         }
         if (!(packet instanceof ServerboundAttackPacket attack)) return false;
@@ -103,7 +103,7 @@ public final class CriticalsModule extends Module {
         Entity target = MC.level.getEntity(heldAttack.entityId());
         if (!(target instanceof LivingEntity living) || !living.isAlive()) {
             heldAttack = null;
-            ServerboundSwingPacket swing = heldSwing;
+            Packet<?> swing = heldSwing;
             heldSwing = null;
             if (swing != null && MC.getConnection() != null) PacketTeleportController.runAtomicClipSend(() -> MC.getConnection().send(swing));
             return;
@@ -116,7 +116,7 @@ public final class CriticalsModule extends Module {
 
     private void releaseHeld() {
         ServerboundAttackPacket attack = heldAttack;
-        ServerboundSwingPacket swing = heldSwing;
+        Packet<?> swing = heldSwing;
         heldAttack = null;
         heldSwing = null;
         if (attack == null || MC.getConnection() == null || MC.player == null) return;

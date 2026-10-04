@@ -122,7 +122,7 @@ public final class ModulePanelGameTest implements FabricClientGameTest {
             return new int[] {panelX + 1 + railW / 2, bodyY + 4 + 17 + 8};
         });
         context.getInput().setCursorPos(DihUiScale.virtualToFramebufferX(point[0]), DihUiScale.virtualToFramebufferY(point[1]));
-        context.getInput().pressMouse(0);
+        context.getInput().pressMouse(InputConstants.MOUSE_BUTTON_LEFT);
         context.waitTicks(3);
         String tab = context.computeOnClient(client -> DihConfig.getGlobal().moduleMenuTab);
         if (!"ENABLED".equals(tab)) throw new AssertionError("clicking the rail's Enabled row should switch tabs, got " + tab);
