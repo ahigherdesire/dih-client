@@ -1,0 +1,20 @@
+name: Addon registry
+on:
+  pull_request:
+    paths: ["registry/**", "website/addons.json"]
+  push:
+    branches: [main]
+    paths: ["registry/**", "website/addons.json"]
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python registry/registry.py check
+      - name: website/addons.json is up to date
+        run: |
+          python registry/registry.py build
+          git diff --exit-code website/addons.json

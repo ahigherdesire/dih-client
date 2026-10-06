@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Addons · DIH Client</title>
+<meta name="description" content="The DIH Client addon marketplace: community addons, reviewed before they go live, with public source. Install them in game from Addons, Browse Online, or download the jar here.">
+<meta name="theme-color" content="#08080a">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DIH Client">
+<meta property="og:title" content="DIH Client addons">
+<meta property="og:description" content="Community addons for DIH Client. Reviewed, open source, two clicks to install in game.">
+<meta property="og:image" content="https://raw.githubusercontent.com/ahigherdesire/dih-client-site/main/assets/og.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Kanit:ital,wght@1,800;1,900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css?v=a8b7e675">
+<link rel="stylesheet" href="assets/addons.css?v=d998fae9">
+<script defer src="assets/addons.js?v=7353a01f"></script>
+</head>
+<body class="addons-page">
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="bar solid" id="top">
+  <a class="brand" href="/" aria-label="DIH Client home">
+    <svg class="brand-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><use href="#pixel-d"/></svg>
+    <span>DIH</span>
+  </a>
+  <nav class="nav" aria-label="Sections">
+    <a href="/#features">Features</a>
+    <a href="/#beta">Beta</a>
+    <a href="/#modules">Modules</a>
+    <a href="/addons" class="on" aria-current="page">Addons</a>
+    <a href="/#install">Install</a>
+    <a href="https://github.com/ahigherdesire/dih-client" rel="noopener">GitHub</a>
+    <a href="https://discord.gg/C5JkKsxapC" rel="noopener">Discord</a>
+  </nav>
+  <a class="bar-dl" href="/#install">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8m0 0L4.8 7.3M8 10.5l3.2-3.2M3 13.5h10"/></svg>
+    Get DIH
+  </a>
+</header>
+
+<main id="main">
+
+<section class="ad-hero" aria-labelledby="ad-title">
+  <div class="ad-hero-glow" aria-hidden="true"></div>
+  <p class="kicker mono">Marketplace</p>
+  <h1 id="ad-title">Addons</h1>
+  <p class="lede">Extra modules, HUD elements and commands made by the community. Every listing is reviewed before it goes live, its source is public, and DIH checks each download's SHA-256 before installing it.</p>
+  <ul class="ad-stats mono" aria-label="Marketplace at a glance">
+    <li><b id="stat-community">0</b> community</li>
+    <li><b>3</b> built in</li>
+    <li><b>2</b> clicks to install</li>
+  </ul>
+  <div class="ad-tools">
+    <label class="search ad-search">
+      <span class="sr">Search addons</span>
+      <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>
+      <input id="q" type="search" placeholder="Search addons, authors, categories" autocomplete="off" spellcheck="false">
+    </label>
+    <div class="ad-filters" id="filters" role="group" aria-label="Filter by category"></div>
+  </div>
+</section>
+
+<section class="section ad-section" aria-labelledby="community-title">
+  <div class="ad-head">
+    <h2 id="community-title">Community</h2>
+    <p class="ad-note mono" id="status" aria-live="polite">Loading the reviewed list…</p>
+  </div>
+  <div class="ad-grid" id="community"></div>
+</section>
+
+<section class="section ad-section" aria-labelledby="builtin-title">
+  <div class="ad-head">
+    <h2 id="builtin-title">Built into DIH</h2>
+    <p class="ad-note">Shipped inside the client jar from 5.1 beta 7 and off by default. Turn them on in <b>Addons</b>; no internet needed.</p>
+  </div>
+  <div class="ad-grid" id="builtin"></div>
+</section>
+
+<section class="section" id="install" aria-labelledby="install-title">
+  <h2 id="install-title">Install an addon</h2>
+  <ol class="steps">
+    <li><b>1</b><span>In DIH, open <strong>Addons</strong> and click <strong>Browse Online</strong>. Needs 5.1 beta 7 or newer.</span></li>
+    <li><b>2</b><span>Click a card, then <strong>Install</strong> twice. DIH downloads it, checks the SHA-256 and puts it in <code>mods</code>.</span></li>
+    <li><b>3</b><span>Restart Minecraft. <strong>Uninstall</strong> works the same way; the jar is deleted when the game closes.</span></li>
+  </ol>
+  <p class="ad-warn">Addons run code inside your game with the same access as the client itself. Only install ones you trust. A listing here means a maintainer read it, not that it is risk-free.</p>
+</section>
+
+<section class="section" id="publish" aria-labelledby="publish-title">
+  <h2 id="publish-title">Publish your addon</h2>
+  <p class="ad-lede">Listing is free. You add one small JSON file by pull request; once it is merged it shows up here and in every player's in-game browser on their next refresh, with no client update.</p>
+  <ol class="steps ad-steps-4">
+    <li><b>1</b><span><strong>Build</strong> from a template: <code>python addon-templates/addon-toolkit.py setup --template minimal</code>, then <code>./gradlew build</code>.</span></li>
+    <li><b>2</b><span><strong>Release</strong> the jar on a public GitHub repo. One jar per Minecraft version, same addon version.</span></li>
+    <li><b>3</b><span><strong>Describe it</strong>: <code>python registry/registry.py add --jar … --source … --jar-url … --summary "…"</code>. Add a 16:9 card image with <code>--image</code>.</span></li>
+    <li><b>4</b><span><strong>Open a pull request</strong> with <code>registry/addons/&lt;id&gt;.json</code> and <code>website/addons.json</code>. CI checks it; a maintainer reviews the source.</span></li>
+  </ol>
+  <div class="ad-cta">
+    <a class="btn-beta" href="https://github.com/ahigherdesire/dih-client/blob/main/registry/CONTRIBUTING.md" rel="noopener">Read the full guide</a>
+    <a class="ad-link" href="https://github.com/ahigherdesire/dih-client/tree/main/addon-templates" rel="noopener">Addon templates</a>
+    <a class="ad-link" href="https://discord.gg/C5JkKsxapC" rel="noopener">Ask on Discord</a>
+  </div>
+</section>
+
+</main>
+
+<dialog class="ad-dialog" id="dialog" aria-labelledby="d-name">
+  <div class="ad-d-inner">
+    <button type="button" class="ad-close" id="d-close" aria-label="Close">
+      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 4 8 8M12 4l-8 8"/></svg>
+    </button>
+    <div class="ad-d-side">
+      <div class="ad-d-media" id="d-media"></div>
+      <dl class="ad-d-info mono" id="d-info"></dl>
+    </div>
+    <div class="ad-d-body">
+      <p class="ad-d-badge mono" id="d-badge"></p>
+      <h2 id="d-name"></h2>
+      <p class="ad-d-by" id="d-by"></p>
+      <p class="ad-d-cats" id="d-cats"></p>
+      <p class="ad-d-summary" id="d-summary"></p>
+      <p class="ad-d-desc" id="d-desc"></p>
+      <div class="ad-d-actions" id="d-actions"></div>
+      <details class="ad-d-sums" id="d-sums"><summary class="mono">SHA-256</summary><div id="d-sumlist"></div></details>
+    </div>
+  </div>
+</dialog>
+
+<footer class="foot">
+  <div class="foot-row">
+    <a class="brand" href="/" aria-label="DIH Client home">
+      <svg class="brand-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><use href="#pixel-d"/></svg>
+      <span>DIH</span>
+    </a>
+    <p>© 2026 ahigherdesire · <a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener">GPL-3.0-or-later</a>, no warranty · <a href="https://github.com/ahigherdesire/dih-client" rel="noopener">Source</a> · <a href="https://discord.gg/C5JkKsxapC" rel="noopener">Discord</a></p>
+  </div>
+  <p class="legal mono">Addons are made by their authors, not by DIH Client. Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.</p>
+  <div class="foot-mark" aria-hidden="true">DIH ADDONS</div>
+</footer>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="pixel-d" viewBox="0 0 16 16">
+    <path fill="#1F54EC" d="M1 1h14v14H1z"/>
+    <path fill="#fff" d="M3 3h7v1h2v1h1v6h-1v1h-2v1H3zm2 2v6h5v-1h1V6h-1V5z"/>
+    <path fill="#EC1F27" d="M12 12h2v2h-2z"/>
+  </symbol>
+</svg>
+</body>
+</html>

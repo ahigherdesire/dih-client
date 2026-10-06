@@ -9,7 +9,7 @@ fabric-loader = "0.19.3"
 fabric-api = "0.152.2+26.2"
 # The DIH Client release you compile against. The generated fabric.mod.json depends on `>=` this version, so a
 # built addon keeps loading on newer hosts in the same major line (the API-version handshake gates real breaks).
-dih = "5.0"
+dih = "5.0.1"
 
 loom = "1.17.11"
 

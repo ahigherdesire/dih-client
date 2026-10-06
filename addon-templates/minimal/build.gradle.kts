@@ -24,7 +24,8 @@ dependencies {
     implementation(libs.fabric.api)
 
     // The DIH Client API (published to mavenLocal from the DIH project).
-    implementation(libs.dih)
+    // Non-transitive: DIH's own runtime libraries ship inside the DIH jar and are not on public repos.
+    implementation(libs.dih) { isTransitive = false }
 }
 
 // Turns an exact Minecraft version (e.g. "26.2") into a compatible range ("~26.2") so the addon

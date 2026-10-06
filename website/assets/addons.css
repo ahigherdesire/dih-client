@@ -1,0 +1,201 @@
+/* DIH Client: addon marketplace page (addons.html). Builds on style.css. */
+
+/* ---------------------------------------------------------------- hero */
+.ad-hero {
+  position: relative; isolation: isolate;
+  max-width: var(--max); margin: 0 auto;
+  padding: calc(var(--bar-h) + clamp(48px, 8vw, 96px)) var(--gutter) 0;
+}
+.ad-hero-glow {
+  position: absolute; z-index: -1; inset: 0 -10% -40%; pointer-events: none;
+  background:
+    radial-gradient(38% 50% at 22% 40%, rgba(59, 110, 255, .24), transparent 70%),
+    radial-gradient(30% 42% at 70% 30%, rgba(168, 85, 247, .14), transparent 70%);
+  filter: blur(60px);
+  animation: drift 18s ease-in-out infinite alternate;
+}
+.ad-hero .kicker { color: var(--blue-hi); letter-spacing: .08em; text-transform: uppercase; }
+.ad-hero h1 {
+  font: italic 900 clamp(56px, 10vw, 112px)/.92 var(--display); letter-spacing: 0;
+  background: linear-gradient(135deg, #fff 35%, #8ba6ff 70%, #a855f7);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  margin-bottom: 18px;
+}
+.ad-hero .lede { margin: 0 0 22px; max-width: 60ch; font-size: 16px; color: var(--text); text-wrap: pretty; }
+.ad-stats { list-style: none; margin: 0 0 32px; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; font-size: 12px; color: var(--mute); }
+.ad-stats li { padding: 6px 12px; border: 1px solid var(--line-2); border-radius: 999px; background: rgba(255,255,255,.02); }
+.ad-stats b { color: var(--fg); font-weight: 500; margin-right: 2px; }
+
+.ad-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.ad-search { width: min(380px, 100%); height: 42px; padding: 0 12px; border-radius: 11px; }
+.ad-search svg { flex: none; width: 15px; height: 15px; fill: none; stroke: var(--mute); stroke-width: 1.6; stroke-linecap: round; }
+.ad-search input { font-size: 13.5px; }
+.ad-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.ad-filter {
+  height: 32px; padding: 0 12px; cursor: pointer;
+  font: 500 12px/1 var(--mono); color: var(--text);
+  background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 999px;
+  transition: color .2s, border-color .2s, background-color .2s;
+}
+.ad-filter:hover { color: var(--fg); border-color: rgba(139, 166, 255, .5); }
+.ad-filter[aria-pressed="true"] { color: #fff; background: rgba(59, 110, 255, .22); border-color: var(--blue); }
+
+/* ---------------------------------------------------------------- sections */
+.ad-section { padding-top: clamp(48px, 6vw, 72px); }
+.ad-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px 20px; margin-bottom: 18px; }
+.ad-head h2 { font: italic 800 clamp(24px, 2.8vw, 32px)/1.1 var(--display); letter-spacing: 0; }
+.ad-note { margin: 0; font-size: 12.5px; color: var(--mute); max-width: 62ch; }
+.ad-note b { color: var(--text); font-weight: 500; }
+.ad-lede { margin: -6px 0 20px; max-width: 68ch; font-size: 15px; }
+.ad-steps-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+.ad-steps-4 li, #install .steps li { align-items: flex-start; line-height: 1.55; }
+.ad-steps-4 code { white-space: normal; word-break: break-word; }
+.ad-warn {
+  margin: 12px 0 0; padding: 12px 16px; font-size: 13px; max-width: 86ch;
+  border: 1px solid var(--line); border-left: 3px solid var(--amber); border-radius: 10px; background: var(--bg-2);
+}
+.ad-cta { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 22px; margin-top: 22px; }
+.ad-cta .btn-beta { height: 48px; }
+.ad-link { font-size: 14px; color: var(--blue-hi); }
+.ad-link:hover { color: var(--fg); }
+
+/* ---------------------------------------------------------------- cards */
+.ad-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.ad-card {
+  --accent: #8ba6ff;
+  position: relative; isolation: isolate;
+  display: flex; flex-direction: column; text-align: left;
+  padding: 0; overflow: hidden; cursor: pointer;
+  font: inherit; color: inherit;
+  background: linear-gradient(180deg, rgba(20, 20, 26, .85), rgba(8, 8, 10, .92));
+  border: 1px solid var(--line); border-radius: var(--r);
+  transition: border-color .25s, transform .35s var(--ease), box-shadow .35s;
+}
+.ad-card:hover { transform: translateY(-4px); border-color: color-mix(in srgb, var(--accent) 55%, transparent); box-shadow: 0 18px 40px -22px color-mix(in srgb, var(--accent) 70%, transparent); }
+.ad-card:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.ad-card:hover .ad-media img, .ad-card:hover .ad-banner span { transform: scale(1.04); }
+
+.ad-media { position: relative; aspect-ratio: 16 / 9; overflow: hidden; background: var(--bg-3); border-bottom: 1px solid var(--line); }
+.ad-media img { width: 100%; height: 100%; object-fit: cover; transition: transform .6s var(--ease); }
+.ad-pill {
+  position: absolute; top: 10px; right: 10px;
+  padding: 3px 8px; border-radius: 6px;
+  font: 500 11px/1.4 var(--mono); color: var(--fg);
+  background: rgba(8, 8, 10, .78); border: 1px solid var(--line-2);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.ad-pill.builtin { color: var(--green); }
+
+/* no image: the addon's initials on an accent banner (the in-game browser draws the same) */
+.ad-banner {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  background:
+    linear-gradient(0deg, color-mix(in srgb, var(--accent) 10%, transparent) 0 33%, transparent 33%),
+    radial-gradient(70% 90% at 50% 40%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 75%),
+    #101014;
+}
+.ad-banner::before {
+  content: ""; position: absolute; inset: 0; opacity: .5;
+  background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+.ad-banner span {
+  position: relative; font: italic 900 clamp(48px, 7vw, 72px)/1 var(--display); color: var(--accent);
+  text-shadow: 0 6px 30px color-mix(in srgb, var(--accent) 50%, transparent);
+  transition: transform .6s var(--ease);
+}
+
+.ad-body { display: grid; gap: 6px; padding: 14px 16px 16px; }
+.ad-title { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+.ad-title h3 { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ad-ver { flex: none; font: 12px var(--mono); color: var(--mute); }
+.ad-sum { margin: 0; font-size: 13.5px; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.9em; }
+.ad-meta { margin: 2px 0 0; font: 11.5px var(--mono); color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+.ad-empty {
+  display: grid; place-items: center; gap: 10px; text-align: center;
+  padding: 40px 24px; min-height: 220px;
+  border: 1px dashed var(--line-2); border-radius: var(--r);
+  color: var(--mute); font-size: 14px;
+}
+.ad-empty strong { color: var(--fg); font-weight: 600; font-size: 16px; }
+.ad-empty a { color: var(--blue-hi); }
+.ad-skel { pointer-events: none; }
+.ad-skel .ad-media, .ad-skel i { background: linear-gradient(90deg, var(--bg-3), #1d1d25, var(--bg-3)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+.ad-skel i { display: block; height: 10px; border-radius: 4px; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* ---------------------------------------------------------------- dialog */
+.ad-dialog {
+  --accent: #8ba6ff;
+  width: min(940px, calc(100vw - 32px)); max-height: calc(100svh - 32px);
+  padding: 0; color: var(--text);
+  background: #0f0f13; border: 1px solid var(--line-2); border-radius: 18px;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .8), 0 0 0 1px color-mix(in srgb, var(--accent) 22%, transparent);
+  overflow: auto;
+}
+.ad-dialog::backdrop { background: rgba(4, 4, 6, .72); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.ad-dialog[open] { animation: ad-pop .35s var(--ease); }
+@keyframes ad-pop { from { opacity: 0; transform: translateY(14px) scale(.98); } }
+.ad-dialog::before { content: ""; display: block; height: 3px; background: linear-gradient(90deg, var(--accent), #a855f7); }
+.ad-d-inner { position: relative; display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 26px; padding: 24px; }
+.ad-close {
+  position: absolute; top: 12px; right: 12px; z-index: 2;
+  display: grid; place-items: center; width: 34px; height: 34px; cursor: pointer;
+  background: rgba(8, 8, 10, .7); border: 1px solid var(--line-2); border-radius: 9px; color: var(--text);
+}
+.ad-close:hover { color: var(--fg); border-color: var(--accent); }
+.ad-close svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; }
+.ad-d-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.ad-d-media { position: relative; aspect-ratio: 16 / 9; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: var(--bg-3); }
+.ad-d-media img { width: 100%; height: 100%; object-fit: cover; }
+.ad-d-body { display: flex; flex-direction: column; gap: 10px; min-width: 0; padding-right: 30px; }
+.ad-d-badge { margin: 0; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.ad-d-body h2 { font: italic 800 clamp(26px, 3.4vw, 36px)/1.05 var(--display); letter-spacing: 0; overflow-wrap: anywhere; }
+.ad-d-by { margin: -4px 0 0; font-size: 13px; color: var(--mute); }
+.ad-d-cats { margin: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.ad-d-cats:empty { display: none; }
+.ad-cat { padding: 2px 9px; border-radius: 999px; font: 500 11px/1.6 var(--mono); color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.ad-d-summary { margin: 4px 0 0; color: var(--fg); font-size: 15px; }
+.ad-d-desc { margin: 0; font-size: 14px; white-space: pre-line; }
+.ad-d-desc:empty { display: none; }
+.ad-d-info { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 0; padding: 12px 14px; font-size: 12px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; }
+.ad-d-info dt { color: var(--mute); }
+.ad-d-info dd { margin: 0; color: var(--fg); overflow-wrap: anywhere; }
+.ad-d-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.ad-btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 42px; padding: 0 16px; border-radius: 11px;
+  font: 500 13.5px/1 var(--sans); color: #fff;
+  background: linear-gradient(135deg, #3b6eff, #7b5cff);
+  box-shadow: 0 1px 0 rgba(255,255,255,.22) inset, 0 8px 22px -10px rgba(110, 90, 255, .9);
+  transition: transform .2s var(--ease), filter .2s;
+}
+.ad-btn:hover { color: #fff; transform: translateY(-1px); filter: brightness(1.08); }
+.ad-btn small { font: 11px var(--mono); color: rgba(255,255,255,.72); }
+.ad-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.ad-btn.ghost { color: var(--fg); background: rgba(255,255,255,.04); border: 1px solid var(--line-2); box-shadow: none; }
+.ad-btn.ghost:hover { border-color: var(--accent); }
+.ad-tip { margin: 0; font-size: 12.5px; color: var(--mute); }
+.ad-tip b { color: var(--text); font-weight: 500; }
+.ad-d-sums summary { cursor: pointer; font-size: 11.5px; color: var(--mute); width: max-content; }
+.ad-d-sums summary:hover { color: var(--fg); }
+.ad-d-sums[hidden] { display: none; }
+.ad-sum-row { display: flex; gap: 10px; align-items: center; margin-top: 8px; font-size: 11px; }
+.ad-sum-row span { flex: none; color: var(--mute); font-family: var(--mono); }
+.ad-sum-row code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; background: none; border: 0; padding: 0; color: var(--text); }
+
+/* ---------------------------------------------------------------- responsive */
+@media (max-width: 1080px) {
+  .ad-steps-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 760px) {
+  .ad-steps-4 { grid-template-columns: minmax(0, 1fr); }
+  .ad-d-inner { grid-template-columns: minmax(0, 1fr); padding: 18px; gap: 18px; }
+  .ad-d-body { padding-right: 0; }
+  .ad-grid { grid-template-columns: minmax(0, 1fr); }
+  .ad-search { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ad-hero-glow, .ad-skel .ad-media, .ad-skel i { animation: none; }
+}

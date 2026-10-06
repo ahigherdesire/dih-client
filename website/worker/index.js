@@ -5,7 +5,10 @@
      Redirects to that build's jar on GitHub, as listed in assets/release.js, and counts it once per
      visitor, file and day. The link always points at the channel's current release.
    GET /api/downloads
-     { "total": n, "files": { "<jar>": n, ... } } */
+     { "total": n, "files": { "<jar>": n, ... } }
+   GET /api/addons
+     The reviewed addon registry (website/addons.json on dih-client main, the same file the in-game browser
+     reads), cached for five minutes. Falls back to this site's own /addons.json if GitHub is unreachable. */
 
 const JSON_HEADERS = { 'Cache-Control': 'public, max-age=60', 'X-Content-Type-Options': 'nosniff' };
 // link previews and crawlers follow links too; they are not downloads
@@ -18,6 +21,7 @@ export default {
       return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD' } });
     }
     if (pathname === '/api/downloads') return totals(env);
+    if (pathname === '/api/addons') return addons(request, env);
     const dl = /^\/dl\/([a-z0-9]+)\/([a-z0-9.]+-[a-z]+)\/?$/.exec(pathname);
     if (dl) return download(request, env, ctx, dl[1], dl[2]);
     return env.ASSETS.fetch(request);
@@ -87,6 +91,23 @@ async function visitorKey(env, data) {
   }
   const mac = new Uint8Array(await crypto.subtle.sign('HMAC', hmacKey, new TextEncoder().encode(data)));
   return Array.from(mac.subarray(0, 16), x => x.toString(16).padStart(2, '0')).join('');
+}
+
+const REGISTRY = 'https://raw.githubusercontent.com/ahigherdesire/dih-client/main/website/addons.json';
+
+async function addons(request, env) {
+  const headers = { 'Cache-Control': 'public, max-age=300', 'X-Content-Type-Options': 'nosniff' };
+  try {
+    const res = await fetch(REGISTRY, { cf: { cacheTtl: 300, cacheEverything: true } });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && Array.isArray(data.addons)) return Response.json({ addons: data.addons }, { headers });
+    }
+  } catch (e) {
+    console.error('addon registry unreachable', e);
+  }
+  const local = await env.ASSETS.fetch(new URL('/addons.json', request.url));
+  return new Response(local.body, { status: local.status, headers: { ...headers, 'Content-Type': 'application/json' } });
 }
 
 async function totals(env) {
