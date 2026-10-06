@@ -1,0 +1,31 @@
+{
+  "id": "dogs-basehunting",
+  "name": "Dogs BaseHunting & Misc Tools",
+  "version": "2.1",
+  "author": "doghero002-cmd",
+  "summary": "Seed cracking, stash & tunnel finders, DonutSMP tools",
+  "description": "Base hunting for DIH: SeedCrackerX seed cracking, bedrock/texture coordinate finders, stash, tunnel and chunk finders, DonutSMP AH tools and misc modules. Network features are opt-in: SeedCrackerX database (off), DonutSMP API and OpenAI with your own keys, Google Translate, Discord webhook.",
+  "apiVersion": 3,
+  "license": "Unlicense (SeedCrackerX code: MIT)",
+  "categories": [
+    "basehunting",
+    "seed",
+    "render"
+  ],
+  "source": "https://github.com/ahigherdesire/dih-dogs-basehunting",
+  "files": [
+    {
+      "minecraft": "26.2",
+      "jar": "https://github.com/ahigherdesire/dih-dogs-basehunting/releases/download/v2.1/dogs-basehunting-2.1-26.2.jar",
+      "size": 16637216,
+      "sha256": "b2b5825f03853f0d60e3ae11c8c7f6518c356e8b8ffe138ebe70a66cb04f02ad"
+    },
+    {
+      "minecraft": "26.3",
+      "jar": "https://github.com/ahigherdesire/dih-dogs-basehunting/releases/download/v2.1/dogs-basehunting-2.1-26.3.jar",
+      "size": 16637103,
+      "sha256": "63953a071e4bc9da9150bbf57a93d91df10310fec34196f0efb8c61d6ac40a97"
+    }
+  ],
+  "image": "https://raw.githubusercontent.com/ahigherdesire/dih-dogs-basehunting/main/docs/card.png"
+}
