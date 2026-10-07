@@ -80,6 +80,11 @@ public abstract class DihMouseHandlerMixin {
             return;
         }
 
+        if (dihclient.modules.ZoomModule.onScroll(yOffset)) {
+            ci.cancel();
+            return;
+        }
+
         if (minecraft != null && minecraft.gui.screen() == null
             && dihclient.util.multi.MultiPilot.handleHotbarScroll(yOffset)) {
             ci.cancel();
@@ -112,8 +117,14 @@ public abstract class DihMouseHandlerMixin {
     @ModifyExpressionValue(method = "turnPlayer", at = @At(value = "FIELD",
         target = "Lnet/minecraft/client/Options;smoothCamera:Z"))
     private boolean dih$avoidDoubleSmoothingTelly(boolean original) {
-        return original && !DihMouseInputSimulator.hasExclusiveInput(
+        return (original || dihclient.modules.ZoomModule.cinematic()) && !DihMouseInputSimulator.hasExclusiveInput(
             DihMouseInputSimulator.Source.SCAFFOLD_TELLY);
+    }
+
+    @ModifyExpressionValue(method = "turnPlayer", at = @At(value = "INVOKE",
+        target = "Ljava/lang/Double;doubleValue()D", ordinal = 0))
+    private double dih$zoomSensitivity(double sensitivity) {
+        return dihclient.modules.ZoomModule.scaleSensitivity(sensitivity);
     }
 
     @Unique

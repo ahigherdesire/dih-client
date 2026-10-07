@@ -42,7 +42,13 @@ public abstract class DihInGameHudMixin {
 
     @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void yang$renderDihQueue(GuiGraphicsExtractor context, DeltaTracker deltaTracker, CallbackInfo ci) {
-
+        if (ModuleRegistry.hasOverlayHooks() && !MC.gui.hud.isHidden()) {
+            try {
+                ModuleRegistry.onRenderOverlay(context, deltaTracker.getGameTimeDeltaPartialTick(false));
+            } catch (Throwable t) {
+                dih$logRenderError("moduleOverlay", t);
+            }
+        }
         try {
             dih$renderHudBody(context);
         } catch (Throwable t) {

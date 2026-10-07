@@ -5,8 +5,11 @@ package dihclient.modules;
 import dihclient.util.DihEntities;
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ChoiceSetting;
+import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
+import dihclient.api.module.RangeSetting;
 import dihclient.api.module.RegistryListSetting;
+import dihclient.api.module.ValueRange;
 import dihclient.mixin.accessor.DihLivingEntityAccessor;
 import dihclient.mixin.accessor.DihMinecraftAccessor;
 import dihclient.mixin.accessor.DihMultiPlayerGameModeAccessor;
@@ -176,6 +179,21 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
             "Type", "HP", "Distance", "FOV", "Hurt Time", "Age").build());
         add(new IntSetting("fov", "FOV", 180, 10, 360, 10)
             .description("Attack cone in degrees")
+            .build());
+        add(new RangeSetting("cps", "CPS", new ValueRange(CPS_MIN, CPS_MAX), 1, 20, 1)
+            .description("Clicks per second, picked anew each second between these")
+            .build());
+        add(new DoubleSetting("range", "Range", 6.0D, 1.0D, 6.0D, 0.1D)
+            .description("Farthest hit, capped by your reach; raise reach past 3 with the Reach module")
+            .build());
+        add(new RangeSetting("scan-range", "Scan Range", new ValueRange(SCAN_ADDITION_MIN, SCAN_ADDITION_MAX), 0, 6, 0.5)
+            .description("How far past the range it starts turning toward a target")
+            .build());
+        add(new ChoiceSetting("aim-height", "Aim Height", "Auto", "Auto", "Head", "Chest", "Legs")
+            .description("Where on the target to aim")
+            .build());
+        add(new DoubleSetting("aim-offset", "Aim Offset", 0.0D, -0.5D, 0.5D, 0.05D)
+            .description("Moves the aim up or down, as a share of the target's height")
             .build());
         add(new BoolSetting("miss-injection", "Miss Injection", false)
             .description("Adds human-like misses")
@@ -501,6 +519,7 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
 
         LivingEntity chosen = null;
         DihRotationUtil.Rotation chosenRotation = null;
+        aimPointTracker.heightFraction = aimHeightFraction();
 
         int bestRangeBucket = filtered.isEmpty() ? Integer.MAX_VALUE
             : boxedDistanceToPlayerSqr(filtered.get(0)) <= normalRangeSq ? 0 : 1;
@@ -523,7 +542,8 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
                 if (entity == currentTarget) continue;
                 AABB box = entity.getBoundingBox();
 
-                Vec3 acquisition = safeAimPoint(box, 0.50D, 0.56D, 0.50D);
+                Vec3 acquisition = safeAimPoint(box, 0.50D,
+                    "Auto".equals(choice("aim-height")) ? 0.56D : aimPointTracker.heightFraction, 0.50D);
                 DihRotationUtil.Rotation rotation = findRotation(entity, maximumRange, acquisition);
                 if (rotation == null) continue;
 
@@ -1201,7 +1221,7 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
     }
 
     private double interactionRange() {
-        return MC.player.getAttributeValue(Attributes.ENTITY_INTERACTION_RANGE);
+        return Math.min(MC.player.getAttributeValue(Attributes.ENTITY_INTERACTION_RANGE), decimal("range"));
     }
 
     private double scanRange() {
@@ -1215,7 +1235,23 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
     }
 
     private double nextScanAddition() {
-        return SCAN_ADDITION_MIN + random.nextDouble() * (SCAN_ADDITION_MAX - SCAN_ADDITION_MIN);
+        // Runs from a field initialiser too, before the settings exist; parse falls back to the defaults then.
+        return ValueRange.parse(value("scan-range"), new ValueRange(SCAN_ADDITION_MIN, SCAN_ADDITION_MAX)).random(random);
+    }
+
+    private ValueRange cps() {
+        return ValueRange.parse(value("cps"), new ValueRange(CPS_MIN, CPS_MAX));
+    }
+
+    /** Height on the target's box to aim at, 0 (feet) to 1 (top); Auto keeps the aim model's centre. */
+    private double aimHeightFraction() {
+        double base = switch (choice("aim-height")) {
+            case "Head" -> 0.85D;
+            case "Chest" -> 0.62D;
+            case "Legs" -> 0.30D;
+            default -> 0.50D;
+        };
+        return Mth.clamp(base + decimal("aim-offset"), 0.05D, 0.95D);
     }
 
     private boolean hasCooldown() {
@@ -1331,8 +1367,15 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
     }
 
     static void stabilizedFill(int[] cycle, Random random) {
+        stabilizedFill(cycle, random, CPS_MIN, CPS_MAX);
+    }
+
+    /** Spreads between {@code minCps} and {@code maxCps} clicks over one cycle of ticks, unevenly. */
+    static void stabilizedFill(int[] cycle, Random random, int minCps, int maxCps) {
         if (cycle.length == 0) return;
-        int clicks = Math.min(cycle.length, CPS_MIN + random.nextInt(CPS_MAX - CPS_MIN + 1));
+        int low = Math.max(1, Math.min(minCps, maxCps));
+        int high = Math.max(low, Math.max(minCps, maxCps));
+        int clicks = Math.min(cycle.length, low + random.nextInt(high - low + 1));
         int[] gaps = new int[clicks];
         int baseGap = cycle.length / clicks;
         int remainder = cycle.length % clicks;
@@ -1394,7 +1437,7 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
             ticksSinceLastClick++;
             if (clickArray.advance(1)) {
                 int[] cycle = new int[CLICK_CYCLE];
-                stabilizedFill(cycle, random);
+                fillCycle(cycle);
                 clickArray.push(cycle);
             }
         }
@@ -1404,10 +1447,15 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
             int[] cycle = new int[CLICK_CYCLE];
             for (int i = 0; i < clickArray.iterations; i++) {
                 Arrays.fill(cycle, 0);
-                stabilizedFill(cycle, random);
+                fillCycle(cycle);
                 clickArray.push(cycle);
                 clickArray.advance(CLICK_CYCLE);
             }
+        }
+
+        private void fillCycle(int[] cycle) {
+            ValueRange band = cps();
+            stabilizedFill(cycle, random, (int) Math.round(band.min()), (int) Math.round(band.max()));
         }
 
         int getClickAmount(int tick) {
@@ -1686,6 +1734,8 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
         static final double WINDOW_MAX_STEP_DEGREES = 4.0D;
 
         private final Random random;
+        /** Height on the box the aim centres on, 0 (feet) to 1 (top). */
+        double heightFraction = 0.5D;
         private int entityId = Integer.MIN_VALUE;
         private int side = 1;
         private int sideFlipTicks;
@@ -1792,7 +1842,8 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
             double perpZ = dx / horizontal;
             double lateral = horizontal * Math.tan(Math.toRadians(signed));
             double dy = horizontal * Math.tan(Math.toRadians(verticalOffsetDegrees));
-            return new Vec3(center.x + perpX * lateral, center.y + dy, center.z + perpZ * lateral);
+            double baseY = box.minY + box.getYsize() * heightFraction;
+            return new Vec3(center.x + perpX * lateral, baseY + dy, center.z + perpZ * lateral);
         }
 
         private double advanceErrorAngle(double hwa, boolean inAttackWindow, boolean allowExcursion) {

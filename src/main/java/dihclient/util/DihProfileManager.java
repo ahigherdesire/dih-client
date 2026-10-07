@@ -466,6 +466,8 @@ public final class DihProfileManager {
             DihProfile p = gson.fromJson(r, DihProfile.class);
             if (p == null) return null;
             p.normalize();
+            // A profile saved by the other Minecraft version numbers its binds that version's way.
+            if (p.snapshot != null) p.snapshot.migrateKeyCodes();
             return p;
         } catch (Throwable t) {
             DihClientAddon.LOG.error("Failed to read profile {}", f.getName(), t);

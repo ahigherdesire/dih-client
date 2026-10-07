@@ -149,6 +149,61 @@ public final class DihConfig implements Cloneable {
 
     public boolean keybindInsideGui = false;
 
+    /** How this file numbers keys, {@link DihKeyCodes#GLFW} (26.2) or {@link DihKeyCodes#SDL} (26.3); null before 5.1-beta.6a. */
+    public String keyCodes;
+
+    /**
+     * Renumbers every saved bind written by the other Minecraft version (or before files said which) to this one's
+     * numbering and marks the config as this version's. Returns whether it had to.
+     */
+    public boolean migrateKeyCodes() {
+        String from = keyCodes;
+        if (DihKeyCodes.CURRENT.equals(DihKeyCodes.normalize(from))) {
+            keyCodes = DihKeyCodes.CURRENT;
+            return false;
+        }
+        keyCodes = DihKeyCodes.CURRENT;
+        keybindLoadGui = DihKeyCodes.toCurrent(keybindLoadGui, from);
+        keybindModuleMenu = DihKeyCodes.toCurrent(keybindModuleMenu, from);
+        keybindFlushQueue = DihKeyCodes.toCurrent(keybindFlushQueue, from);
+        keybindClearQueue = DihKeyCodes.toCurrent(keybindClearQueue, from);
+        keybindToggleLogger = DihKeyCodes.toCurrent(keybindToggleLogger, from);
+        keybindToggleSend = DihKeyCodes.toCurrent(keybindToggleSend, from);
+        keybindToggleDelay = DihKeyCodes.toCurrent(keybindToggleDelay, from);
+        keybindCommandPalette = DihKeyCodes.toCurrent(keybindCommandPalette, from);
+        if (commandBinds != null && !commandBinds.isEmpty()) {
+            Map<Integer, String> renumbered = new LinkedHashMap<>();
+            commandBinds.forEach((key, command) -> {
+                if (key != null) renumbered.put(DihKeyCodes.toCurrent(key, from), command);
+            });
+            commandBinds = renumbered;
+        }
+        if (modules != null) {
+            for (ModuleState state : modules.values()) {
+                if (state == null) continue;
+                state.keybind = DihKeyCodes.toCurrent(state.keybind, from);
+                if (state.settings != null) {
+                    state.settings.replaceAll((id, value) -> isBindSetting(id) ? renumberSetting(value, from) : value);
+                }
+            }
+        }
+        return true;
+    }
+
+    /** Module keybind settings are the ones named {@code *-bind} or {@code *-key}. */
+    static boolean isBindSetting(String id) {
+        return id != null && (id.endsWith("-bind") || id.endsWith("-key"));
+    }
+
+    private static String renumberSetting(String value, String from) {
+        if (value == null) return null;
+        try {
+            return Integer.toString(DihKeyCodes.toCurrent(Integer.parseInt(value.trim()), from));
+        } catch (NumberFormatException e) {
+            return value;
+        }
+    }
+
     public boolean customMainMenu = true;
     /** Use the old floating category windows instead of the single module window. */
     public boolean classicModuleMenu = false;
@@ -159,6 +214,8 @@ public final class DihConfig implements Cloneable {
     public double overlayScale = 1.0;
     /** Print "Module enabled/disabled" in chat when a module is toggled. Toasts are unaffected. */
     public boolean moduleToggleChat = true;
+    /** Light UI for weak hardware: AUTO, ON or OFF (see DihLightUi). */
+    public String lightUi = "AUTO";
     /** Size of text in DIH's own screens and windows, 0.8-1.5. */
     public double uiTextScale = 1.0;
 
@@ -195,6 +252,9 @@ public final class DihConfig implements Cloneable {
     public boolean essentialSavedEnabled = true;
 
     public List<String> disabledAddonIds = new ArrayList<>();
+
+    /** Addons built into the jar are off until listed here (see {@code BundledAddons}). */
+    public List<String> enabledBundledAddonIds = new ArrayList<>();
 
     public ThemeColors themeColors = new ThemeColors();
 
@@ -288,11 +348,13 @@ public final class DihConfig implements Cloneable {
         }
         if (config == null) {
             config = new DihConfig();
+            config.keyCodes = DihKeyCodes.CURRENT;
         }
+        boolean renumbered = config.migrateKeyCodes();
 
         Map<String, PluginScanCacheEntry> legacyScans = config.serverPluginScans;
         ServerPluginScanCache cache = ServerPluginScanCache.get();
-        boolean migrated = cache.mergeLegacy(legacyScans);
+        boolean migrated = cache.mergeLegacy(legacyScans) | renumbered;
         config.serverPluginScans = cache.sharedView();
         config.applyRuntimeDefaults();
         if (migrated) config.save();
@@ -502,6 +564,7 @@ public final class DihConfig implements Cloneable {
         if (hudElements == null) hudElements = new LinkedHashMap<>();
         if (serverPluginScans == null) serverPluginScans = new LinkedHashMap<>();
         if (disabledAddonIds == null) disabledAddonIds = new ArrayList<>();
+        if (enabledBundledAddonIds == null) enabledBundledAddonIds = new ArrayList<>();
         if (themeColors == null) themeColors = new ThemeColors();
         overlayScale = DihUiScale.nearestAllowedOverlayScale(overlayScale);
         tpMaxPackets = Math.max(1, Math.min(100, tpMaxPackets));

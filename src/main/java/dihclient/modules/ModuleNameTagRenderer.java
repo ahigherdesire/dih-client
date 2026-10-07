@@ -3,6 +3,7 @@ package dihclient.modules;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.util.DihColors;
+import dihclient.util.DihEquipment;
 import dihclient.util.DihUiScale;
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -31,6 +32,9 @@ public final class ModuleNameTagRenderer {
     private static final Minecraft MC = Minecraft.getInstance();
     private static final int LINE_H = 10;
     private static final int BG_COLOR = 0x90000000;
+    private static final int ITEM_W = 18;
+    private static final int ENCHANT_COLOR = 0xFFD9A6FF;
+    private static final int MAX_ENCHANT_LINES = 4;
 
     private ModuleNameTagRenderer() {
     }
@@ -54,6 +58,9 @@ public final class ModuleNameTagRenderer {
         double baseScale = module.decimal("scale");
         double maxDist = module.decimal("max-distance");
         double groupRadius = module.decimal("group-radius");
+        boolean equipment = module.bool("equipment");
+        boolean enchants = module.bool("equipment-enchants");
+        boolean durability = module.bool("equipment-durability");
 
         Projection projection = new Projection(
             camera.position(),
@@ -96,7 +103,11 @@ public final class ModuleNameTagRenderer {
                     label = label.copy().withStyle(style ->
                         style.withColor(TextColor.fromRgb(TeamsModule.friendsColor() & 0xFFFFFF)));
                 }
-                drawLabel(context, screen[0], screen[1], List.of(label.getVisualOrderText()), 0xFFFFFFFF, scaleFor(baseScale, distanceScale, dist));
+                float scale = scaleFor(baseScale, distanceScale, dist);
+                float top = drawLabel(context, screen[0], screen[1], List.of(label.getVisualOrderText()), 0xFFFFFFFF, scale);
+                if (equipment && entity instanceof LivingEntity living) {
+                    drawEquipment(context, screen[0], top, living, enchants, durability, scale);
+                }
             } catch (Throwable t) {
 
             }
@@ -222,8 +233,9 @@ public final class ModuleNameTagRenderer {
         return Math.max(0.05f, s);
     }
 
-    private static void drawLabel(GuiGraphicsExtractor context, float screenX, float screenY, List<FormattedCharSequence> lines, int color, float scale) {
-        if (lines.isEmpty()) return;
+    /** Draws the label centred above the point; returns the label's top edge in screen units. */
+    private static float drawLabel(GuiGraphicsExtractor context, float screenX, float screenY, List<FormattedCharSequence> lines, int color, float scale) {
+        if (lines.isEmpty()) return screenY;
         context.pose().pushMatrix();
         context.pose().scale(scale, scale);
         int ox = Math.round(screenX / scale);
@@ -237,6 +249,48 @@ public final class ModuleNameTagRenderer {
         for (FormattedCharSequence line : lines) {
             context.text(MC.font, line, ox - MC.font.width(line) / 2, ty, color, true);
             ty += LINE_H;
+        }
+        context.pose().popMatrix();
+        return top * scale;
+    }
+
+    /** A row of what the entity wears and holds, sitting on top of its label, each item with its enchantments and uses left. */
+    private static void drawEquipment(GuiGraphicsExtractor context, float screenX, float labelTop, LivingEntity entity,
+                                      boolean enchants, boolean durability, float scale) {
+        List<ItemStack> worn = DihEquipment.worn(entity);
+        if (worn.isEmpty()) return;
+        context.pose().pushMatrix();
+        context.pose().scale(scale, scale);
+        int x = Math.round(screenX / scale) - worn.size() * ITEM_W / 2 + 1;
+        int y = Math.round(labelTop / scale) - 17;
+        for (ItemStack stack : worn) {
+            context.item(stack, x, y);
+            if (durability) context.itemDecorations(MC.font, stack, x, y);
+            drawItemNotes(context, stack, x + 8, y - 1, enchants, durability);
+            x += ITEM_W;
+        }
+        context.pose().popMatrix();
+    }
+
+    /** Half-size notes stacked upward from (centerX, bottom): uses left, then the strongest enchantments. */
+    private static void drawItemNotes(GuiGraphicsExtractor context, ItemStack stack, int centerX, int bottom,
+                                      boolean enchants, boolean durability) {
+        boolean showUses = durability && stack.isDamageableItem();
+        List<String> tags = enchants ? DihEquipment.shortEnchantments(stack) : List.of();
+        if (!showUses && tags.isEmpty()) return;
+        context.pose().pushMatrix();
+        context.pose().translate(centerX, bottom);
+        context.pose().scale(0.5f, 0.5f);
+        int ty = -LINE_H;
+        if (showUses) {
+            String uses = String.valueOf(stack.getMaxDamage() - stack.getDamageValue());
+            context.text(MC.font, uses, -MC.font.width(uses) / 2, ty, 0xFF000000 | stack.getBarColor(), true);
+            ty -= LINE_H;
+        }
+        for (int i = 0; i < Math.min(tags.size(), MAX_ENCHANT_LINES); i++) {
+            String tag = tags.get(i);
+            context.text(MC.font, tag, -MC.font.width(tag) / 2, ty, ENCHANT_COLOR, true);
+            ty -= LINE_H;
         }
         context.pose().popMatrix();
     }

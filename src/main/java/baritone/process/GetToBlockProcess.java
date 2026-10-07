@@ -60,7 +60,7 @@ public final class GetToBlockProcess extends BaritoneProcessHelper implements IG
         start = ctx.playerFeet();
         blacklist = new ArrayList<>();
         arrivalTickCount = 0;
-        rescan(new ArrayList<>(), new GetToBlockCalculationContext(false));
+        rescan(gettingTo, new ArrayList<>(), new GetToBlockCalculationContext(false));
     }
 
     @Override
@@ -71,7 +71,7 @@ public final class GetToBlockProcess extends BaritoneProcessHelper implements IG
     @Override
     public synchronized PathingCommand onTick(boolean calcFailed, boolean isSafeToCancel) {
         if (knownLocations == null) {
-            rescan(new ArrayList<>(), new GetToBlockCalculationContext(false));
+            rescan(gettingTo, new ArrayList<>(), new GetToBlockCalculationContext(false));
         }
         if (knownLocations.isEmpty()) {
             if (Baritone.settings().exploreForBlocks.value && !calcFailed) {
@@ -111,7 +111,8 @@ public final class GetToBlockProcess extends BaritoneProcessHelper implements IG
         if (mineGoalUpdateInterval != 0 && tickCount++ % mineGoalUpdateInterval == 0) { // big brain
             List<BlockPos> current = new ArrayList<>(knownLocations);
             CalculationContext context = new GetToBlockCalculationContext(true);
-            Baritone.getExecutor().execute(() -> rescan(current, context));
+            BlockOptionalMeta target = gettingTo;
+            Baritone.getExecutor().execute(() -> rescan(target, current, context));
         }
         if (goal.isInGoal(ctx.playerFeet()) && goal.isInGoal(baritone.getPathingBehavior().pathStart()) && isSafeToCancel) {
             // we're there
@@ -194,7 +195,9 @@ public final class GetToBlockProcess extends BaritoneProcessHelper implements IG
         return "Get To " + gettingTo + ", " + knownLocations.size() + " known locations";
     }
 
-    private synchronized void rescan(List<BlockPos> known, CalculationContext context) {
+    private synchronized void rescan(BlockOptionalMeta target, List<BlockPos> known, CalculationContext context) {
+        // Runs on a worker: the goal may have been cancelled (gettingTo null) or replaced since it was queued.
+        if (gettingTo == null || gettingTo != target) return;
         List<BlockPos> positions = MineProcess.searchWorld(context, new BlockOptionalMetaLookup(gettingTo), 64, known, blacklist, Collections.emptyList());
         positions.removeIf(blacklist::contains);
         knownLocations = positions;

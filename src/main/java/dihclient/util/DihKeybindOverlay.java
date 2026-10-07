@@ -140,6 +140,12 @@ public class DihKeybindOverlay extends DihOverlayBase {
                 DihUiScale.setTextScale(up ? DihUiScale.nextTextScale(current) : DihUiScale.previousTextScale(current));
             }));
 
+        windowNode.content().add(new ScaleRowNode(
+            "Light UI",
+            "Skips the blur behind Dih screens, the costliest part of the UI on weak graphics; everything else looks the same. Auto turns it on for integrated or software graphics; the button lights up while it is on. Click to cycle Auto, On, Off.",
+            () -> DihLightUi.active() ? 2.0 : 0.0,
+            ignored -> DihLightUi.label(),
+            DihLightUi::cycle));
         windowNode.content().add(new ToggleRowNode(
             "Chat Feedback",
             "Say in chat when a module is turned on or off. Pop-up toasts are not affected.",

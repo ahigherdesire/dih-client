@@ -85,7 +85,8 @@ class DihMacroFolderTest {
         assertEquals("go home", macro.name);
         assertEquals("", macro.folder);
         assertFalse(macro.hasFolder());
-        assertEquals(72, macro.keyCode);
+        // An unmarked file is from before key codes were recorded: 72 is GLFW H, renumbered on 26.3.
+        assertEquals(DihKeyCodes.toCurrent(72, null), macro.keyCode);
         assertEquals("/home", assertInstanceOf(SendChatAction.class, macro.actions.get(0)).message);
         assertInstanceOf(DelayAction.class, macro.actions.get(1));
     }

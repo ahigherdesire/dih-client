@@ -276,6 +276,11 @@ public class DihMinecraftClientMixin {
             ci.cancel();
             return;
         }
+        // Nuker drives vanilla block breaking itself; releasing or aiming the attack key must not abort it.
+        if (dihclient.modules.NukerModule.ownsBreaking()) {
+            ci.cancel();
+            return;
+        }
         if (!dihclient.util.multi.MultiPilot.isActive()) return;
         dihclient.util.multi.MultiPilot.handleContinueAttack((Minecraft) (Object) this, leftClick);
         ci.cancel();
@@ -467,5 +472,6 @@ public class DihMinecraftClientMixin {
     private void dih$onPacketProcessFrame(CallbackInfo ci) {
         ModuleRegistry.onPacketProcessFrame();
         DihBlinkManager.onPacketProcessFrame();
+        dihclient.util.DihTextInput.sync((Minecraft) (Object) this);
     }
 }

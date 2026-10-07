@@ -166,6 +166,11 @@ public class DihModMenuConfigScreen extends Screen {
             () -> DihUiScale.setTextScale(DihUiScale.nextTextScale(DihUiScale.getTextScale())),
             () -> DihUiScale.setTextScale(DihUiScale.previousTextScale(DihUiScale.getTextScale()))));
 
+        out.add(cycleRow("Light UI", dihclient.util.DihLightUi.label()
+            + ("AUTO".equals(dihclient.util.DihLightUi.mode()) && dihclient.util.DihLightUi.active() ? " (on)" : ""),
+            () -> dihclient.util.DihLightUi.cycle(true),
+            () -> dihclient.util.DihLightUi.cycle(false)));
+
         List<String> prefixes = new ArrayList<>(DihCompatManager.COMMAND_PREFIX_CHOICES);
         if (DihCompatManager.isMeteorAvailable()) prefixes.remove(".");
         String cur = DihCompatManager.effectiveCommandPrefix();

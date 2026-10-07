@@ -102,6 +102,7 @@ public class DihMacro {
         tag.putBoolean("loop", loop);
         tag.putInt("loopCount", loopCount);
         tag.putInt("keyCode", keyCode);
+        tag.putString("keyCodes", DihKeyCodes.CURRENT);
         if (folder != null && !folder.isBlank()) tag.putString("folder", folder);
 
         ListTag actionsList = new ListTag();
@@ -120,7 +121,8 @@ public class DihMacro {
         if (tag.contains("description")) description = tag.getStringOr("description", "");
         if (tag.contains("loop")) loop = tag.getBooleanOr("loop", false);
         if (tag.contains("loopCount")) loopCount = tag.getIntOr("loopCount", -1);
-        if (tag.contains("keyCode")) keyCode = tag.getIntOr("keyCode", -1);
+        // Renumbered when the macro was saved by the other Minecraft version (see DihKeyCodes).
+        if (tag.contains("keyCode")) keyCode = DihKeyCodes.toCurrent(tag.getIntOr("keyCode", -1), tag.getStringOr("keyCodes", ""));
         folder = normalizeFolder(tag.getStringOr("folder", ""));
 
         Tag rawActions = tag.get("actions");

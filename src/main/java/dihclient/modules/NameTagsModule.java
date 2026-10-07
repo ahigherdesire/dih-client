@@ -11,6 +11,14 @@ public final class NameTagsModule extends Module {
         add(new BoolSetting("items", "Items", true).description("Tag dropped items"));
         add(new BoolSetting("show-health", "Show Health", true).group("Info").description("Show health"));
         add(new BoolSetting("show-distance", "Show Distance", false).group("Info").description("Show distance"));
+        add(new BoolSetting("equipment", "Equipment", true).group("Equipment")
+            .description("Show armour and held items above the tag"));
+        add(new BoolSetting("equipment-enchants", "Enchantments", true).group("Equipment")
+            .description("Short enchantment tags over each item")
+            .visibleWhen(() -> bool("equipment")));
+        add(new BoolSetting("equipment-durability", "Durability", true).group("Equipment")
+            .description("Durability bars and remaining uses")
+            .visibleWhen(() -> bool("equipment")));
         add(new DoubleSetting("scale", "Scale", 1.0, 0.5, 4.0, 0.05).group("Display").description("Label size"));
         add(new BoolSetting("distance-scale", "Distance Scaling", true).group("Display").description("Shrink with distance"));
         add(new DoubleSetting("max-distance", "Max Distance", 64.0, 0.0, 256.0, 1.0).group("Display").description("0 = unlimited"));

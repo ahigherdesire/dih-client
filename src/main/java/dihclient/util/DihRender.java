@@ -26,6 +26,9 @@ import java.util.OptionalDouble;
 /** Rendering calls that differ between Minecraft 26.2 and 26.3. */
 public final class DihRender {
 
+    //? if >=26.3
+    /*private static final java.util.Set<String> warnedPipelines = new java.util.HashSet<>();*/
+
     private DihRender() {
     }
 
@@ -51,14 +54,25 @@ public final class DihRender {
     /**
      * Draws staged vertices with {@code type}. 26.2's {@code drawFromBuffer} opens its own render pass; 26.3 wants
      * one from the caller, so this opens it on the main render target, as 26.2 did.
+     * <p>
+     * On 26.3 a pipeline that failed to compile is skipped before the pass opens: vanilla throws from inside the
+     * pass with its debug group still pushed, the pass then can't close, and the next command crashes the game.
      */
     public static void drawFromBuffer(RenderType type, StagedVertexBuffer.ExecuteInfo info) {
         //? if >=26.3 {
-        /*RenderTarget target = Minecraft.getInstance().gameRenderer.mainRenderTarget();
+        /*var prepared = type.prepare();
+        if (RenderSystem.getCompiledPipelineNullable(prepared.pipeline()) == null) {
+            if (warnedPipelines.add(prepared.pipeline().getLocation().toString())) {
+                dihclient.DihClientAddon.LOG.warn("DIH: skipping {}, its pipeline {} did not compile", type,
+                    prepared.pipeline().getLocation());
+            }
+            return;
+        }
+        RenderTarget target = Minecraft.getInstance().gameRenderer.mainRenderTarget();
         try (var pass = RenderSystem.getDevice().createCommandEncoder().createRenderPass(
                 () -> "DIH " + type, target.getColorTextureView(), Optional.empty(),
                 target.getDepthTextureView(), OptionalDouble.empty())) {
-            type.prepare().drawFromBuffer(info, pass);
+            prepared.drawFromBuffer(info, pass);
         }
         *///?} else {
         type.prepare().drawFromBuffer(info);

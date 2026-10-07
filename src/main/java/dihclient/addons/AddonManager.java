@@ -31,6 +31,8 @@ public final class AddonManager {
         LOADED.clear();
         REPORTS.clear();
         failuresSurfaced = false;
+        AddonUninstaller.purgeTrash();
+        AddonUninstaller.restorePending();
 
         DihConfig config = DihConfig.getGlobal();
         List<LoadedAddon> accepted = new ArrayList<>();
@@ -78,6 +80,33 @@ public final class AddonManager {
             } catch (Throwable t) {
                 report.markFailed("prepare", "Failed to prepare: " + shortError(t));
                 DihClientAddon.LOG.error("[Addons] Error preparing addon '{}'", modId, t);
+            }
+        }
+
+        for (BundledAddons.Entry entry : BundledAddons.ALL) {
+            if (REPORTS.containsKey(entry.id())) {
+                DihClientAddon.LOG.warn("[Addons] A mod already uses built-in addon id '{}'; skipping the built-in one.", entry.id());
+                continue;
+            }
+            AddonReport report = new AddonReport(entry.id(), entry.name(), entry.version(), entry.authors(), entry.color());
+            report.bundled = true;
+            report.description = entry.description();
+            report.setApiVersion(ApiVersion.CURRENT);
+            REPORTS.put(entry.id(), report);
+            if (!BundledAddons.isEnabled(entry.id())) {
+                report.markDisabled("");
+                continue;
+            }
+            try {
+                DihAddon addon = entry.factory().get();
+                addon.name = entry.name();
+                addon.authors = entry.authors();
+                addon.color = entry.color();
+                report.setApiVersion(addon.apiVersion());
+                accepted.add(new LoadedAddon(entry.id(), addon));
+            } catch (Throwable t) {
+                report.markFailed("construct", "Failed to construct built-in addon: " + shortError(t));
+                DihClientAddon.LOG.error("[Addons] Failed to construct built-in addon '{}'", entry.id(), t);
             }
         }
 
@@ -166,7 +195,7 @@ public final class AddonManager {
 
     /** An addon entrypoint and its mod's metadata; {@code color} is the "dih:color" value ("r,g,b") or null. */
     private record Candidate(String modId, String name, String version, String authors, String color,
-                             java.util.function.Supplier<DihAddon> create) {}
+                             String description, java.util.function.Supplier<DihAddon> create) {}
 
     /**
      * Fabric: "dih" entrypoints in fabric.mod.json. NeoForge: {@code META-INF/services/dihclient.api.DihAddon}
@@ -185,6 +214,7 @@ public final class AddonManager {
                         .collect(Collectors.joining(", ")),
                     color != null && color.getType() == net.fabricmc.loader.api.metadata.CustomValue.CvType.STRING
                         ? color.getAsString() : null,
+                    meta.getDescription() == null ? "" : meta.getDescription().trim(),
                     container::getEntrypoint));
             } catch (Throwable t) {
                 DihClientAddon.LOG.error("[Addons] Failed to inspect an addon entrypoint", t);
@@ -201,7 +231,7 @@ public final class AddonManager {
                 }
                 String id = info != null ? info.getModId() : provider.type().getName();
                 out.add(new Candidate(id, info != null ? info.getDisplayName() : id,
-                    info != null ? info.getVersion().toString() : "", "", null, provider::get));
+                    info != null ? info.getVersion().toString() : "", "", null, "", provider::get));
             } catch (Throwable t) {
                 DihClientAddon.LOG.error("[Addons] Failed to inspect an addon service entry", t);
             }
@@ -217,7 +247,7 @@ public final class AddonManager {
                 }
                 String id = info != null ? info.getModId() : provider.type().getName();
                 out.add(new Candidate(id, info != null ? info.getDisplayName() : id,
-                    info != null ? info.getVersion().toString() : "", "", null, provider::get));
+                    info != null ? info.getVersion().toString() : "", "", null, "", provider::get));
             } catch (Throwable t) {
                 DihClientAddon.LOG.error("[Addons] Failed to inspect an addon service entry", t);
             }
@@ -237,6 +267,7 @@ public final class AddonManager {
             meta.authors(),
             metadataColor(meta, 0xFFAA66FF)
         );
+        report.description = meta.description() == null ? "" : meta.description();
         REPORTS.put(modId, report);
         return report;
     }
@@ -335,6 +366,7 @@ public final class AddonManager {
 
     public static boolean isDisabledOnRestart(String addonId) {
         if (addonId == null || addonId.isBlank()) return false;
+        if (BundledAddons.isBundled(addonId)) return !BundledAddons.isEnabled(addonId);
         DihConfig config = DihConfig.getGlobal();
         if (config.disabledAddonIds == null) return false;
         String needle = addonId.trim().toLowerCase(Locale.ROOT);
@@ -346,6 +378,10 @@ public final class AddonManager {
 
     public static void setDisabledOnRestart(String addonId, boolean disabled) {
         if (addonId == null || addonId.isBlank()) return;
+        if (BundledAddons.isBundled(addonId)) {
+            BundledAddons.setEnabled(addonId, !disabled);
+            return;
+        }
         DihConfig config = DihConfig.getGlobal();
         if (config.disabledAddonIds == null) config.disabledAddonIds = new ArrayList<>();
         String normalized = addonId.trim();
@@ -433,6 +469,8 @@ public final class AddonManager {
         private final List<String> rollbackDetails = new ArrayList<>();
         private int runtimeErrors;
         private String lastRuntimeError = "";
+        private boolean bundled;
+        private String description = "";
 
         private AddonReport(String modId, String name, String version, String authors, int color) {
             this.modId = modId == null ? "" : modId;
@@ -510,6 +548,8 @@ public final class AddonManager {
         }
 
         public String modId() { return modId; }
+        public boolean bundled() { return bundled; }
+        public String description() { return description; }
         public String name() { return name; }
         public String version() { return version; }
         public String authors() { return authors; }

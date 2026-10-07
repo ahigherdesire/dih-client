@@ -107,11 +107,15 @@ public final class ParkourExecutor {
         lastReal = real;
 
         if (index > 0) {
-            PlayerState expected = predicted.get(index - 1);
-            double drift = Math.max(Math.abs(expected.x - real.x), Math.max(Math.abs(expected.y - real.y), Math.abs(expected.z - real.z)));
-            maxDrift = Math.max(maxDrift, drift);
-            if (drift > REPLAN_DRIFT && firstDrift.isEmpty()) {
-                firstDrift = "tick " + index + "/" + plan.size() + " input " + plan.get(index - 1).compact() + ": predicted " + expected + " real " + real;
+            // Past the end of the plan (idling until touchdown) there is no prediction left to compare with.
+            double drift = 0;
+            if (index <= predicted.size() && index <= plan.size()) {
+                PlayerState expected = predicted.get(index - 1);
+                drift = Math.max(Math.abs(expected.x - real.x), Math.max(Math.abs(expected.y - real.y), Math.abs(expected.z - real.z)));
+                maxDrift = Math.max(maxDrift, drift);
+                if (drift > REPLAN_DRIFT && firstDrift.isEmpty()) {
+                    firstDrift = "tick " + index + "/" + plan.size() + " input " + plan.get(index - 1).compact() + ": predicted " + expected + " real " + real;
+                }
             }
             // The plan ends with the ticks that stop the player on the target; the jump is done once they're played.
             boolean on = JumpSolver.standsOn(real, target, targetTop);

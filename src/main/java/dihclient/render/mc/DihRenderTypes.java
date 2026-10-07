@@ -26,6 +26,14 @@ import java.util.Optional;
 import java.util.function.Function;
 
 public final class DihRenderTypes {
+    /** 26.3 compiles shaders to SPIR-V, which rejects the 26.2 GLSL (#moj_import, no locations, gl_VertexID). */
+    private static final Identifier FOGLESS_LINES_SHADER = Identifier.fromNamespaceAndPath("dihclient",
+        //? if >=26.3 {
+        /*"core/fogless_lines_263");
+        *///?} else {
+        "core/fogless_lines");
+        //?}
+
     private static final RenderPipeline STORAGE_ESP_FILL_PIPELINE = copyLayouts(RenderPipeline.builder(), RenderPipelines.DEBUG_FILLED_BOX)
         .withLocation(Identifier.fromNamespaceAndPath("dihclient", "pipeline/storage_esp_fill_see_through"))
         .withVertexShader("core/position_color")
@@ -99,8 +107,8 @@ public final class DihRenderTypes {
 
     private static final RenderPipeline TRACER_ESP_LINES_PIPELINE = copyLayouts(RenderPipeline.builder(), RenderPipelines.LINES)
         .withLocation(Identifier.fromNamespaceAndPath("dihclient", "pipeline/tracer_esp_lines"))
-        .withVertexShader(Identifier.fromNamespaceAndPath("dihclient", "core/fogless_lines"))
-        .withFragmentShader(Identifier.fromNamespaceAndPath("dihclient", "core/fogless_lines"))
+        .withVertexShader(FOGLESS_LINES_SHADER)
+        .withFragmentShader(FOGLESS_LINES_SHADER)
         .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
         .withCull(false)
         .withVertexBinding(0, DefaultVertexFormat.POSITION_COLOR_NORMAL_LINE_WIDTH)

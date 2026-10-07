@@ -82,6 +82,7 @@ public final class DihCommands {
             register(new dihclient.commands.impl.FakeGmCommand());
             register(new dihclient.commands.impl.XCarryCommand());
             register(new dihclient.commands.impl.RemoteViewCommand());
+            register(new dihclient.commands.impl.InvSeeCommand());
             register(new dihclient.commands.impl.NameScrapeCommand());
             register(new dihclient.commands.impl.ToolsCommand());
             register(new dihclient.commands.impl.AiRunCommand());

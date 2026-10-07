@@ -45,6 +45,13 @@ The Storage ESP "Ignore Structures" filters come from the Better Storage ESP add
 
 Project: https://github.com/bestluaucoder/Xinyuan-Better-Storage-esp-1-addon/tree/main
 
+## LiquidBounce by CCBlueX
+
+Radar, Zoom, NewChunks, LogoffSpot, Breadcrumbs, AutoRespawn, AntiAFK, SmartEat, BetterChat, Nuker and PacketMine are ported from LiquidBounce's modules of the same names (commit 75d88a7), translated from Kotlin to DIH's module system and changed where each class comment says.
+
+Project: https://github.com/CCBlueX/LiquidBounce
+License: GPL-3.0
+
 ## License Notice
 
 Because DIH Client uses and/or derives from GPL-licensed projects, DIH Client is released under the GNU General Public License v3.0.

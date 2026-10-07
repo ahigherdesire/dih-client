@@ -252,6 +252,23 @@ public final class BuiltinModules {
         ModuleRegistry.register(new TeamsModule());
         ModuleRegistry.register(new PingSpoofModule());
         ModuleRegistry.register(new BlinkModule());
+        // Ported from LiquidBounce (GPL-3.0, CCBlueX).
+        ModuleRegistry.register(new RadarModule());
+        ModuleRegistry.register(new ZoomModule());
+        ModuleRegistry.register(new NewChunksModule());
+        ModuleRegistry.register(new LogoffSpotModule());
+        ModuleRegistry.register(new BreadcrumbsModule());
+        ModuleRegistry.register(new AutoRespawnModule());
+        ModuleRegistry.register(new AntiAfkModule());
+        ModuleRegistry.register(new SmartEatModule());
+        ModuleRegistry.register(new BetterChatModule());
+        ModuleRegistry.register(new NukerModule());
+        ModuleRegistry.register(new PacketMineModule());
+        ModuleRegistry.register(new WTapModule());
+        ModuleRegistry.register(new STapModule());
+        ModuleRegistry.register(new BlockHitModule());
+        ModuleRegistry.register(new BowAimAssistModule());
+        ModuleRegistry.register(new AutoMaceModule());
     }
 
     private static void migrateUtilityModuleState(String id, boolean enabled) {
@@ -2807,6 +2824,8 @@ public final class BuiltinModules {
     }
 
     static final class TriggerBotModule extends Module {
+        private static final ValueRange DEFAULT_CPS = new ValueRange(8, 12);
+        private final dihclient.util.DihClickPacer pacer = new dihclient.util.DihClickPacer();
         private long readyAtNanos;
         private boolean armed;
         private String cachedEntityListSource = "";
@@ -2816,9 +2835,15 @@ public final class BuiltinModules {
             super("trigger-bot", "TriggerBot", ModuleCategory.COMBAT, "Attacks configured entities when your crosshair is on them.");
             add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player")
                 .description("Trigger entities").build());
-            add(new BoolSetting("respect-cooldown", "Respect Cooldown", true).description("Wait for full cooldown"));
+            add(new ChoiceSetting("timing", "Timing", "Cooldown", "Cooldown", "CPS")
+                .description("Cooldown: hit when the swing is charged. CPS: click at a set rate, like AutoClicker."));
+            add(new BoolSetting("respect-cooldown", "Respect Cooldown", true).description("Wait for full cooldown")
+                .visibleWhen(() -> !"CPS".equals(value("timing"))));
             add(new BoolSetting("randomize-delay", "Randomize Delay", false)
-                .description("Small delay after cooldown."));
+                .description("Small delay after cooldown.").visibleWhen(() -> !"CPS".equals(value("timing"))));
+            add(new RangeSetting("cps", "CPS", DEFAULT_CPS, 1, 20, 0.5).minSeparation(0.5)
+                .description("Click rate; it drifts and hesitates within this band like AutoClicker.")
+                .visibleWhen(() -> "CPS".equals(value("timing"))));
         }
 
         @Override
@@ -2847,6 +2872,12 @@ public final class BuiltinModules {
             }
             if (!(MC.hitResult instanceof EntityHitResult entityHit) || !matchesTarget(entityHit.getEntity())) {
                 resetTrigger();
+                return;
+            }
+
+            if ("CPS".equals(choice("timing"))) {
+                ValueRange band = ValueRange.parse(value("cps"), DEFAULT_CPS);
+                if (pacer.shouldClick(band.min(), band.max())) DihInputClicker.queueAttackClick();
                 return;
             }
 
@@ -2900,6 +2931,7 @@ public final class BuiltinModules {
         private void resetTrigger() {
             readyAtNanos = 0L;
             armed = false;
+            pacer.reset();
         }
     }
 

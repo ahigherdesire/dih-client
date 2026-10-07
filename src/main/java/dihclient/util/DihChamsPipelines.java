@@ -42,7 +42,13 @@ public final class DihChamsPipelines {
         }
     }
 
-    private static final Identifier CHAMS_FRAGMENT = Identifier.fromNamespaceAndPath("dihclient", "core/chams");
+    /** 26.3 compiles shaders to SPIR-V and needs the located-varyings variant. */
+    private static final Identifier CHAMS_FRAGMENT = Identifier.fromNamespaceAndPath("dihclient",
+        //? if >=26.3 {
+        /*"core/chams_263");
+        *///?} else {
+        "core/chams");
+        //?}
 
     private static RenderPipeline clone(RenderPipeline base, String name, DepthStencilState depth) {
         //? if >=26.3 {

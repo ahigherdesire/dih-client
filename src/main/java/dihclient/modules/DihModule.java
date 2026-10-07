@@ -279,6 +279,7 @@ public final class DihModule {
             ModuleRegistry.tick();
             DihPerf.endJoinSpike("join.modules.tick", perf, 8_000_000L);
         }
+        if (hidden) ModuleRegistry.tickPanicKeybind();
         if (!hidden) PackAutoReconnectState.tickCurrentScreen();
         updatePassiveXCarryState();
         DihServerInfoOverlay serverInfo = getServerDataOverlayIfExists();

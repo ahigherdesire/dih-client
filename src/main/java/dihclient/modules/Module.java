@@ -244,6 +244,10 @@ public abstract class Module implements SettingOwner {
     public void onRenderLevel(float partialTick) {
     }
 
+    /** Draws on the HUD in vanilla GUI coordinates, under chat and screens; skipped while the HUD is hidden. */
+    public void onRenderOverlay(net.minecraft.client.gui.GuiGraphicsExtractor context, float partialTick) {
+    }
+
     public void onMouseRotation(double deltaYaw, double deltaPitch) {
     }
 
