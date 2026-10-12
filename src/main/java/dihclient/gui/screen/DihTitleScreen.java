@@ -87,6 +87,7 @@ public class DihTitleScreen extends Screen {
     private static final int BIG_LINE_H = 15;
     private static final int CATEGORY_ROW_H = 12;
     private static final int MANAGER_BUTTON_H = 16;
+    private static final int MANAGER_BUTTON_GAP = 3;
 
     private final CompactTheme theme = new CompactTheme();
     private final List<MenuButton> buttons = new ArrayList<>();
@@ -380,7 +381,7 @@ public class DihTitleScreen extends Screen {
         }
 
         int maxModulesPanelH = screenH - bottomBarH - cardY;
-        int fixedModulesH = PANEL_PAD + BIG_LINE_H + 3 + MANAGER_BUTTON_H + PANEL_PAD;
+        int fixedModulesH = PANEL_PAD + BIG_LINE_H + 3 + MANAGER_BUTTON_H * 2 + MANAGER_BUTTON_GAP + PANEL_PAD;
         int maxCategoryRows = Math.max(1, (maxModulesPanelH - fixedModulesH - 3) / CATEGORY_ROW_H);
         buildCategoryRows(maxCategoryRows);
         buildStatusRows();
@@ -455,7 +456,7 @@ public class DihTitleScreen extends Screen {
         modulesH = fixedModulesH + 3 + categoryRows.size() * CATEGORY_ROW_H;
         modulesX = screenW - margin - modulesW;
         modulesY = cardY;
-        MenuButton openManager = new MenuButton(modulesX + 5, modulesY + modulesH - PANEL_PAD - MANAGER_BUTTON_H,
+        MenuButton openManager = new MenuButton(modulesX + 5, modulesY + modulesH - PANEL_PAD - MANAGER_BUTTON_H * 2 - MANAGER_BUTTON_GAP,
             modulesW - 10, MANAGER_BUTTON_H, Component.literal("OPEN MANAGER"), true,
             () -> {
                 if (!PackHideState.isHardLocked()) {
@@ -463,6 +464,14 @@ public class DihTitleScreen extends Screen {
                 }
             }).asMainRow(0).withIntro(260, true);
         buttons.add(openManager);
+        MenuButton addonStore = new MenuButton(modulesX + 5, modulesY + modulesH - PANEL_PAD - MANAGER_BUTTON_H,
+            modulesW - 10, MANAGER_BUTTON_H, Component.literal("ADDON STORE"), true, this::openAddonStore)
+            .asMainRow(0).withIntro(260, true).withTooltip(Component.literal("Browse, install and manage addons"));
+        buttons.add(addonStore);
+    }
+
+    private void openAddonStore() {
+        if (!PackHideState.isHardLocked()) this.minecraft.gui.setScreen(new DihAddonStoreScreen(this));
     }
 
     private void addSupportRow(int x, int y, int w, int h, String text, Runnable action, String url) {
@@ -490,6 +499,8 @@ public class DihTitleScreen extends Screen {
                 }
             },
             Component.literal("Modules & Macros")));
+        all.add(new UtilityButtonSpec("ADDONS", "", UiAssets.ICON_ADDONS, null,
+            ICON_TEXTURE_SIZE, this::openAddonStore, Component.literal("Addon Store")));
         all.add(new UtilityButtonSpec("MATCHMAKING", "", UiAssets.ICON_MATCHMAKING, null,
             ICON_TEXTURE_SIZE,
             () -> {

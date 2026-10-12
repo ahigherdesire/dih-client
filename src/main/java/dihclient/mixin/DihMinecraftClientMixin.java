@@ -369,6 +369,7 @@ public class DihMinecraftClientMixin {
     private void dih$cancelCaptureOnEscape(CallbackInfo ci) {
 
         dihclient.modules.ScaffoldModule.beforeHandleKeybinds();
+        dihclient.modules.AutoMaceModule.beforeHandleKeybinds();
 
         dihclient.util.DihCombatClicker.beforeHandleKeybinds();
         DihInputClicker.beforeHandleKeybinds();

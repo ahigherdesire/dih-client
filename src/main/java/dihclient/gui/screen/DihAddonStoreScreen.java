@@ -43,6 +43,8 @@ public final class DihAddonStoreScreen extends DihScreen {
     private static final int MARGIN = 12;
     private static final int TOP_Y = 10;
     private static final int TOP_H = 44;
+    /** Width of the top bar's four buttons (My Addons, Submit, Refresh, Back) and their gaps. */
+    private static final int TOP_BUTTONS_W = 288;
     private static final int CARD_MIN_W = 170;
     private static final int GAP = 10;
     private static final int CARD_TEXT_H = 60;
@@ -64,10 +66,16 @@ public final class DihAddonStoreScreen extends DihScreen {
         this.parent = parent;
     }
 
+    /** Opens with {@code id}'s details already showing (the Ctrl+K palette's store results). */
+    public DihAddonStoreScreen showing(String id) {
+        openId = id == null ? "" : id;
+        return this;
+    }
+
     @Override
     protected void init() {
         AddonStore.refreshIfStale();
-        searchField = new EditBox(this.font, searchX(), TOP_Y + 14, searchWidth(), 16, Component.literal("Search"));
+        searchField = new EditBox(this.font, searchX(), searchY(), searchWidth(), 16, Component.literal("Search"));
         searchField.setHint(Component.literal("Search addons..."));
         searchField.setMaxLength(64);
         searchField.setValue(searchQuery);
@@ -93,14 +101,22 @@ public final class DihAddonStoreScreen extends DihScreen {
 
     private int contentWidth() { return Math.min(MAX_WIDTH, screenWidth() - MARGIN * 2); }
     private int contentX() { return (screenWidth() - contentWidth()) / 2; }
-    private int gridTop() { return TOP_Y + TOP_H + 10; }
+    private int gridTop() { return TOP_Y + topHeight() + 10; }
     private int gridBottom() { return screenHeight() - 8; }
     private int columns() { return Math.max(1, (contentWidth() + GAP) / (CARD_MIN_W + GAP)); }
     private int cardWidth() { return (contentWidth() - GAP * (columns() - 1)) / columns(); }
     private int imageHeight() { return cardWidth() * 9 / 16; }
     private int cardHeight() { return imageHeight() + CARD_TEXT_H; }
-    private int searchX() { return contentX() + 190; }
-    private int searchWidth() { return Math.max(120, contentWidth() - 190 - 250); }
+    /** Narrow windows put the search box on its own row under the title and buttons, so nothing overlaps. */
+    private boolean searchOnOwnRow() { return contentWidth() < 190 + 120 + 12 + TOP_BUTTONS_W; }
+    private int topHeight() { return searchOnOwnRow() ? TOP_H + 22 : TOP_H; }
+    private int searchX() { return searchOnOwnRow() ? contentX() + 20 : contentX() + 190; }
+    private int searchY() { return searchOnOwnRow() ? TOP_Y + TOP_H - 4 : TOP_Y + 14; }
+    private int searchWidth() {
+        return searchOnOwnRow() ? contentWidth() - 30 : contentWidth() - 190 - 12 - TOP_BUTTONS_W;
+    }
+    /** Room for the title and summary, left of the buttons. */
+    private int titleWidth() { return Math.max(40, Math.min(165, contentWidth() - TOP_BUTTONS_W - 26)); }
 
     private int dialogWidth() { return Math.min(580, screenWidth() - 40); }
     private int dialogHeight() { return Math.min(350, screenHeight() - 30); }
@@ -123,8 +139,12 @@ public final class DihAddonStoreScreen extends DihScreen {
                 b -> AddonStore.refresh()).setVariant(CompactOverlayButton.Variant.SECONDARY);
             refresh.active = AddonStore.state() != AddonStore.State.LOADING;
             buttons.add(refresh);
-            buttons.add(CompactOverlayButton.create(right - 238, y, 104, 18, Component.literal("Submit an addon"),
+            buttons.add(CompactOverlayButton.create(right - 194, y, 60, 18, Component.literal("Submit"),
                 b -> DihLinks.open(AddonStore.SUBMIT_URL)).setVariant(CompactOverlayButton.Variant.GHOST));
+            // The library of installed addons; when it opened this store, going "there" is going back.
+            buttons.add(CompactOverlayButton.create(right - 288, y, 88, 18, Component.literal("My Addons"),
+                b -> this.minecraft.gui.setScreen(parent instanceof DihAddonsScreen ? parent : new DihAddonsScreen(this)))
+                .setVariant(CompactOverlayButton.Variant.PRIMARY));
             return;
         }
 
@@ -247,10 +267,10 @@ public final class DihAddonStoreScreen extends DihScreen {
 
     private void renderTopBar(GuiGraphicsExtractor graphics) {
         int x = contentX();
-        drawPanel(graphics, x, TOP_Y, contentWidth(), TOP_H, PANEL_BG);
+        drawPanel(graphics, x, TOP_Y, contentWidth(), topHeight(), PANEL_BG);
         UiRenderer.rect(graphics, UiBounds.of(x + 10, TOP_Y + 10, 3, TOP_H - 20), BORDER_ACTIVE);
-        text(graphics, "Addon Browser", x + 20, TOP_Y + 11, TEXT, 160);
-        text(graphics, summaryText(), x + 20, TOP_Y + 24, MUTED, 165);
+        text(graphics, "Addon Store", x + 20, TOP_Y + 11, TEXT, titleWidth());
+        text(graphics, summaryText(), x + 20, TOP_Y + 24, MUTED, titleWidth());
     }
 
     private void renderGrid(GuiGraphicsExtractor graphics, int mouseX, int mouseY) {
@@ -264,7 +284,7 @@ public final class DihAddonStoreScreen extends DihScreen {
             String message = switch (state) {
                 case LOADING, IDLE -> "Loading the addon list...";
                 case FAILED -> "Could not reach GitHub. Check your internet, then press Refresh.";
-                case READY -> AddonStore.entries().isEmpty() ? "No addons listed yet. Made one? Press Submit an addon." : "No addons match the search.";
+                case READY -> AddonStore.entries().isEmpty() ? "No addons listed yet. Made one? Press Submit." : "No addons match the search.";
             };
             int w = width(message);
             text(graphics, message, (screenWidth() - w) / 2, gridTop() + 40, MUTED, w + 4);

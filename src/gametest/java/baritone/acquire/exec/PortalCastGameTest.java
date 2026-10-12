@@ -85,7 +85,15 @@ public final class PortalCastGameTest implements FabricClientGameTest {
             }));
 
             long start = System.currentTimeMillis();
-            PortalGameTest.trip(context, "the_nether", Location.NETHER, events, SEED, TICKS);
+            try {
+                PortalGameTest.trip(context, "the_nether", Location.NETHER, events, SEED, TICKS);
+            } catch (Throwable t) {
+                // What the bot was standing in when it gave up: every fluid and placed block on the pad.
+                BlockPos feet = context.computeOnClient(client -> client.player.blockPosition());
+                System.out.println("[PortalCastGameTest] player at " + feet.toShortString() + "\n"
+                        + world.getServer().computeOnServer(server -> padDump(server.getLevel(Level.OVERWORLD))));
+                throw t;
+            }
             double there = (System.currentTimeMillis() - start) / 1000.0;
             String worldKey = context.computeOnClient(client -> AiBrain.currentWorldKey());
             Map<String, BlockPos> portals = context.computeOnClient(client -> PortalMemory.all(worldKey));
@@ -139,6 +147,24 @@ public final class PortalCastGameTest implements FabricClientGameTest {
         }
         for (BlockPos pos : frame) if (!level.getBlockState(pos).is(Blocks.OBSIDIAN)) return "frame block " + pos.toShortString() + " isn't obsidian";
         return null;
+    }
+
+    /** Every fluid (source or flowing, with its amount) and every non-air block above the floor on the pad. */
+    private static String padDump(ServerLevel level) {
+        StringBuilder out = new StringBuilder();
+        for (BlockPos pos : BlockPos.betweenClosed(-PAD, 99, -PAD, PAD, 111, PAD)) {
+            var fluid = level.getFluidState(pos);
+            var state = level.getBlockState(pos);
+            if (!fluid.isEmpty()) {
+                out.append("  fluid ").append(pos.toShortString()).append(' ')
+                        .append(net.minecraft.core.registries.BuiltInRegistries.FLUID.getKey(fluid.getType()))
+                        .append(fluid.isSource() ? " source" : " amount " + fluid.getAmount()).append('\n');
+            } else if (pos.getY() > 99 && !state.isAir()) {
+                out.append("  block ").append(pos.toShortString()).append(' ')
+                        .append(net.minecraft.core.registries.BuiltInRegistries.BLOCK.getKey(state.getBlock())).append('\n');
+            }
+        }
+        return out.toString();
     }
 
     /** Water or lava anywhere on the pad but in its two pools, or null. */

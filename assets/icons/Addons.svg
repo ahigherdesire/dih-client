@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 500 500">
+  <!-- Addons: a puzzle piece (knobs top and right, a socket on the left). -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #ec2027;
+        stroke: #ec2027;
+        stroke-linejoin: round;
+        stroke-width: 20px;
+      }
+    </style>
+  </defs>
+  <path class="st0" d="M50,130H165A57,57,0,1,1,255,130H370V245A57,57,0,1,1,370,335V450H50V330A50,50,0,0,0,50,250Z"/>
+</svg>

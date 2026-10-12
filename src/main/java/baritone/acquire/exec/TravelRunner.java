@@ -71,6 +71,9 @@ final class TravelRunner extends RunnerBase {
     private int tries;
     private int inPortal;
     private int entries;
+    /** Failed paths into the portal waited out while the water from casting it still drains, and the wait left. */
+    private int drainWaits;
+    private int settling;
     /** Ticks still to spend out of the portal before going back in, while above zero. */
     private int outOfPortal;
     /** Ticks clear of the portal after the step-out. */
@@ -208,6 +211,15 @@ final class TravelRunner extends RunnerBase {
                     return Result.pause();
                 }
                 inPortal = 0;
+                if (settling > 0) {
+                    settling--;
+                    return Result.pause();
+                }
+                // A cast portal is lit while the water taken back from its last cell still runs round the player.
+                if (calcFailed && Buckets.flowingWaterNear(ctx) && ++drainWaits <= Buckets.DRAIN_WAITS) {
+                    settling = Buckets.SETTLE_TICKS;
+                    return Result.pause();
+                }
                 if (calcFailed) return Result.failed("no path into the portal at " + portal.toShortString());
                 return walk(new GoalTwoBlocks(portal));
             }

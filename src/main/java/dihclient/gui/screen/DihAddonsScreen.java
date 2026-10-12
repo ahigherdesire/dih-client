@@ -74,7 +74,7 @@ public final class DihAddonsScreen extends DihScreen {
 
     @Override
     protected void init() {
-        AddonStore.refreshIfStale(); // so Browse Online opens with the list ready
+        AddonStore.refreshIfStale(); // so the store opens with the list ready
         reportsSnapshot = List.copyOf(AddonManager.reports());
         cachedFilterQuery = "\u0000";
         cachedFilteredReports = List.of();
@@ -98,8 +98,10 @@ public final class DihAddonsScreen extends DihScreen {
         buttons.add(CompactOverlayButton.create(backX, TOP_PANEL_Y + 12, backW, 18, Component.literal("Back"),
             b -> this.minecraft.gui.setScreen(parent)).setVariant(CompactOverlayButton.Variant.SECONDARY));
         int browseW = 104;
-        buttons.add(CompactOverlayButton.create(backX - browseW - 8, TOP_PANEL_Y + 12, browseW, 18, Component.literal("Browse Online"),
-            b -> this.minecraft.gui.setScreen(new DihAddonStoreScreen(this))).setVariant(CompactOverlayButton.Variant.PRIMARY));
+        // When the store opened this library, going to the store is going back (no growing stack of screens).
+        buttons.add(CompactOverlayButton.create(backX - browseW - 8, TOP_PANEL_Y + 12, browseW, 18, Component.literal("Addon Store"),
+            b -> this.minecraft.gui.setScreen(parent instanceof DihAddonStoreScreen ? parent : new DihAddonStoreScreen(this)))
+            .setVariant(CompactOverlayButton.Variant.PRIMARY));
 
         AddonReport selected = selectedReport();
         int pad = 12;
@@ -177,7 +179,7 @@ public final class DihAddonsScreen extends DihScreen {
             drawPanel(graphics, listX(), BODY_TOP, LEFT_WIDTH, bodyHeight(), PANEL_BG_SOFT);
             drawPanel(graphics, detailX(), BODY_TOP, detailWidth(), bodyHeight(), PANEL_BG_SOFT);
 
-            drawText(graphics, "Addons", panelX() + 22, TOP_PANEL_Y + 10, TEXT, false);
+            drawText(graphics, "My Addons", panelX() + 22, TOP_PANEL_Y + 10, TEXT, false);
             drawText(graphics, summaryText(), panelX() + 22, TOP_PANEL_Y + 28, MUTED, false, panelWidth() - 44);
             drawText(graphics, "Addon Library", listX() + 12, BODY_TOP + 10, TEXT, false);
 
@@ -206,7 +208,7 @@ public final class DihAddonsScreen extends DihScreen {
             y += ROW_HEIGHT;
         }
         if (reports.isEmpty()) {
-            drawText(graphics, reportsSnapshot.isEmpty() ? "No DIH addons discovered." : "No addons match the search.",
+            drawText(graphics, reportsSnapshot.isEmpty() ? "No addons yet. Press Addon Store to get some." : "No addons match the search.",
                 listX() + 12, rowsTop() + 12, MUTED, false, LEFT_WIDTH - 24);
         }
     }

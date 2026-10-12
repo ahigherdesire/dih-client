@@ -1,7 +1,7 @@
 package dihclient.compat;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import dihclient.gui.screen.DihAddonsScreen;
+import dihclient.gui.screen.DihAddonStoreScreen;
 import dihclient.gui.screen.DihThemeColorScreen;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
@@ -181,7 +181,7 @@ public class DihModMenuConfigScreen extends Screen {
 
         out.add(actionRow("Replay Tour", () -> dihclient.gui.screen.DihTour.replay(this)));
         out.add(actionRow("Theme Color", () -> this.minecraft.gui.setScreen(new DihThemeColorScreen(this))));
-        out.add(actionRow("Addons", () -> this.minecraft.gui.setScreen(new DihAddonsScreen(this))));
+        out.add(actionRow("Addon Store", () -> this.minecraft.gui.setScreen(new DihAddonStoreScreen(this))));
         out.add(splitRow("Website", () -> DihLinks.open(DihLinks.WEBSITE),
             "Source", () -> DihLinks.open(DihLinks.SOURCE)));
         return out;

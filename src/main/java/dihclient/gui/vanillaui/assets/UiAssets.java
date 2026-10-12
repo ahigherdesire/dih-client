@@ -22,6 +22,7 @@ public final class UiAssets {
     public static final Identifier ICON_MATCHMAKING = icon("matchmaking");
     public static final Identifier ICON_MULTI = icon("multi");
     public static final Identifier ICON_PROFILES = icon("profiles");
+    public static final Identifier ICON_ADDONS = icon("addons");
 
     private UiAssets() {
     }

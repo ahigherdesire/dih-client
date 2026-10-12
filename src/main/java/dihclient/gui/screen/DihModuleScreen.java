@@ -506,6 +506,10 @@ public class DihModuleScreen extends DihScreen {
             toggleMacroPanel();
             return;
         }
+        if ("addons".equals(id)) {
+            if (minecraft != null) minecraft.gui.setScreen(new DihAddonStoreScreen(this));
+            return;
+        }
         if ("keys".equals(id)) {
             toggleOverlay(utilityKeybindOverlay);
             return;

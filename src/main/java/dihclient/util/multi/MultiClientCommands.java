@@ -13,7 +13,7 @@ public final class MultiClientCommands {
     public record ClickSpec(ContainerInput input, int button) {
     }
 
-    private static final Set<String> GUI = Set.of("matchmaking", "mm", "nbt", "server", "plugins", "multi");
+    private static final Set<String> GUI = Set.of("matchmaking", "mm", "nbt", "server", "plugins", "multi", "addons", "addon");
 
     private static final Set<String> LOCAL = Set.of(
         "toggle", "t", "delay", "gamemode", "bind", "binds", "prefix", "irc", "macro",

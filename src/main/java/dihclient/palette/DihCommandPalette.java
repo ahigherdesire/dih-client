@@ -6,6 +6,10 @@ import dihclient.api.module.Setting;
 import dihclient.commands.Command;
 import dihclient.commands.DihCommandSource;
 import dihclient.commands.DihCommands;
+import dihclient.addons.store.AddonStore;
+import dihclient.addons.store.AddonStoreEntry;
+import dihclient.gui.screen.DihAddonStoreScreen;
+import dihclient.gui.screen.DihAddonsScreen;
 import dihclient.gui.screen.DihCommandPaletteScreen;
 import dihclient.gui.screen.DihModuleScreen;
 import dihclient.modules.Module;
@@ -30,6 +34,8 @@ import java.util.List;
 /** Builds the palette's entries from modules, settings, commands and macros, and runs the one picked. */
 public final class DihCommandPalette {
     private static final int RECENT_MAX = 20;
+    private static final String ACTION_STORE = "screen:addon-store";
+    private static final String ACTION_LIBRARY = "screen:my-addons";
 
     private DihCommandPalette() {
     }
@@ -95,6 +101,7 @@ public final class DihCommandPalette {
 
     public static PaletteIndex buildIndex() {
         List<Entry> entries = new ArrayList<>();
+        if (!PackHideState.isActive()) addAddonEntries(entries);
         for (Module module : ModuleRegistry.all()) {
             if (PackHideState.isActive() && !PackHideState.isHideModule(module)) continue;
             entries.add(new Entry(Kind.MODULE, module.name(), List.of(module.id(), module.category().name()),
@@ -139,6 +146,23 @@ public final class DihCommandPalette {
         return new PaletteIndex(entries);
     }
 
+    /** The addon store, the installed-addons library, and every store listing by name (so "better esp" finds it). */
+    private static void addAddonEntries(List<Entry> entries) {
+        // Titled "Addons" so that typing addons (or addon) puts the store first, ahead of My Addons and .addons.
+        entries.add(new Entry(Kind.SCREEN, "Addons", List.of("addon store", "store", "marketplace", "browse", "install", "download", "shop"),
+            "Addon store: browse, install and update addons", ACTION_STORE));
+        entries.add(new Entry(Kind.SCREEN, "My Addons", List.of("addons", "installed addons", "addon library", "uninstall", "manage addons"),
+            "Installed addons: status, turn off, uninstall", ACTION_LIBRARY));
+        AddonStore.refreshIfStale(); // listings missing now show the next time the palette opens
+        for (AddonStoreEntry listing : AddonStore.entries()) {
+            List<String> keywords = new ArrayList<>(List.of(listing.id(), listing.author(), "addon"));
+            keywords.addAll(listing.categories());
+            AddonStore.Status status = AddonStore.status(listing);
+            String description = status == AddonStore.Status.AVAILABLE ? listing.summary() : status.label() + " · " + listing.summary();
+            entries.add(new Entry(Kind.ADDON, listing.name(), keywords, description, "store:" + listing.id()));
+        }
+    }
+
     /** A one-line hint for the highlighted entry, e.g. the module's current state. */
     public static String hint(Entry entry) {
         if (entry == null) return "";
@@ -151,6 +175,8 @@ public final class DihCommandPalette {
             case DOT_COMMAND -> runsDirectly(entry) ? "Enter runs it" : "Enter puts it in chat to finish";
             case HASH_COMMAND, AI_TOOL -> "Enter puts it in chat to finish";
             case MACRO -> "Enter runs the macro";
+            case SCREEN -> "Enter opens it";
+            case ADDON -> "Enter shows it in the addon store";
         };
     }
 
@@ -200,6 +226,14 @@ public final class DihCommandPalette {
             }
             case AI_TOOL -> {
                 return new ChatScreen(DihCommands.effectivePrefix() + "tools " + action.substring("tool:".length()) + " ", false);
+            }
+            case SCREEN -> {
+                if (action.equals(ACTION_STORE)) return new DihAddonStoreScreen(parent);
+                if (action.equals(ACTION_LIBRARY)) return new DihAddonsScreen(parent);
+                return parent;
+            }
+            case ADDON -> {
+                return new DihAddonStoreScreen(parent).showing(action.substring("store:".length()));
             }
         }
         return parent;

@@ -1,10 +1,14 @@
 package dihclient.gui;
 
+import dihclient.commands.DihCommands;
+import dihclient.gui.screen.DihAddonStoreScreen;
+import dihclient.gui.screen.DihAddonsScreen;
 import dihclient.gui.screen.DihCommandPaletteScreen;
 import dihclient.gui.screen.DihDonateScreen;
 import dihclient.gui.screen.DihModuleScreen;
 import dihclient.gui.screen.DihTour;
 import dihclient.gui.screen.DihTourScreen;
+import dihclient.gui.vanillaui.components.CompactOverlayButton;
 import dihclient.modules.ModuleRegistry;
 import dihclient.palette.PaletteIndex;
 import dihclient.util.DihConfig;
@@ -12,6 +16,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.FabricClientGameTest;
 import net.fabricmc.fabric.api.client.gametest.v1.context.ClientGameTestContext;
 import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContext;
 import net.minecraft.client.gui.screens.ChatScreen;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.client.gui.screens.inventory.ContainerScreen;
 import net.minecraft.core.BlockPos;
@@ -20,6 +25,10 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import com.mojang.blaze3d.platform.InputConstants;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.List;
 
 /**
  * WP 05 in a real client: no tour or palette appears by itself in automated runs; Ctrl+K opens the palette in-game,
@@ -43,6 +52,8 @@ public final class PaletteTourGameTest implements FabricClientGameTest {
                 System.out.println("[PaletteTourGameTest] in-game ok");
                 paletteInModuleMenu(context);
                 System.out.println("[PaletteTourGameTest] module menu ok");
+                addonStoreEverywhere(context);
+                System.out.println("[PaletteTourGameTest] addon store ok");
                 paletteInChest(context, world);
                 System.out.println("[PaletteTourGameTest] chest ok");
                 neverWhileTyping(context);
@@ -156,6 +167,86 @@ public final class PaletteTourGameTest implements FabricClientGameTest {
         context.getInput().pressKey(InputConstants.KEY_ESCAPE);
         context.waitFor(client -> client.gui.screen() instanceof DihModuleScreen, 20);
         context.setScreen(() -> null);
+    }
+
+    /**
+     * The addon store is one step away: Ctrl+K then "addons" opens it, Esc comes back to the game; its My Addons
+     * button opens the library and the library's Addon Store button goes back to the same store screen; the module
+     * menu's Addons button and the .addons command open it too.
+     */
+    private static void addonStoreEverywhere(ClientGameTestContext context) {
+        ctrlK(context);
+        context.waitFor(client -> client.gui.screen() instanceof DihCommandPaletteScreen, 20);
+        context.getInput().typeChars("addons");
+        context.waitTicks(2);
+        context.runOnClient(client -> {
+            DihCommandPaletteScreen palette = (DihCommandPaletteScreen) client.gui.screen();
+            PaletteIndex.Entry first = palette.results().isEmpty() ? null : palette.results().get(0);
+            if (first == null || !"screen:addon-store".equals(first.action())) {
+                throw new AssertionError("typing addons should put the addon store first, got " + palette.results());
+            }
+        });
+        context.getInput().pressKey(InputConstants.KEY_RETURN);
+        context.waitFor(client -> client.gui.screen() instanceof DihAddonStoreScreen, 20);
+        context.takeScreenshot("palette-addon-store");
+
+        context.runOnClient(client -> clickButton(client.gui.screen(), "My Addons"));
+        context.waitFor(client -> client.gui.screen() instanceof DihAddonsScreen, 20);
+        Screen store = context.computeOnClient(client -> parentOf(client.gui.screen()));
+        context.runOnClient(client -> clickButton(client.gui.screen(), "Addon Store"));
+        context.waitFor(client -> client.gui.screen() == store, 20);
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        context.waitFor(client -> client.gui.screen() == null, 20);
+
+        context.setScreen(() -> new DihModuleScreen(null));
+        context.waitTicks(5);
+        context.runOnClient(client -> {
+            try {
+                Method runUtility = DihModuleScreen.class.getDeclaredMethod("runUtility", String.class);
+                runUtility.setAccessible(true);
+                runUtility.invoke(client.gui.screen(), "addons");
+            } catch (ReflectiveOperationException e) {
+                throw new AssertionError(e);
+            }
+        });
+        context.waitFor(client -> client.gui.screen() instanceof DihAddonStoreScreen, 20);
+        context.getInput().pressKey(InputConstants.KEY_ESCAPE);
+        context.waitFor(client -> client.gui.screen() instanceof DihModuleScreen, 20);
+        context.setScreen(() -> null);
+
+        context.runOnClient(client -> DihCommands.dispatch("addons"));
+        context.waitFor(client -> client.gui.screen() instanceof DihAddonStoreScreen, 20);
+        context.setScreen(() -> null);
+    }
+
+    private static Screen parentOf(Screen screen) {
+        try {
+            Field field = screen.getClass().getDeclaredField("parent");
+            field.setAccessible(true);
+            return (Screen) field.get(screen);
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    /** Presses the screen's CompactOverlayButton labelled {@code label}. */
+    private static void clickButton(Screen screen, String label) {
+        try {
+            Field field = screen.getClass().getDeclaredField("buttons");
+            field.setAccessible(true);
+            for (Object o : (List<?>) field.get(screen)) {
+                if (o instanceof CompactOverlayButton button && label.equals(button.getMessage().getString())) {
+                    if (!CompactOverlayButton.fireIfHit(button, button.getX() + button.getWidth() / 2.0,
+                        button.getY() + button.getHeight() / 2.0, InputConstants.MOUSE_BUTTON_LEFT)) {
+                        throw new AssertionError(label + " didn't press");
+                    }
+                    return;
+                }
+            }
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
+        throw new AssertionError("no " + label + " button on " + screen);
     }
 
     private static void paletteInChest(ClientGameTestContext context, TestSingleplayerContext world) {

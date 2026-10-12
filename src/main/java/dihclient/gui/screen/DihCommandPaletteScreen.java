@@ -157,7 +157,7 @@ public final class DihCommandPaletteScreen extends Screen {
             UiRenderer.rect(graphics, UiBounds.of(panel.x(), panel.y(), panel.width(), 2), colors.accent);
 
             UiBounds field = fieldBounds();
-            TextField.render(ctx, field, query, "Search modules, settings, commands, macros...", true, query.length());
+            TextField.render(ctx, field, query, "Search modules, addons, commands, macros...", true, query.length());
 
             int y = field.bottom() + 4;
             if (results.isEmpty()) {

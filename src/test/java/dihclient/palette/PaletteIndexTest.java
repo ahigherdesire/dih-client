@@ -104,6 +104,24 @@ class PaletteIndexTest {
     }
 
     @Test
+    void addonsFindsTheStoreFirst() {
+        // The same shapes DihCommandPalette builds: the store, the library, the .addons command and a store listing.
+        Entry store = new Entry(Kind.SCREEN, "Addons", List.of("addon store", "store", "marketplace"), "", "screen:addon-store");
+        Entry library = new Entry(Kind.SCREEN, "My Addons", List.of("installed addons", "addon library"), "", "screen:my-addons");
+        Entry command = new Entry(Kind.DOT_COMMAND, ".addons", List.of("addon"), "", "dot:addons");
+        Entry listing = new Entry(Kind.ADDON, "Better ESP", List.of("better-esp", "addon"), "", "store:better-esp");
+        PaletteIndex local = new PaletteIndex(List.of(KILL_AURA, AUTO_ARMOR, listing, command, library, store));
+
+        assertEquals(store, local.search("addons", 8, List.of()).get(0));
+        assertEquals(store, local.search("addon", 8, List.of()).get(0));
+        assertEquals(store, local.search("marketplace", 8, List.of()).get(0));
+        assertEquals(library, local.search("my addons", 8, List.of()).get(0));
+        assertEquals(listing, local.search("better esp", 8, List.of()).get(0));
+        // With nothing typed and nothing recent, DIH's pages lead the list.
+        assertEquals(List.of(store, library), local.search("", 8, List.of()).subList(0, 2));
+    }
+
+    @Test
     void rememberKeepsTheMostRecentFirstWithoutDuplicates() {
         List<String> recent = PaletteIndex.remember(List.of("a", "b", "c"), "b", 3);
         assertEquals(List.of("b", "a", "c"), recent);

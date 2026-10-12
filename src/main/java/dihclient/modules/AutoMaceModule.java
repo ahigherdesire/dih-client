@@ -4,6 +4,8 @@ import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ChoiceSetting;
 import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
+import dihclient.mixin.accessor.DihMinecraftAccessor;
+import dihclient.util.DihCombatClicker;
 import dihclient.util.DihInputClicker;
 import dihclient.util.DihInventoryClickHelper;
 import net.minecraft.client.player.LocalPlayer;
@@ -27,11 +29,14 @@ import net.minecraft.world.phys.Vec3;
 import java.util.Optional;
 
 /**
- * The legit mace: while you are really falling far enough for a smash and your crosshair is on a target, it presses
- * the mace's hotbar key and clicks, the same inputs a player would make, then goes back to what you held. It never
- * turns your view or reaches further than vanilla. With Elytra Swap it also trades your elytra for a chestplate
- * mid-flight once a target is in your sights below you, so the dive turns into a smash, and can put the elytra back
- * on afterwards for the next run. Wind Burst maces chain on their own: each smash launches you up for another fall.
+ * The mace helper: while you are really falling far enough for a smash and a target is under your crosshair (or, with
+ * Aim on Nearby, below you within vanilla reach and in sight), it presses the mace's hotbar key and clicks, the same
+ * inputs a player would make, then goes back to what you held. It never turns your view or reaches further than
+ * vanilla. The check runs at the start of the tick, right after Minecraft picks the crosshair target, so the swap and
+ * the hit go out in that same tick. Each drop is measured from its own top ({@link MaceFall}), so a Wind Burst smash
+ * that throws you back up arms the next one. With Elytra Swap it also trades your elytra for a chestplate mid-flight
+ * once a target is in your sights below you, so the dive turns into a smash, and can put the elytra back on
+ * afterwards for the next run.
  */
 public final class AutoMaceModule extends Module {
     /** Inventory menu slot of the chest armour. */
@@ -42,11 +47,14 @@ public final class AutoMaceModule extends Module {
     private boolean struckThisFall;
     private boolean elytraOff;
     private boolean reequipNextTick;
+    private final MaceFall fall = new MaceFall();
 
     public AutoMaceModule() {
         super("auto-mace", "AutoMace", ModuleCategory.COMBAT,
             "Swaps to your mace and smashes what you are falling onto.");
         add(new ChoiceSetting("targets", "Targets", "Players", "Players", "Players + Hostile", "All Living"));
+        add(new ChoiceSetting("aim", "Aim", "Nearby", "Nearby", "Crosshair")
+            .description("Nearby: hit a target below you in reach and in sight. Crosshair: only what you look at."));
         add(new DoubleSetting("min-fall", "Min Fall", 2.0D, 1.6D, 20.0D, 0.1D).unit("blocks")
             .description("Fall at least this far before smashing; more fall, more damage."));
         add(new ChoiceSetting("prefer", "Prefer", "Density", "Density", "Breach", "Wind Burst")
@@ -73,6 +81,7 @@ public final class AutoMaceModule extends Module {
         struckThisFall = false;
         elytraOff = false;
         reequipNextTick = false;
+        fall.reset();
     }
 
     @Override
@@ -82,6 +91,7 @@ public final class AutoMaceModule extends Module {
         struckThisFall = false;
         elytraOff = false;
         reequipNextTick = false;
+        fall.reset();
     }
 
     @Override
@@ -90,42 +100,88 @@ public final class AutoMaceModule extends Module {
         if (player == null || MC.level == null || MC.gameMode == null) return;
 
         if (swapBackIn > 0 && --swapBackIn == 0) restoreSlot();
+        if (bool("elytra-swap") && isFree(player)) handleElytra(player);
+    }
 
-        boolean free = MC.gui.screen() == null && player.containerMenu == player.inventoryMenu
-            && player.containerMenu.getCarried().isEmpty();
-        if (free && bool("elytra-swap")) handleElytra(player);
+    /**
+     * Called from the head of {@code Minecraft.handleKeybinds}: the crosshair target was just picked and the player has
+     * not moved yet, so the swap and click queued here are pressed in this same tick against the target checked here.
+     * Queued from the end-of-tick {@link #tick()} instead, they would land a tick later, a block or two further down,
+     * often past the target.
+     */
+    public static void beforeHandleKeybinds() {
+        if (ModuleRegistry.get("auto-mace") instanceof AutoMaceModule module && module.isEnabled()) module.smash();
+    }
 
-        if (player.onGround() || player.fallDistance < decimal("min-fall")) struckThisFall = false;
-        if (!free || struckThisFall || !canSmash(player)) return;
+    private void smash() {
+        LocalPlayer player = MC.player;
+        if (player == null || MC.level == null || MC.gameMode == null) return;
 
-        LivingEntity target = crosshairTarget();
-        if (target == null) return;
+        boolean grounded = player.onGround() || player.isInWater() || player.onClimbable() || player.isPassenger()
+            || player.isFallFlying() || player.getAbilities().flying;
+        if (fall.update(player.getY(), player.getDeltaMovement().y, grounded)) struckThisFall = false;
+        if (struckThisFall || !isFree(player) || !canSmash(player)) return;
+        // A click Minecraft would swallow (miss cooldown, eating, blocking) must not use up this drop's smash.
+        if (((DihMinecraftAccessor) MC).dih$getMissTime() > 0 || player.isUsingItem() || player.isHandsBusy()) return;
+
+        EntityHitResult hit = target(player);
+        if (hit == null) return;
         Inventory inventory = player.getInventory();
         int mace = bestMace(inventory);
         if (mace < 0) return;
+        if (!DihCombatClicker.queueAttack(hit)) return; // another module owns the attack key this tick
 
         int selected = inventory.getSelectedSlot();
         if (mace != selected) {
             if (previousSlot < 0) previousSlot = selected;
             DihInputClicker.queueHotbarSlot(mace);
         }
-        DihInputClicker.queueAttackClick();
         struckThisFall = true;
         if (previousSlot >= 0 && bool("swap-back")) swapBackIn = Math.max(1, integer("swap-back-delay") + 1);
         // Put the elytra back once the hit has gone out, not before it.
         if (elytraOff && "After Hit".equals(choice("elytra-reequip"))) reequipNextTick = true;
     }
 
-    /** Vanilla's smash test, with this module's own minimum fall. */
-    private boolean canSmash(LocalPlayer player) {
-        return player.fallDistance >= decimal("min-fall") && !player.isFallFlying() && !player.isPassenger()
-            && !player.getAbilities().flying && !player.isInWater();
+    private static boolean isFree(LocalPlayer player) {
+        return MC.gui.screen() == null && player.containerMenu == player.inventoryMenu
+            && player.containerMenu.getCarried().isEmpty();
     }
 
-    private LivingEntity crosshairTarget() {
-        if (!(MC.hitResult instanceof EntityHitResult hit)) return null;
-        Entity entity = hit.getEntity();
-        return entity instanceof LivingEntity living && validTarget(living) ? living : null;
+    /** Vanilla's smash test, with this module's own minimum fall measured over the current drop. */
+    private boolean canSmash(LocalPlayer player) {
+        return fall.distance(player.getY(), player.fallDistance) >= decimal("min-fall") && !player.isFallFlying()
+            && !player.isPassenger() && !player.getAbilities().flying && !player.isInWater();
+    }
+
+    /** The crosshair target, or with Aim on Nearby the closest valid target below you, in reach and in sight. */
+    private EntityHitResult target(LocalPlayer player) {
+        if (MC.hitResult instanceof EntityHitResult hit && hit.getEntity() instanceof LivingEntity living
+            && validTarget(living)) {
+            return hit;
+        }
+        if (!"Nearby".equals(choice("aim"))) return null;
+
+        Vec3 eyes = player.getEyePosition();
+        double range = player.entityInteractionRange();
+        LivingEntity best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (Entity entity : MC.level.getEntities(player, player.getBoundingBox().inflate(range + 1.0D))) {
+            if (!(entity instanceof LivingEntity living) || !validTarget(living)) continue;
+            AABB box = living.getBoundingBox();
+            // Below you means their feet are not above yours; you may already be dropping through their hitbox.
+            if (box.minY > player.getY() || !player.isWithinEntityInteractionRange(living, 0.0D)) continue;
+            if (!player.hasLineOfSight(living)) continue;
+            double distance = box.distanceToSqr(eyes);
+            if (distance < bestDistance) {
+                best = living;
+                bestDistance = distance;
+            }
+        }
+        if (best == null) return null;
+        AABB box = best.getBoundingBox();
+        Vec3 point = new Vec3(Math.clamp(eyes.x, box.minX, box.maxX), Math.clamp(eyes.y, box.minY, box.maxY),
+            Math.clamp(eyes.z, box.minZ, box.maxZ));
+        return new EntityHitResult(best, point);
     }
 
     private boolean validTarget(LivingEntity living) {

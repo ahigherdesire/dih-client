@@ -59,7 +59,20 @@ final class Buckets {
      * still flows round the player for a few seconds, and Baritone won't path through flowing water.
      */
     private static final int PATH_TRIES = 3;
-    private static final int SETTLE_TICKS = 20;
+    static final int SETTLE_TICKS = 20;
+    /**
+     * Failed paths waited out, a second each, while flowing water is still round the player: those don't count
+     * against the pool. Water poured high up the frame takes longer to drain than {@link #PATH_TRIES} seconds, and
+     * giving up on the only lava pool by the site sent the player digging down for another.
+     */
+    static final int DRAIN_WAITS = 15;
+    /** How far round the player's feet flowing water still blocks the pathing. */
+    private static final int DRAIN_RADIUS = 2;
+    /**
+     * How close to a source the player walks before filling from it: well inside reach. At 2, a source in the middle
+     * of a pool (once the edge ones are used up) has nowhere to stand but on the lava, so no path was ever found.
+     */
+    private static final int NEAR = 3;
     /** Where on a face (or in a cell) a look ray may aim, from the middle outward. */
     private static final double[] SPOTS = {0.5, 0.25, 0.75, 0.08, 0.92};
 
@@ -75,6 +88,7 @@ final class Buckets {
     private int tries;
     private int pending;
     private int pathFails;
+    private int drainWaits;
     private int settling;
     /** Pools given up on for want of a path since {@link #reset}. */
     private int lostPools;
@@ -93,6 +107,7 @@ final class Buckets {
         tries = 0;
         pending = 0;
         pathFails = 0;
+        drainWaits = 0;
         settling = 0;
         lostPools = 0;
     }
@@ -134,6 +149,10 @@ final class Buckets {
             settling--;
             return StepRunner.Result.pause();
         }
+        if (calcFailed && fluid != null && flowingWaterNear() && ++drainWaits <= DRAIN_WAITS) {
+            settling = SETTLE_TICKS;
+            return StepRunner.Result.pause();
+        }
         if (calcFailed && fluid != null && ++pathFails <= PATH_TRIES) {
             settling = SETTLE_TICKS;
             return StepRunner.Result.pause();
@@ -152,6 +171,7 @@ final class Buckets {
             if (fluid == null && by != null) fluid = nearestSource(block, tag, null, Set.of());
             if (fluid != null && !fluid.equals(was)) {
                 pathFails = 0;
+                drainWaits = 0;
                 Helper.HELPER.logDebug("bucket: " + (tag == FluidTags.LAVA ? "lava" : "water") + " at " + fluid.toShortString()
                         + " from " + ctx.playerFeet().toShortString());
             }
@@ -161,7 +181,7 @@ final class Buckets {
         // Any source of the pool will do, whichever the ray meets first.
         StepRunner.Result scooped = scoop(fluid, tag, false);
         if (scooped != null) return scooped;
-        GoalNear near = new GoalNear(fluid, 2);
+        GoalNear near = new GoalNear(fluid, NEAR);
         if (near.isInGoal(ctx.playerFeet()) && ++tries > TRIES * 2) {
             // Arrived but never got a clear line to it.
             badFluid.add(fluid);
@@ -237,6 +257,25 @@ final class Buckets {
             }
         }
         return null;
+    }
+
+    private boolean flowingWaterNear() {
+        return flowingWaterNear(ctx);
+    }
+
+    /**
+     * Whether water that is not a source (still running off after a pour or a scoop) is at or round the player.
+     * Baritone won't path through it, so a failed path then says nothing about the way once it has drained.
+     */
+    static boolean flowingWaterNear(IPlayerContext ctx) {
+        if (ctx.player().isInWater()) return true;
+        BlockPos feet = ctx.playerFeet();
+        for (BlockPos p : BlockPos.betweenClosed(feet.offset(-DRAIN_RADIUS, -1, -DRAIN_RADIUS),
+                feet.offset(DRAIN_RADIUS, 2, DRAIN_RADIUS))) {
+            FluidState state = ctx.world().getFluidState(p);
+            if (state.is(FluidTags.WATER) && !state.isSource()) return true;
+        }
+        return false;
     }
 
     /**

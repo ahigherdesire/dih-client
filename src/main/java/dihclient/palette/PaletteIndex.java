@@ -14,7 +14,9 @@ import java.util.Locale;
 public final class PaletteIndex {
 
     public enum Kind {
-        MODULE("Module"), SETTING("Setting"), DOT_COMMAND("Command"), HASH_COMMAND("Baritone"), MACRO("Macro"), AI_TOOL("AI tool");
+        // SCREEN is first so that, on a tie (and on the empty query), DIH's own pages list before everything else.
+        SCREEN("Open"), MODULE("Module"), SETTING("Setting"), DOT_COMMAND("Command"), HASH_COMMAND("Baritone"), MACRO("Macro"),
+        ADDON("Addon"), AI_TOOL("AI tool");
 
         private final String label;
 

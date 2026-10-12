@@ -32,7 +32,7 @@ public final class CommandAdapters {
 
     /** {@code .} commands left out: menus, binds, chat housekeeping, updating the mod, this tool system itself. */
     public static final Set<String> CLIENT_SKIP = Set.of("help", "commands", "binds", "bind", "clear", "prefix", "gui",
-            "tools", "update", "copypos", "setting", "server", "plugins", "matchmaking", "delay", "sync");
+            "tools", "update", "copypos", "setting", "server", "plugins", "matchmaking", "delay", "sync", "addons");
 
     /** {@code .} commands that act on others or can't be undone: they ask first. */
     public static final Set<String> CLIENT_DANGEROUS = Set.of("disconnect", "say", "drop", "packet", "damage", "irc",

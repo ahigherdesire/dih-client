@@ -66,6 +66,7 @@ public final class DihCommands {
         register(new dihclient.commands.impl.GuiCommand());
         register(new dihclient.commands.impl.GateCommand());
         register(new dihclient.commands.impl.UpdateCommand());
+        register(new dihclient.commands.impl.AddonsCommand());
 
         if (!dihclient.util.DihLiteVariant.enabled()) {
             register(new dihclient.commands.impl.SettingCommand());
