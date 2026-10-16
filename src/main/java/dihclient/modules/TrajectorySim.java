@@ -93,7 +93,10 @@ public final class TrajectorySim {
             int useTicks = alwaysShowBow && player.getTicksUsingItem() < 1 ? 40 : player.getTicksUsingItem();
             float power = BowItem.getPowerForTime(useTicks);
             if (power < 0.1F) return List.of();
-            return List.of(new Shot(BOW_FULL_PULL.withVelocity(power * BOW_FULL_PULL.initialVelocity()), 0.0F));
+            // ArrowDamage adds its boost along the aim, the same way the arrow already flies.
+            double boost = player instanceof net.minecraft.client.player.LocalPlayer local
+                ? ArrowDamageModule.expectedBoost(local) : 0.0D;
+            return List.of(new Shot(BOW_FULL_PULL.withVelocity(power * BOW_FULL_PULL.initialVelocity() + boost), 0.0F));
         }
         if (stack.getItem() instanceof CrossbowItem) {
             ChargedProjectiles charged = stack.get(DataComponents.CHARGED_PROJECTILES);

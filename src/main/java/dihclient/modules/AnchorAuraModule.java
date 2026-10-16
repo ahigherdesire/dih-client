@@ -11,6 +11,7 @@ import dihclient.util.DihCombatClicker;
 import dihclient.util.DihExplosionDamage;
 import dihclient.util.DihFaceScan;
 import dihclient.util.DihHandArbiter;
+import dihclient.util.DihInstantClick;
 import dihclient.util.DihInventoryHelper;
 import dihclient.util.DihKillAuraRotation;
 import dihclient.util.DihPlacementTick;
@@ -100,6 +101,9 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
 
     private static final int SHIELD_CELLS_PER_ANCHOR = 4;
 
+    /** Most steps Instant mode sends in one tick: place, shield, charge and detonate. */
+    private static final int MAX_STEPS_PER_TICK = 4;
+
     private static int[] sphereCache = new int[0];
     private static int sphereRadius = -1;
 
@@ -116,6 +120,8 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
     private int lastActionTick = Integer.MIN_VALUE;
     private long lastActionNanos = Long.MIN_VALUE;
     private long actionFloorNanos;
+    /** Instant mode: the first tick the next step may go out. */
+    private int nextStepTick = Integer.MIN_VALUE;
 
     private String cachedEntityListSource;
     private Set<String> cachedEntityIds = Set.of();
@@ -226,15 +232,28 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
             .group("Damage")
             .build());
 
+        add(new ChoiceSetting("speed", "Speed", "Instant", "Instant", "Smooth")
+            .description("Instant: snap the look and click at once; with no step delay a whole anchor goes off in "
+                + "one tick. Smooth: turn like a player between clicks (slower, quieter to anticheats).")
+            .group("Timing")
+            .build());
+        add(new IntSetting("step-ticks", "Step Delay", 0, 0, 20, 1)
+            .description("Ticks between two anchor clicks. 0 places, charges and detonates in the same tick.")
+            .unit("ticks")
+            .group("Timing")
+            .visibleWhen(this::instant)
+            .build());
         add(new IntSetting("step-delay", "Step Delay", 75, 0, 1000, 10)
             .description("Floor between two anchor clicks.")
             .unit("ms")
             .group("Timing")
+            .visibleWhen(() -> !instant())
             .build());
         add(new IntSetting("step-jitter", "Step Jitter", 20, 0, 200, 5)
             .description("Random extra delay per click.")
             .unit("ms")
             .group("Timing")
+            .visibleWhen(() -> !instant())
             .build());
 
     }
@@ -265,6 +284,7 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
         lastActionTick = Integer.MIN_VALUE;
         lastActionNanos = Long.MIN_VALUE;
         actionFloorNanos = 0L;
+        nextStepTick = Integer.MIN_VALUE;
         previousSlot = -1;
         switchedToSlot = -1;
         switchBackTicks = 0;
@@ -449,6 +469,10 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
             standDown();
             return;
         }
+        if (instant()) {
+            runInstant(plan, tick, range, higherRung, caCommitted);
+            return;
+        }
         status = plan.step().name().toLowerCase(Locale.ROOT);
 
         boolean finishing = finishesCommittedWork(plan);
@@ -485,6 +509,42 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
         DihRotationUtil.Rotation outgoing = DihSilentAim.activeOutgoingRotation(MC.player);
         if (outgoing == null || !sameRotation(outgoing, wire)) return;
         execute(plan, hit, tick);
+    }
+
+    /**
+     * Instant mode: each step looks at its face with a packet and clicks right away, switching slots in the same tick.
+     * After a step the next one is planned against the world the click predicted, so with no step delay an anchor
+     * is placed, charged and detonated in one tick.
+     */
+    private void runInstant(Plan first, int tick, double range, boolean higherRung, boolean caCommitted) {
+        if (ID.equals(DihKillAuraRotation.currentOwner())) DihKillAuraRotation.beginWindDown(ID);
+        Plan plan = first;
+        for (int steps = 0; plan != null && steps < MAX_STEPS_PER_TICK; steps++) {
+            status = plan.step().name().toLowerCase(Locale.ROOT);
+            boolean finishing = finishesCommittedWork(plan);
+            if ((higherRung || caCommitted) && !finishing) return;
+            reservedTick = tick;
+            activityTick = tick;
+            DihHandArbiter.holdHand(ID);
+            if (!instantReady() || !ensureSlot(plan.slot(), finishing)) return;
+            DihRotationUtil.Rotation goal = plan.candidate().aim().goal();
+            BlockHitResult hit = gateHit(plan, goal);
+            if (hit == null) return;
+            DihInstantClick.face(goal);
+            if (!execute(plan, hit, tick)) return;
+            try (DihExplosionDamage.ScanPass pass = DihExplosionDamage.beginScan()) {
+                plan = planCycle(tick, range, new DihFaceScan.Budget(RAY_BUDGET));
+            }
+        }
+    }
+
+    private boolean instant() {
+        return "Instant".equals(choice("speed"));
+    }
+
+    private boolean instantReady() {
+        int tick = DihSharedState.get().getClientTickCounter();
+        return nextStepTick == Integer.MIN_VALUE || tick - nextStepTick >= 0;
     }
 
     private static boolean sameRotation(DihRotationUtil.Rotation first,
@@ -528,6 +588,7 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
     private void bookAction() {
         lastActionTick = DihSharedState.get().getClientTickCounter();
         lastActionNanos = System.nanoTime();
+        nextStepTick = lastActionTick + integer("step-ticks");
         int jitter = integer("step-jitter");
         long extra = jitter > 0 ? random.nextInt(jitter + 1) : 0;
         actionFloorNanos = (integer("step-delay") + extra) * 1_000_000L;
@@ -982,17 +1043,21 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
         return DihFaceScan.confirm(plan.candidate(), wire, player.getEyePosition(), plan.range(), gate);
     }
 
-    private void execute(Plan plan, BlockHitResult hit, int tick) {
+    private boolean execute(Plan plan, BlockHitResult hit, int tick) {
 
-        if (!stepStillLegal(plan)) return;
+        if (!stepStillLegal(plan)) return false;
 
-        if (ModuleRegistry.shouldCancelUseExcept(hit, InteractionHand.MAIN_HAND, ID)) return;
-        if (!DihCombatClicker.queueUse(hit, InteractionHand.MAIN_HAND)) return;
+        if (ModuleRegistry.shouldCancelUseExcept(hit, InteractionHand.MAIN_HAND, ID)) return false;
+        if (instant()) {
+            if (!DihPlacementTick.claim(ID) || !DihInstantClick.use(hit, InteractionHand.MAIN_HAND)) return false;
+        } else {
+            if (!DihCombatClicker.queueUse(hit, InteractionHand.MAIN_HAND)) return false;
 
-        if (!DihPlacementTick.claim(ID)) {
+            if (!DihPlacementTick.claim(ID)) {
 
-            DihCombatClicker.cancel();
-            return;
+                DihCombatClicker.cancel();
+                return false;
+            }
         }
 
         bookAction();
@@ -1014,6 +1079,7 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
             detonateSent = true;
             detonateTick = tick;
         }
+        return true;
     }
 
     private boolean stepStillLegal(Plan plan) {
@@ -1485,12 +1551,14 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
             switchBackTicks = integer("switch-back-delay");
             return true;
         }
-        if (changeHotbarSlot(slot, finishingWork)) {
+        boolean switched = changeHotbarSlot(slot, finishingWork);
+        if (switched) {
             if (previousSlot < 0) previousSlot = held;
             switchedToSlot = slot;
         }
         switchBackTicks = integer("switch-back-delay");
-        return false;
+        // The switch goes out at once, so an Instant click can follow it in the same tick.
+        return switched && instant() && player.getInventory().getSelectedSlot() == slot;
     }
 
     private boolean changeHotbarSlot(int slot, boolean finishingWork) {
@@ -1504,7 +1572,8 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
             return false;
         }
         int tick = DihSharedState.get().getClientTickCounter();
-        if (tick == hotbarChangeTick) return false;
+        // Instant mode switches up to three times in a tick (anchor, fuel, trigger).
+        if (tick == hotbarChangeTick && !instant()) return false;
         if (!DihHandArbiter.beginHandPacketGroup(ID)) return false;
         try {
             DihInventoryHelper.selectHotbarSlot(MC, slot);

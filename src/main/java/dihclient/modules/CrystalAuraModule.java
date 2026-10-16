@@ -13,6 +13,7 @@ import dihclient.util.DihCombatClicker;
 import dihclient.util.DihExplosionDamage;
 import dihclient.util.DihFaceScan;
 import dihclient.util.DihHandArbiter;
+import dihclient.util.DihInstantClick;
 import dihclient.util.DihInventoryHelper;
 import dihclient.util.DihKillAuraRotation;
 import dihclient.util.DihRemoteView;
@@ -151,6 +152,9 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
     private int lastActionTick = Integer.MIN_VALUE;
     private long lastActionNanos = Long.MIN_VALUE;
     private long actionFloorNanos;
+    /** Instant mode: the first ticks a new place and a new break may go out. */
+    private int nextPlaceTick = Integer.MIN_VALUE;
+    private int nextBreakTick = Integer.MIN_VALUE;
 
     private String cachedEntityListSource;
     private Set<String> cachedEntityIds = Set.of();
@@ -264,31 +268,52 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
             .group("Damage")
             .build());
 
+        add(new ChoiceSetting("speed", "Speed", "Instant", "Instant", "Smooth")
+            .description("Instant: snap the look and click the same tick. Smooth: turn like a player first "
+                + "(slower, quieter to anticheats).")
+            .group("Timing")
+            .build());
+        add(new IntSetting("place-ticks", "Place Delay", 0, 0, 20, 1)
+            .description("Ticks between places.")
+            .unit("ticks")
+            .group("Timing")
+            .visibleWhen(this::instant)
+            .build());
+        add(new IntSetting("break-ticks", "Break Delay", 0, 0, 20, 1)
+            .description("Ticks between breaks.")
+            .unit("ticks")
+            .group("Timing")
+            .visibleWhen(this::instant)
+            .build());
         add(new IntSetting("place-delay", "Place Delay", 75, 0, 1000, 10)
             .description("Floor between places.")
             .unit("ms")
             .group("Timing")
+            .visibleWhen(() -> !instant())
             .build());
         add(new IntSetting("destroy-delay", "Destroy Delay", 75, 0, 1000, 10)
             .description("Floor between breaks.")
             .unit("ms")
             .group("Timing")
+            .visibleWhen(() -> !instant())
             .build());
         add(new IntSetting("jitter", "Delay Jitter", 20, 0, 200, 5)
             .description("Random extra delay.")
             .unit("ms")
             .group("Timing")
+            .visibleWhen(() -> !instant())
             .build());
 
         add(new BoolSetting("spam", "Spam", true)
             .description("Run at the tick floor in a prime position.")
             .group("Timing")
+            .visibleWhen(() -> !instant())
             .build());
         add(new IntSetting("spam-delay", "Spam Delay", 0, 0, 200, 10)
             .description("Floor between actions while spamming.")
             .unit("ms")
             .group("Timing")
-            .visibleWhen(() -> bool("spam"))
+            .visibleWhen(() -> bool("spam") && !instant())
             .build());
 
         add(new BoolSetting("vulnerable-spam", "Vulnerable Spam", true)
@@ -357,6 +382,8 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
         lastActionTick = Integer.MIN_VALUE;
         lastActionNanos = Long.MIN_VALUE;
         actionFloorNanos = 0L;
+        nextPlaceTick = Integer.MIN_VALUE;
+        nextBreakTick = Integer.MIN_VALUE;
         previousSlot = -1;
         switchedToSlot = -1;
         switchBackTicks = 0;
@@ -657,14 +684,16 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
             DihHandArbiter.releaseHand(ID);
         }
 
-        DihRotationUtil.Rotation wire = wireRotation();
-
         DihRotationUtil.Rotation goal = destroy != null ? destroy.goal()
             : place != null ? place.candidate().aim().goal()
             : obsidian != null ? obsidian.candidate().aim().goal()
             : defend.candidate().aim().goal();
 
-        boolean ready = wire != null && cadenceReady();
+        boolean instant = instant();
+        // Instant mode sends the goal itself just before the click, so the click is checked along the goal.
+        DihRotationUtil.Rotation wire = instant ? goal : wireRotation();
+
+        boolean ready = wire != null && (instant ? instantReady(destroy != null) : cadenceReady());
         Vec3 destroyHit = ready && destroy != null ? destroyHit(destroy, wire) : null;
         BlockHitResult placeHit =
             ready && destroy == null && place != null ? placeLands(place, wire) : null;
@@ -681,14 +710,20 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
 
         fire = fire && !BedDefenderModule.ownsSilentRotation() && !SurroundModule.ownsSilentRotation();
 
-        DihKillAuraRotation.setTarget(ID, DihKillAuraRotation.PRIORITY_CRYSTAL_AURA,
-            fire ? wire : goal);
-        DihKillAuraRotation.update(ID, MC.player, fire);
+        if (instant) {
+            if (ID.equals(DihKillAuraRotation.currentOwner())) DihKillAuraRotation.beginWindDown(ID);
+            if (!fire) return;
+            DihInstantClick.face(wire);
+        } else {
+            DihKillAuraRotation.setTarget(ID, DihKillAuraRotation.PRIORITY_CRYSTAL_AURA,
+                fire ? wire : goal);
+            DihKillAuraRotation.update(ID, MC.player, fire);
 
-        if (!fire) return;
+            if (!fire) return;
 
-        DihRotationUtil.Rotation outgoing = DihSilentAim.activeOutgoingRotation(MC.player);
-        if (outgoing == null || !sameRotation(outgoing, wire)) return;
+            DihRotationUtil.Rotation outgoing = DihSilentAim.activeOutgoingRotation(MC.player);
+            if (outgoing == null || !sameRotation(outgoing, wire)) return;
+        }
 
         if (destroy != null) {
 
@@ -730,6 +765,18 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
         return wire != null ? wire : DihRotationUtil.playerRotation(MC.player);
     }
 
+    private boolean instant() {
+        return "Instant".equals(choice("speed"));
+    }
+
+    /** Instant mode's cadence: one click a tick, and places and breaks each wait their own ticks. */
+    private boolean instantReady(boolean destroy) {
+        int tick = DihSharedState.get().getClientTickCounter();
+        if (tick == lastActionTick) return false;
+        int next = destroy ? nextBreakTick : nextPlaceTick;
+        return next == Integer.MIN_VALUE || tick - next >= 0;
+    }
+
     private boolean cadenceReady() {
         int tick = DihSharedState.get().getClientTickCounter();
 
@@ -741,7 +788,11 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
     private void bookAction(boolean destroy) {
         lastActionTick = DihSharedState.get().getClientTickCounter();
         lastActionNanos = System.nanoTime();
-        if (spamCadence()) {
+        if (instant()) {
+            actionFloorNanos = 0L;
+            if (destroy) nextBreakTick = lastActionTick + integer("break-ticks");
+            else nextPlaceTick = lastActionTick + integer("place-ticks");
+        } else if (spamCadence()) {
 
             actionFloorNanos = integer("spam-delay") * 1_000_000L;
         } else {
@@ -1039,7 +1090,11 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
         } finally {
             DihHandArbiter.endHandPacketGroup(ID);
         }
-        if (!DihCombatClicker.queueAttack(new EntityHitResult(crystal, hitPoint))) return false;
+        if (instant()) {
+            if (!DihInstantClick.attack(crystal)) return false;
+        } else if (!DihCombatClicker.queueAttack(new EntityHitResult(crystal, hitPoint))) {
+            return false;
+        }
 
         bookAction(true);
 
@@ -1330,8 +1385,8 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
 
         if (ModuleRegistry.shouldCancelUseExcept(hit, hand, ID)) return false;
 
-        if (!DihCombatClicker.queueUse(hit, hand)) return false;
-        if (!DihPlacementTick.claim(ID)) {
+        if (!click(hit, hand)) return false;
+        if (!instant() && !DihPlacementTick.claim(ID)) {
 
             DihCombatClicker.cancel();
             return false;
@@ -1343,6 +1398,15 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
 
         bookAction(false);
         return true;
+    }
+
+    /**
+     * Sends a use on {@code hit}: at once in Instant mode (after claiming the tick's placement), else queued for the
+     * next key handling.
+     */
+    private boolean click(BlockHitResult hit, InteractionHand hand) {
+        if (!instant()) return DihCombatClicker.queueUse(hit, hand);
+        return DihPlacementTick.claim(ID) && DihInstantClick.use(hit, hand);
     }
 
     @Override
@@ -1511,8 +1575,8 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
 
         if (ModuleRegistry.shouldCancelUseExcept(hit, hand, ID)) return false;
 
-        if (!DihCombatClicker.queueUse(hit, hand)) return false;
-        if (!DihPlacementTick.claim(ID)) {
+        if (!click(hit, hand)) return false;
+        if (!instant() && !DihPlacementTick.claim(ID)) {
             DihCombatClicker.cancel();
             return false;
         }
@@ -1961,13 +2025,15 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
         if (slot < 0) return null;
         int held = player.getInventory().getSelectedSlot();
 
-        if (changeHotbarSlot(slot)) {
+        boolean switched = changeHotbarSlot(slot);
+        if (switched) {
             if (previousSlot < 0) previousSlot = held;
             switchedToSlot = slot;
         }
 
         switchBackTicks = integer("switch-back-delay");
-        return null;
+        // The switch goes out at once, so an Instant click can follow it in the same tick.
+        return switched && instant() && isCrystal(player.getMainHandItem()) ? InteractionHand.MAIN_HAND : null;
     }
 
     private boolean changeHotbarSlot(int slot) {

@@ -90,6 +90,8 @@ public final class ModuleRegistry {
         new RevCache<>(() -> activeRevision, () -> activeOverrideModules("preMovementTick"));
     private static final RevCache<List<Module>> NETWORK_MOVEMENT_MODULES =
         new RevCache<>(() -> activeRevision, () -> activeOverrideModules("onNetworkMovementTickPre"));
+    private static final RevCache<List<Module>> NETWORK_MOVEMENT_POST_MODULES =
+        new RevCache<>(() -> activeRevision, () -> activeOverrideModules("onNetworkMovementTickPost"));
     private static final RevCache<List<Module>> PACKET_PROCESS_FRAME_MODULES =
         new RevCache<>(() -> activeRevision, () -> activeOverrideModules("onPacketProcessFrame"));
     private static final RevCache<List<Module>> PLAYER_TICK_CANCEL_MODULES =
@@ -536,6 +538,7 @@ public final class ModuleRegistry {
             START_BREAKING_MODULES.invalidate();
             PRE_MOVEMENT_MODULES.invalidate();
             NETWORK_MOVEMENT_MODULES.invalidate();
+            NETWORK_MOVEMENT_POST_MODULES.invalidate();
             PACKET_PROCESS_FRAME_MODULES.invalidate();
             PLAYER_TICK_CANCEL_MODULES.invalidate();
             PLAYER_MOVE_MODULES.invalidate();
@@ -625,6 +628,14 @@ public final class ModuleRegistry {
         for (Module module : networkMovementModules()) {
             if (module.isAddon()) runGuarded(module, "onNetworkMovementTickPre", module::onNetworkMovementTickPre);
             else module.onNetworkMovementTickPre();
+        }
+    }
+
+    public static void onNetworkMovementTickPost() {
+        if (!initialized || MC == null || PackHideState.isActive()) return;
+        for (Module module : NETWORK_MOVEMENT_POST_MODULES.get()) {
+            if (module.isAddon()) runGuarded(module, "onNetworkMovementTickPost", module::onNetworkMovementTickPost);
+            else module.onNetworkMovementTickPost();
         }
     }
 

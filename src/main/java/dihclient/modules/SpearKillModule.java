@@ -1,9 +1,11 @@
 package dihclient.modules;
 
 import dihclient.api.module.BoolSetting;
+import dihclient.api.module.ChoiceSetting;
 import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.util.DihRotationUtil;
+import dihclient.util.DihServerRotationView;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.EntitySelector;
@@ -11,7 +13,9 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.AttackRange;
 import net.minecraft.world.item.component.KineticWeapon;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -19,25 +23,39 @@ import net.minecraft.world.phys.Vec3;
 import java.util.Comparator;
 
 /**
- * Rushes a charging spear into its target. A charge's damage grows with how fast the holder closes on the target, and
- * the server takes that speed from the holder's last moves, so the module carries the player toward the target at
- * {@code speed} blocks a tick for as long as the charge can still deal damage, stopping inside the spear's reach rather
- * than running past. The server lets one move cover about 10 blocks.
+ * Makes a charging spear hit with a full-speed charge. A charge's damage grows with how fast the holder closes on the
+ * target, and the server takes that speed from the holder's last move packet.
+ * <ul>
+ *   <li><b>Poke</b> leaves the player where they are: each tick a target sits inside the spear's reach, it tells the
+ *   server the player just stepped {@code boost} blocks toward it (see {@link DihVelocitySpoof}). 10 blocks a tick is
+ *   200 blocks a second, which an iron spear turns into about 180 damage per hit.</li>
+ *   <li><b>Rush</b> really carries the player toward the target at {@code speed} blocks a tick for as long as the
+ *   charge can still deal damage, stopping inside the spear's reach rather than running past. The server lets one
+ *   move cover about 10 blocks.</li>
+ * </ul>
  */
 public final class SpearKillModule extends Module {
     private int targetId = -1;
 
     public SpearKillModule() {
         super("spear-kill", "SpearKill", ModuleCategory.COMBAT,
-            "Rushes a charging spear into its target for a full-speed hit. Will flag anticheats.");
+            "Makes a charging spear hit at full speed: Poke from where you stand, or Rush the target. Will flag anticheats.");
+        add(new ChoiceSetting("mode", "Mode", "Poke", "Poke", "Rush")
+            .description("Poke: huge hits at your normal speed. Rush: really fly at the target."));
+        add(new DoubleSetting("boost", "Boost", 9.5D, 1.0D, 22.0D, 0.5D)
+            .description("Blocks a tick the server thinks you charge at. Above 9.5 takes more packets and can miss "
+                + "on a laggy server.")
+            .visibleWhen(() -> poke()));
         add(new DoubleSetting("speed", "Speed", 3.0D, 0.5D, 9.5D, 0.5D)
-            .description("Blocks a tick to rush at the target."));
+            .description("Blocks a tick to rush at the target.")
+            .visibleWhen(() -> !poke()));
         add(new DoubleSetting("range", "Range", 12.0D, 2.0D, 32.0D, 1.0D)
             .description("How far away a target can be picked."));
         add(new IntSetting("fov", "FOV", 90, 10, 360, 5)
             .description("How far off the crosshair a target can be picked."));
         add(new DoubleSetting("stop-at", "Stop At", 1.5D, 0.5D, 3.0D, 0.25D)
-            .description("Blocks short of the target to stop, inside the spear's reach."));
+            .description("Blocks short of the target to stop, inside the spear's reach.")
+            .visibleWhen(() -> !poke()));
         add(new BoolSetting("face", "Face Target", true)
             .description("Turn toward the target: the charge only hits what it points at."));
     }
@@ -59,13 +77,61 @@ public final class SpearKillModule extends Module {
     }
 
     @Override
+    public String info() {
+        return choice("mode");
+    }
+
+    @Override
+    public void onNetworkMovementTickPost() {
+        if (!poke() || targetId < 0 || MC.level == null) return;
+        LocalPlayer player = MC.player;
+        if (!DihVelocitySpoof.usable(player) || !charging(player)) return;
+        if (!(MC.level.getEntity(targetId) instanceof LivingEntity target)) return;
+        // The server reads the look this tick's movement packet carried; the step has to go the same way.
+        DihServerRotationView.WireSnapshot wire = DihServerRotationView.snapshot();
+        float yaw = wire.initialized() ? wire.currentYaw() : player.getYRot();
+        float pitch = wire.initialized() ? wire.currentPitch() : player.getXRot();
+        Vec3 look = Vec3.directionFromRotation(pitch, yaw);
+        if (!inReach(player, player.getUseItem(), target, look)) return;
+        Vec3 dir = flat(yaw);
+        double perPacket = DihVelocitySpoof.perPacket(player);
+        double room = DihVelocitySpoof.clearDistance(player, dir.scale(-1.0D),
+            DihVelocitySpoof.reach(DihVelocitySpoof.MAX_PACKETS, perPacket));
+        DihVelocitySpoof.Plan plan = DihVelocitySpoof.returning(decimal("boost"), room, perPacket);
+        if (plan.boost() < 1.0D) return;
+        DihVelocitySpoof.send(player, player.position(), dir, yaw, pitch, plan, null);
+    }
+
+    @Override
     public Vec3 onPlayerMove(MoverType type, Vec3 movement) {
-        if (type != MoverType.SELF || targetId < 0 || MC.player == null || MC.level == null) return movement;
+        if (poke() || type != MoverType.SELF || targetId < 0 || MC.player == null || MC.level == null) return movement;
         if (!(MC.level.getEntity(targetId) instanceof LivingEntity target) || !charging(MC.player)) return movement;
         Vec3 rush = rush(MC.player.position(), target.position(), decimal("speed"),
             decimal("stop-at") + target.getBbWidth() * 0.5D);
         if (rush == Vec3.ZERO) return movement;
         return new Vec3(rush.x, movement.y, rush.z);
+    }
+
+    private boolean poke() {
+        return "Poke".equals(choice("mode"));
+    }
+
+    /**
+     * Whether the charge's hit ray would find {@code target}: inside the weapon's reach and on the line the server
+     * looks along.
+     */
+    private static boolean inReach(LocalPlayer player, ItemStack stack, LivingEntity target, Vec3 look) {
+        AttackRange range = player.getAttackRangeWith(stack);
+        Vec3 eyes = player.getEyePosition();
+        double reach = range.effectiveMaxRange(player);
+        AABB box = target.getBoundingBox().inflate(range.hitboxMargin());
+        return box.contains(eyes) || box.clip(eyes, eyes.add(look.scale(reach))).isPresent();
+    }
+
+    /** The level unit vector facing {@code yaw}: the poke steps stay on the ground, so they never build fall damage. */
+    static Vec3 flat(float yaw) {
+        double rad = Math.toRadians(yaw);
+        return new Vec3(-Math.sin(rad), 0.0D, Math.cos(rad));
     }
 
     /** Whether the player holds a spear charge that can still deal damage. */

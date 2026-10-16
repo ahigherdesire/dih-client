@@ -234,6 +234,10 @@ public abstract class Module implements SettingOwner {
     public void onNetworkMovementTickPre() {
     }
 
+    /** After the player's movement packet for the tick has gone out: the last packet the server reads this tick. */
+    public void onNetworkMovementTickPost() {
+    }
+
     public void onPacketProcessFrame() {
     }
 
