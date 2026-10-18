@@ -64,7 +64,8 @@ public abstract class DihInGameHudMixin {
         long hudWork = dihclient.util.DihRuntimeActivity.HUD_MODULE
             | dihclient.util.DihRuntimeActivity.NAMETAGS
             | dihclient.util.DihRuntimeActivity.OVERLAY
-            | dihclient.util.DihRuntimeActivity.HUD_AUX;
+            | dihclient.util.DihRuntimeActivity.HUD_AUX
+            | dihclient.util.DihRuntimeActivity.HUD_OVERLAYS;
         if (!macroFrameWork && !activity.has(hudWork)) return;
 
         dihclient.gui.vanillaui.UiScissorStack.global().clear(context);
@@ -86,8 +87,9 @@ public abstract class DihInGameHudMixin {
         boolean esp2dVisible = ModuleRenderUtil.has2dEspWork();
         boolean nametagsVisible = activity.has(dihclient.util.DihRuntimeActivity.NAMETAGS);
         boolean antiVanishHudVisible = screen == null && AntiVanishModule.shouldShowHud();
+        boolean moduleOverlaysVisible = screen == null && dihclient.modules.ModuleHudOverlays.hasWork();
         boolean mainHudVisible = nativeHudVisible || antiVanishHudVisible || macroRunning || queueVisible
-            || captureActive || payloadStudyActive || esp2dVisible || nametagsVisible;
+            || captureActive || payloadStudyActive || esp2dVisible || nametagsVisible || moduleOverlaysVisible;
 
         DihServerInfoOverlay serverInfoOverlay = null;
         boolean serverProbeBannerVisible = false;
@@ -164,6 +166,7 @@ public abstract class DihInGameHudMixin {
 
             if (esp2dVisible) ModuleScreenRenderer.render(context);
             if (nametagsVisible) ModuleNameTagRenderer.render(context);
+            if (moduleOverlaysVisible) dihclient.modules.ModuleHudOverlays.render(context);
             dihclient.trade.TradeLabels.render(context);
         };
 

@@ -30,6 +30,7 @@
       "dihclient.gui.ModulePanelGameTest",
       "dihclient.modules.CombatModulesGameTest",
       "dihclient.modules.AutoMaceGameTest",
+      "dihclient.modules.BedwarsModulesGameTest",
       "baritone.construct.ConstructGameTest",
       "dihclient.ai.ToolsGameTest",
       "dihclient.ai.ToolCatalogGameTest",

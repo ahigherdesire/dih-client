@@ -187,6 +187,8 @@ public final class BuiltinModules {
 
         ModuleRegistry.register(new AutoTotemModule());
         ModuleRegistry.register(new BedDefenderModule());
+        ModuleRegistry.register(new BedEspModule());
+        ModuleRegistry.register(new DangerModule());
         ModuleRegistry.register(new SurroundModule());
         ModuleRegistry.register(new AnchorAuraModule());
         ModuleRegistry.register(new CrystalAuraModule());
@@ -210,6 +212,7 @@ public final class BuiltinModules {
         ModuleRegistry.register(new AutoToolModule());
         ModuleRegistry.register(new ScaffoldModule());
         ModuleRegistry.register(new NoFallModule());
+        ModuleRegistry.register(new ClutchModule());
         ModuleRegistry.register(new NoInteractModule());
         ModuleRegistry.register(new AirPlaceModule());
         ModuleRegistry.register(new GhostBlockModule());
@@ -246,6 +249,7 @@ public final class BuiltinModules {
         ModuleRegistry.register(new NoRenderModule());
         ModuleRegistry.register(new XCarryModule());
         ModuleRegistry.register(new HudModule());
+        ModuleRegistry.register(new GifModule());
         ModuleRegistry.register(new AdminToolsModule());
         ModuleRegistry.register(new GoldenLeverModule());
         ModuleRegistry.register(new NameCensorModule());

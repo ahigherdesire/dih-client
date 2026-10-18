@@ -936,7 +936,9 @@ val liteStripMixins = listOf(
     "DihNoRenderObfuscationMixin",
     "DihViewmodelMixin", "DihViewmodelSwingMixin", "DihViewmodelStrideMixin",
     "DihChamsLivingEntityMixin", "DihChamsSubmitMixin", "DihChamsCapeLayerMixin",
-    "DihEntityRenderStateChamsMixin"
+    "DihEntityRenderStateChamsMixin",
+    // GIF module cape/shield cosmetics (client-only)
+    "DihGifCapeLayerMixin", "DihGifShieldMixin", "DihGifOwnModelMixin", "DihGifOwnHandsMixin"
 )
 
 // The shrink (liteShrinkJar) removes dead classes on its own once the gates fold; the mixin
