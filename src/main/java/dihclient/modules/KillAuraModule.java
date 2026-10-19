@@ -15,6 +15,7 @@ import dihclient.mixin.accessor.DihMinecraftAccessor;
 import dihclient.mixin.accessor.DihMultiPlayerGameModeAccessor;
 import dihclient.util.DihHandArbiter;
 import dihclient.util.DihInventoryHelper;
+import dihclient.util.DihKeyMappingBridge;
 import dihclient.util.DihKillAuraRenderer;
 import dihclient.util.DihKillAuraRotation;
 import dihclient.util.DihRemoteView;
@@ -45,6 +46,7 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.ExperienceOrb;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.NeutralMob;
+import net.minecraft.world.entity.OwnableEntity;
 import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.item.ItemEntity;
@@ -128,6 +130,9 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
     private static final double[] AIM_SCAN_HORIZONTAL = {0.12D, 0.31D, 0.50D, 0.69D, 0.88D};
     private static final double[] AIM_SCAN_VERTICAL = {0.20D, 0.35D, 0.50D, 0.65D, 0.80D};
 
+    /** Every sword, axe and spear, plus the mace and trident. */
+    static final String DEFAULT_HELD_ITEMS = String.join("|", defaultHeldItems());
+
     private static long lastClickTime;
 
     private static final SoundEvent HITSOUND =
@@ -168,53 +173,173 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
     private int pendingHitTicks;
     private String cachedEntityListSource = "";
     private Set<String> cachedEntityIds = Set.of();
+    private String cachedHeldItemSource = "";
+    private Set<String> cachedHeldItemIds = Set.of();
 
     public KillAuraModule() {
         super("kill-aura", "KillAura", ModuleCategory.COMBAT, "Automatically attacks configured entities.");
-        add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player").build());
+        add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player").group("General").build());
         add(new ChoiceSetting("attack-mode", "Attack Mode", "Real Input", "Real Input", "Packet")
+            .group("General")
             .description("How attacks are sent")
             .build());
         add(new ChoiceSetting("targeting", "Targeting", "FOV",
-            "Type", "HP", "Distance", "FOV", "Hurt Time", "Age").build());
+            "Type", "HP", "Distance", "FOV", "Hurt Time", "Age")
+            .group("General")
+            .description("Who gets hit first")
+            .build());
         add(new IntSetting("fov", "FOV", 180, 10, 360, 10)
+            .group("General")
             .description("Attack cone in degrees")
             .build());
-        add(new RangeSetting("cps", "CPS", new ValueRange(CPS_MIN, CPS_MAX), 1, 20, 1)
-            .description("Clicks per second, picked anew each second between these")
-            .build());
-        add(new DoubleSetting("range", "Range", 6.0D, 1.0D, 6.0D, 0.1D)
-            .description("Farthest hit, capped by your reach; raise reach past 3 with the Reach module")
-            .build());
-        add(new RangeSetting("scan-range", "Scan Range", new ValueRange(SCAN_ADDITION_MIN, SCAN_ADDITION_MAX), 0, 6, 0.5)
-            .description("How far past the range it starts turning toward a target")
-            .build());
-        add(new ChoiceSetting("aim-height", "Aim Height", "Auto", "Auto", "Head", "Chest", "Legs")
-            .description("Where on the target to aim")
-            .build());
-        add(new DoubleSetting("aim-offset", "Aim Offset", 0.0D, -0.5D, 0.5D, 0.05D)
-            .description("Moves the aim up or down, as a share of the target's height")
-            .build());
         add(new BoolSetting("miss-injection", "Miss Injection", false)
+            .group("General")
             .description("Adds human-like misses")
             .build());
         add(new IntSetting("miss-chance", "Miss Chance", 6, 1, 20, 1)
+            .group("General")
             .description("Miss rate percent")
             .visibleWhen(() -> bool("miss-injection"))
             .build());
         add(new BoolSetting("criticals", "Criticals", false)
+            .group("General")
             .description("Smart critical hits")
             .build());
-        add(new BoolSetting("auto-sword", "Auto Sword", true).build());
-        add(new BoolSetting("shield-break", "Shield Break", true).build());
+        add(new BoolSetting("held-items-only", "Held Items Only", false)
+            .group("General")
+            .description("Only with listed items")
+            .build());
+        add(RegistryListSetting.items("held-items", "Held Items", DEFAULT_HELD_ITEMS)
+            .group("General")
+            .description("Main-hand items that let it attack")
+            .visibleWhen(() -> bool("held-items-only"))
+            .build());
+        add(new BoolSetting("auto-sword", "Auto Sword", true)
+            .group("General")
+            .description("Switches to your best weapon before hitting")
+            .build());
+        add(new BoolSetting("shield-break", "Shield Break", true)
+            .group("General")
+            .description("Switches to an axe when the target blocks")
+            .build());
+        add(new BoolSetting("perfect-hit", "PerfectHit", false)
+            .group("General")
+            .description("Times attacks around damage immunity.")
+            .build());
+        add(new IntSetting("perfect-hit-lead", "PerfectHit Lead", 1, 0, 5, 1)
+            .group("General")
+            .description("Ticks before immunity ends to swing, to cover ping")
+            .visibleWhen(() -> bool("perfect-hit"))
+            .build());
         add(new BoolSetting("switch-back", "Switch Back", true)
+            .group("General")
+            .description("Goes back to your old slot after the fight")
             .visibleWhen(() -> bool("auto-sword"))
             .build());
         add(new ChoiceSetting("throwables", "Throwables", "MainHand", "MainHand", "BothHands")
+            .group("General")
             .description("Hands checked for throwables")
             .build());
-        add(new BoolSetting("hit-marker", "Render", true).build());
-        add(new BoolSetting("hitsound", "Hitsound", true).build());
+        add(new BoolSetting("hit-marker", "Render", true)
+            .group("General")
+            .description("Flashes the target's box when a hit lands")
+            .build());
+        add(new BoolSetting("hitsound", "Hitsound", true)
+            .group("General")
+            .description("Plays a sound when a hit lands")
+            .build());
+        add(new IntSetting("hitsound-volume", "Hitsound Volume", 70, 0, 100, 5)
+            .group("General")
+            .description("Hitsound loudness in percent")
+            .visibleWhen(() -> bool("hitsound"))
+            .build());
+        add(new IntSetting("hitsound-pitch", "Hitsound Pitch", 100, 50, 200, 5)
+            .group("General")
+            .description("Hitsound pitch in percent")
+            .visibleWhen(() -> bool("hitsound"))
+            .build());
+
+        add(new BoolSetting("ignore-invisible", "Ignore Invisible", false)
+            .group("Targets")
+            .description("Skips invisible entities")
+            .build());
+        add(new BoolSetting("ignore-naked", "Ignore Naked", false)
+            .group("Targets")
+            .description("Skips players wearing no armor")
+            .build());
+        add(new BoolSetting("ignore-named", "Ignore Named", false)
+            .group("Targets")
+            .description("Skips mobs with a name tag")
+            .build());
+        add(new BoolSetting("ignore-babies", "Ignore Babies", false)
+            .group("Targets")
+            .description("Skips baby mobs")
+            .build());
+        add(new ChoiceSetting("ignore-pets", "Ignore Pets", "Yours", "Off", "Yours", "All")
+            .group("Targets")
+            .description("Skips tamed animals: yours, anyone's, or none")
+            .build());
+        add(new BoolSetting("ignore-sleeping", "Ignore Sleeping", true)
+            .group("Targets")
+            .description("Skips players in bed")
+            .build());
+        add(new IntSetting("max-health", "Max Health", 0, 0, 100, 1)
+            .group("Targets")
+            .description("Skips targets with more health than this; 0 is no limit")
+            .build());
+
+        add(new DoubleSetting("range", "Range", 6.0D, 1.0D, 6.0D, 0.1D)
+            .group("Range")
+            .description("Farthest hit, capped by your reach; raise reach past 3 with the Reach module")
+            .build());
+        add(new RangeSetting("scan-range", "Scan Range", new ValueRange(SCAN_ADDITION_MIN, SCAN_ADDITION_MAX), 0, 6, 0.5)
+            .group("Range")
+            .description("How far past the range it starts turning toward a target")
+            .build());
+        add(new DoubleSetting("walls-range", "Through Walls", THROUGH_WALLS_RANGE, 0.0D, 6.0D, 0.1D)
+            .group("Range")
+            .description("Hits through blocks within this distance; 0 needs a clear line")
+            .build());
+
+        add(new ChoiceSetting("aim-height", "Aim Height", "Auto", "Auto", "Head", "Chest", "Legs")
+            .group("Aim")
+            .description("Where on the target to aim")
+            .build());
+        add(new DoubleSetting("aim-offset", "Aim Offset", 0.0D, -0.5D, 0.5D, 0.05D)
+            .group("Aim")
+            .description("Moves the aim up or down, as a share of the target's height")
+            .build());
+        add(new IntSetting("turn-speed", "Turn Speed", (int) DihKillAuraRotation.TURN_SPEED, 10, 180, 2)
+            .group("Aim")
+            .description("Most degrees it turns per tick between attacks")
+            .build());
+
+        add(new RangeSetting("cps", "CPS", new ValueRange(CPS_MIN, CPS_MAX), 1, 20, 1)
+            .group("Timing")
+            .description("Clicks per second, picked anew each second between these")
+            .build());
+        add(new IntSetting("min-charge", "Min Charge", 100, 50, 100, 5)
+            .group("Timing")
+            .description("Attacks once the weapon cooldown is this full, in percent")
+            .build());
+        add(new BoolSetting("only-on-click", "Only On Click", false)
+            .group("Timing")
+            .description("Only works while you hold the attack key")
+            .build());
+        add(new BoolSetting("pause-in-gui", "Pause In GUI", false)
+            .group("Timing")
+            .description("Stops while a screen such as your inventory is open")
+            .build());
+    }
+
+    private static List<String> defaultHeldItems() {
+        List<String> ids = new ArrayList<>();
+        for (String material : List.of("wooden", "stone", "copper", "iron", "golden", "diamond", "netherite")) {
+            for (String kind : List.of("sword", "axe", "spear")) ids.add("minecraft:" + material + "_" + kind);
+        }
+        ids.add("minecraft:mace");
+        ids.add("minecraft:trident");
+        return ids;
     }
 
     @Override
@@ -245,6 +370,7 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
     @Override
     protected void onOptionValueChanged(String settingId) {
         if ("entities".equals(settingId)) cachedEntityListSource = null;
+        if ("held-items".equals(settingId)) cachedHeldItemSource = null;
         if ("auto-sword".equals(settingId) && !bool("auto-sword")) {
 
             if (previousSlot >= 0 && MC != null && MC.player != null
@@ -354,11 +480,12 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
 
         boolean inAttackWindow = postAttackWindow || attackImminentThisTick();
         boolean throttle = inAttackWindow && accuracyGovernor.speedAtRisk();
+        float turnSpeed = Math.max(1, integer("turn-speed"));
         DihKillAuraRotation.update(DihKillAuraRotation.OWNER_KILL_AURA, MC.player,
-            !inAttackWindow ? DihKillAuraRotation.TURN_SPEED
-                : throttle ? THROTTLED_MAX_YAW_STEP : WINDOW_MAX_YAW_STEP,
-            !inAttackWindow ? DihKillAuraRotation.TURN_SPEED
-                : throttle ? THROTTLED_MAX_PITCH_STEP : WINDOW_MAX_PITCH_STEP);
+            !inAttackWindow ? turnSpeed
+                : Math.min(turnSpeed, throttle ? THROTTLED_MAX_YAW_STEP : WINDOW_MAX_YAW_STEP),
+            !inAttackWindow ? turnSpeed
+                : Math.min(turnSpeed, throttle ? THROTTLED_MAX_PITCH_STEP : WINDOW_MAX_PITCH_STEP));
 
         if (canRun()) {
             attackPhase();
@@ -459,7 +586,32 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
             && !DihBlinkManager.holdsActionsWithoutMovement()
 
             && !AutoTotemModule.operationActive()
-            && !AutoArmorModule.operationActive();
+            && !AutoArmorModule.operationActive()
+            && !(bool("pause-in-gui") && MC.gui.screen() != null)
+            && (!bool("only-on-click") || DihKeyMappingBridge.of(MC.options.keyAttack).dih$isActuallyDown())
+            && (!bool("held-items-only") || holdsListedItem());
+    }
+
+    private boolean holdsListedItem() {
+        ItemStack stack = MC.player.getMainHandItem();
+        if (stack.isEmpty()) return false;
+        String id = BuiltInRegistries.ITEM.getKey(stack.getItem()).toString();
+        Set<String> ids = cachedHeldItemIds();
+        return ids.contains(id) || id.startsWith("minecraft:") && ids.contains(id.substring("minecraft:".length()));
+    }
+
+    private Set<String> cachedHeldItemIds() {
+        List<String> entries = list("held-items");
+        String source = String.join("|", entries);
+        if (source.equals(cachedHeldItemSource)) return cachedHeldItemIds;
+        Set<String> normalized = new LinkedHashSet<>();
+        for (String entry : entries) {
+            String value = entry.trim().toLowerCase(Locale.ROOT);
+            if (!value.isEmpty()) normalized.add(value);
+        }
+        cachedHeldItemSource = source;
+        cachedHeldItemIds = Set.copyOf(normalized);
+        return cachedHeldItemIds;
     }
 
     private static boolean missTimeActive() {
@@ -611,8 +763,32 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
 
         if (!entity.isAlive()) return false;
 
-        if (entity instanceof Player player && player.isSleeping()) return false;
+        if (bool("ignore-sleeping") && entity instanceof Player player && player.isSleeping()) return false;
+        if (!passesTargetFilters(entity)) return false;
         return matchesEntity(entity);
+    }
+
+    private boolean passesTargetFilters(LivingEntity entity) {
+        if (bool("ignore-invisible") && entity.isInvisible()) return false;
+        if (bool("ignore-naked") && entity instanceof Player player && wearsNoArmor(player)) return false;
+        if (bool("ignore-named") && !(entity instanceof Player) && entity.hasCustomName()) return false;
+        if (bool("ignore-babies") && entity.isBaby()) return false;
+        if (entity instanceof OwnableEntity pet && pet.getOwnerReference() != null) {
+            String pets = choice("ignore-pets");
+            if ("All".equals(pets)) return false;
+            if ("Yours".equals(pets) && pet.getOwnerReference().matches(MC.player)) return false;
+        }
+        int maxHealth = integer("max-health");
+        return maxHealth <= 0 || actualHealth(entity) <= maxHealth;
+    }
+
+    private static boolean wearsNoArmor(Player player) {
+        for (EquipmentSlot slot : EquipmentSlot.values()) {
+            if (slot.getType() == EquipmentSlot.Type.HUMANOID_ARMOR && !player.getItemBySlot(slot).isEmpty()) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private float crosshairAngleToEntity(Entity entity, Vec3 eyes) {
@@ -778,7 +954,9 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
     }
 
     private boolean aimVisibility(Vec3 eyes, Vec3 point) {
-        return hasLineOfSight(eyes, point, MC.player);
+        double walls = wallsRange();
+        return walls > 0.0D && eyes.distanceToSqr(point) <= walls * walls
+            || hasLineOfSight(eyes, point, MC.player);
     }
 
     private boolean hasLineOfSight(Vec3 eyes, Vec3 point, Entity entity) {
@@ -860,13 +1038,13 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
 
         DihRotationUtil.Rotation rotation = DihKillAuraRotation.getCurrentRotation();
         if (rotation == null) rotation = DihRotationUtil.playerRotation(MC.player);
-        EntityHitResult hit = isLookingAtEntity(target, rotation, interactionRange(), THROUGH_WALLS_RANGE);
+        EntityHitResult hit = isLookingAtEntity(target, rotation, interactionRange(), wallsRange());
         return hit != null && attackRangeIsInRange(stack, hit.getLocation());
     }
 
     private void attackTarget(Entity target, DihRotationUtil.Rotation rotation) {
         EntityHitResult attackHit =
-            isLookingAtEntity(target, rotation, interactionRange(), THROUGH_WALLS_RANGE);
+            isLookingAtEntity(target, rotation, interactionRange(), wallsRange());
 
         boolean isInRange = attackHit != null
             && attackRangeIsInRange(MC.player.getMainHandItem(), attackHit.getLocation());
@@ -1043,6 +1221,12 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
 
         if (postUseSuppressTicks > 0) return false;
 
+        if (bool("perfect-hit") && target instanceof LivingEntity immune
+            && immune.hurtTime > Math.max(0, integer("perfect-hit-lead"))
+            && !shieldBreakHitPending(immune)) {
+            return false;
+        }
+
         return !(bool("criticals") && target instanceof LivingEntity living
             && !MC.player.isFallFlying()
             && !shieldBreakHitPending(living)
@@ -1187,7 +1371,10 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
 
     private void playHitsound() {
         if (!bool("hitsound")) return;
-        MC.getSoundManager().play(SimpleSoundInstance.forUI(HITSOUND, 1.0F, 0.7F));
+        float volume = Mth.clamp(integer("hitsound-volume"), 0, 100) / 100.0F;
+        if (volume <= 0.0F) return;
+        float pitch = Mth.clamp(integer("hitsound-pitch"), 50, 200) / 100.0F;
+        MC.getSoundManager().play(SimpleSoundInstance.forUI(HITSOUND, pitch, volume));
     }
 
     private boolean wouldDoCriticalHit() {
@@ -1225,7 +1412,11 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
     }
 
     private double scanRange() {
-        return Math.max(interactionRange(), THROUGH_WALLS_RANGE) + scanAddition;
+        return Math.max(interactionRange(), wallsRange()) + scanAddition;
+    }
+
+    private double wallsRange() {
+        return Math.min(interactionRange(), Math.max(0.0D, decimal("walls-range")));
     }
 
     private boolean attackRangeIsInRange(ItemStack stack, Vec3 pos) {
@@ -1282,10 +1473,14 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
 
     private float nextCooldown = 1.0F;
 
+    private float minCharge() {
+        return Mth.clamp(integer("min-charge"), 50, 100) / 100.0F;
+    }
+
     private float clickOffsetTicks = rollClickOffsetTicks();
 
     private void newCooldown() {
-        nextCooldown = 1.0F;
+        nextCooldown = minCharge();
         clickOffsetTicks = rollClickOffsetTicks();
     }
 
@@ -1593,7 +1788,7 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
         if (target == null) return true;
         DihRotationUtil.Rotation rotation = DihKillAuraRotation.getCurrentRotation();
         if (rotation == null) rotation = DihRotationUtil.playerRotation(MC.player);
-        EntityHitResult hit = isLookingAtEntity(target, rotation, interactionRange(), THROUGH_WALLS_RANGE);
+        EntityHitResult hit = isLookingAtEntity(target, rotation, interactionRange(), wallsRange());
         return hit == null || !attackRangeIsInRange(MC.player.getMainHandItem(), hit.getLocation());
     }
 
