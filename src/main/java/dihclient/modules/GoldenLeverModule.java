@@ -20,6 +20,7 @@ import java.util.Set;
 
 public final class GoldenLeverModule extends Module {
     public static final int GOLD_TINT = 0xFFFFD24A;
+    private static GoldenLeverModule instance;
     private static volatile boolean active;
     private static volatile boolean femaleBody;
     private static volatile boolean femaleBodySelfOnly;
@@ -30,6 +31,14 @@ public final class GoldenLeverModule extends Module {
 
     public GoldenLeverModule() {
         super("golden-lever", "GoldenLever", ModuleCategory.MISC, "Renames and recolors vanilla levers.");
+        instance = this;
+        add(new StringSetting("lever-name", "Lever Name", "Golden Lever")
+            .group("Lever")
+            .description("Name shown when you hover a lever."));
+        add(new ChoiceSetting("name-color", "Name Color", "Gold",
+            "Gold", "Yellow", "White", "Red", "Green", "Aqua", "Blue", "Light Purple", "Gray")
+            .group("Lever")
+            .description("Color of the lever name."));
         add(new BoolSetting("female-body", "Female Body", false)
             .group("Appearance")
             .description("Shape player bodies."));
@@ -141,7 +150,26 @@ public final class GoldenLeverModule extends Module {
     }
 
     public static Component leverName() {
-        return Component.literal("Golden Lever").withStyle(ChatFormatting.GOLD);
+        GoldenLeverModule module = instance;
+        String name = module == null ? "" : module.text("lever-name");
+        if (name == null || name.isBlank()) name = "Golden Lever";
+        ChatFormatting color = module == null ? ChatFormatting.GOLD : colorByName(module.choice("name-color"));
+        return Component.literal(name).withStyle(color);
+    }
+
+    private static ChatFormatting colorByName(String name) {
+        if (name == null) return ChatFormatting.GOLD;
+        return switch (name) {
+            case "Yellow" -> ChatFormatting.YELLOW;
+            case "White" -> ChatFormatting.WHITE;
+            case "Red" -> ChatFormatting.RED;
+            case "Green" -> ChatFormatting.GREEN;
+            case "Aqua" -> ChatFormatting.AQUA;
+            case "Blue" -> ChatFormatting.BLUE;
+            case "Light Purple" -> ChatFormatting.LIGHT_PURPLE;
+            case "Gray" -> ChatFormatting.GRAY;
+            default -> ChatFormatting.GOLD;
+        };
     }
 
     public static void tintItemStackRenderState(ItemStackRenderState output) {

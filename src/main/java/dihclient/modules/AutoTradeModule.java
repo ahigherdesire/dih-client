@@ -56,25 +56,27 @@ public final class AutoTradeModule extends Module {
     public AutoTradeModule() {
         super("auto-trade", "AutoTrade", ModuleCategory.MISC,
             "Buys villager trades that match a rule, or rerolls a villager until one does.");
-        add(new ChoiceSetting("mode", "Mode", "Trade", "Trade", "Reroll")
+        add(new ChoiceSetting("mode", "Mode", "Trade", "Trade", "Reroll").group("General")
             .description("Trade: buy matching offers. Reroll: reroll the villager you look at until one matches, then lock it.").build());
-        add(new StringSetting("rule", "Match", "mending")
+        add(new StringSetting("rule", "Match", "mending").group("General")
             .description("mending, unbreaking3, sharpness 4-5, book, slot 2, item:bread or any.").build());
-        add(new StringSetting("profession", "Profession", "")
+        add(new StringSetting("profession", "Profession", "").group("General")
             .description("Only villagers with this job, e.g. librarian. Empty: any.").build());
-        add(new IntSetting("max-price", "Max Price", 0, 0, 64, 1)
+        add(new IntSetting("max-price", "Max Price", 0, 0, 64, 1).group("Limits")
             .description("Most emeralds to pay per purchase. 0: no limit.").build());
-        add(new IntSetting("budget", "Emerald Budget", 0, 0, 2304, 8)
+        add(new IntSetting("budget", "Emerald Budget", 0, 0, 2304, 8).group("Limits")
             .description("Most emeralds to spend while enabled. 0: no limit.").build());
-        add(new IntSetting("reserve", "Emerald Reserve", 0, 0, 2304, 8)
+        add(new IntSetting("reserve", "Emerald Reserve", 0, 0, 2304, 8).group("Limits")
             .description("Never spend below this many emeralds.").build());
-        add(new IntSetting("per-visit", "Per-Visit Cap", 0, 0, 64, 1)
+        add(new IntSetting("per-visit", "Per-Visit Cap", 0, 0, 64, 1).group("Limits")
             .description("Purchases per villager visit. 0: no limit.").build());
-        add(new IntSetting("restock-wait", "Restock Wait (s)", 300, 0, 1800, 30)
-            .description("Trade mode: seconds before visiting the same villager again.").build());
-        add(new BoolSetting("walk", "Walk To Villagers", true)
-            .description("Trade mode: walk to nearby villagers and open their trades.").build());
-        add(new BoolSetting("labels", "Offer Labels", true)
+        add(new IntSetting("restock-wait", "Restock Wait (s)", 300, 0, 1800, 30).group("Behavior")
+            .description("Trade mode: seconds before visiting the same villager again.")
+            .visibleWhen(() -> "Trade".equals(value("mode"))).build());
+        add(new BoolSetting("walk", "Walk To Villagers", true).group("Behavior")
+            .description("Trade mode: walk to nearby villagers and open their trades.")
+            .visibleWhen(() -> "Trade".equals(value("mode"))).build());
+        add(new BoolSetting("labels", "Offer Labels", true).group("Behavior")
             .description("Show each villager's best remembered offer above it (works with the module off).").build());
     }
 

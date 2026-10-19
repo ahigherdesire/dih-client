@@ -40,29 +40,53 @@ public final class TeamsModule extends Module {
     public TeamsModule() {
         super("teams", "Teams", ModuleCategory.MISC, "Friends and team detection.");
         instance = this;
-        add(new StringListSetting("friends", "Friends", "").playerNameList().build());
+        add(new StringListSetting("friends", "Friends", "").group("General")
+            .description("Players you treat as friends.").playerNameList().build());
         add(new BoolSetting("auto-teams", "Auto Teams", false)
-            .description("Detect teammates automatically.")
+            .group("General")
+            .description("Also treat likely teammates as friends automatically.")
+            .build());
+        add(new BoolSetting("team-by-color", "Team By Name Color", true)
+            .group("General")
+            .description("Count players whose name color matches yours as teammates.")
+            .visibleWhen(() -> bool("auto-teams"))
+            .build());
+        add(new BoolSetting("team-by-armor", "Team By Armor Dye", true)
+            .group("General")
+            .description("Count players whose dyed helmet matches yours as teammates.")
+            .visibleWhen(() -> bool("auto-teams"))
             .build());
         add(new BoolSetting("multi-bots", "Multi Bots", true)
-            .description("Count my bots as teammates")
+            .group("General")
+            .description("Count your own Multi bots as teammates.")
             .build());
         add(new BoolSetting("quick-add", "Quick Add", true)
-            .description("Add/remove with key.")
+            .group("General")
+            .description("Add or remove the player you look at with a key.")
             .build());
         add(new KeybindSetting("quick-add-bind", "Quick Add Key",
             DihBindUtil.encodeMouseButton(InputConstants.MOUSE_BUTTON_MIDDLE))
+            .group("General")
+            .description("Key that adds or removes the targeted player.")
             .visibleWhen(() -> bool("quick-add"))
             .build());
-        add(new BoolSetting("esp", "ESP", true).build());
-        add(new BoolSetting("tracers", "Tracers", true).build());
-        add(new BoolSetting("nametags", "Nametags", true).build());
+        add(new BoolSetting("esp", "ESP", true).group("Visuals")
+            .description("Draw boxes around friends.").build());
+        add(new BoolSetting("tracers", "Tracers", true).group("Visuals")
+            .description("Draw lines to friends.").build());
+        add(new BoolSetting("nametags", "Nametags", true).group("Visuals")
+            .description("Color friends' nametags.").build());
         add(new ColorSetting("friends-color", "Friends Color", DEFAULT_FRIENDS_COLOR)
+            .group("Visuals")
+            .description("Color used for friend visuals.")
             .visibleWhen(() -> bool("esp") || bool("tracers") || bool("nametags"))
             .build());
-        add(new BoolSetting("aimassist", "AimAssist", false).build());
-        add(new BoolSetting("killaura", "KillAura", false).build());
-        add(new BoolSetting("triggerbot", "TriggerBot", false).build());
+        add(new BoolSetting("aimassist", "AimAssist", false).group("Combat")
+            .description("Let AimAssist target friends.").build());
+        add(new BoolSetting("killaura", "KillAura", false).group("Combat")
+            .description("Let KillAura attack friends.").build());
+        add(new BoolSetting("triggerbot", "TriggerBot", false).group("Combat")
+            .description("Let TriggerBot attack friends.").build());
     }
 
     @Override
@@ -239,15 +263,20 @@ public final class TeamsModule extends Module {
 
         if (self.isAlliedTo(suspected)) return true;
 
-        var ownName = self.getDisplayName();
-        var theirName = suspected.getDisplayName();
-        var ownColor = ownName == null ? null : ownName.getStyle().getColor();
-        var theirColor = theirName == null ? null : theirName.getStyle().getColor();
-        if (ownColor != null && ownColor.equals(theirColor)) return true;
+        if (bool("team-by-color")) {
+            var ownName = self.getDisplayName();
+            var theirName = suspected.getDisplayName();
+            var ownColor = ownName == null ? null : ownName.getStyle().getColor();
+            var theirColor = theirName == null ? null : theirName.getStyle().getColor();
+            if (ownColor != null && ownColor.equals(theirColor)) return true;
+        }
 
-        Integer ownHelmet = dyedColor(self);
-        Integer theirHelmet = dyedColor(suspected);
-        return ownHelmet != null && ownHelmet.equals(theirHelmet);
+        if (bool("team-by-armor")) {
+            Integer ownHelmet = dyedColor(self);
+            Integer theirHelmet = dyedColor(suspected);
+            if (ownHelmet != null && ownHelmet.equals(theirHelmet)) return true;
+        }
+        return false;
     }
 
     private static Integer dyedColor(Player player) {

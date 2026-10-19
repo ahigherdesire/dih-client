@@ -55,20 +55,26 @@ public final class NameCensorModule extends Module {
     private static volatile boolean HIDE_ALL_SKINS;
     private static volatile boolean HIDE_SELF_SKIN;
     private static volatile boolean LEARN_AGGRESSIVELY;
+    private static volatile String ALIAS_STYLE = "Words";
+    private static final AtomicLong NUMBERED_ALIAS = new AtomicLong();
 
     private int lastSkinState;
 
     public NameCensorModule() {
         super("name-censor", "NameCensor", ModuleCategory.MISC, "Replaces player names with aliases.");
-        add(new BoolSetting("censor-self", "Censor Self", true).description("Hide your own name."));
-        add(new StringListSetting("names", "Names", "").description("Extra names to hide.").playerNameList());
-        add(new StringSetting("self-alias", "Self Alias", "").description("Your alias"));
-        add(new StringListSetting("custom-aliases", "Custom Aliases", "").description("name=alias pairs.").playerNameList());
-        add(new BoolSetting("censor-everyone", "Censor Everyone", false).description("Hide known player names."));
-        add(new BoolSetting("censor-everything", "Censor Everything", false).description("Aggressively hide username-shaped text."));
-        add(new BoolSetting("hide-skins-all", "Hide All Skins", false).description("Default skin for everyone."));
+        add(new BoolSetting("censor-self", "Censor Self", true).group("Names").description("Hide your own name."));
+        add(new BoolSetting("censor-everyone", "Censor Everyone", false).group("Names").description("Hide every known player name."));
+        add(new BoolSetting("censor-everything", "Censor Everything", false).group("Names")
+            .description("Aggressively hide any username-shaped text, even unknown names."));
+        add(new StringListSetting("names", "Names", "").group("Names").description("Extra names to always hide.").playerNameList());
 
-        add(new BoolSetting("hide-skin-self", "Hide My Skin", false).description("Your default skin")
+        add(new ChoiceSetting("alias-style", "Alias Style", "Words", "Words", "Numbered", "Hidden").group("Aliases")
+            .description("Words: themed words. Numbered: Player1, Player2. Hidden: a plain ***."));
+        add(new StringSetting("self-alias", "Self Alias", "").group("Aliases").description("A fixed alias for your own name."));
+        add(new StringListSetting("custom-aliases", "Custom Aliases", "").group("Aliases").description("name=alias pairs.").playerNameList());
+
+        add(new BoolSetting("hide-skins-all", "Hide All Skins", false).group("Skins").description("Show the default skin for everyone."));
+        add(new BoolSetting("hide-skin-self", "Hide My Skin", false).group("Skins").description("Show the default skin for yourself.")
                 .visibleWhen(() -> !Boolean.parseBoolean(value("hide-skins-all"))));
     }
 
@@ -157,6 +163,7 @@ public final class NameCensorModule extends Module {
         HIDE_ALL_SKINS = enabled && bool("hide-skins-all");
         HIDE_SELF_SKIN = enabled && bool("hide-skin-self");
         LEARN_AGGRESSIVELY = enabled && bool("censor-everything");
+        ALIAS_STYLE = enabled ? choice("alias-style") : "Words";
     }
 
     private static int skinState() {
@@ -622,6 +629,9 @@ public final class NameCensorModule extends Module {
     }
 
     private static String nextAlias() {
+        String style = ALIAS_STYLE;
+        if ("Numbered".equals(style)) return "Player" + NUMBERED_ALIAS.incrementAndGet();
+        if ("Hidden".equals(style)) return "***";
         synchronized (USED_ALIASES) {
             if (USED_ALIASES.size() >= CENSOR_WORDS.size()) return CENSOR_WORDS.get(RANDOM.nextInt(CENSOR_WORDS.size()));
             String alias;
