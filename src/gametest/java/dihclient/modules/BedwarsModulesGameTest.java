@@ -7,6 +7,7 @@ import net.fabricmc.fabric.api.client.gametest.v1.context.TestSingleplayerContex
 import net.minecraft.client.CameraType;
 import net.minecraft.client.gui.screens.TitleScreen;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.projectile.hurtingprojectile.AbstractHurtingProjectile;
@@ -29,10 +30,11 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 
 /**
- * The Beta 7d bedwars kit in a real client: BedESP reads a wool + end stone defence, Danger
+ * The Beta 7d bedwars kit in a real client: BedESP reads a wool + end stone defence and labels the bed, Danger
  * warns about a fireball and with Deflect hits one back, Clutch saves a fall into a hole dug
  * through the bedrock, and GIF animates the HUD image, cape and shield from a generated GIF.
  * Screenshots of each land in the run's screenshots folder.
@@ -102,8 +104,43 @@ public final class BedwarsModulesGameTest implements FabricClientGameTest {
             throw new AssertionError("the way in should break at least end stone + wool, got path=" + pathBlocks
                 + " break=" + breakTicks + " total=" + totalTicks);
         }
+        bedLabel(bed, breakTicks, layerBlocks);
         context.takeScreenshot("bedwars-bed-esp");
-        context.runOnClient(client -> ModuleRegistry.get("bed-esp").setEnabled(false));
+
+        // The labels alone still keep the HUD overlay pass alive.
+        context.runOnClient(client -> ModuleRegistry.get("bed-esp").setValue("hud", "false"));
+        boolean labelsDrawn = context.computeOnClient(client -> BedEspModule.hasHudWork());
+        if (!labelsDrawn) throw new AssertionError("BedESP labels should draw with the HUD summary off");
+        context.waitTicks(2);
+        context.takeScreenshot("bedwars-bed-esp-labels");
+        context.runOnClient(client -> {
+            Module bedEsp = ModuleRegistry.get("bed-esp");
+            bedEsp.setValue("hud", "true");
+            bedEsp.setEnabled(false);
+        });
+    }
+
+    /** The floating label: "Red Bed  <break time>", then end stone (outer) before wool (inner) with their counts. */
+    private static void bedLabel(Object bed, int breakTicks, int layerBlocks) {
+        List<String> lines = ((List<?>) call(bed, "label")).stream()
+            .map(line -> ((Component) line).getString()).toList();
+        System.out.println(TAG + "bed label " + lines);
+        String time = String.format(Locale.ROOT, "%.1fs", breakTicks / 20.0);
+        if (!lines.get(0).equals("Red Bed  " + time)) throw new AssertionError("label header should be 'Red Bed  " + time + "': " + lines);
+        List<?> materials = (List<?>) call(bed, "materials");
+        if (materials.size() != 2) throw new AssertionError("the defence is end stone and wool only: " + lines);
+        if (!call(materials.get(0), "name").equals("End Stone") || !call(materials.get(1), "name").equals("Wool")) {
+            throw new AssertionError("materials should run outermost first, end stone then wool: " + lines);
+        }
+        int wool = (int) call(materials.get(1), "count");
+        int endStone = (int) call(materials.get(0), "count");
+        if (wool != 22) throw new AssertionError("the wool box holds 22 blocks around the bed, label says " + wool);
+        if (wool + endStone != layerBlocks) {
+            throw new AssertionError("label counts " + (wool + endStone) + " should match the " + layerBlocks + " layer blocks");
+        }
+        if (!lines.get(1).equals("End Stone ×" + endStone) || !lines.get(2).equals("Wool ×22")) {
+            throw new AssertionError("material lines should read 'End Stone ×" + endStone + "', 'Wool ×22': " + lines);
+        }
     }
 
     /** A fireball flying straight at the player: warned about first, then hit back with Deflect. */

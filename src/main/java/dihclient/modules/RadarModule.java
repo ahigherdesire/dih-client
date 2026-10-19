@@ -24,20 +24,39 @@ public final class RadarModule extends Module {
 
     public RadarModule() {
         super("radar", "Radar", ModuleCategory.RENDER, "Arrows around the crosshair pointing at nearby entities.");
-        add(new ChoiceSetting("targets", "Targets", "Players", "Players", "Players + Hostile", "All Living"));
-        add(new IntSetting("max-distance", "Max Distance", 128, 8, 512, 8).unit("blocks"));
-        add(new IntSetting("radius", "Radius", 40, 10, 200, 1).description("Distance of the arrows from the crosshair."));
-        add(new IntSetting("width", "Width", 8, 2, 40, 1).group("Arrow"));
-        add(new IntSetting("height", "Height", 10, 2, 40, 1).group("Arrow"));
+        add(new ChoiceSetting("targets", "Targets", "Players", "Players", "Players + Hostile", "All Living")
+            .group("General").description("Which entities get an arrow."));
+        add(new IntSetting("max-distance", "Max Distance", 128, 8, 512, 8).unit("blocks").group("General")
+            .description("Farthest entity shown."));
+        add(new IntSetting("y-range", "Height Range", 0, 0, 256, 4).unit("blocks").group("General")
+            .description("Skips entities this far above or below you; 0 is no limit."));
+        add(new BoolSetting("ignore-invisible", "Ignore Invisible", false).group("General")
+            .description("Skips invisible entities."));
+        add(new BoolSetting("ignore-friends", "Ignore Friends", false).group("General")
+            .description("Skips friends and teammates."));
+
+        add(new IntSetting("radius", "Radius", 40, 10, 200, 1).group("Arrow").description("Distance of the arrows from the crosshair."));
+        add(new IntSetting("width", "Width", 8, 2, 40, 1).group("Arrow").description("Arrow width in pixels."));
+        add(new IntSetting("height", "Height", 10, 2, 40, 1).group("Arrow").description("Arrow length in pixels."));
         add(new IntSetting("notch", "Notch", 2, 0, 20, 1).group("Arrow").description("Depth of the cut in the arrow's tail."));
-        add(new ChoiceSetting("tilt", "Tilt", "By Pitch", "None", "Static", "By Pitch")
+        add(new BoolSetting("distance-scale", "Distance Scale", false).group("Arrow")
+            .description("Shrinks arrows for far entities, down to half size."));
+        add(new ChoiceSetting("tilt", "Tilt", "By Pitch", "None", "Static", "By Pitch").group("Arrow")
             .description("Flatten the ring as if lying on the ground."));
-        add(new IntSetting("tilt-angle", "Tilt Angle", 45, 5, 90, 1).unit("deg")
-            .visibleWhen(() -> "Static".equals(choice("tilt"))));
-        add(new ChoiceSetting("color-mode", "Color", "Distance", "Distance", "Health", "Static"));
-        add(new ColorSetting("color", "Static Color", 0xC8FFFFFF).visibleWhen(() -> "Static".equals(choice("color-mode"))));
-        add(new BoolSetting("fade", "Fade", true).description("Fade arrows for far entities."));
-        add(new BoolSetting("friend-color", "Friend Color", true).description("Draw Teams friends green."));
+        add(new IntSetting("tilt-angle", "Tilt Angle", 45, 5, 90, 1).unit("deg").group("Arrow")
+            .description("How much the ring is flattened.").visibleWhen(() -> "Static".equals(choice("tilt"))));
+
+        add(new ChoiceSetting("color-mode", "Color", "Distance", "Distance", "Health", "Static").group("Colors")
+            .description("What the arrow colour shows."));
+        add(new ColorSetting("color", "Static Color", 0xC8FFFFFF).group("Colors").description("Arrow colour.")
+            .visibleWhen(() -> "Static".equals(choice("color-mode"))));
+        add(new BoolSetting("fade", "Fade", true).group("Colors").description("Fade arrows for far entities."));
+        add(new IntSetting("fade-strength", "Fade Strength", 70, 10, 100, 5).unit("%").group("Colors")
+            .description("How faint the farthest arrows get.").visibleWhen(() -> bool("fade")));
+        add(new BoolSetting("friend-color", "Friend Color", true).group("Colors")
+            .description("Draw Teams friends in their own colour."));
+        add(new ColorSetting("friend-color-value", "Friends", 0xFF55FF55).group("Colors").description("Colour for friends.")
+            .visibleWhen(() -> bool("friend-color")));
     }
 
     @Override
@@ -52,6 +71,13 @@ public final class RadarModule extends Module {
         String colorMode = choice("color-mode");
         boolean fade = bool("fade");
         boolean friendColor = bool("friend-color");
+        int friendArgb = ModuleRenderUtil.color(this, "friend-color-value", 0xFF55FF55);
+        double fadeStrength = integer("fade-strength") / 100.0D;
+        int yRange = integer("y-range");
+        boolean ignoreInvisible = bool("ignore-invisible");
+        boolean ignoreFriends = bool("ignore-friends");
+        boolean distanceScale = bool("distance-scale");
+        double py = MC.player.getY();
         int staticColor = ModuleRenderUtil.color(this, "color", 0xC8FFFFFF);
         int width = integer("width"), height = integer("height"), notch = Math.min(integer("notch"), height);
 
@@ -65,21 +91,28 @@ public final class RadarModule extends Module {
             for (Entity entity : MC.level.entitiesForRendering()) {
                 if (!(entity instanceof LivingEntity living) || entity == MC.player || !living.isAlive()) continue;
                 if (!isTarget(entity, targets) || DihAntiBot.suppress(entity)) continue;
+                if (ignoreInvisible && entity.isInvisible()) continue;
+                if (ignoreFriends && TeamsModule.isFriendOrTeam(entity)) continue;
+                if (yRange > 0 && Math.abs(entity.getY() - py) > yRange) continue;
                 double ex = Mth.lerp(partialTick, entity.xOld, entity.getX());
                 double ez = Mth.lerp(partialTick, entity.zOld, entity.getZ());
                 double dx = ex - px, dz = ez - pz;
                 double distance = Math.sqrt(dx * dx + dz * dz);
                 if (distance > maxDist || distance < 0.5D) continue;
-                int color = friendColor && TeamsModule.isFriendOrTeam(entity) ? 0xFF55FF55 : switch (colorMode) {
+                int color = friendColor && TeamsModule.isFriendOrTeam(entity) ? friendArgb : switch (colorMode) {
                     case "Health" -> healthColor(living.getHealth() / Math.max(1.0F, living.getMaxHealth()));
                     case "Static" -> staticColor;
                     default -> ModuleRenderUtil.distanceHueColor(distance, maxDist / 2.0D);
                 };
-                if (fade) color = ModuleWorldHooks.withAlpha(color, 1.0D - 0.7D * distance / maxDist);
+                if (fade) color = ModuleWorldHooks.withAlpha(color, 1.0D - fadeStrength * distance / maxDist);
                 if (color == 0) continue;
                 pose.pushMatrix();
                 pose.rotate((float) (Math.atan2(dz, dx) + Math.PI / 2.0D));
                 pose.translate(0.0F, radius);
+                if (distanceScale) {
+                    float scale = (float) (1.0D - 0.5D * distance / maxDist);
+                    pose.scale(scale, scale);
+                }
                 arrow(context, width, height, notch, color);
                 pose.popMatrix();
             }

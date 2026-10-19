@@ -22,8 +22,8 @@ public final class HoleEspModule extends Module implements DihHoleScanner.Subscr
     private static final String MODE_BOX = "Box";
     private static final String MODE_GLOWING_PLANE = "GlowingPlane";
 
-    private static final double FACE_ALPHA = 50.0 / 255.0;
-    private static final double OUTLINE_ALPHA = 100.0 / 255.0;
+    private static final int FACE_ALPHA = 50;
+    private static final int OUTLINE_ALPHA = 100;
 
     private static final float LINE_WIDTH = 1.5f;
 
@@ -47,30 +47,55 @@ public final class HoleEspModule extends Module implements DihHoleScanner.Subscr
     private int colorOneByOne = 0xFFF7381B;
     private int colorOneByTwo = 0xFF35BACC;
     private int colorTwoByTwo = 0xFFF7CF1B;
+    private double fillAlpha = FACE_ALPHA / 255.0;
+    private double outlineAlpha = OUTLINE_ALPHA / 255.0;
+    private float lineWidth = LINE_WIDTH;
+    private boolean hideOwn;
+    private boolean showBedrock = true;
+    private boolean showOneByOne = true;
+    private boolean showOneByTwo = true;
+    private boolean showTwoByTwo = true;
 
     private boolean subscribed;
 
     public HoleEspModule() {
         super("hole-esp", "HoleESP", ModuleCategory.RENDER, "Highlights safe holes.");
         add(new ChoiceSetting("mode", "Mode", MODE_GLOWING_PLANE, MODE_BOX, MODE_GLOWING_PLANE)
-            .description("Full box or glowing floor.").build());
-
+            .group("General").description("Full box or glowing floor.").build());
         add(new IntSetting("horizontal-distance", "Horizontal Distance", 32, 4, 128, 1)
-            .description("Scan radius on X/Z.").build());
+            .group("General").description("Scan radius on X/Z.").build());
         add(new IntSetting("vertical-distance", "Vertical Distance", 8, 4, 64, 1)
-            .description("Scan radius on Y.").build());
-        add(new DoubleSetting("distance-fade", "Distance Fade", 0.3, 0.0, 1.0, 0.05)
-            .description("Fraction of radius that fades.").build());
-        add(new BoolSetting("fill", "Fill", true)
-            .description("Draw the translucent face.").build());
-        add(new BoolSetting("outline", "Outline", true)
-            .description("Draw the edges.").build());
-        add(new DoubleSetting("glow-height", "Glow Height", 0.7, 0.0, 1.0, 0.05)
-            .description("Height of the fading walls.")
-            .visibleWhen(() -> !MODE_BOX.equals(choice("mode"))).build());
-
+            .group("General").description("Scan radius on Y.").build());
         add(new IntSetting("max-holes", "Max Holes", 512, 16, 4096, 16)
-            .description("Most holes drawn at once.").build());
+            .group("General").description("Most holes drawn at once.").build());
+        add(new BoolSetting("hide-own", "Hide Own Hole", false)
+            .group("General").description("Doesn't draw the hole you are standing in.").build());
+
+        add(new BoolSetting("show-1x1-bedrock", "1x1 Bedrock", true)
+            .group("Holes").description("Show one-block holes walled in bedrock.").build());
+        add(new BoolSetting("show-1x1", "1x1", true)
+            .group("Holes").description("Show other one-block holes.").build());
+        add(new BoolSetting("show-1x2", "1x2", true)
+            .group("Holes").description("Show two-block holes.").build());
+        add(new BoolSetting("show-2x2", "2x2", true)
+            .group("Holes").description("Show four-block holes.").build());
+
+        add(new BoolSetting("fill", "Fill", true)
+            .group("Render").description("Draw the translucent face.").build());
+        add(new IntSetting("fill-alpha", "Fill Alpha", FACE_ALPHA, 5, 255, 5)
+            .group("Render").description("Fill strength out of 255.").visibleWhen(() -> bool("fill")).build());
+        add(new BoolSetting("outline", "Outline", true)
+            .group("Render").description("Draw the edges.").build());
+        add(new IntSetting("outline-alpha", "Outline Alpha", OUTLINE_ALPHA, 5, 255, 5)
+            .group("Render").description("Edge strength out of 255.").visibleWhen(() -> bool("outline")).build());
+        add(new DoubleSetting("line-width", "Line Width", LINE_WIDTH, 1.0, 6.0, 0.25)
+            .group("Render").description("Edge thickness.").visibleWhen(() -> bool("outline")).build());
+        add(new DoubleSetting("glow-height", "Glow Height", 0.7, 0.0, 1.0, 0.05)
+            .group("Render").description("Height of the fading walls.")
+            .visibleWhen(() -> !MODE_BOX.equals(choice("mode"))).build());
+        add(new DoubleSetting("distance-fade", "Distance Fade", 0.3, 0.0, 1.0, 0.05)
+            .group("Render").description("Fraction of radius that fades.").build());
+
         add(new ColorSetting("color-1x1-bedrock", "1x1 Bedrock", 0xFF19C15C)
             .group("Colors").description("A 1x1 walled in bedrock.").build());
         add(new ColorSetting("color-1x1", "1x1", 0xFFF7381B)
@@ -158,6 +183,24 @@ public final class HoleEspModule extends Module implements DihHoleScanner.Subscr
         colorOneByOne = ModuleRenderUtil.color(this, "color-1x1", 0xFFF7381B);
         colorOneByTwo = ModuleRenderUtil.color(this, "color-1x2", 0xFF35BACC);
         colorTwoByTwo = ModuleRenderUtil.color(this, "color-2x2", 0xFFF7CF1B);
+        fillAlpha = integer("fill-alpha") / 255.0;
+        outlineAlpha = integer("outline-alpha") / 255.0;
+        lineWidth = (float) decimal("line-width");
+        hideOwn = bool("hide-own");
+        showBedrock = bool("show-1x1-bedrock");
+        showOneByOne = bool("show-1x1");
+        showOneByTwo = bool("show-1x2");
+        showTwoByTwo = bool("show-2x2");
+    }
+
+    private boolean shows(DihHoleScanner.Hole hole, Vec3 player) {
+        boolean type = switch (hole.type()) {
+            case ONE_BY_ONE_BEDROCK -> showBedrock;
+            case ONE_BY_ONE -> showOneByOne;
+            case ONE_BY_TWO -> showOneByTwo;
+            case TWO_BY_TWO -> showTwoByTwo;
+        };
+        return type && !(hideOwn && hole.box().inflate(0.0, 1.0, 0.0).contains(player));
     }
 
     private static HoleEspModule instance() {
@@ -206,10 +249,11 @@ public final class HoleEspModule extends Module implements DihHoleScanner.Subscr
         int drawn = 0;
         for (DihHoleScanner.Hole hole : holes) {
             if (drawn >= maxHoles) break;
+            if (!shows(hole, player)) continue;
             double fade = fade(hole.pos(), player);
             if (fade <= 0.0) continue;
             drawn++;
-            int color = withAlpha(colorFor(hole.type()), FACE_ALPHA * fade);
+            int color = withAlpha(colorFor(hole.type()), fillAlpha * fade);
             if (color == 0) continue;
             AABB box = hole.box().move(-camera.x, -camera.y, -camera.z);
             if (glowingPlane) {
@@ -229,16 +273,17 @@ public final class HoleEspModule extends Module implements DihHoleScanner.Subscr
         int drawn = 0;
         for (DihHoleScanner.Hole hole : holes) {
             if (drawn >= maxHoles) break;
+            if (!shows(hole, player)) continue;
             double fade = fade(hole.pos(), player);
             if (fade <= 0.0) continue;
             drawn++;
-            int color = withAlpha(colorFor(hole.type()), OUTLINE_ALPHA * fade);
+            int color = withAlpha(colorFor(hole.type()), outlineAlpha * fade);
             if (color == 0) continue;
             AABB box = hole.box().move(-camera.x, -camera.y, -camera.z);
             if (glowingPlane) {
-                footprint(pose, buffer, box, box.minY + LIFT, color);
+                footprint(pose, buffer, box, box.minY + LIFT, color, lineWidth);
             } else {
-                edges(pose, buffer, box.inflate(INFLATE), color);
+                edges(pose, buffer, box.inflate(INFLATE), color, lineWidth);
             }
         }
         DihPerf.end("frame.holeEspOutline", perf);
@@ -295,28 +340,28 @@ public final class HoleEspModule extends Module implements DihHoleScanner.Subscr
             x2, bottomY, z2, bottom, x1, bottomY, z1, bottom);
     }
 
-    private static void footprint(PoseStack.Pose pose, VertexConsumer buffer, AABB box, double y, int color) {
-        DihWorldGeometry.line(pose, buffer, box.minX, y, box.minZ, box.maxX, y, box.minZ, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, box.maxX, y, box.minZ, box.maxX, y, box.maxZ, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, box.maxX, y, box.maxZ, box.minX, y, box.maxZ, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, box.minX, y, box.maxZ, box.minX, y, box.minZ, color, LINE_WIDTH);
+    private static void footprint(PoseStack.Pose pose, VertexConsumer buffer, AABB box, double y, int color, float width) {
+        DihWorldGeometry.line(pose, buffer, box.minX, y, box.minZ, box.maxX, y, box.minZ, color, width);
+        DihWorldGeometry.line(pose, buffer, box.maxX, y, box.minZ, box.maxX, y, box.maxZ, color, width);
+        DihWorldGeometry.line(pose, buffer, box.maxX, y, box.maxZ, box.minX, y, box.maxZ, color, width);
+        DihWorldGeometry.line(pose, buffer, box.minX, y, box.maxZ, box.minX, y, box.minZ, color, width);
     }
 
-    private static void edges(PoseStack.Pose pose, VertexConsumer buffer, AABB box, int color) {
+    private static void edges(PoseStack.Pose pose, VertexConsumer buffer, AABB box, int color, float width) {
         double x1 = box.minX, y1 = box.minY, z1 = box.minZ;
         double x2 = box.maxX, y2 = box.maxY, z2 = box.maxZ;
-        DihWorldGeometry.line(pose, buffer, x1, y1, z1, x2, y1, z1, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, x2, y1, z1, x2, y1, z2, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, x2, y1, z2, x1, y1, z2, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, x1, y1, z2, x1, y1, z1, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, x1, y2, z1, x2, y2, z1, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, x2, y2, z1, x2, y2, z2, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, x2, y2, z2, x1, y2, z2, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, x1, y2, z2, x1, y2, z1, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, x1, y1, z1, x1, y2, z1, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, x2, y1, z1, x2, y2, z1, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, x2, y1, z2, x2, y2, z2, color, LINE_WIDTH);
-        DihWorldGeometry.line(pose, buffer, x1, y1, z2, x1, y2, z2, color, LINE_WIDTH);
+        DihWorldGeometry.line(pose, buffer, x1, y1, z1, x2, y1, z1, color, width);
+        DihWorldGeometry.line(pose, buffer, x2, y1, z1, x2, y1, z2, color, width);
+        DihWorldGeometry.line(pose, buffer, x2, y1, z2, x1, y1, z2, color, width);
+        DihWorldGeometry.line(pose, buffer, x1, y1, z2, x1, y1, z1, color, width);
+        DihWorldGeometry.line(pose, buffer, x1, y2, z1, x2, y2, z1, color, width);
+        DihWorldGeometry.line(pose, buffer, x2, y2, z1, x2, y2, z2, color, width);
+        DihWorldGeometry.line(pose, buffer, x2, y2, z2, x1, y2, z2, color, width);
+        DihWorldGeometry.line(pose, buffer, x1, y2, z2, x1, y2, z1, color, width);
+        DihWorldGeometry.line(pose, buffer, x1, y1, z1, x1, y2, z1, color, width);
+        DihWorldGeometry.line(pose, buffer, x2, y1, z1, x2, y2, z1, color, width);
+        DihWorldGeometry.line(pose, buffer, x2, y1, z2, x2, y2, z2, color, width);
+        DihWorldGeometry.line(pose, buffer, x1, y1, z2, x1, y2, z2, color, width);
     }
 
     private static void fillBox(PoseStack.Pose pose, VertexConsumer buffer, AABB box, int color) {

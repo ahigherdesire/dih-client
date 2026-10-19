@@ -111,7 +111,12 @@ public final class ModuleOreSim {
     }
 
     static float fillAlpha(Module xray) {
-        return 0.30f;
+        if (xray == null) return 0.30f;
+        try {
+            return Math.max(0, Math.min(100, Integer.parseInt(xray.value("fill-opacity")))) / 100.0f;
+        } catch (NumberFormatException ignored) {
+            return 0.30f;
+        }
     }
 
     private record Selection(String value, Set<Block> blocks, List<String> nonOreIds, int mask) {

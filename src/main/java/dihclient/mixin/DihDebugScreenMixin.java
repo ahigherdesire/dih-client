@@ -23,7 +23,7 @@ public abstract class DihDebugScreenMixin {
         at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/gui/components/debug/DebugScreenDisplayer;addToGroup(Lnet/minecraft/resources/Identifier;Ljava/util/Collection;)V"))
     private Collection<String> dih$fakeF3Coords(Collection<String> lines) {
-        if (!DihFakeCoords.active()) return lines;
+        if (!DihFakeCoords.spoofsDebug()) return lines;
         Entity cam = Minecraft.getInstance().getCameraEntity();
         if (cam == null) return lines;
         double[] f = DihFakeCoords.apply(cam.getX(), cam.getY(), cam.getZ());

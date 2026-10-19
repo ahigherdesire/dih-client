@@ -328,7 +328,13 @@ public final class ModuleRenderUtil {
     }
 
     public static int tracerColor(Entity entity) {
-        return entityColor(tracerSnapshot(), entity, 0xCCFFFFFF);
+        EntityRenderSnapshot snapshot = tracerSnapshot();
+        return withAlphaMultiplier(entityColor(snapshot, entity, 0xCCFFFFFF), snapshot.opacity());
+    }
+
+    /** Where on the entity tracer lines end: 0 feet, 0.5 body, 1 head. */
+    public static double tracerTargetHeight() {
+        return tracerSnapshot().targetHeight();
     }
 
     public static int espColor(Entity entity) {
@@ -353,7 +359,7 @@ public final class ModuleRenderUtil {
             return;
         }
 
-        if (snapshot.hitEnabled() && dihclient.util.DihChamsHit.isFlashing(entity)) {
+        if (snapshot.hitEnabled() && dihclient.util.DihChamsHit.isFlashing(entity, snapshot.hitDurationMs())) {
             int hit = snapshot.hitColor() | 0xFF000000;
             holder.dih$setChams(true, hit, hit);
             return;
@@ -364,16 +370,28 @@ public final class ModuleRenderUtil {
             return;
         }
         int alpha = Math.round(255f * Math.max(0f, Math.min(100f, snapshot.opacity())) / 100f);
+        int visible = snapshot.visibleColor();
+        int occluded = snapshot.occludedColor();
+        if (snapshot.friendColor() && TeamsModule.isFriendOrTeam(entity)) {
+            visible = occluded = TeamsModule.friendsColor();
+        } else if (snapshot.rainbowCycleMs() > 0L) {
+            long cycle = snapshot.rainbowCycleMs();
+            float hue = (System.currentTimeMillis() % cycle) / (float) cycle;
+            visible = net.minecraft.util.Mth.hsvToRgb(hue, 0.8F, 1.0F);
+            occluded = net.minecraft.util.Mth.hsvToRgb((hue + 0.5F) % 1.0F, 0.8F, 1.0F);
+        }
         holder.dih$setChams(true,
-            (alpha << 24) | (snapshot.visibleColor() & 0xFFFFFF),
-            (alpha << 24) | (snapshot.occludedColor() & 0xFFFFFF));
+            (alpha << 24) | (visible & 0xFFFFFF),
+            (alpha << 24) | (occluded & 0xFFFFFF));
     }
 
     private static boolean shouldRenderChams(ChamsSnapshot snapshot, Entity entity) {
         if (snapshot == null || !snapshot.enabled()) return false;
         if (MC == null || MC.player == null || entity == null) return false;
-        if (entity == MC.player) return false;
+        if (entity == MC.player && !snapshot.self()) return false;
         if (DihAntiBot.suppress(entity)) return false;
+        if (snapshot.ignoreFriends() && TeamsModule.isFriendOrTeam(entity)) return false;
+        if (snapshot.ignoreInvisible() && entity.isInvisible()) return false;
         if (entity == MC.getCameraEntity() && MC.options.getCameraType().isFirstPerson()) return false;
         Vec3 camera = MC.gameRenderer.mainCamera().position();
         if (!entity.shouldRender(camera.x, camera.y, camera.z)) return false;
@@ -533,6 +551,7 @@ public final class ModuleRenderUtil {
         if (DihAntiBot.suppress(entity)) return false;
 
         if (TeamsModule.isFriendOrTeam(entity) && !snapshot.friendsEnabled()) return false;
+        if (snapshot.ignoreInvisible() && entity.isInvisible()) return false;
         if (entity == MC.getCameraEntity() && MC.options.getCameraType().isFirstPerson()) return false;
         Vec3 camera = MC.gameRenderer.mainCamera().position();
         if (!entity.shouldRender(camera.x, camera.y, camera.z)) return false;
@@ -550,6 +569,8 @@ public final class ModuleRenderUtil {
         if (snapshot == null || !snapshot.enabled()) return false;
         if (MC == null || MC.player == null || entity == null) return false;
         if (entity.getItem() == null || entity.getItem().isEmpty()) return false;
+        if (entity.getItem().getCount() < snapshot.minCount()) return false;
+        if (snapshot.enchantedOnly() && !entity.getItem().isEnchanted()) return false;
         Vec3 camera = MC.gameRenderer.mainCamera().position();
         if (!entity.shouldRender(camera.x, camera.y, camera.z)) return false;
         double maxDistance = snapshot.maxDistance();
@@ -632,6 +653,13 @@ public final class ModuleRenderUtil {
             Boolean.parseBoolean(module.value("hit-color")),
             color(module, "hit-color-value", 0xFFFF3B3B),
             Boolean.parseBoolean(module.value("draw-armor")),
+            Boolean.parseBoolean(module.value("self")),
+            Boolean.parseBoolean(module.value("ignore-friends")),
+            Boolean.parseBoolean(module.value("ignore-invisible")),
+            Boolean.parseBoolean(module.value("friend-color")),
+            Boolean.parseBoolean(module.value("rainbow"))
+                ? Math.max(500L, Math.round(parseDouble(module.value("rainbow-speed"), 4.0) * 1000.0)) : 0L,
+            Math.max(50L, (long) parseDouble(module.value("hit-duration"), 500.0)),
             new java.util.concurrent.ConcurrentHashMap<>()
         );
     }
@@ -680,9 +708,23 @@ public final class ModuleRenderUtil {
             Set.copyOf(paths),
             color(module, "color", 0xCCFFD76A),
             !"Static".equals(module.value("color-mode")),
+            Math.max(1, parseInt(module.value("min-count"), 1)),
+            Boolean.parseBoolean(module.value("enchanted-only")),
+            Boolean.parseBoolean(module.value("tracers")),
+            (float) Math.max(0.5, Math.min(8.0, parseDouble(module.value("tracer-width"), 2.0))),
             new java.util.concurrent.ConcurrentHashMap<>(),
             new java.util.concurrent.ConcurrentHashMap<>()
         );
+    }
+
+    /** Whether ItemESP also draws tracer lines, and how thick. */
+    public static boolean itemEspTracers() {
+        ItemEspSnapshot snapshot = itemEspSnapshot();
+        return snapshot.enabled() && snapshot.tracers();
+    }
+
+    public static float itemEspTracerWidth() {
+        return itemEspSnapshot().tracerWidth();
     }
 
     private static EntityRenderSnapshot buildEntityRenderSnapshot(String moduleId, int revision, boolean hidden, boolean useMaxDistance) {
@@ -705,7 +747,7 @@ public final class ModuleRenderUtil {
             false,
             true,
             module.value("mode"),
-            useMaxDistance ? parseDouble(module.value("max-distance"), 256.0) : 0.0,
+            parseDouble(module.value("max-distance"), useMaxDistance ? 256.0 : 0.0),
             parseDouble(module.value("fade-distance"), 3.0),
             Set.copyOf(ids),
             Set.copyOf(paths),
@@ -719,6 +761,13 @@ public final class ModuleRenderUtil {
             parseDouble(module.value("color-distance"), 40.0),
             TeamsModule.visualTargetsFriends(moduleId),
             TeamsModule.friendsColor(),
+            Boolean.parseBoolean(module.value("ignore-invisible")),
+            Math.max(0.0, Math.min(100.0, parseDouble(module.value("opacity"), 100.0))) / 100.0,
+            switch (String.valueOf(module.value("target-point"))) {
+                case "Body" -> 0.5;
+                case "Head" -> 1.0;
+                default -> 0.0;
+            },
             new java.util.concurrent.ConcurrentHashMap<>()
         );
     }
@@ -1136,6 +1185,9 @@ public final class ModuleRenderUtil {
         double colorDistance,
         boolean friendsEnabled,
         int friendsColor,
+        boolean ignoreInvisible,
+        double opacity,
+        double targetHeight,
 
         java.util.concurrent.ConcurrentHashMap<net.minecraft.world.entity.EntityType<?>, Boolean> matchCache
     ) {
@@ -1160,6 +1212,9 @@ public final class ModuleRenderUtil {
                 40.0,
                 true,
                 TeamsModule.DEFAULT_FRIENDS_COLOR,
+                false,
+                1.0,
+                0.0,
                 new java.util.concurrent.ConcurrentHashMap<>()
             );
         }
@@ -1179,11 +1234,18 @@ public final class ModuleRenderUtil {
         boolean hitEnabled,
         int hitColor,
         boolean drawArmor,
+        boolean self,
+        boolean ignoreFriends,
+        boolean ignoreInvisible,
+        boolean friendColor,
+        long rainbowCycleMs,
+        long hitDurationMs,
         java.util.concurrent.ConcurrentHashMap<net.minecraft.world.entity.EntityType<?>, Boolean> matchCache
     ) {
         static ChamsSnapshot inactive(int revision, boolean hidden) {
             return new ChamsSnapshot(revision, hidden, false, false, 0.0,
                 Set.of(), Set.of(), 0xFF35FF5B, 0xFFB030FF, 100, true, 0xFFFF3B3B, true,
+                false, false, false, false, 0L, 500L,
                 new java.util.concurrent.ConcurrentHashMap<>());
         }
     }
@@ -1200,6 +1262,10 @@ public final class ModuleRenderUtil {
         Set<String> itemPaths,
         int color,
         boolean dynamicColor,
+        int minCount,
+        boolean enchantedOnly,
+        boolean tracers,
+        float tracerWidth,
 
         java.util.concurrent.ConcurrentHashMap<Item, Integer> rgbCache,
 
@@ -1218,6 +1284,10 @@ public final class ModuleRenderUtil {
                 Set.of(),
                 0xCCFFD76A,
                 true,
+                1,
+                false,
+                false,
+                2.0f,
                 new java.util.concurrent.ConcurrentHashMap<>(),
                 new java.util.concurrent.ConcurrentHashMap<>()
             );

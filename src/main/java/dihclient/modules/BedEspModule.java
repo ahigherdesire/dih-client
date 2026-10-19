@@ -4,18 +4,28 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ColorSetting;
+import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.render.mc.DihRenderTypes;
+import dihclient.util.DihColors;
 import dihclient.util.DihUiScale;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.network.chat.Style;
+import net.minecraft.network.chat.TextColor;
 import net.minecraft.tags.BlockTags;
+import net.minecraft.util.FormattedCharSequence;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.properties.BedPart;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -48,6 +58,9 @@ public final class BedEspModule extends Module {
     private static final float LINE_WIDTH = 1.5f;
     private static final float PATH_LINE_WIDTH = 2.5f;
     private static final double INFLATE = 0.002;
+    private static final double LABEL_SCALE = 0.75;
+    private static final int LABEL_MATERIALS = 6;
+    private static final int LABEL_DIM = 0xFFAAAAAA;
 
     private static volatile boolean renderHookInstalled;
 
@@ -62,17 +75,25 @@ public final class BedEspModule extends Module {
     private int bedColor;
     private int pathColor;
     private final int[] layerColors = new int[3];
+    private double fillStrength = 1.0;
+    private float lineWidth = LINE_WIDTH;
+    private float pathLineWidth = PATH_LINE_WIDTH;
+    private int walkCost = WALK_TICKS_PER_BLOCK;
 
     BedEspModule() {
         super("bed-esp", "BedESP", ModuleCategory.RENDER,
             "Shows bed defence layers and the fastest way through them.");
 
         add(new IntSetting("range", "Range", 48, 8, 128, 4)
-            .description("Horizontal distance to look for beds.").build());
+            .group("General").description("Horizontal distance to look for beds.").build());
         add(new IntSetting("layers", "Layers", 3, 1, 6, 1)
-            .description("How many defence layers to show.").build());
+            .group("General").description("How many defence layers to show.").build());
         add(new IntSetting("max-beds", "Max Beds", 8, 1, 32, 1)
-            .description("Most beds analysed at once (nearest first).").build());
+            .group("General").description("Most beds analysed at once (nearest first).").build());
+        add(new IntSetting("scan-interval", "Scan Interval", SCAN_INTERVAL_TICKS, 2, 40, 1).unit("ticks")
+            .group("General").description("How often beds and their defences are re-checked.").build());
+        add(new IntSetting("walk-cost", "Walk Cost", WALK_TICKS_PER_BLOCK, 1, 20, 1).unit("ticks")
+            .group("General").description("Time one step counts for in the fastest path; higher prefers breaking straight through.").build());
 
         add(new BoolSetting("show-layers", "Show Layers", true)
             .group("Display").description("Colour each defence block by its layer.").build());
@@ -80,10 +101,44 @@ public final class BedEspModule extends Module {
             .group("Display").description("Highlight the blocks to break on the fastest way in.").build());
         add(new BoolSetting("hud", "HUD Summary", true)
             .group("Display").description("Show the nearest bed's layers and break time on screen.").build());
+        add(new BoolSetting("labels", "Labels", true)
+            .group("Label").description("Float a label over each bed: its name, break time and defence blocks.").build());
+        add(new DoubleSetting("label-scale", "Scale", LABEL_SCALE, 0.25, 3.0, 0.05)
+            .group("Label").description("Label size.").visibleWhen(() -> bool("labels")).build());
+        add(new BoolSetting("label-distance-scale", "Distance Scaling", true)
+            .group("Label").description("Shrink labels with distance.").visibleWhen(() -> bool("labels")).build());
+        add(new DoubleSetting("label-height", "Height", 1.0, 0.0, 4.0, 0.25).unit("blocks")
+            .group("Label").description("How far above the bed the label floats.").visibleWhen(() -> bool("labels")).build());
+        add(new BoolSetting("label-time", "Break Time", true)
+            .group("Label").description("Time to break through to the bed.").visibleWhen(() -> bool("labels")).build());
+        add(new BoolSetting("label-distance", "Distance", false)
+            .group("Label").description("Your distance to the bed.").visibleWhen(() -> bool("labels")).build());
+        add(new BoolSetting("label-materials", "Defence Blocks", true)
+            .group("Label").description("Each defence block with its count.").visibleWhen(() -> bool("labels")).build());
+        add(new IntSetting("label-max-materials", "Max Blocks", LABEL_MATERIALS, 1, 12, 1)
+            .group("Label").description("Most defence block kinds listed.")
+            .visibleWhen(() -> bool("labels") && bool("label-materials")).build());
+        add(new BoolSetting("label-dye-color", "Bed Colour Name", true)
+            .group("Label").description("Writes the bed's name in its dye colour.").visibleWhen(() -> bool("labels")).build());
+        add(new ColorSetting("label-color", "Name Colour", 0xFFFFFFFF)
+            .group("Label").description("Name colour when not using the bed's dye.")
+            .visibleWhen(() -> bool("labels") && !bool("label-dye-color")).build());
+        add(new BoolSetting("label-background", "Background", true)
+            .group("Label").description("Dark box behind the label.").visibleWhen(() -> bool("labels")).build());
+        add(new ColorSetting("label-background-color", "Background Colour", ModuleNameTagRenderer.BG_COLOR)
+            .group("Label").description("Colour of the box.")
+            .visibleWhen(() -> bool("labels") && bool("label-background")).build());
         add(new BoolSetting("fill", "Fill", true)
             .group("Display").description("Draw translucent faces.").build());
+        add(new IntSetting("fill-strength", "Fill Strength", 100, 10, 300, 10).unit("%")
+            .group("Display").description("How solid the faces are.").visibleWhen(() -> bool("fill")).build());
         add(new BoolSetting("outline", "Outline", true)
             .group("Display").description("Draw edges.").build());
+        add(new DoubleSetting("line-width", "Line Width", LINE_WIDTH, 1.0, 6.0, 0.25)
+            .group("Display").description("Edge thickness of the bed and layers.").visibleWhen(() -> bool("outline")).build());
+        add(new DoubleSetting("path-line-width", "Path Line Width", PATH_LINE_WIDTH, 1.0, 6.0, 0.25)
+            .group("Display").description("Edge thickness of the path blocks.")
+            .visibleWhen(() -> bool("outline") && bool("show-path")).build());
 
         add(new ColorSetting("color-bed", "Bed", 0xFFFF3B3B)
             .group("Colors").description("The bed itself.").build());
@@ -104,14 +159,17 @@ public final class BedEspModule extends Module {
 
     static boolean hasHudWork() {
         BedEspModule module = instance();
-        return module != null && module.isEnabled() && module.bool("hud") && !module.beds.isEmpty();
+        return module != null && module.isEnabled() && (module.bool("hud") || module.bool("labels"))
+            && !module.beds.isEmpty();
     }
 
     static void renderHud(GuiGraphicsExtractor context) {
         BedEspModule module = instance();
-        if (module == null || !module.isEnabled() || !module.bool("hud")) return;
+        if (module == null || !module.isEnabled()) return;
         List<Bed> current = module.beds;
         if (current.isEmpty()) return;
+        if (module.bool("labels") && !ModuleRenderUtil.shouldSuppressEspForUi()) renderLabels(module, context, current);
+        if (!module.bool("hud")) return;
         Bed nearest = current.get(0);
         Font font = MC.font;
         String first = String.format(Locale.ROOT, "Bed %dm", Math.round(nearest.distance()));
@@ -128,6 +186,32 @@ public final class BedEspModule extends Module {
         y += font.lineHeight + 2;
         String second = nearest.summary();
         context.text(font, second, (screenWidth - font.width(second)) / 2, y, 0xFFC8C8C8, true);
+    }
+
+    /** A nametag-style label just above each bed, farthest first so nearer labels sit on top. */
+    private static void renderLabels(BedEspModule module, GuiGraphicsExtractor context, List<Bed> current) {
+        ModuleNameTagRenderer.Projection projection = ModuleNameTagRenderer.projection();
+        if (projection == null) return;
+        Vec3 camera = projection.cameraPosition();
+        LabelOptions options = LabelOptions.of(module);
+        ModuleNameTagRenderer.LabelStyle style = ModuleNameTagRenderer.LabelStyle.box(module.bool("label-background"),
+            ModuleRenderUtil.color(module, "label-background-color", ModuleNameTagRenderer.BG_COLOR), true);
+        double labelScale = module.decimal("label-scale");
+        boolean distanceScale = module.bool("label-distance-scale");
+        double height = module.decimal("label-height");
+        for (int i = current.size() - 1; i >= 0; i--) {
+            Bed bed = current.get(i);
+            double x = (bed.foot().getX() + bed.head().getX()) / 2.0 + 0.5;
+            double y = bed.foot().getY() + height;
+            double z = (bed.foot().getZ() + bed.head().getZ()) / 2.0 + 0.5;
+            float[] screen = ModuleNameTagRenderer.project(x, y, z, projection);
+            if (screen == null) continue;
+            double dist = camera.distanceTo(new Vec3(x, y, z));
+            List<FormattedCharSequence> lines = new ArrayList<>();
+            for (Component line : bed.label(options, dist)) lines.add(line.getVisualOrderText());
+            ModuleNameTagRenderer.drawLabel(context, screen[0], screen[1], lines, 0xFFFFFFFF,
+                ModuleNameTagRenderer.scaleFor(labelScale, distanceScale, dist), style);
+        }
     }
 
     @Override
@@ -161,7 +245,7 @@ public final class BedEspModule extends Module {
             return;
         }
         if (--scanCooldown > 0) return;
-        scanCooldown = SCAN_INTERVAL_TICKS;
+        scanCooldown = Math.max(1, integer("scan-interval"));
         beds = scan(MC.level);
     }
 
@@ -178,6 +262,14 @@ public final class BedEspModule extends Module {
         layerColors[0] = ModuleRenderUtil.color(this, "color-layer-1", 0xFFFF8C42);
         layerColors[1] = ModuleRenderUtil.color(this, "color-layer-2", 0xFFFFD166);
         layerColors[2] = ModuleRenderUtil.color(this, "color-layer-3", 0xFF06D6A0);
+        fillStrength = integer("fill-strength") / 100.0;
+        lineWidth = (float) decimal("line-width");
+        pathLineWidth = (float) decimal("path-line-width");
+        walkCost = Math.max(1, integer("walk-cost"));
+    }
+
+    private int fillAlpha(int base) {
+        return Math.min(255, (int) Math.round(base * fillStrength));
     }
 
     private static boolean isBed(BlockState state) {
@@ -244,7 +336,7 @@ public final class BedEspModule extends Module {
         int bedY = foot.getY();
 
         List<LayerBlock> layerBlocks = new ArrayList<>();
-        List<Map<String, Integer>> materials = new ArrayList<>();
+        List<Map<Block, Integer>> materials = new ArrayList<>();
         for (int i = 0; i < layers; i++) materials.add(new LinkedHashMap<>());
 
         int minX = Math.min(foot.getX(), head.getX()) - layers;
@@ -261,15 +353,24 @@ public final class BedEspModule extends Module {
                     BlockState state = level.getBlockState(cursor);
                     if (state.isAir() || state.canBeReplaced()) continue;
                     layerBlocks.add(new LayerBlock(cursor.immutable(), layer));
-                    materials.get(layer - 1).merge(state.getBlock().getName().getString(), 1, Integer::sum);
+                    materials.get(layer - 1).merge(state.getBlock(), 1, Integer::sum);
                 }
             }
         }
 
         PathResult path = fastestPath(level, foot, head, layers, player, breakCache);
         double distance = Math.sqrt(foot.distToCenterSqr(player));
-        return new Bed(foot, head, distance, List.copyOf(layerBlocks), path.blocks(),
-            path.breakTicks(), path.totalTicks(), summarize(materials));
+        int nameColor = footState.getBlock() instanceof BedBlock bedBlock
+            ? readable(bedBlock.getColor().getTextColor()) : 0xFFFFFFFF;
+        return new Bed(foot, head, footState.getBlock().getName().getString(), nameColor, distance,
+            List.copyOf(layerBlocks), path.blocks(), path.breakTicks(), path.totalTicks(), summarize(materials),
+            labelMaterials(materials));
+    }
+
+    /** Opaque text colour, lifted to grey when the dye is too dark to read on the label background. */
+    private static int readable(int rgb) {
+        int brightest = Math.max((rgb >> 16) & 0xFF, Math.max((rgb >> 8) & 0xFF, rgb & 0xFF));
+        return brightest < 0x50 ? LABEL_DIM : 0xFF000000 | rgb;
     }
 
     private PathResult fastestPath(ClientLevel level, BlockPos foot, BlockPos head, int layers, Vec3 player,
@@ -323,7 +424,7 @@ public final class BedEspModule extends Module {
             if (enter[index] >= UNBREAKABLE) continue;
             double dx = x + 0.5 - player.x;
             double dz = z + 0.5 - player.z;
-            int walk = playerCell ? 0 : (int) Math.round(Math.sqrt(dx * dx + dz * dz) * WALK_TICKS_PER_BLOCK);
+            int walk = playerCell ? 0 : (int) Math.round(Math.sqrt(dx * dx + dz * dz) * walkCost);
             int start = walk + enter[index];
             if (start < dist[index]) {
                 dist[index] = start;
@@ -350,7 +451,7 @@ public final class BedEspModule extends Module {
                 if (nx < 0 || nx >= sizeX || ny < 0 || ny >= sizeY || nz < 0 || nz >= sizeZ) continue;
                 int next = nx + ny * sizeX + nz * sizeX * sizeY;
                 if (enter[next] >= UNBREAKABLE) continue;
-                int cost = dist[index] + WALK_TICKS_PER_BLOCK + enter[next];
+                int cost = dist[index] + walkCost + enter[next];
                 if (cost < dist[next]) {
                     dist[next] = cost;
                     previous[next] = index;
@@ -403,22 +504,47 @@ public final class BedEspModule extends Module {
         return Math.abs(x - bed.getX()) + Math.abs(y - bed.getY()) + Math.abs(z - bed.getZ());
     }
 
-    private static String summarize(List<Map<String, Integer>> materials) {
+    private static String summarize(List<Map<Block, Integer>> materials) {
         List<String> parts = new ArrayList<>();
         for (int i = 0; i < materials.size(); i++) {
-            Map<String, Integer> layer = materials.get(i);
+            Map<Block, Integer> layer = materials.get(i);
             if (layer.isEmpty()) continue;
-            Map.Entry<String, Integer> top = null;
+            Map.Entry<Block, Integer> top = null;
             int total = 0;
-            for (Map.Entry<String, Integer> entry : layer.entrySet()) {
+            for (Map.Entry<Block, Integer> entry : layer.entrySet()) {
                 total += entry.getValue();
                 if (top == null || entry.getValue() > top.getValue()) top = entry;
             }
-            String part = "L" + (i + 1) + " " + top.getKey() + " ×" + top.getValue();
+            String part = "L" + (i + 1) + " " + top.getKey().getName().getString() + " ×" + top.getValue();
             if (total > top.getValue()) part += " +" + (total - top.getValue());
             parts.add(part);
         }
         return parts.isEmpty() ? "No defence" : String.join("  ·  ", parts);
+    }
+
+    /** Defence blocks by short name, outermost layer first: the order an attacker breaks them in. */
+    private static List<Material> labelMaterials(List<Map<Block, Integer>> materials) {
+        Map<String, Integer> counts = new LinkedHashMap<>();
+        for (int i = materials.size() - 1; i >= 0; i--) {
+            for (Map.Entry<Block, Integer> entry : materials.get(i).entrySet()) {
+                counts.merge(shortName(entry.getKey()), entry.getValue(), Integer::sum);
+            }
+        }
+        List<Material> out = new ArrayList<>();
+        counts.forEach((name, count) -> out.add(new Material(name, count)));
+        return List.copyOf(out);
+    }
+
+    /** Bedwars names: any colour of wool, clay or glass collapses to one entry, planks go by wood. */
+    private static String shortName(Block block) {
+        BlockState state = block.defaultBlockState();
+        if (state.is(BlockTags.WOOL)) return "Wool";
+        if (state.is(BlockTags.TERRACOTTA)) return "Clay";
+        String path = BuiltInRegistries.BLOCK.getKey(block).getPath();
+        if (path.equals("glass") || path.endsWith("_stained_glass")) return "Glass";
+        String name = block.getName().getString();
+        if (state.is(BlockTags.PLANKS) && name.endsWith(" Planks")) return name.substring(0, name.length() - " Planks".length());
+        return name;
     }
 
     private static synchronized void installRenderHook() {
@@ -452,16 +578,16 @@ public final class BedEspModule extends Module {
 
     private void emitFill(PoseStack.Pose pose, VertexConsumer buffer, List<Bed> current, Vec3 camera) {
         for (Bed bed : current) {
-            EspGeometry.fillBox(pose, buffer, box(bed.foot(), camera), EspGeometry.withAlpha(bedColor, 0x50));
-            EspGeometry.fillBox(pose, buffer, box(bed.head(), camera), EspGeometry.withAlpha(bedColor, 0x50));
+            EspGeometry.fillBox(pose, buffer, box(bed.foot(), camera), EspGeometry.withAlpha(bedColor, fillAlpha(0x50)));
+            EspGeometry.fillBox(pose, buffer, box(bed.head(), camera), EspGeometry.withAlpha(bedColor, fillAlpha(0x50)));
             if (showLayers) {
                 for (LayerBlock block : bed.layers()) {
-                    EspGeometry.fillBox(pose, buffer, box(block.pos(), camera), EspGeometry.withAlpha(layerColor(block.layer()), 0x2C));
+                    EspGeometry.fillBox(pose, buffer, box(block.pos(), camera), EspGeometry.withAlpha(layerColor(block.layer()), fillAlpha(0x2C)));
                 }
             }
             if (showPath) {
                 for (BlockPos pos : bed.path()) {
-                    EspGeometry.fillBox(pose, buffer, box(pos, camera), EspGeometry.withAlpha(pathColor, 0x55));
+                    EspGeometry.fillBox(pose, buffer, box(pos, camera), EspGeometry.withAlpha(pathColor, fillAlpha(0x55)));
                 }
             }
         }
@@ -469,16 +595,16 @@ public final class BedEspModule extends Module {
 
     private void emitOutline(PoseStack.Pose pose, VertexConsumer buffer, List<Bed> current, Vec3 camera) {
         for (Bed bed : current) {
-            EspGeometry.edges(pose, buffer, box(bed.foot(), camera), EspGeometry.withAlpha(bedColor, 0xD0), LINE_WIDTH);
-            EspGeometry.edges(pose, buffer, box(bed.head(), camera), EspGeometry.withAlpha(bedColor, 0xD0), LINE_WIDTH);
+            EspGeometry.edges(pose, buffer, box(bed.foot(), camera), EspGeometry.withAlpha(bedColor, 0xD0), lineWidth);
+            EspGeometry.edges(pose, buffer, box(bed.head(), camera), EspGeometry.withAlpha(bedColor, 0xD0), lineWidth);
             if (showLayers) {
                 for (LayerBlock block : bed.layers()) {
-                    EspGeometry.edges(pose, buffer, box(block.pos(), camera), EspGeometry.withAlpha(layerColor(block.layer()), 0x80), LINE_WIDTH);
+                    EspGeometry.edges(pose, buffer, box(block.pos(), camera), EspGeometry.withAlpha(layerColor(block.layer()), 0x80), lineWidth);
                 }
             }
             if (showPath) {
                 for (BlockPos pos : bed.path()) {
-                    EspGeometry.edges(pose, buffer, box(pos, camera), EspGeometry.withAlpha(pathColor, 0xE0), PATH_LINE_WIDTH);
+                    EspGeometry.edges(pose, buffer, box(pos, camera), EspGeometry.withAlpha(pathColor, 0xE0), pathLineWidth);
                 }
             }
         }
@@ -493,8 +619,54 @@ public final class BedEspModule extends Module {
             .move(-camera.x, -camera.y, -camera.z).inflate(INFLATE);
     }
 
-    private record Bed(BlockPos foot, BlockPos head, double distance, List<LayerBlock> layers, List<BlockPos> path,
-                       int breakTicks, int totalTicks, String summary) {
+    private record Bed(BlockPos foot, BlockPos head, String name, int nameColor, double distance,
+                       List<LayerBlock> layers, List<BlockPos> path, int breakTicks, int totalTicks, String summary,
+                       List<Material> materials) {
+        /** The label with the default options. */
+        List<Component> label() {
+            return label(LabelOptions.DEFAULT, 0.0);
+        }
+
+        /** The world label: name and break time, then each defence block with its count. */
+        List<Component> label(LabelOptions options, double distance) {
+            List<Component> lines = new ArrayList<>();
+            MutableComponent first = colored(name, options.dyeColor() ? nameColor : options.nameColor());
+            if (options.time()) {
+                String time = totalTicks >= 0 ? String.format(Locale.ROOT, "%.1fs", breakTicks / 20.0) : "no way in";
+                first.append(colored("  " + time, LABEL_DIM));
+            }
+            if (options.distance()) first.append(colored(String.format(Locale.ROOT, "  %.0fm", distance), LABEL_DIM));
+            lines.add(first);
+            if (!options.materials()) return lines;
+            int shown = Math.min(materials.size(), options.maxMaterials());
+            int accent = DihColors.accent();
+            for (int i = 0; i < shown; i++) {
+                Material material = materials.get(i);
+                lines.add(Component.literal(material.name()).append(colored(" ×" + material.count(), accent)));
+            }
+            if (materials.size() > shown) lines.add(colored("+" + (materials.size() - shown) + " more", LABEL_DIM));
+            if (materials.isEmpty()) lines.add(colored("No defence", LABEL_DIM));
+            return lines;
+        }
+
+        private static MutableComponent colored(String text, int color) {
+            return Component.literal(text).withStyle(Style.EMPTY.withColor(TextColor.fromRgb(color & 0xFFFFFF)));
+        }
+    }
+
+    /** Which parts of the floating label to show, read once per frame. */
+    private record LabelOptions(boolean time, boolean distance, boolean materials, int maxMaterials,
+                                boolean dyeColor, int nameColor) {
+        static final LabelOptions DEFAULT = new LabelOptions(true, false, true, LABEL_MATERIALS, true, 0xFFFFFFFF);
+
+        static LabelOptions of(BedEspModule module) {
+            return new LabelOptions(module.bool("label-time"), module.bool("label-distance"),
+                module.bool("label-materials"), Math.max(1, module.integer("label-max-materials")),
+                module.bool("label-dye-color"), ModuleRenderUtil.color(module, "label-color", 0xFFFFFFFF) | 0xFF000000);
+        }
+    }
+
+    private record Material(String name, int count) {
     }
 
     private record LayerBlock(BlockPos pos, int layer) {
