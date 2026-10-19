@@ -70,6 +70,12 @@ public final class GhostBlockModule extends Module {
     static final String HIGHLIGHT_TIP = "Outline ghost blocks";
     static final String HIGHLIGHT_FILL_TIP = "Translucent ghost fill";
     static final String HIGHLIGHT_COLOR_TIP = "Ghost highlight color";
+    static final String INTERACT_TIP = "Right-click still opens doors and chests";
+    static final String MAX_TIP = "Oldest ghosts vanish past this many";
+    static final String HOLD_TIP = "Keeps ghosts when the server updates the block";
+    static final String EFFECTS_TIP = "Break particles when a ghost is removed";
+    static final String CLEAR_MESSAGE_TIP = "Says in chat how many were cleared";
+    static final String PICK_TIP = "Pick block works locally in fake creative";
 
     private static final int MAX_GHOSTS = 4096;
     private static final int BLOCK_BREAK_EFFECT = 2001;
@@ -89,16 +95,41 @@ public final class GhostBlockModule extends Module {
 
     GhostBlockModule() {
         super("ghostblock", "GhostBlock", ModuleCategory.PLAYER, MODULE_DESCRIPTION);
-        add(new ChoiceSetting("mode", "Mode", "Creative", "Creative", "Survival").description(MODE_TIP).build());
-        add(new IntSetting("place-delay", "Place Delay", 4, 1, 20, 1).description(DELAY_TIP).build());
-        add(new BoolSetting("break-ghosts", "Click Removes", true).description(BREAK_TIP).build());
-        add(new BoolSetting("sneak-bypass", "Sneak Bypass", true).description(SNEAK_TIP).build());
-        add(new BoolSetting("clear-on-disable", "Clear On Disable", false).description(CLEAR_DISABLE_TIP).build());
-        add(new KeybindSetting("clear-key", "Clear Key", -1).description(CLEAR_KEY_TIP).build());
-        add(new BoolSetting("highlight", "Highlight", true).description(HIGHLIGHT_TIP).build());
-        add(new BoolSetting("highlight-fill", "Highlight Fill", true).description(HIGHLIGHT_FILL_TIP).build());
+        add(new ChoiceSetting("mode", "Mode", "Creative", "Creative", "Survival")
+            .group("General").description(MODE_TIP).build());
+        add(new IntSetting("place-delay", "Place Delay", 4, 1, 20, 1).unit("ticks")
+            .group("General").description(DELAY_TIP).build());
+        add(new BoolSetting("sneak-bypass", "Sneak Bypass", true)
+            .group("General").description(SNEAK_TIP).build());
+        add(new BoolSetting("respect-interactables", "Use Interactables", true)
+            .group("General").description(INTERACT_TIP).build());
+        add(new BoolSetting("pick-block", "Local Pick Block", true)
+            .group("General").description(PICK_TIP)
+            .visibleWhen(this::isCreative).build());
+
+        add(new IntSetting("max-ghosts", "Max Ghosts", MAX_GHOSTS, 16, MAX_GHOSTS, 16)
+            .group("Ghosts").description(MAX_TIP).build());
+        add(new BoolSetting("hold-against-server", "Hold Against Server", true)
+            .group("Ghosts").description(HOLD_TIP).build());
+        add(new BoolSetting("break-ghosts", "Click Removes", true)
+            .group("Ghosts").description(BREAK_TIP).build());
+        add(new BoolSetting("break-effects", "Break Effects", true)
+            .group("Ghosts").description(EFFECTS_TIP).build());
+        add(new BoolSetting("clear-on-disable", "Clear On Disable", false)
+            .group("Ghosts").description(CLEAR_DISABLE_TIP).build());
+        add(new KeybindSetting("clear-key", "Clear Key", -1)
+            .group("Ghosts").description(CLEAR_KEY_TIP).build());
+        add(new BoolSetting("clear-message", "Clear Message", true)
+            .group("Ghosts").description(CLEAR_MESSAGE_TIP).build());
+
+        add(new BoolSetting("highlight", "Highlight", true)
+            .group("Render").description(HIGHLIGHT_TIP).build());
+        add(new BoolSetting("highlight-fill", "Highlight Fill", true)
+            .group("Render").description(HIGHLIGHT_FILL_TIP)
+            .visibleWhen(() -> bool("highlight")).build());
         add(new ColorSetting("highlight-color", "Highlight Color", DEFAULT_HIGHLIGHT_COLOR)
-            .description(HIGHLIGHT_COLOR_TIP).build());
+            .group("Render").description(HIGHLIGHT_COLOR_TIP)
+            .visibleWhen(() -> bool("highlight")).build());
     }
 
     @Override
@@ -182,7 +213,7 @@ public final class GhostBlockModule extends Module {
         boolean down = bind != -1 && DihBindUtil.isBindPressed(MC, bind);
         if (down && !clearKeyWasDown && MC.gui.screen() == null) {
             int removed = restoreAll();
-            if (removed > 0) {
+            if (removed > 0 && bool("clear-message")) {
                 DihClientMessaging.sendPrefixed("§aCleared §f" + removed + "§a ghost block"
                     + (removed == 1 ? "" : "s") + ".");
             }
@@ -249,7 +280,8 @@ public final class GhostBlockModule extends Module {
         boolean sneaking = MC.player.isShiftKeyDown();
         if (sneaking && bool("sneak-bypass")) return false;
 
-        if (!sneaking && hasUseAction(MC.level.getBlockState(hit.getBlockPos()), hit.getBlockPos())) return false;
+        if (!sneaking && bool("respect-interactables")
+            && hasUseAction(MC.level.getBlockState(hit.getBlockPos()), hit.getBlockPos())) return false;
 
         InteractionHand hand = InteractionHand.MAIN_HAND;
         ItemStack stack = MC.player.getMainHandItem();
@@ -333,7 +365,7 @@ public final class GhostBlockModule extends Module {
         rememberOriginal(pos, state);
         MC.level.setBlock(pos, Blocks.AIR.defaultBlockState(), 3);
         markGhost(pos, MC.level.getBlockState(pos));
-        MC.level.levelEvent(null, BLOCK_BREAK_EFFECT, pos, Block.getId(state));
+        if (bool("break-effects")) MC.level.levelEvent(null, BLOCK_BREAK_EFFECT, pos, Block.getId(state));
         return true;
     }
 
@@ -343,7 +375,9 @@ public final class GhostBlockModule extends Module {
         if (packet instanceof ServerboundSetCreativeModeSlotPacket) return true;
         if (packet instanceof ServerboundPickItemFromBlockPacket pick) {
 
-            if (!AutoTotemModule.operationActive()) pickBlockLocally(pick.pos(), pick.includeData());
+            if (!AutoTotemModule.operationActive() && bool("pick-block")) {
+                pickBlockLocally(pick.pos(), pick.includeData());
+            }
             return true;
         }
         if (packet instanceof ServerboundPlayerActionPacket action) {
@@ -373,6 +407,13 @@ public final class GhostBlockModule extends Module {
         if (!(packet instanceof ClientboundBlockUpdatePacket update)) return false;
         synchronized (ghosts) {
             if (!ghosts.containsKey(update.getPos())) return false;
+            if (!bool("hold-against-server")) {
+                // Let the real block through and stop tracking the ghost.
+                ghosts.remove(update.getPos());
+                originals.remove(update.getPos());
+                highlightBoxesDirty = true;
+                return false;
+            }
             originals.put(update.getPos(), update.getBlockState());
         }
         return true;
@@ -392,7 +433,8 @@ public final class GhostBlockModule extends Module {
     private void markGhost(BlockPos pos, BlockState state) {
         synchronized (ghosts) {
             ghosts.put(pos.immutable(), state);
-            while (ghosts.size() > MAX_GHOSTS) {
+            int max = Math.max(16, integer("max-ghosts"));
+            while (ghosts.size() > max) {
                 BlockPos eldest = ghosts.keySet().iterator().next();
                 ghosts.remove(eldest);
                 BlockState original = originals.remove(eldest);
@@ -421,7 +463,7 @@ public final class GhostBlockModule extends Module {
         if (ghost == null || MC == null || MC.level == null) return;
         if (!hasChunk(pos)) return;
         if (original != null) MC.level.setBlock(pos, original, 3);
-        if (effects) MC.level.levelEvent(null, BLOCK_BREAK_EFFECT, pos, Block.getId(ghost));
+        if (effects && bool("break-effects")) MC.level.levelEvent(null, BLOCK_BREAK_EFFECT, pos, Block.getId(ghost));
     }
 
     public int restoreAll() {

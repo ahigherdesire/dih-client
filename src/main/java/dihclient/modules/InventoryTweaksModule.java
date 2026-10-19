@@ -46,6 +46,8 @@ public final class InventoryTweaksModule extends Module {
     private static final Minecraft MC = Minecraft.getInstance();
     private SortingOperation sortingOperation;
     private TimedOperation timedOperation;
+    private boolean timedAutomatic;
+    private int dropCooldown;
     private boolean warnedAutoConflict;
     private final Map<String, NormalizedListCache> normalizedListCaches = new HashMap<>();
 
@@ -53,11 +55,11 @@ public final class InventoryTweaksModule extends Module {
         super("inventory-tweaks", "InventoryTweaks", ModuleCategory.PLAYER, "Inventory sorting, protection, auto-drop, and container steal/dump tools.");
 
         add(new BoolSetting("mouse-drag-item-move", "Shift Drag Move", true)
-            .description("Shift-drag transfers hovered stacks.").build());
+            .group("General").description("Shift-drag transfers hovered stacks.").build());
         add(new BoolSetting("uncap-bundle-scrolling", "Uncap Bundle Scroll", true)
-            .description("Allow unrestricted bundle scrolling.").build());
+            .group("General").description("Allow unrestricted bundle scrolling.").build());
         add(new BoolSetting("shulker-preview", "Shulker Preview", true)
-            .description("Preview container on hover").build());
+            .group("General").description("Preview container on hover").build());
 
         add(new BoolSetting("sorting-enabled", "Sorting", true).group("Sorting").description("Enable inventory sorting.").build());
         add(new KeybindSetting("sorting-key", "Sort Key", DihBindUtil.encodeMouseButton(InputConstants.MOUSE_BUTTON_MIDDLE))
@@ -82,6 +84,8 @@ public final class InventoryTweaksModule extends Module {
             .group("Auto Drop").description("Keep hotbar stacks").build());
         add(new BoolSetting("only-full-stacks", "Only Full Stacks", false)
             .group("Auto Drop").description("Only drop complete stacks.").build());
+        add(new IntSetting("drop-delay", "Drop Delay", 0, 0, 40, 1)
+            .group("Auto Drop").unit("ticks").description("Wait between two auto drops").build());
 
         add(new StringListSetting("steal-screens", "Steal Screens", "minecraft:generic_9x3|minecraft:generic_9x6")
             .group("Steal / Dump").description("Menu ids").build());
@@ -99,12 +103,16 @@ public final class InventoryTweaksModule extends Module {
             .group("Steal / Dump").description("Filter stolen container items.").build());
         add(RegistryListSetting.items("steal-items", "Steal Items", "")
             .group("Steal / Dump").visibleWhen(() -> !"None".equals(value("steal-filter"))).description("Steal filter items").build());
+        add(new BoolSetting("stop-when-full", "Stop When Full", false)
+            .group("Steal / Dump").description("Stops stealing once your inventory has no empty slot").build());
 
         add(new BoolSetting("auto-steal", "Auto Steal", false).group("Auto Steal").description("Automatically steal supported containers.").build());
         add(new BoolSetting("auto-dump", "Auto Dump", false).group("Auto Steal").description("Auto-dump supported containers.").build());
         add(new IntSetting("delay-ms", "Delay", 0, 0, 1000, 5).group("Auto Steal").description("Move delay (ms)").build());
         add(new IntSetting("initial-delay-ms", "Initial Delay", 0, 0, 1000, 5).group("Auto Steal").description("First-move delay (ms)").build());
         add(new IntSetting("random-ms", "Random", 0, 0, 1000, 5).group("Auto Steal").description("Random extra delay").build());
+        add(new BoolSetting("auto-close", "Auto Close", false).group("Auto Steal")
+            .description("Closes the container once an automatic steal or dump is done").build());
 
         boolean firstInstall = !DihConfig.getGlobal().modules.containsKey("inventory-tweaks");
         if (firstInstall) setEnabledSilently(true);
@@ -324,6 +332,7 @@ public final class InventoryTweaksModule extends Module {
             if (!automatic) DihClientMessaging.sendPrefixed("Inventory Tweaks: nothing to " + (steal ? "steal." : "dump."));
             return;
         }
+        timedAutomatic = automatic;
         timedOperation = new TimedOperation(handler.containerId, clicks, steal, bool("drop-backwards"),
             Math.max(0, integer("delay-ms")), Math.max(0, integer("initial-delay-ms")), Math.max(0, integer("random-ms")));
         if (!automatic) DihClientMessaging.sendPrefixed("Inventory Tweaks: " + (steal ? "stealing " : "dumping ") + clicks.size() + " stacks.");
@@ -349,18 +358,29 @@ public final class InventoryTweaksModule extends Module {
 
     private void tickTimedOperation() {
         if (timedOperation == null) return;
-        if (!timedOperation.tick()) timedOperation = null;
+        if (timedOperation.tick()) return;
+        TimedOperation finished = timedOperation;
+        timedOperation = null;
+        if (timedAutomatic && bool("auto-close") && MC.player != null && MC.player.containerMenu != null
+            && MC.player.containerMenu.containerId == finished.containerId) {
+            MC.player.closeContainer();
+        }
     }
 
     private void tickAutoDrop() {
         if (MC.player == null || MC.gameMode == null || MC.gui.screen() != null) return;
         if (list("auto-drop-items").isEmpty()) return;
+        if (dropCooldown > 0) {
+            dropCooldown--;
+            return;
+        }
         int start = bool("exclude-hotbar") ? 9 : 0;
         for (int slot = start; slot < 36; slot++) {
             ItemStack stack = MC.player.getInventory().getItem(slot);
             if (stack.isEmpty() || !isInItemList(stack, "auto-drop-items")) continue;
             if (bool("only-full-stacks") && stack.getCount() < stack.getMaxStackSize()) continue;
             DihDropHelper.dropFromInventorySlot(MC, slot, 0);
+            dropCooldown = Math.max(0, integer("drop-delay"));
             return;
         }
     }
@@ -568,6 +588,8 @@ public final class InventoryTweaksModule extends Module {
                 Slot slot = MC.player.containerMenu.slots.get(click.slot());
                 if (slot == null || slot.getItem().isEmpty()) continue;
                 if (steal && !passesFilter(slot.getItem(), "steal-filter", "steal-items")) continue;
+                if (steal && !click.drop() && bool("stop-when-full")
+                    && MC.player.getInventory().getFreeSlot() < 0) return false;
                 if (!steal && !passesFilter(slot.getItem(), "dump-filter", "dump-items")) continue;
 
                 if (click.drop()) {

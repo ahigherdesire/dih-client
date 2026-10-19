@@ -390,26 +390,90 @@ public final class BuiltinModules {
     }
 
     static final class XCarryModule extends Module {
+        /** Crafting grid slots of the player's inventory menu. */
+        private static final int[] GRID_SLOTS = {1, 2, 3, 4};
+
+        private boolean inventoryWasOpen;
+
         XCarryModule() {
             super("xcarry", "XCarry", ModuleCategory.PLAYER, "Keeps stored items in crafting / result / armor / offhand slots when closing inventory.");
             add(new BoolSetting("use-crafting", "Use Crafting Grid", true)
+                .group("Slots")
                 .description("Use all craft slots").build());
             add(new BoolSetting("use-armor",    "Use Armor Slots", true)
+                .group("Slots")
                 .description("Use armor slots 5-8.").build());
             add(new BoolSetting("use-offhand",  "Use Offhand", true)
+                .group("Slots")
                 .description("Use offhand slot.").build());
             add(new BoolSetting("carry-cursor", "Carry Cursor", true)
+                .group("Slots")
                 .description("Keep cursor stack.").build());
+
+            add(new BoolSetting("notify", "Notify", false)
+                .group("General")
+                .description("Says in chat how many stacks you carry when you close your inventory").build());
+            add(new BoolSetting("show-count", "Show Count", true)
+                .group("General")
+                .description("Shows the carried crafting-grid stacks next to the module name").build());
+            add(new BoolSetting("empty-on-disable", "Empty On Disable", false)
+                .group("General")
+                .description("Moves crafting-grid items back into your inventory when turned off").build());
         }
 
         @Override
         public void onEnable() {
             DihConfig.getGlobal().xCarry = true;
+            inventoryWasOpen = false;
         }
 
         @Override
         public void onDisable() {
+            if (bool("empty-on-disable")) emptyGrid();
             DihConfig.getGlobal().xCarry = false;
+        }
+
+        @Override
+        public void tick() {
+            boolean open = MC.gui.screen() instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen;
+            if (inventoryWasOpen && !open && bool("notify")) {
+                int carried = carriedStacks();
+                if (carried > 0) {
+                    dihclient.util.DihClientMessaging.sendPrefixed("XCarry: carrying " + carried + " stack"
+                        + (carried == 1 ? "" : "s") + ".");
+                }
+            }
+            inventoryWasOpen = open;
+        }
+
+        @Override
+        public String info() {
+            if (!bool("show-count")) return "";
+            int carried = carriedStacks();
+            return carried > 0 ? Integer.toString(carried) : "";
+        }
+
+        /** Stacks sitting in the crafting grid, which a normal inventory close would drop. */
+        private int carriedStacks() {
+            if (MC.player == null || MC.player.inventoryMenu == null) return 0;
+            net.minecraft.world.inventory.InventoryMenu menu = MC.player.inventoryMenu;
+            int count = 0;
+            for (int slot : GRID_SLOTS) {
+                if (slot < menu.slots.size() && !menu.slots.get(slot).getItem().isEmpty()) count++;
+            }
+            return count;
+        }
+
+        private void emptyGrid() {
+            if (MC.player == null || MC.gameMode == null || MC.player.inventoryMenu == null) return;
+            if (MC.gui.screen() != null
+                && !(MC.gui.screen() instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen)) return;
+            net.minecraft.world.inventory.InventoryMenu menu = MC.player.inventoryMenu;
+            for (int slot : GRID_SLOTS) {
+                if (slot >= menu.slots.size() || menu.slots.get(slot).getItem().isEmpty()) continue;
+                MC.gameMode.handleContainerInput(menu.containerId, slot, 0,
+                    net.minecraft.world.inventory.ContainerInput.QUICK_MOVE, MC.player);
+            }
         }
     }
 
@@ -965,15 +1029,58 @@ public final class BuiltinModules {
 
         AutoToolModule() {
             super("auto-tool", "AutoTool", ModuleCategory.PLAYER, "Switches to the best tool to mine a block.");
-            add(new IntSetting("switch-delay-ms", "Switch Delay", 12, 0, 1000, 1)
+            add(new IntSetting("switch-delay-ms", "Switch Delay", 12, 0, 1000, 1).unit("ms")
+                .group("General")
                 .description("Delay before switching.").build());
-            add(new BoolSetting("consider-inventory", "Consider Inventory", false));
-            add(new BoolSetting("ignore-durability", "Ignore Durability", true));
-            add(new BoolSetting("prefer-silk-touch", "Prefer Silk Touch", false));
-            add(new BoolSetting("require-sneaking", "Require Sneaking", false));
-            add(new BoolSetting("switch-back", "Switch Back", false));
-            add(new IntSetting("switch-back-delay-ms", "Restore Delay", 100, 0, 1000, 25)
-                .description("Delay before restoring.").build());
+            add(new BoolSetting("require-sneaking", "Require Sneaking", false)
+                .group("General")
+                .description("Only switches while you sneak").build());
+            add(new BoolSetting("off-in-creative", "Off In Creative", false)
+                .group("General")
+                .description("Leaves your slot alone in creative, where every block breaks at once").build());
+
+            add(new BoolSetting("consider-inventory", "Consider Inventory", false)
+                .group("Tools")
+                .description("Pulls a better tool up from your main inventory").build());
+            add(new BoolSetting("ignore-durability", "Ignore Durability", true)
+                .group("Tools")
+                .description("Also uses tools that are about to break").build());
+            add(new BoolSetting("prefer-silk-touch", "Prefer Silk Touch", false)
+                .group("Tools")
+                .description("Picks a Silk Touch tool when one works on the block").build());
+            add(new BoolSetting("skip-instant", "Skip Instant Blocks", false)
+                .group("Tools")
+                .description("Does not switch for blocks that break at once, like grass and torches").build());
+
+            add(RegistryListSetting.blocks("ignored-blocks", "Ignored Blocks", "")
+                .group("Filters")
+                .description("Blocks it never switches for").build());
+            add(RegistryListSetting.items("keep-items", "Keep Items", "")
+                .group("Filters")
+                .description("Never switches away while you hold one of these").build());
+
+            add(new BoolSetting("switch-back", "Switch Back", false)
+                .group("Switch Back")
+                .description("Returns to your old slot when you stop mining").build());
+            add(new IntSetting("switch-back-delay-ms", "Restore Delay", 100, 0, 1000, 25).unit("ms")
+                .group("Switch Back")
+                .description("Delay before restoring.")
+                .visibleWhen(() -> bool("switch-back")).build());
+        }
+
+        private boolean blockedByFilters(BlockPos pos, BlockState state) {
+            if (bool("off-in-creative") && MC.player.isCreative()) return true;
+            if (bool("skip-instant") && state.getDestroySpeed(MC.level, pos) == 0.0F) return true;
+            if (listMatches("ignored-blocks", BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString())) return true;
+            ItemStack held = MC.player.getMainHandItem();
+            return !held.isEmpty() && listMatches("keep-items", BuiltInRegistries.ITEM.getKey(held.getItem()).toString());
+        }
+
+        private boolean listMatches(String settingId, String id) {
+            for (String entry : list(settingId)) {
+                if (RegistryListCodec.matches(id, entry)) return true;
+            }
+            return false;
         }
 
         @Override
@@ -1003,6 +1110,7 @@ public final class BuiltinModules {
                 if (pos == null) return;
                 BlockState state = MC.level.getBlockState(pos);
                 if (state.isAir()) return;
+                if (!pos.equals(currentTargetPos) && blockedByFilters(pos, state)) return;
 
                 lastMineMs = nowMs();
                 if (!pos.equals(currentTargetPos)) {
@@ -1890,12 +1998,57 @@ public final class BuiltinModules {
         FastUseModule() {
             super("fast-use", "FastUse", ModuleCategory.PLAYER, "Speeds up item use.");
             fastUseInstance = this;
-            add(new BoolSetting("exp", "Fast EXP", true).description("Speed experience bottles."));
+            add(new BoolSetting("exp", "Fast EXP", true).group("EXP").description("Speed experience bottles."));
             add(new RangeSetting("exp-cps", "EXP CPS", DEFAULT_CPS, 5, 20, 0.5)
+                .group("EXP")
+                .description("Throws per second while you hold use")
                 .minSeparation(0.5).visibleWhen(() -> bool("exp")).build());
-            add(new BoolSetting("blocks", "Fast Blocks", true).description("Speed block use."));
+            add(new IntSetting("exp-pitch", "EXP Pitch", 90, 45, 90, 1).unit("°")
+                .group("EXP")
+                .description("How far down it aims the bottles; 90 is straight at your feet")
+                .visibleWhen(() -> bool("exp")).build());
+            add(new BoolSetting("exp-only-damaged", "Only When Damaged", false)
+                .group("EXP")
+                .description("Only speeds bottles up while something you wear or hold is damaged")
+                .visibleWhen(() -> bool("exp")).build());
+
+            add(new BoolSetting("blocks", "Fast Blocks", true).group("Blocks").description("Speed block use."));
             add(new RangeSetting("blocks-cps", "Blocks CPS", DEFAULT_CPS, 5, 20, 0.5)
+                .group("Blocks")
+                .description("Placements per second while you hold use")
                 .minSeparation(0.5).visibleWhen(() -> bool("blocks")).build());
+            add(new ChoiceSetting("block-filter", "Block Filter", "Off", "Off", "Whitelist", "Blacklist")
+                .group("Blocks")
+                .description("Limit which blocks get placed faster")
+                .visibleWhen(() -> bool("blocks")).build());
+            add(RegistryListSetting.placeableBlocks("block-list", "Block List", "")
+                .group("Blocks")
+                .description("Blocks the filter uses")
+                .visibleWhen(() -> bool("blocks") && !"Off".equals(choice("block-filter"))).build());
+        }
+
+        private boolean blockAllowed(ItemStack stack) {
+            if (!(stack.getItem() instanceof BlockItem blockItem)) return false;
+            String filter = choice("block-filter");
+            if ("Off".equals(filter)) return true;
+            String id = BuiltInRegistries.BLOCK.getKey(blockItem.getBlock()).toString();
+            boolean listed = false;
+            for (String entry : list("block-list")) {
+                if (RegistryListCodec.matches(id, entry)) {
+                    listed = true;
+                    break;
+                }
+            }
+            return "Whitelist".equals(filter) == listed;
+        }
+
+        private boolean expWanted() {
+            if (!bool("exp")) return false;
+            if (!bool("exp-only-damaged")) return true;
+            for (EquipmentSlot slot : EquipmentSlot.values()) {
+                if (MC.player.getItemBySlot(slot).isDamaged()) return true;
+            }
+            return false;
         }
 
         @Override
@@ -1915,7 +2068,7 @@ public final class BuiltinModules {
                 return;
             }
 
-            InteractionHand expHand = bool("exp") && canUseManualUse() && !mainHandWouldPreempt(true)
+            InteractionHand expHand = expWanted() && canUseManualUse() && !mainHandWouldPreempt(true)
                 ? experienceBottleHand() : null;
             if (expHand != null && isPhysicalUseHeld()) {
                 activateManualUse(true);
@@ -1965,7 +2118,7 @@ public final class BuiltinModules {
                 DihRotationUtil.Rotation accepted = serverRotation();
 
                 expSilentRotation = DihRotationUtil.normalizeToSensitivity(
-                    new DihRotationUtil.Rotation(accepted.yaw(), 90.0F), accepted);
+                    new DihRotationUtil.Rotation(accepted.yaw(), (float) integer("exp-pitch")), accepted);
 
                 expRotationResetTicks = EXP_ROTATION_RESET_TICKS;
             }
@@ -2122,8 +2275,9 @@ public final class BuiltinModules {
         }
 
         private boolean isHoldingBlockItem() {
-            return MC.player.getMainHandItem().getItem() instanceof BlockItem
-                || MC.player.getOffhandItem().getItem() instanceof BlockItem;
+            // The main hand is used first, so its block decides when it holds one.
+            ItemStack main = MC.player.getMainHandItem();
+            return main.getItem() instanceof BlockItem ? blockAllowed(main) : blockAllowed(MC.player.getOffhandItem());
         }
     }
 
@@ -2132,34 +2286,77 @@ public final class BuiltinModules {
         FastBreakModule() {
             super("fast-break", "FastBreak", ModuleCategory.PLAYER, "Speeds up block breaking.");
             add(new ChoiceSetting("mode", "Mode", "Damage", "Normal", "Haste", "Damage", "Packet")
+                .group("General")
                 .description("Break method.")
                 .build());
-            add(RegistryListSetting.blocks("blocks", "Blocks", "")
-                .visibleWhen(() -> !"Haste".equals(value("mode")))
-                .description("Selected blocks.")
+            add(new BoolSetting("no-break-delay", "No Break Delay", false)
+                .group("General")
+                .description("Skips the short wait between blocks; Packet mode always does")
+                .visibleWhen(() -> !packetMode(this))
                 .build());
+
             add(new ChoiceSetting("blocks-filter", "Blocks Filter", "Blacklist", "Whitelist", "Blacklist")
+                .group("Blocks")
                 .visibleWhen(() -> !"Haste".equals(value("mode")))
                 .description("List mode.")
                 .build());
+            add(RegistryListSetting.blocks("blocks", "Blocks", "")
+                .group("Blocks")
+                .visibleWhen(() -> !"Haste".equals(value("mode")))
+                .description("Selected blocks.")
+                .build());
+
             add(new DoubleSetting("modifier", "Modifier", 1.4, 0.0, 999.0, 0.1)
+                .group("Normal")
                 .sliderRange(0.0, 10.0)
                 .visibleWhen(() -> normalMode(this))
                 .description("Speed multiplier.")
                 .build());
+            add(new BoolSetting("no-air-penalty", "No Air Penalty", false)
+                .group("Normal")
+                .visibleWhen(() -> normalMode(this))
+                .description("Mines as fast in the air as on the ground")
+                .build());
+            add(new BoolSetting("no-water-penalty", "No Water Penalty", false)
+                .group("Normal")
+                .visibleWhen(() -> normalMode(this))
+                .description("Mines as fast underwater as on land")
+                .build());
+            add(new BoolSetting("no-fatigue", "No Mining Fatigue", false)
+                .group("Normal")
+                .visibleWhen(() -> normalMode(this))
+                .description("Cancels the slowdown from Mining Fatigue")
+                .build());
+
             add(new IntSetting("haste-amplifier", "Haste Amplifier", 2, 1, 10, 1)
+                .group("Haste")
                 .visibleWhen(() -> hasteMode(this))
                 .description("Haste amplifier to apply.")
                 .build());
+
             add(new BoolSetting("instamine", "Instamine", true)
+                .group("Damage")
                 .visibleWhen(() -> damageMode(this))
                 .description("Finish blocks early.")
                 .build());
+            add(new DoubleSetting("finish-progress", "Finish At", 0.7, 0.5, 1.0, 0.05)
+                .group("Damage")
+                .visibleWhen(() -> damageMode(this) && bool("instamine"))
+                .description("Breaks the block once mining is this far along")
+                .build());
+            add(new DoubleSetting("instant-threshold", "Instant Threshold", 0.5, 0.3, 1.0, 0.05)
+                .group("Damage")
+                .visibleWhen(() -> damageMode(this) && bool("instamine"))
+                .description("Breaks on the first click when one tick of mining does at least this much")
+                .build());
             add(new BoolSetting("grim-bypass", "Grim Bypass", false)
+                .group("Damage")
                 .visibleWhen(() -> damageMode(this))
                 .description("Abort after stop.")
                 .build());
+
             add(new IntSetting("activation-chance", "Activation Chance", 100, 0, 100, 1)
+                .group("Packet")
                 .visibleWhen(() -> packetMode(this))
                 .unit("%").formatter(v -> v + "%")
                 .description("% to fast-break.")
@@ -2192,9 +2389,9 @@ public final class BuiltinModules {
                 removeHaste();
             }
 
-            if ("Damage".equals(mode)) {
-                tickDamageMode();
-            } else if ("Packet".equals(mode) && MC.gameMode instanceof DihMultiPlayerGameModeAccessor accessor) {
+            if ("Damage".equals(mode)) tickDamageMode();
+            if (("Packet".equals(mode) || bool("no-break-delay"))
+                && MC.gameMode instanceof DihMultiPlayerGameModeAccessor accessor) {
                 accessor.dih$setDestroyDelay(0);
             }
         }
@@ -2221,7 +2418,7 @@ public final class BuiltinModules {
             if (MC.player == null || MC.level == null || MC.gameMode == null || MC.getConnection() == null || pos == null) return false;
             BlockState state = MC.level.getBlockState(pos);
             if (!canMine(state, pos) || !passesBlockFilter(state)) return false;
-            if (state.getDestroyProgress(MC.player, MC.level, pos) <= 0.5f) return false;
+            if (state.getDestroyProgress(MC.player, MC.level, pos) <= (float) decimal("instant-threshold")) return false;
             if (!(MC.gameMode instanceof DihMultiPlayerGameModeAccessor accessor)) return false;
 
             Direction dir = direction == null ? Direction.UP : direction;
@@ -2266,7 +2463,28 @@ public final class BuiltinModules {
             if (!"Normal".equals(choice("mode"))) return original;
             if (MC.player == null || MC.level == null || pos == null) return original;
             if (!canMine(state, pos) || !passesBlockFilter(state)) return original;
-            return (float) (original * Math.max(0.0, decimal("modifier")));
+            return (float) (original * Math.max(0.0, decimal("modifier")) * penaltyCompensation());
+        }
+
+        /** Undoes the vanilla slowdowns that the Normal-mode options turn off. */
+        private double penaltyCompensation() {
+            double factor = 1.0;
+            if (bool("no-air-penalty") && !MC.player.onGround()) factor *= 5.0;
+            if (bool("no-water-penalty") && MC.player.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)) {
+                double submerged = MC.player.getAttributeValue(
+                    net.minecraft.world.entity.ai.attributes.Attributes.SUBMERGED_MINING_SPEED);
+                if (submerged > 0.0 && submerged < 1.0) factor /= submerged;
+            }
+            MobEffectInstance fatigue = bool("no-fatigue") ? MC.player.getEffect(MobEffects.MINING_FATIGUE) : null;
+            if (fatigue != null) {
+                factor /= switch (fatigue.getAmplifier()) {
+                    case 0 -> 0.3;
+                    case 1 -> 0.09;
+                    case 2 -> 0.0027;
+                    default -> 8.1E-4;
+                };
+            }
+            return factor;
         }
 
         boolean usesNormalDestroyModifier() {
@@ -2303,7 +2521,7 @@ public final class BuiltinModules {
             if (!canMine(state, pos) || !passesBlockFilter(state)) return;
             float progress = accessor.dih$getDestroyProgress();
             float delta = state.getDestroyProgress(MC.player, MC.level, pos);
-            if (progress > 0.0f && progress + delta >= 0.7f) {
+            if (progress > 0.0f && progress + delta >= (float) decimal("finish-progress")) {
                 accessor.dih$setDestroyProgress(1.0f);
             }
         }
@@ -2977,41 +3195,69 @@ public final class BuiltinModules {
         private boolean awaitingReelConfirmation;
         private int reelConfirmationTicks;
         private int reelAttempts;
+        private int catches;
 
         private static final int REEL_CONFIRMATION_TICKS = 4;
         private static final int MAX_REEL_ATTEMPTS = 3;
 
         AutoFishModule() {
             super("auto-fish", "AutoFish", ModuleCategory.PLAYER, "Automatically reels and recasts fishing rods.");
-            add(new ChoiceSetting("trigger-mode", "Trigger", "Sound", "Sound", "Bobber").build());
+            add(new ChoiceSetting("trigger-mode", "Trigger", "Sound", "Sound", "Bobber").group("General")
+                .description("Reel in on the splash sound, or when the bobber dips").build());
             add(RegistryListSetting.soundEvents("sounds", "Sounds", "minecraft:entity.fishing_bobber.splash")
+                .group("General")
+                .description("Sounds that count as a bite")
                 .visibleWhen(() -> "Sound".equals(value("trigger-mode"))).build());
-            add(new BoolSetting("sound-distance", "Sound Distance", true)
+            add(new BoolSetting("sound-distance", "Sound Distance", true).group("General")
                 .visibleWhen(() -> "Sound".equals(value("trigger-mode"))).description("Require sound near player."));
-            add(new DoubleSetting("max-sound-distance", "Max Distance", 12.0, 1.0, 128.0, 0.5)
+            add(new DoubleSetting("max-sound-distance", "Max Distance", 12.0, 1.0, 128.0, 0.5).group("General")
                 .visibleWhen(() -> "Sound".equals(value("trigger-mode")) && Boolean.parseBoolean(value("sound-distance")))
                 .description("Max player sound range.").build());
-            add(new ChoiceSetting("click-mode", "Click Mode", "Real Input", "Real Input", "Interaction API").build());
+            add(new ChoiceSetting("click-mode", "Click Mode", "Real Input", "Real Input", "Interaction API").group("General")
+                .description("Press the use key, or call the game's item use directly").build());
+            add(new BoolSetting("show-catches", "Show Catches", false).group("General")
+                .description("Shows how many fish you caught next to the module name").build());
+            add(new IntSetting("stop-after", "Stop After", 0, 0, 1000, 1).group("General")
+                .description("Turns off after this many catches; 0 never stops").build());
             add(new BoolSetting("auto-cast", "Auto Cast", true).group("Casting")
                 .description("Recast when missing").build());
             add(new IntSetting("cast-timeout", "No Bite Retry", 60, 0, 300, 1).group("Casting")
                 .description("0 = wait forever.").unit("s"));
-            add(new BoolSetting("randomize-delays", "Randomize Delays", true).group("Delays").build());
-            add(new IntSetting("catch-min", "Catch Min", 2, 0, 32, 1).group("Delays").visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
-            add(new IntSetting("catch-max", "Catch Max", 5, 0, 40, 1).group("Delays").visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
-            add(new IntSetting("recast-min", "Recast Min", 8, 0, 32, 1).group("Delays").visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
-            add(new IntSetting("recast-max", "Recast Max", 12, 0, 40, 1).group("Delays").visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
-            add(new IntSetting("catch-delay", "Catch Delay", 3, 0, 40, 1).group("Delays").visibleWhen(() -> !Boolean.parseBoolean(value("randomize-delays"))).build());
-            add(new IntSetting("recast-delay", "Recast Delay", 10, 0, 40, 1).group("Delays").visibleWhen(() -> !Boolean.parseBoolean(value("randomize-delays"))).build());
-            add(new IntSetting("movement-steps", "Steps", 6, 0, 6, 1).group("Movement").build());
+            add(new BoolSetting("randomize-delays", "Randomize Delays", true).group("Delays")
+                .description("Picks each delay between a min and a max").build());
+            add(new IntSetting("catch-min", "Catch Min", 2, 0, 32, 1).group("Delays").unit("ticks")
+                .description("Shortest wait before reeling in")
+                .visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
+            add(new IntSetting("catch-max", "Catch Max", 5, 0, 40, 1).group("Delays").unit("ticks")
+                .description("Longest wait before reeling in")
+                .visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
+            add(new IntSetting("recast-min", "Recast Min", 8, 0, 32, 1).group("Delays").unit("ticks")
+                .description("Shortest wait before casting again")
+                .visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
+            add(new IntSetting("recast-max", "Recast Max", 12, 0, 40, 1).group("Delays").unit("ticks")
+                .description("Longest wait before casting again")
+                .visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
+            add(new IntSetting("catch-delay", "Catch Delay", 3, 0, 40, 1).group("Delays").unit("ticks")
+                .description("Wait before reeling in")
+                .visibleWhen(() -> !Boolean.parseBoolean(value("randomize-delays"))).build());
+            add(new IntSetting("recast-delay", "Recast Delay", 10, 0, 40, 1).group("Delays").unit("ticks")
+                .description("Wait before casting again")
+                .visibleWhen(() -> !Boolean.parseBoolean(value("randomize-delays"))).build());
+            add(new IntSetting("movement-steps", "Steps", 6, 0, 6, 1).group("Movement")
+                .description("Turns one step after each catch, sweeping up to this many steps each way; 0 stays still").build());
             add(new DoubleSetting("degrees-per-step", "Degrees / Step", 5.0, 0.1, 20.0, 0.1)
-                .group("Movement").visibleWhen(() -> !"0".equals(value("movement-steps"))).build());
-            add(new IntSetting("movement-duration", "Duration", 6, 1, 30, 1)
-                .group("Movement").visibleWhen(() -> !"0".equals(value("movement-steps"))).build());
-            add(new BoolSetting("anti-break", "Anti Break", true).group("Rod Safety").build());
+                .group("Movement").description("How far each turn goes")
+                .visibleWhen(() -> !"0".equals(value("movement-steps"))).build());
+            add(new IntSetting("movement-duration", "Duration", 6, 1, 30, 1).unit("ticks")
+                .group("Movement").description("How long each turn takes")
+                .visibleWhen(() -> !"0".equals(value("movement-steps"))).build());
+            add(new BoolSetting("anti-break", "Anti Break", true).group("Rod Safety")
+                .description("Stops before your rod breaks").build());
             add(new IntSetting("min-durability", "Min Durability", 2, 1, 32, 1)
-                .group("Rod Safety").visibleWhen(() -> Boolean.parseBoolean(value("anti-break"))).build());
-            add(new BoolSetting("auto-select-rod", "Auto Select Best Rod", true).group("Rod Safety").build());
+                .group("Rod Safety").description("Durability a rod must keep")
+                .visibleWhen(() -> Boolean.parseBoolean(value("anti-break"))).build());
+            add(new BoolSetting("auto-select-rod", "Auto Select Best Rod", true).group("Rod Safety")
+                .description("Switches to your best usable rod").build());
             add(new BoolSetting("stop-macro-enabled", "Auto Stop", false).group("Auto Stop")
                 .description("Silent conditional rule").build());
             add(new StringSetting("stop-macro", "Rule", "").group("Auto Stop")
@@ -3033,7 +3279,13 @@ public final class BuiltinModules {
         }
 
         @Override
+        public String info() {
+            return bool("show-catches") ? Integer.toString(catches) : "";
+        }
+
+        @Override
         public void onEnable() {
+            catches = 0;
             normalizeDelayPairs();
             migrateLegacyStopSettings();
             tuneSelectedAutoFishPresetMacro();
@@ -3335,6 +3587,13 @@ public final class BuiltinModules {
                 reelConfirmationTicks = 0;
                 reelAttempts = 0;
                 clearVirtualCastState();
+                catches++;
+                int stopAfter = integer("stop-after");
+                if (stopAfter > 0 && catches >= stopAfter) {
+                    dihclient.util.DihClientMessaging.sendPrefixed("AutoFish: stopped after " + catches + " catches.");
+                    setEnabled(false);
+                    return true;
+                }
                 startMovement();
                 pendingRecast = bool("auto-cast");
                 recastTimer = pendingRecast ? nextDelay("recast-delay", "recast-min", "recast-max") : 0;
@@ -3899,14 +4158,37 @@ public final class BuiltinModules {
         private BlockPos target;
         private Direction direction = Direction.UP;
         private int delay;
+        private Block targetBlock;
+        private boolean sentSinceSolid;
+        private int rebreaks;
 
         InstantRebreakModule() {
             super("instant-rebreak", "InstantRebreak", ModuleCategory.PLAYER, "Rebreaks the last block.");
-            add(new IntSetting("delay", "Delay", 0, 0, 20, 1).description("Delay between rebreak packets."));
-            add(new BoolSetting("only-pick", "Only Pickaxe", true).description("Require pickaxe."));
-            add(new BoolSetting("rotate", "Rotate", false).description("Face target first."));
+            add(new IntSetting("delay", "Delay", 0, 0, 20, 1).unit("ticks").group("General")
+                .description("Delay between rebreak packets."));
+            add(new BoolSetting("rotate", "Rotate", false).group("General").description("Face target first."));
+            add(new IntSetting("max-rebreaks", "Max Rebreaks", 0, 0, 100, 1).group("General")
+                .description("Forgets the block after breaking it this many times; 0 never stops"));
+
+            add(new BoolSetting("only-pick", "Only Pickaxe", true).group("Conditions").description("Require pickaxe."));
+            add(new BoolSetting("same-block", "Same Block Only", false).group("Conditions")
+                .description("Only rebreaks when the same kind of block comes back"));
+            add(new BoolSetting("range-check", "Range Check", false).group("Conditions")
+                .description("Waits while the block is farther than the range"));
+            add(new DoubleSetting("range", "Range", 6.0, 1.0, 10.0, 0.5).unit("blocks").group("Conditions")
+                .description("Farthest block it sends rebreaks for")
+                .visibleWhen(() -> bool("range-check")));
+            add(new BoolSetting("pause-while-using", "Pause While Using", false).group("Conditions")
+                .description("Waits while you eat, drink or block"));
+
             add(new BoolSetting("render", "Render", true).group("Render").description("Show the rebreak target."));
-            add(new ColorSetting("color", "Color", 0xFFFF3B3B).group("Render").description("Single outline color.").build());
+            add(new ColorSetting("color", "Color", 0xFFFF3B3B).group("Render").description("Single outline color.")
+                .visibleWhen(() -> bool("render")).build());
+        }
+
+        @Override
+        public String info() {
+            return target == null || rebreaks == 0 ? "" : Integer.toString(rebreaks);
         }
 
         @Override
@@ -3919,6 +4201,9 @@ public final class BuiltinModules {
         public void onStartBreakingBlock(BlockPos pos, Direction direction) {
             if (dihclient.util.multi.MultiPilot.isActive()) return;
             target = pos == null ? null : pos.immutable();
+            targetBlock = target == null || MC.level == null ? null : MC.level.getBlockState(target).getBlock();
+            sentSinceSolid = false;
+            rebreaks = 0;
             this.direction = direction == null ? Direction.UP : direction;
             if (bool("render")) DihInstaBreakRenderer.setTarget(target, colorValue("color", colorValue("line-color", 0xFF39D77A)));
             delay = 0;
@@ -3934,8 +4219,27 @@ public final class BuiltinModules {
             if (!bool("render")) DihInstaBreakRenderer.clear();
             else DihInstaBreakRenderer.setTarget(target, colorValue("color", colorValue("line-color", 0xFF39D77A)));
 
-            if (MC.level.isOutsideBuildHeight(target) || MC.level.getBlockState(target).isAir()) return;
+            if (MC.level.isOutsideBuildHeight(target)) return;
+            BlockState current = MC.level.getBlockState(target);
+            if (current.isAir()) {
+                if (sentSinceSolid) {
+                    sentSinceSolid = false;
+                    rebreaks++;
+                    int max = integer("max-rebreaks");
+                    if (max > 0 && rebreaks >= max) {
+                        target = null;
+                        DihInstaBreakRenderer.clear();
+                    }
+                }
+                return;
+            }
+            if (bool("same-block") && targetBlock != null && current.getBlock() != targetBlock) return;
             if (bool("only-pick") && !MC.player.getMainHandItem().is(ItemTags.PICKAXES)) return;
+            if (bool("pause-while-using") && MC.player.isUsingItem()) return;
+            if (bool("range-check")
+                && MC.player.getEyePosition().distanceToSqr(Vec3.atCenterOf(target)) > decimal("range") * decimal("range")) {
+                return;
+            }
             if (delay++ < integer("delay")) return;
             delay = 0;
             if (bool("rotate")) MC.player.lookAt(EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(target));
@@ -3951,6 +4255,7 @@ public final class BuiltinModules {
                     ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, pos, dir));
             }
             MC.getConnection().send(DihPackets.mainHandSwing());
+            sentSinceSolid = true;
         }
 
         private int colorValue(String id, int fallback) {
@@ -3967,26 +4272,65 @@ public final class BuiltinModules {
     static final class NoInteractModule extends Module {
         NoInteractModule() {
             super("no-interact", "NoInteract", ModuleCategory.PLAYER, "Cancels selected inputs.");
+            add(new BoolSetting("sneak-bypass", "Sneak Bypass", false).group("General")
+                .description("Holding sneak lets every input through").build());
+            add(new BoolSetting("pause-in-creative", "Pause In Creative", false).group("General")
+                .description("Lets every input through in creative mode").build());
+            add(new BoolSetting("notify", "Notify", false).group("General")
+                .description("Says in chat when it cancels something, at most once a second").build());
+
             add(RegistryListSetting.blocks("block-mine", "Block Mine", "").group("Blocks").description("Mining block list.").build());
-            add(new ChoiceSetting("block-mine-mode", "Mine Mode", "BlackList", "WhiteList", "BlackList").group("Blocks").build());
+            add(new ChoiceSetting("block-mine-mode", "Mine Mode", "BlackList", "WhiteList", "BlackList").group("Blocks")
+                .description("BlackList stops mining the listed blocks; WhiteList allows only them").build());
             add(RegistryListSetting.blocks("block-interact", "Block Interact", "").group("Blocks").description("Use block list.").build());
-            add(new ChoiceSetting("block-interact-mode", "Block Mode", "BlackList", "WhiteList", "BlackList").group("Blocks").build());
-            add(new ChoiceSetting("block-interact-hand", "Block Hand", "Both", "Mainhand", "Offhand", "Both", "None").group("Blocks").build());
+            add(new ChoiceSetting("block-interact-mode", "Block Mode", "BlackList", "WhiteList", "BlackList").group("Blocks")
+                .description("BlackList stops using the listed blocks; WhiteList allows only them").build());
+            add(new ChoiceSetting("block-interact-hand", "Block Hand", "Both", "Mainhand", "Offhand", "Both", "None").group("Blocks")
+                .description("Which hand the block-use rule applies to").build());
             add(RegistryListSetting.entityTypes("entity-interact", "Entity Interact", "").group("Entities").description("Use entity list.").build());
-            add(new ChoiceSetting("entity-interact-mode", "Entity Mode", "BlackList", "WhiteList", "BlackList").group("Entities").build());
-            add(new ChoiceSetting("entity-interact-hand", "Entity Hand", "Both", "Mainhand", "Offhand", "Both", "None").group("Entities").build());
-            add(RegistryListSetting.entityTypes("entity-hit", "Entity Hit", "").group("Attacks").build());
-            add(new ChoiceSetting("entity-hit-mode", "Hit Mode", "WhiteList", "WhiteList", "BlackList").group("Attacks").build());
-            add(new BoolSetting("friends", "Friends", false).group("Entities"));
-            add(new BoolSetting("babies", "Babies", false).group("Entities"));
-            add(new BoolSetting("nametagged", "Nametagged", false).group("Entities"));
+            add(new ChoiceSetting("entity-interact-mode", "Entity Mode", "BlackList", "WhiteList", "BlackList").group("Entities")
+                .description("BlackList stops using the listed entities; WhiteList allows only them").build());
+            add(new ChoiceSetting("entity-interact-hand", "Entity Hand", "Both", "Mainhand", "Offhand", "Both", "None").group("Entities")
+                .description("Which hand the entity-use rule applies to").build());
+            add(RegistryListSetting.entityTypes("entity-hit", "Entity Hit", "").group("Attacks")
+                .description("Entities the hit rule uses").build());
+            add(new ChoiceSetting("entity-hit-mode", "Hit Mode", "WhiteList", "WhiteList", "BlackList").group("Attacks")
+                .description("WhiteList lets you hit only the listed entities; BlackList stops hitting them").build());
+            add(new BoolSetting("friends", "Friends", false).group("Entities")
+                .description("Also applies the entity rules to friends and teammates"));
+            add(new BoolSetting("babies", "Babies", false).group("Entities")
+                .description("Also applies the entity rules to baby mobs"));
+            add(new BoolSetting("nametagged", "Nametagged", false).group("Entities")
+                .description("Also applies the entity rules to mobs with a name tag"));
+        }
+
+        private long lastNotifyMs;
+
+        /** Whether the rules are switched off right now. */
+        private boolean bypassed() {
+            if (MC.player == null) return false;
+            if (bool("sneak-bypass") && MC.player.isShiftKeyDown()) return true;
+            return bool("pause-in-creative") && MC.player.isCreative();
+        }
+
+        private boolean cancelled(boolean cancel, String what) {
+            if (!cancel) return false;
+            if (bypassed()) return false;
+            if (bool("notify")) {
+                long now = System.currentTimeMillis();
+                if (now - lastNotifyMs >= 1000L) {
+                    lastNotifyMs = now;
+                    DihClientMessaging.sendPrefixed("NoInteract blocked " + what + ".");
+                }
+            }
+            return true;
         }
 
         @Override
         public boolean shouldCancelStartBreakingBlock(BlockPos pos, Direction direction) {
             if (MC.level == null || pos == null) return matchesRegistry("", list("block-mine"), choice("block-mine-mode"));
             String id = BuiltInRegistries.BLOCK.getKey(MC.level.getBlockState(pos).getBlock()).toString();
-            return matchesRegistry(id, list("block-mine"), choice("block-mine-mode"));
+            return cancelled(matchesRegistry(id, list("block-mine"), choice("block-mine-mode")), "mining");
         }
 
         @Override
@@ -3994,7 +4338,8 @@ public final class BuiltinModules {
             if (!(hitResult instanceof EntityHitResult entityHit)) return false;
             Entity entity = entityHit.getEntity();
             if (!entityFilterAllowed(entity)) return false;
-            return matchesRegistry(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString(), list("entity-hit"), choice("entity-hit-mode"));
+            return cancelled(matchesRegistry(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString(),
+                list("entity-hit"), choice("entity-hit-mode")), "a hit");
         }
 
         @Override
@@ -4003,13 +4348,13 @@ public final class BuiltinModules {
                 if (!matchesHand(choice("block-interact-hand"), hand)) return false;
                 if (MC.level == null) return matchesRegistry("", list("block-interact"), choice("block-interact-mode"));
                 String id = BuiltInRegistries.BLOCK.getKey(MC.level.getBlockState(blockHit.getBlockPos()).getBlock()).toString();
-                return matchesRegistry(id, list("block-interact"), choice("block-interact-mode"));
+                return cancelled(matchesRegistry(id, list("block-interact"), choice("block-interact-mode")), "a block use");
             }
             if (hitResult instanceof EntityHitResult entityHit) {
                 if (!matchesHand(choice("entity-interact-hand"), hand)) return false;
                 if (!entityFilterAllowed(entityHit.getEntity())) return false;
                 String id = BuiltInRegistries.ENTITY_TYPE.getKey(entityHit.getEntity().getType()).toString();
-                return matchesRegistry(id, list("entity-interact"), choice("entity-interact-mode"));
+                return cancelled(matchesRegistry(id, list("entity-interact"), choice("entity-interact-mode")), "an entity use");
             }
             return false;
         }
@@ -4020,7 +4365,7 @@ public final class BuiltinModules {
                 if (!matchesHand(choice("block-interact-hand"), DihPackets.hand(use))) return false;
                 if (MC.level == null) return matchesRegistry("", list("block-interact"), choice("block-interact-mode"));
                 String id = BuiltInRegistries.BLOCK.getKey(MC.level.getBlockState(DihPackets.hitResult(use).getBlockPos()).getBlock()).toString();
-                return matchesRegistry(id, list("block-interact"), choice("block-interact-mode"));
+                return cancelled(matchesRegistry(id, list("block-interact"), choice("block-interact-mode")), "a block use");
             }
             if (packet instanceof ServerboundPlayerActionPacket action && action.getAction() == ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK) {
                 return shouldCancelStartBreakingBlock(action.getPos(), action.getDirection());
@@ -4031,7 +4376,7 @@ public final class BuiltinModules {
                 Entity entity = MC.level.getEntity(interact.entityId());
                 if (entity == null || !entityFilterAllowed(entity)) return false;
                 String id = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString();
-                return matchesRegistry(id, list("entity-interact"), choice("entity-interact-mode"));
+                return cancelled(matchesRegistry(id, list("entity-interact"), choice("entity-interact-mode")), "an entity use");
             }
             return false;
         }
@@ -4063,6 +4408,7 @@ public final class BuiltinModules {
             if (entity == null) return false;
             if (!bool("nametagged") && entity.hasCustomName()) return false;
             if (!bool("babies") && entity instanceof LivingEntity living && living.isBaby()) return false;
+            if (!bool("friends") && TeamsModule.isFriendOrTeam(entity)) return false;
             return true;
         }
     }
@@ -4072,7 +4418,57 @@ public final class BuiltinModules {
 
         OffhandInteractModule() {
             super("offhand-interact-placement", "OffhandInteract", ModuleCategory.PLAYER, "Uses the offhand too.");
-            add(new BoolSetting("cancelMainhand", "Cancel Mainhand", false));
+            add(new BoolSetting("cancelMainhand", "Cancel Mainhand", false).group("General")
+                .description("Only the offhand acts; the main-hand click is not sent"));
+            add(new ChoiceSetting("main-hand", "Main Hand", "Any", "Any", "No Blocks", "Empty")
+                .group("General")
+                .description("What the main hand may hold for the offhand to join in"));
+            add(new BoolSetting("sneak-only", "Sneak Only", false).group("General")
+                .description("Only while you sneak"));
+            add(new BoolSetting("skip-interactables", "Skip Interactables", false).group("General")
+                .description("Leaves chests, doors, buttons and levers to the main hand so they do not toggle twice"));
+
+            add(new ChoiceSetting("offhand-items", "Offhand Items", "Any", "Any", "Blocks Only", "List")
+                .group("Items")
+                .description("Which offhand items get used"));
+            add(RegistryListSetting.items("item-list", "Item List", "")
+                .group("Items")
+                .description("Offhand items that get used")
+                .visibleWhen(() -> "List".equals(choice("offhand-items"))));
+        }
+
+        private boolean conditionsAllow(BlockHitResult hit) {
+            if (bool("sneak-only") && !MC.player.isShiftKeyDown()) return false;
+            ItemStack main = MC.player.getMainHandItem();
+            String mainRule = choice("main-hand");
+            if ("Empty".equals(mainRule) && !main.isEmpty()) return false;
+            if ("No Blocks".equals(mainRule) && main.getItem() instanceof BlockItem) return false;
+            ItemStack off = MC.player.getOffhandItem();
+            String itemRule = choice("offhand-items");
+            if ("Blocks Only".equals(itemRule) && !(off.getItem() instanceof BlockItem)) return false;
+            if ("List".equals(itemRule)) {
+                String id = BuiltInRegistries.ITEM.getKey(off.getItem()).toString();
+                boolean listed = false;
+                for (String entry : list("item-list")) {
+                    if (RegistryListCodec.matches(id, entry)) {
+                        listed = true;
+                        break;
+                    }
+                }
+                if (!listed) return false;
+            }
+            if (bool("skip-interactables") && MC.level != null && hit != null) {
+                BlockPos pos = hit.getBlockPos();
+                BlockState state = MC.level.getBlockState(pos);
+                Block block = state.getBlock();
+                if (state.getMenuProvider(MC.level, pos) != null
+                    || block instanceof net.minecraft.world.level.block.DoorBlock
+                    || block instanceof net.minecraft.world.level.block.TrapDoorBlock
+                    || block instanceof net.minecraft.world.level.block.FenceGateBlock
+                    || block instanceof net.minecraft.world.level.block.ButtonBlock
+                    || block instanceof net.minecraft.world.level.block.LeverBlock) return false;
+            }
+            return true;
         }
 
         @Override
@@ -4085,6 +4481,8 @@ public final class BuiltinModules {
                 if (DihHandArbiter.offhandClaimedByOther(id())) return false;
 
                 if (AutoTotemModule.operationActive()) return false;
+
+                if (!conditionsAllow(DihPackets.hitResult(use))) return false;
 
                 if (ModuleRegistry.shouldCancelUseExcept(DihPackets.hitResult(use), InteractionHand.OFF_HAND, id())) return false;
 

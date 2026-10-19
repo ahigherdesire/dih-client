@@ -4,6 +4,7 @@ package dihclient.modules;
 
 import dihclient.util.DihBlocks;
 import dihclient.api.module.BoolSetting;
+import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.api.module.RegistryListSetting;
 import dihclient.mixin.accessor.DihMinecraftAccessor;
@@ -220,37 +221,70 @@ public final class AutoFarmModule extends Module implements DihSilentAim.Owner {
     AutoFarmModule() {
         super("auto-farm", "AutoFarm", ModuleCategory.PLAYER, "Harvests and replants crops.");
         add(new BoolSetting("movement", "Movement", false)
+            .group("General")
             .description("Walk to distant crops")
             .build());
 
         add(new IntSetting("search-range", "Search Range", 16, 4, 16, 1)
+            .group("General")
             .description("Pathfinding search radius")
+            .visibleWhen(() -> bool("movement"))
+            .build());
+        add(new DoubleSetting("range", "Reach", 6.0D, 1.0D, 6.0D, 0.25D)
+            .group("General")
+            .unit("blocks")
+            .description("Farthest block it works on, capped by your reach")
             .build());
         add(RegistryListSetting.crops("crops", "Crops",
                 "minecraft:wheat|minecraft:carrots|minecraft:potatoes|minecraft:beetroots"
                     + "|minecraft:nether_wart|minecraft:pumpkin|minecraft:melon")
+            .group("General")
             .description("Crop blocks to farm")
             .build());
+        add(new BoolSetting("pause-sneaking", "Pause While Sneaking", false)
+            .group("General")
+            .description("Hands control back to you while you sneak")
+            .build());
+
         add(new BoolSetting("grown-only", "Fully Grown Only", true)
+            .group("Actions")
             .description("Harvest mature crops only")
             .build());
         add(new BoolSetting("replant", "Replant", true)
+            .group("Actions")
             .description("Replant after harvesting")
             .build());
         add(new BoolSetting("plant", "Plant", true)
+            .group("Actions")
             .description("Plant bare farmland")
             .build());
         add(new BoolSetting("bonemeal", "Bonemeal", true)
+            .group("Actions")
             .description("Fertilize crops to grow")
             .build());
-        add(new BoolSetting("fortune", "Prefer Fortune", true)
-            .description("Harvest with fortune tool")
+        add(new IntSetting("bonemeal-reserve", "Bonemeal Reserve", 0, 0, 64, 1)
+            .group("Actions")
+            .description("Keeps this much bone meal and stops fertilizing below it")
+            .visibleWhen(() -> bool("bonemeal"))
             .build());
         add(new BoolSetting("till", "Till Dirt", false)
+            .group("Actions")
             .description("Hoe dirt into farmland")
             .build());
+
+        add(new BoolSetting("fortune", "Prefer Fortune", true)
+            .group("Tools")
+            .description("Harvest with fortune tool")
+            .build());
         add(new BoolSetting("switch-back", "Switch Back", true)
+            .group("Tools")
             .description("Return to previous slot")
+            .build());
+        add(new IntSetting("switch-back-delay", "Switch Back Delay", SWITCH_BACK_TICKS, 0, 40, 1)
+            .group("Tools")
+            .unit("ticks")
+            .description("Idle ticks before returning to the previous slot")
+            .visibleWhen(() -> bool("switch-back"))
             .build());
     }
 
@@ -506,7 +540,7 @@ public final class AutoFarmModule extends Module implements DihSilentAim.Owner {
     private String planningSettings;
 
     private void refreshPlanningSettings() {
-        String settings = bool("movement") + ":" + searchRange() + ":" + cropBlocks()
+        String settings = bool("movement") + ":" + searchRange() + ":" + decimal("range") + ":" + cropBlocks()
             + ":" + bool("grown-only") + ":" + bool("replant") + ":" + bool("plant")
             + ":" + bool("bonemeal") + ":" + bool("fortune") + ":" + bool("till");
         if (settings.equals(planningSettings)) return;
@@ -580,6 +614,7 @@ public final class AutoFarmModule extends Module implements DihSilentAim.Owner {
         if (DihSilentAim.scaffoldOwnsRotation() || ScaffoldModule.reservesRageInput()) return false;
 
         if (MC.player.isUsingItem() || MC.player.isHandsBusy()) return false;
+        if (bool("pause-sneaking") && MC.player.isShiftKeyDown()) return false;
         if (foreignStreamOwner()) return false;
 
         if (MC.gui == null || MC.gui.screen() != null || MC.gui.overlay() != null) return false;
@@ -628,7 +663,7 @@ public final class AutoFarmModule extends Module implements DihSilentAim.Owner {
     }
 
     private double reach() {
-        return MC.player.blockInteractionRange();
+        return Math.min(MC.player.blockInteractionRange(), decimal("range"));
     }
 
     private int searchRangeTick = Integer.MIN_VALUE;
@@ -1199,6 +1234,7 @@ public final class AutoFarmModule extends Module implements DihSilentAim.Owner {
     private Target buildBonemeal(BlockPos cell) {
         int slot = bonemealSlot();
         if (slot < 0 && !offhandHolds(Items.BONE_MEAL)) return null;
+        if (!aboveBonemealReserve()) return null;
         DihRotationUtil.Rotation rotation = solveBonemeal(cell);
 
         if (rotation == null) return null;
@@ -2159,7 +2195,18 @@ public final class AutoFarmModule extends Module implements DihSilentAim.Owner {
     }
 
     private boolean bonemealAvailable() {
-        return offhandHolds(Items.BONE_MEAL) || bonemealSlot() >= 0;
+        return (offhandHolds(Items.BONE_MEAL) || bonemealSlot() >= 0) && aboveBonemealReserve();
+    }
+
+    private boolean aboveBonemealReserve() {
+        int reserve = integer("bonemeal-reserve");
+        if (reserve <= 0) return true;
+        int count = MC.player.getOffhandItem().is(Items.BONE_MEAL) ? MC.player.getOffhandItem().getCount() : 0;
+        for (int slot = 0; slot < 36; slot++) {
+            ItemStack stack = MC.player.getInventory().getItem(slot);
+            if (stack.is(Items.BONE_MEAL)) count += stack.getCount();
+        }
+        return count > reserve;
     }
 
     private int fortuneSlot() {
@@ -2191,7 +2238,7 @@ public final class AutoFarmModule extends Module implements DihSilentAim.Owner {
     private void armSwitchBack() {
         if (previousSlot >= 0 && switchBackTicks <= 0) {
 
-            switchBackTicks = SWITCH_BACK_TICKS + random.nextInt(3);
+            switchBackTicks = integer("switch-back-delay") + random.nextInt(3);
         }
     }
 

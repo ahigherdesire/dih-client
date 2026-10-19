@@ -2,6 +2,7 @@ package dihclient.modules;
 
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ChoiceSetting;
+import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.api.module.RegistryListSetting;
 import dihclient.util.DihCombatClicker;
@@ -121,6 +122,13 @@ public final class SurroundModule extends Module implements DihSilentAim.Owner {
     public SurroundModule() {
         super("surround", "Surround", ModuleCategory.PLAYER, "Places blocks around your feet.");
 
+        add(new BoolSetting("only-on-ground", "Only On Ground", false)
+            .group("General")
+            .description("Waits to place while you are jumping or falling"));
+        add(new BoolSetting("disable-when-done", "Disable When Done", false)
+            .group("General")
+            .description("Turns off once every cell around you is filled"));
+
         add(new BoolSetting("down", "Down", true)
             .group("Features")
             .description("Fill under the surround floor"));
@@ -142,6 +150,11 @@ public final class SurroundModule extends Module implements DihSilentAim.Owner {
         add(new BoolSetting("disable-on-xz-speed", "XZSpeed", false)
             .group("DisableOn")
             .description("Turn off when moving fast"));
+        add(new DoubleSetting("xz-speed-limit", "Speed Limit", Math.sqrt(XZ_SPEED_LIMIT_SQR), 0.1D, 2.0D, 0.05D)
+            .group("DisableOn")
+            .unit("blocks/tick")
+            .visibleWhen(() -> bool("disable-on-xz-speed"))
+            .description("Sideways speed that turns it off"));
 
         add(new ChoiceSetting("filter-mode", "Filter", "Whitelist", "Whitelist", "Blacklist")
             .group("Blocks")
@@ -157,6 +170,11 @@ public final class SurroundModule extends Module implements DihSilentAim.Owner {
         add(new BoolSetting("switch-back", "Switch Back", true)
             .group("Placing")
             .description("Return to your old slot"));
+        add(new IntSetting("switch-back-delay", "Switch Back Delay", SWITCH_BACK_IDLE_TICKS, 0, 40, 1)
+            .group("Placing")
+            .unit("ticks")
+            .visibleWhen(() -> bool("switch-back"))
+            .description("Idle ticks before returning to your old slot"));
 
         add(new BoolSetting("protect", "Protect", true)
             .group("Protect")
@@ -177,6 +195,11 @@ public final class SurroundModule extends Module implements DihSilentAim.Owner {
         add(new BoolSetting("force-extra-layer", "Force Extra Layer", false)
             .group("Protect")
             .description("Extra layer on every cell"));
+        add(new DoubleSetting("breaker-timeout", "Breaker Timeout", BREAKING_EXPIRY_NANOS / 1.0E9D, 0.5D, 10.0D, 0.5D)
+            .group("Protect")
+            .unit("s")
+            .visibleWhen(() -> bool("protect"))
+            .description("Forgets a mining player after this long without news"));
     }
 
     @Override
@@ -325,7 +348,8 @@ public final class SurroundModule extends Module implements DihSilentAim.Owner {
         }
         long now = System.nanoTime();
         int minStage = integer("min-destroy-progress");
-        breaking.values().removeIf(entry -> now - entry.stampNanos() > BREAKING_EXPIRY_NANOS);
+        long expiry = (long) (decimal("breaker-timeout") * 1.0E9D);
+        breaking.values().removeIf(entry -> now - entry.stampNanos() > expiry);
         for (Breaking entry : breaking.values()) {
             if (entry.stage() >= minStage) broken.add(BlockPos.of(entry.pos()));
         }
@@ -358,6 +382,14 @@ public final class SurroundModule extends Module implements DihSilentAim.Owner {
 
         collectBrokenCells();
         buildTargets();
+        if (targets.isEmpty() && bool("disable-when-done")) {
+            disableWithToggleMessage("Surround disabled: done.");
+            return;
+        }
+        if (bool("only-on-ground") && !MC.player.onGround()) {
+            standDown();
+            return;
+        }
         runPlacement();
     }
 
@@ -379,7 +411,8 @@ public final class SurroundModule extends Module implements DihSilentAim.Owner {
         if (bool("disable-on-xz-speed") && lastPositionValid) {
             double dx = x - lastX;
             double dz = z - lastZ;
-            if (dx * dx + dz * dz >= XZ_SPEED_LIMIT_SQR) return "you moved too fast";
+            double limit = decimal("xz-speed-limit");
+            if (dx * dx + dz * dz >= limit * limit) return "you moved too fast";
         }
         return null;
     }
@@ -743,7 +776,7 @@ public final class SurroundModule extends Module implements DihSilentAim.Owner {
             switchedToSlot = -1;
             return;
         }
-        if (++idleTicks < SWITCH_BACK_IDLE_TICKS) return;
+        if (++idleTicks < integer("switch-back-delay")) return;
         if (!DihHandArbiter.beginHandPacketGroup(id())) return;
         try {
             DihInventoryHelper.selectHotbarSlot(MC, originalSlot);

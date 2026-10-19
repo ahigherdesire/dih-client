@@ -126,11 +126,15 @@ public final class AutoTotemModule extends Module {
         super("auto-totem", "AutoTotem", ModuleCategory.PLAYER, "Keeps a totem in offhand.");
 
         add(new ChoiceSetting("switch-mode", "Switch Mode", "Switch", "Smart", "Switch", "PickUp")
-            .description("How the totem is swapped.").build());
+            .group("General").description("How the totem is swapped.").build());
         add(new IntSetting("switch-delay", "Switch Delay (ms)", 0, 0, 500, 5)
-            .description("Delay between offhand swaps.").build());
+            .group("General").description("Delay between offhand swaps.").build());
         add(new IntSetting("switch-back-delay", "Switch Back Delay (ms)", 40, 0, 500, 5)
-            .description("Delay before switching back.").build());
+            .group("General").description("Delay before switching back.").build());
+        add(new BoolSetting("send-directly", "Send Directly", false)
+            .group("General").description("Swap even with screens open.").build());
+        add(new BoolSetting("pause-movement", "Pause Movement", true)
+            .group("General").description("Holds your movement keys for the tick a swap is sent").build());
         add(new RangeSetting("click-delay", "Click Delay", new ValueRange(1, 2), 0, 10, 1)
             .group("Timing").unit("ticks").description("Ticks between packets"));
         add(new RangeSetting("close-delay", "Close Delay", new ValueRange(1, 2), 0, 10, 1)
@@ -141,8 +145,6 @@ public final class AutoTotemModule extends Module {
             .group("Timing").unit("ticks").description("Reaction ticks after pop"));
         add(new RangeSetting("settle", "Settle", new ValueRange(1, 1), 0, 5, 1)
             .group("Timing").unit("ticks").description("Ticks before first packet"));
-        add(new BoolSetting("send-directly", "Send Directly", false)
-            .description("Swap even with screens open.").build());
 
         add(new BoolSetting("health", "Health", true)
             .group("Health").description("Totem only when endangered.").build());
@@ -161,6 +163,15 @@ public final class AutoTotemModule extends Module {
         add(new BoolSetting("predict-explosions", "Predict Explosion Damage", true)
             .group("Health").visibleWhen(() -> bool("health"))
             .description("Predict entity explosion damage.").build());
+        add(new BoolSetting("predict-crystals", "Crystals", true)
+            .group("Health").visibleWhen(() -> bool("health") && bool("predict-explosions"))
+            .description("Counts end crystals as explosions").build());
+        add(new BoolSetting("predict-tnt", "TNT", true)
+            .group("Health").visibleWhen(() -> bool("health") && bool("predict-explosions"))
+            .description("Counts lit TNT and TNT minecarts as explosions").build());
+        add(new BoolSetting("predict-creepers", "Creepers", true)
+            .group("Health").visibleWhen(() -> bool("health") && bool("predict-explosions"))
+            .description("Counts creepers as explosions").build());
         add(new BoolSetting("predict-block-explosions", "Predict Block Explosions", false)
             .group("Health").visibleWhen(() -> bool("health"))
             .description("Predict bed and anchor explosions.").build());
@@ -173,12 +184,70 @@ public final class AutoTotemModule extends Module {
         add(new BoolSetting("missing-armor", "Missing Armor", true)
             .group("Health").visibleWhen(() -> bool("health"))
             .description("Totem when armor missing.").build());
+        add(new BoolSetting("while-gliding", "While Gliding", false)
+            .group("Health").visibleWhen(() -> bool("health"))
+            .description("Always holds a totem while flying with an elytra").build());
         add(new BoolSetting("switch-back", "Switch Back", true)
             .group("Health").visibleWhen(() -> bool("health"))
             .description("Restore item after healing.").build());
-        add(new BoolSetting("pause-movement", "Pause Movement", true));
+
         add(new BoolSetting("no-render", "No Render", true)
-            .description("Hide the totem pop animation.").build());
+            .group("Feedback").description("Hide the totem pop animation.").build());
+        add(new BoolSetting("notify-pops", "Notify Pops", false)
+            .group("Feedback").description("Says in chat when one of your totems pops and how many are left").build());
+        add(new IntSetting("low-totems", "Low Totem Warning", 0, 0, 10, 1)
+            .group("Feedback").description("Warns in chat when you have this many totems or fewer; 0 is off").build());
+    }
+
+    private volatile boolean popPending;
+    private int popCheckTicks = -1;
+    private int lastTotemCount = -1;
+
+    @Override
+    public boolean onPacketReceive(net.minecraft.network.protocol.Packet<?> packet) {
+        // Totem pop is entity event 35; the entity is resolved on the client thread in tick().
+        if (packet instanceof net.minecraft.network.protocol.game.ClientboundEntityEventPacket event
+            && event.getEventId() == 35 && MC.level != null && MC.player != null) {
+            pendingPopEvent = event;
+            popPending = true;
+        }
+        return false;
+    }
+
+    private volatile net.minecraft.network.protocol.game.ClientboundEntityEventPacket pendingPopEvent;
+
+    @Override
+    public void tick() {
+        tickFeedback();
+    }
+
+    private void tickFeedback() {
+        if (MC.player == null || MC.level == null) return;
+        if (popPending) {
+            popPending = false;
+            net.minecraft.network.protocol.game.ClientboundEntityEventPacket event = pendingPopEvent;
+            pendingPopEvent = null;
+            if (event != null && event.getEntity(MC.level) == MC.player) popCheckTicks = 2;
+        }
+        int count = totemCount();
+        if (popCheckTicks >= 0 && popCheckTicks-- == 0 && bool("notify-pops")) {
+            dihclient.util.DihClientMessaging.sendPrefixed("\u00a7eTotem popped! \u00a7f" + count + "\u00a7e left.");
+        }
+        int warnAt = integer("low-totems");
+        if (warnAt > 0 && lastTotemCount > warnAt && count <= warnAt) {
+            dihclient.util.DihClientMessaging.sendPrefixed("\u00a7cOnly " + count + " totem" + (count == 1 ? "" : "s") + " left.");
+        }
+        lastTotemCount = count;
+    }
+
+    private int totemCount() {
+        int count = 0;
+        net.minecraft.world.entity.player.Inventory inventory = MC.player.getInventory();
+        for (int slot = 0; slot < inventory.getContainerSize(); slot++) {
+            ItemStack stack = inventory.getItem(slot);
+            if (stack.is(Items.TOTEM_OF_UNDYING)) count += stack.getCount();
+        }
+        return count;
     }
 
     @Override
@@ -244,7 +313,7 @@ public final class AutoTotemModule extends Module {
 
         boolean health = bool("health");
 
-        boolean wantTotem = health ? !isBlocked() && healthBelowThreshold() : true;
+        boolean wantTotem = health ? !isBlocked() && (healthBelowThreshold() || glidingWantsTotem()) : true;
 
         int mode = wantTotem ? MODE_TOTEM : MODE_NONE;
         if (mode == MODE_NONE && health && bool("switch-back") && lastMode == MODE_TOTEM) {
@@ -851,6 +920,10 @@ public final class AutoTotemModule extends Module {
         return true;
     }
 
+    private boolean glidingWantsTotem() {
+        return bool("while-gliding") && MC.player.isFallFlying();
+    }
+
     private boolean healthBelowThreshold() {
         if (!bool("health")) return true;
 
@@ -884,10 +957,18 @@ public final class AutoTotemModule extends Module {
         if (!bool("predict-explosions")) return 0.0f;
         float maxDamage = 0.0f;
         for (Entity entity : MC.level.entitiesForRendering()) {
+            if (!explosionSourceEnabled(entity)) continue;
             maxDamage = Math.max(maxDamage, getExplosionDamageFromEntityMemoized(entity));
             if (maxDamage >= allowedDamage) return maxDamage;
         }
         return maxDamage;
+    }
+
+    private boolean explosionSourceEnabled(Entity entity) {
+        if (entity instanceof EndCrystal) return bool("predict-crystals");
+        if (entity instanceof PrimedTnt || entity instanceof MinecartTNT) return bool("predict-tnt");
+        if (entity instanceof Creeper) return bool("predict-creepers");
+        return true;
     }
 
     private final java.util.Map<Long, Float> entityDamageMemo = new java.util.HashMap<>();
