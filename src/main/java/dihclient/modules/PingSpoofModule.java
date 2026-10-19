@@ -4,14 +4,15 @@ import dihclient.api.module.*;
 import dihclient.util.macro.PingSpoofController;
 
 public final class PingSpoofModule extends Module {
-
     public PingSpoofModule() {
         super("ping-spoof", "PingSpoof", ModuleCategory.MISC, "Adds latency to your ping by delaying keep-alives.");
         add(new IntSetting("delay", "Delay (ms)", 250, 0, 500, 25)
             .description("Latency added to ping.").build());
         add(new BoolSetting("real-incoming", "Real: Incoming", false)
+            .group("Real Latency")
             .description("Delay packets you receive.").build());
         add(new BoolSetting("real-outgoing", "Real: Outgoing", false)
+            .group("Real Latency")
             .description("Delay packets you send.").build());
     }
 

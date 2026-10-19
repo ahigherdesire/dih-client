@@ -49,13 +49,25 @@ public final class BetterChatModule extends Module {
 
     public BetterChatModule() {
         super("better-chat", "BetterChat", ModuleCategory.MISC, "Longer chat history, stacked repeats, filters and more.");
-        add(new IntSetting("history", "History", 1000, 100, 20000, 100).description("Messages chat keeps (vanilla is 100)."));
-        add(new BoolSetting("stack", "Stack Repeats", true).description("Merge repeated messages into one with a count."));
-        add(new BoolSetting("timestamps", "Timestamps", false));
-        add(new ChoiceSetting("timestamp-format", "Format", "HH:mm", "HH:mm", "HH:mm:ss")
-            .visibleWhen(() -> bool("timestamps")));
-        add(new StringListSetting("filters", "Filters", "")
+        add(new IntSetting("history", "History", 1000, 100, 20000, 100).group("General")
+            .description("Messages chat keeps (vanilla is 100)."));
+        add(new BoolSetting("stack", "Stack Repeats", true).group("General")
+            .description("Merge repeated messages into one with a count."));
+        add(new ChoiceSetting("stack-color", "Count Color", "Gray",
+            "Gray", "Dark Gray", "Yellow", "Gold", "Green", "Aqua").group("General")
+            .description("Color of the [xN] repeat counter.")
+            .visibleWhen(() -> bool("stack")));
+        add(new StringListSetting("filters", "Filters", "").group("General")
             .description("Hide server messages matching any of these regular expressions."));
+        add(new BoolSetting("timestamps", "Timestamps", false).group("Timestamps")
+            .description("Prefix each message with the time it arrived."));
+        add(new ChoiceSetting("timestamp-format", "Format", "HH:mm", "HH:mm", "HH:mm:ss").group("Timestamps")
+            .description("Clock format for the timestamp.")
+            .visibleWhen(() -> bool("timestamps")));
+        add(new ChoiceSetting("timestamp-color", "Color", "Dark Gray",
+            "Dark Gray", "Gray", "White", "Yellow", "Gold", "Green", "Aqua").group("Timestamps")
+            .description("Color of the timestamp.")
+            .visibleWhen(() -> bool("timestamps")));
         add(new StringSetting("prefix", "Prefix", "").group("Outgoing").description("Put before what you send."));
         add(new StringSetting("suffix", "Suffix", "").group("Outgoing").description("Put after what you send."));
         add(new BoolSetting("unicode", "Full-width", false).group("Outgoing")
@@ -107,14 +119,30 @@ public final class BetterChatModule extends Module {
         if (server && chat.bool("stack")) {
             Stacked stacked = chat.stackFor(component, message.getString());
             if (stacked.count > 1) {
-                out.append(Component.literal(" [x" + stacked.count + "]").withStyle(ChatFormatting.GRAY));
+                out.append(Component.literal(" [x" + stacked.count + "]")
+                    .withStyle(color(chat.choice("stack-color"), ChatFormatting.GRAY)));
             }
         }
         if (chat.bool("timestamps")) {
             String time = LocalTime.now().format(DateTimeFormatter.ofPattern(chat.choice("timestamp-format")));
-            out = Component.literal("[" + time + "] ").withStyle(ChatFormatting.DARK_GRAY).append(out);
+            out = Component.literal("[" + time + "] ")
+                .withStyle(color(chat.choice("timestamp-color"), ChatFormatting.DARK_GRAY)).append(out);
         }
         return out;
+    }
+
+    private static ChatFormatting color(String name, ChatFormatting fallback) {
+        if (name == null) return fallback;
+        return switch (name) {
+            case "Dark Gray" -> ChatFormatting.DARK_GRAY;
+            case "Gray" -> ChatFormatting.GRAY;
+            case "White" -> ChatFormatting.WHITE;
+            case "Yellow" -> ChatFormatting.YELLOW;
+            case "Gold" -> ChatFormatting.GOLD;
+            case "Green" -> ChatFormatting.GREEN;
+            case "Aqua" -> ChatFormatting.AQUA;
+            default -> fallback;
+        };
     }
 
     /** Records the line chat stored for the newest repeat, so the next repeat can replace it. */

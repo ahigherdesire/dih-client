@@ -14,8 +14,6 @@ import java.util.UUID;
 public final class DihAntiBot {
     private static final Minecraft MC = Minecraft.getInstance();
 
-    private static final int GROUND_VL = 10;
-
     private static final int PROFILE_GRACE = 40;
 
     private static final Map<Integer, Integer> groundViolations = new HashMap<>();
@@ -34,23 +32,23 @@ public final class DihAntiBot {
     private static Object dupLevel;
     private static int dupSize = -1;
 
-    private static Module cachedModule;
+    private static AntiBotModule cachedModule;
     private static int cachedModuleRev = -1;
 
     private DihAntiBot() {}
 
-    private static Module module() {
+    private static AntiBotModule module() {
         int rev = ModuleRegistry.revision();
         if (rev != cachedModuleRev) {
             Module m = ModuleRegistry.get("antibot");
-            cachedModule = (m != null && m.isEnabled()) ? m : null;
+            cachedModule = (m instanceof AntiBotModule antiBot && antiBot.isEnabled()) ? antiBot : null;
             cachedModuleRev = rev;
         }
         return cachedModule;
     }
 
     public static boolean isBot(Entity entity) {
-        Module m = module();
+        AntiBotModule m = module();
         if (m == null) return false;
         if (!(entity instanceof Player player) || MC.player == null || player == MC.player) return false;
 
@@ -60,9 +58,13 @@ public final class DihAntiBot {
         String reason = stickyReason(player, m);
         if (reason != null) { confirm(uuid); rememberSpot(player); logHidden(player, reason); return true; }
 
-        if (missingProfile(player)) { rememberSpot(player); logHidden(player, "no player-info entry"); return true; }
+        if (m.check("check-missing-profile") && missingProfile(player)) {
+            rememberSpot(player); logHidden(player, "no player-info entry"); return true;
+        }
 
-        if (atKnownBotSpot(player)) { logHidden(player, "known bot location"); return true; }
+        if (m.check("check-bot-spots") && atKnownBotSpot(player)) {
+            logHidden(player, "known bot location"); return true;
+        }
         return false;
     }
 
@@ -86,14 +88,19 @@ public final class DihAntiBot {
         return dx * dx + dy * dy + dz * dz <= SPOT_EPS * SPOT_EPS;
     }
 
-    private static String stickyReason(Player player, Module m) {
-        if (duplicates().contains(player.getId())) return "duplicate name";
-        float pitch = player.getXRot();
-        if (Math.abs(pitch) > 90.0f) return "impossible pitch " + pitch;
-        var profile = player.getGameProfile();
-        if (profile == null || !dihclient.util.DihPlayerScanner.isUsername(profile.name()))
-            return "invalid profile name '" + (profile == null ? "<null>" : profile.name()) + "'";
-        if ("Aggressive".equals(m.value("mode")) && groundViolations.getOrDefault(player.getId(), 0) >= GROUND_VL)
+    private static String stickyReason(Player player, AntiBotModule m) {
+        if (m.check("check-duplicate-name") && duplicates().contains(player.getId())) return "duplicate name";
+        if (m.check("check-impossible-pitch")) {
+            float pitch = player.getXRot();
+            if (Math.abs(pitch) > m.pitchThreshold()) return "impossible pitch " + pitch;
+        }
+        if (m.check("check-invalid-name")) {
+            var profile = player.getGameProfile();
+            if (profile == null || !dihclient.util.DihPlayerScanner.isUsername(profile.name()))
+                return "invalid profile name '" + (profile == null ? "<null>" : profile.name()) + "'";
+        }
+        if (m.aggressive() && m.check("check-ground-flying")
+            && groundViolations.getOrDefault(player.getId(), 0) >= m.groundViolationThreshold())
             return "flying-on-ground (aggressive)";
         return null;
     }
@@ -116,10 +123,10 @@ public final class DihAntiBot {
     }
 
     public static void tick() {
-        Module m = module();
+        AntiBotModule m = module();
         if (m == null || MC.level == null || MC.player == null) { reset(); return; }
         rebuildDuplicates();
-        if ("Aggressive".equals(m.value("mode"))) updateGround();
+        if (m.aggressive() && m.check("check-ground-flying")) updateGround();
         else if (!groundViolations.isEmpty()) groundViolations.clear();
     }
 

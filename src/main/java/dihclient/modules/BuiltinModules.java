@@ -5197,7 +5197,15 @@ public final class BuiltinModules {
     static final class AutoReconnectModule extends Module {
         AutoReconnectModule() {
             super("auto-reconnect", "AutoReconnect", ModuleCategory.MISC, "Reconnects after disconnect.");
-            add(new DoubleSetting("delay", "Delay Sec", 3.5, 0.0, 60.0, 0.5));
+            add(new DoubleSetting("delay", "Delay Sec", 3.5, 0.0, 60.0, 0.5)
+                .description("Seconds to wait before reconnecting."));
+            add(new BoolSetting("randomize", "Random Extra", false)
+                .description("Add a random extra wait on top of the delay."));
+            add(new DoubleSetting("random-max", "Max Extra Sec", 2.0, 0.5, 30.0, 0.5)
+                .description("Largest random extra wait that can be added.")
+                .visibleWhen(() -> bool("randomize")));
+            add(new IntSetting("max-attempts", "Max Attempts", 0, 0, 50, 1)
+                .description("Stop after this many reconnects without a successful join; 0 is unlimited."));
         }
     }
 

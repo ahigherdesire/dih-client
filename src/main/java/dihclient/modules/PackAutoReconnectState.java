@@ -16,6 +16,9 @@ public final class PackAutoReconnectState {
     private static int ticksLeft;
     /** Set by Flee so a deliberate disconnect isn't undone by AutoReconnect; cleared on the next join. */
     private static boolean held;
+    /** Reconnects attempted since the last successful join; reset by {@link #remember}. */
+    private static int attempts;
+    private static final java.util.Random RANDOM = new java.util.Random();
 
     private PackAutoReconnectState() {
     }
@@ -33,6 +36,7 @@ public final class PackAutoReconnectState {
         lastServer = copy;
         lastAddress = address != null ? address : ServerAddress.parseString(server.ip);
         held = false;
+        attempts = 0;
         countdownScreen = null;
         ticksLeft = delayTicks();
     }
@@ -46,7 +50,19 @@ public final class PackAutoReconnectState {
     public static boolean shouldShow() {
         if (held) return false;
         Module module = ModuleRegistry.get("auto-reconnect");
-        return module != null && module.isEnabled() && lastServer != null && lastAddress != null && MC.allowsMultiplayer();
+        if (module == null || !module.isEnabled() || lastServer == null || lastAddress == null || !MC.allowsMultiplayer()) {
+            return false;
+        }
+        int maxAttempts = maxAttempts(module);
+        return maxAttempts <= 0 || attempts < maxAttempts;
+    }
+
+    private static int maxAttempts(Module module) {
+        try {
+            return Math.max(0, Integer.parseInt(module.value("max-attempts")));
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
     }
 
     public static boolean moduleEnabled() {
@@ -113,6 +129,7 @@ public final class PackAutoReconnectState {
 
     public static void reconnect(Screen parent) {
         if (!shouldShow()) return;
+        attempts++;
         Screen nextParent = parent == null ? MC.gui.screen() : parent;
         ConnectScreen.startConnecting(nextParent, MC, lastAddress, lastServer, false, null);
         countdownScreen = null;
@@ -129,7 +146,12 @@ public final class PackAutoReconnectState {
         Module module = ModuleRegistry.get("auto-reconnect");
         if (module == null) return 70;
         try {
-            return Math.max(0, (int) Math.round(Double.parseDouble(module.value("delay")) * 20.0));
+            double seconds = Math.max(0.0, Double.parseDouble(module.value("delay")));
+            if (Boolean.parseBoolean(module.value("randomize"))) {
+                double extra = Math.max(0.0, Double.parseDouble(module.value("random-max")));
+                if (extra > 0.0) seconds += RANDOM.nextDouble() * extra;
+            }
+            return Math.max(0, (int) Math.round(seconds * 20.0));
         } catch (NumberFormatException ignored) {
             return 70;
         }
