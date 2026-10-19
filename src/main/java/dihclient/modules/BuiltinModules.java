@@ -371,6 +371,38 @@ public final class BuiltinModules {
     static final class InvMoveModule extends Module {
         InvMoveModule() {
             super("inv-move", "InvMove", ModuleCategory.MOVEMENT, "Allows movement keys in normal container screens.");
+            add(new BoolSetting("arrow-look", "Arrow Keys Look", false)
+                .group("General")
+                .description("Turns your view with the arrow keys while a screen is open")
+                .build());
+            add(new IntSetting("look-speed", "Look Speed", 5, 1, 20, 1)
+                .group("General")
+                .unit("deg")
+                .description("Degrees turned per tick by the arrow keys")
+                .visibleWhen(() -> bool("arrow-look"))
+                .build());
+
+            add(new BoolSetting("jump", "Jump", true)
+                .group("Keys")
+                .description("Lets the jump key work in screens")
+                .build());
+            add(new BoolSetting("sneak", "Sneak", true)
+                .group("Keys")
+                .description("Lets the sneak key work in screens")
+                .build());
+            add(new BoolSetting("sprint", "Sprint", true)
+                .group("Keys")
+                .description("Lets the sprint key work in screens")
+                .build());
+
+            add(new BoolSetting("player-inventory", "Player Inventory", true)
+                .group("Screens")
+                .description("Works in your own and the creative inventory")
+                .build());
+            add(new BoolSetting("containers", "Containers", true)
+                .group("Screens")
+                .description("Works in chests, furnaces and other block screens")
+                .build());
         }
 
         @Override
@@ -386,6 +418,22 @@ public final class BuiltinModules {
         @Override
         public void tick() {
             dihclient.util.DihInventoryMoveHelper.syncHeldMovementKeysIfSafe();
+            if (bool("arrow-look")) arrowLook();
+        }
+
+        private void arrowLook() {
+            if (MC.player == null || MC.gui.screen() == null) return;
+            if (!dihclient.util.DihInventoryMoveHelper.handlesCurrentScreen()) return;
+            float step = Math.max(1, integer("look-speed"));
+            float yaw = 0.0F;
+            float pitch = 0.0F;
+            if (dihclient.util.DihKeys.isKeyDown(com.mojang.blaze3d.platform.InputConstants.KEY_LEFT)) yaw -= step;
+            if (dihclient.util.DihKeys.isKeyDown(com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT)) yaw += step;
+            if (dihclient.util.DihKeys.isKeyDown(com.mojang.blaze3d.platform.InputConstants.KEY_UP)) pitch -= step;
+            if (dihclient.util.DihKeys.isKeyDown(com.mojang.blaze3d.platform.InputConstants.KEY_DOWN)) pitch += step;
+            if (yaw == 0.0F && pitch == 0.0F) return;
+            MC.player.setYRot(MC.player.getYRot() + yaw);
+            MC.player.setXRot(Mth.clamp(MC.player.getXRot() + pitch, -90.0F, 90.0F));
         }
     }
 
@@ -437,19 +485,46 @@ public final class BuiltinModules {
         private boolean cachedOnAir;
         private boolean sendingAntiKickReplacement;
         private boolean vulcanNoElytraDisableQueued;
+        private double cachedSprintBoost = 1.5;
+        private double cachedGlideSpeed;
+        private boolean cachedStopInstantly;
+        private double cachedNudge = 0.03130D;
+        private volatile boolean setbackPending;
 
         FlightModule() {
             super("flight", "Flight", ModuleCategory.MOVEMENT, "Client-side flight.");
-            add(new ChoiceSetting("mode", "Mode", "Abilities", "Abilities", "Velocity", "Vulcan").description("Flight method").build());
-            add(new DoubleSetting("speed", "Speed", 0.10, 0.0, 2.0, 0.01).visibleWhen(() -> !"Vulcan".equals(value("mode"))).description("Your speed when flying.").build());
-            add(new BoolSetting("vertical-speed-match", "Vertical Speed Match", false).description("Match vertical speed.").visibleWhen(() -> "Velocity".equals(value("mode"))).build());
-            add(new BoolSetting("no-sneak", "No Sneak", false).description("Ignore sneak input.").visibleWhen(() -> "Velocity".equals(value("mode"))).build());
-            add(new BoolSetting("anti-break-elytra", "Anti Break Elytra", true).visibleWhen(() -> "Vulcan".equals(value("mode"))).description("Preserve low-durability elytra.").build());
-            add(new BoolSetting("anti-hunger", "AntiHunger", false)
+            add(new ChoiceSetting("mode", "Mode", "Abilities", "Abilities", "Velocity", "Vulcan").group("General").description("Flight method").build());
+            add(new DoubleSetting("speed", "Speed", 0.10, 0.0, 2.0, 0.01).group("General").visibleWhen(() -> !"Vulcan".equals(value("mode"))).description("Your speed when flying.").build());
+            add(new DoubleSetting("sprint-boost", "Sprint Boost", 1.5, 1.0, 3.0, 0.05).group("General")
+                .visibleWhen(() -> "Velocity".equals(value("mode")))
+                .description("Speed multiplier while sprinting").build());
+            add(new BoolSetting("vertical-speed-match", "Vertical Speed Match", false).group("General").description("Rise and sink twice as fast, matching horizontal speed").visibleWhen(() -> "Velocity".equals(value("mode"))).build());
+            add(new DoubleSetting("glide-speed", "Glide Speed", 0.0, 0.0, 1.0, 0.01).group("General")
+                .visibleWhen(() -> "Velocity".equals(value("mode")))
+                .description("Sinks this many blocks per tick when you press neither jump nor sneak").build());
+            add(new BoolSetting("no-sneak", "No Sneak", false).group("General").description("Ignore sneak input.").visibleWhen(() -> "Velocity".equals(value("mode"))).build());
+            add(new BoolSetting("stop-instantly", "Stop Instantly", false).group("General")
+                .visibleWhen(() -> "Abilities".equals(value("mode")))
+                .description("Stops dead when you let go of the keys instead of drifting").build());
+            add(new BoolSetting("anti-hunger", "AntiHunger", false).group("General")
                 .description("Hide sprint from server.").build());
+            add(new BoolSetting("stop-on-disable", "Stop On Disable", false).group("General")
+                .description("Clears your momentum when Flight turns off").build());
+
+            add(new BoolSetting("anti-break-elytra", "Anti Break Elytra", true).group("Vulcan").visibleWhen(() -> "Vulcan".equals(value("mode"))).description("Preserve low-durability elytra.").build());
+            add(new IntSetting("min-durability", "Min Durability", 40, 1, 200, 1).group("Vulcan")
+                .visibleWhen(() -> "Vulcan".equals(value("mode")) && bool("anti-break-elytra"))
+                .description("Swaps out an elytra with this little durability left (or under 10%)").build());
+
             add(new ChoiceSetting("anti-kick-mode", "Anti Kick", "Packet", "Normal", "Packet", "None").group("Anti Kick").visibleWhen(() -> !"Vulcan".equals(value("mode"))).description("Reduce floating kicks").build());
             add(new IntSetting("delay", "Delay", 20, 1, 200, 1).group("Anti Kick").visibleWhen(() -> !"Vulcan".equals(value("mode"))).description("Ticks between anti-kick nudges.").build());
             add(new IntSetting("off-time", "Off Time", 1, 1, 20, 1).group("Anti Kick").visibleWhen(() -> !"Vulcan".equals(value("mode"))).description("Ticks spent nudging down.").build());
+            add(new DoubleSetting("nudge", "Nudge Distance", 0.0313, 0.01, 0.2, 0.0001).group("Anti Kick")
+                .visibleWhen(() -> "Packet".equals(value("anti-kick-mode")) && !"Vulcan".equals(value("mode")))
+                .description("How far each anti-kick packet drops you, in blocks").build());
+
+            add(new BoolSetting("disable-on-setback", "Disable On Setback", false).group("Conditions")
+                .description("Turns Flight off when the server teleports you back").build());
         }
 
         @Override
@@ -478,6 +553,11 @@ public final class BuiltinModules {
 
         @Override
         public void tick() {
+            if (setbackPending) {
+                setbackPending = false;
+                disableWithToggleMessage("Flight disabled: server set you back.");
+                return;
+            }
             updateFlightCache();
             if (MC.player == null || shouldYieldToMeteorFlight() || "Vulcan".equals(cachedMode)) return;
         }
@@ -522,8 +602,11 @@ public final class BuiltinModules {
                 MC.player.setDeltaMovement(Vec3.ZERO);
                 Vec3 velocity = MC.player.getDeltaMovement();
                 double vertical = cachedSpeed * (cachedVerticalSpeedMatch ? 10.0 : 5.0);
-                if (MC.options.keyJump.isDown()) velocity = velocity.add(0.0, vertical, 0.0);
-                if (MC.options.keyShift.isDown()) velocity = velocity.subtract(0.0, vertical, 0.0);
+                boolean rise = MC.options.keyJump.isDown();
+                boolean sink = MC.options.keyShift.isDown();
+                if (rise) velocity = velocity.add(0.0, vertical, 0.0);
+                if (sink) velocity = velocity.subtract(0.0, vertical, 0.0);
+                if (!rise && !sink && cachedGlideSpeed > 0.0) velocity = velocity.subtract(0.0, cachedGlideSpeed, 0.0);
                 MC.player.setDeltaMovement(velocity);
                 if (cachedNoSneak) MC.player.setOnGround(false);
             } else if ("Abilities".equals(mode)) {
@@ -535,7 +618,16 @@ public final class BuiltinModules {
                 if (!MC.player.getAbilities().instabuild) {
                     MC.player.getAbilities().mayfly = true;
                 }
+                if (cachedStopInstantly) stopDrift();
             }
+        }
+
+        private void stopDrift() {
+            Vec3 velocity = MC.player.getDeltaMovement();
+            boolean horizontalInput = MC.player.input.getMoveVector().lengthSquared() > 0.0F;
+            boolean verticalInput = MC.options.keyJump.isDown() || MC.options.keyShift.isDown();
+            MC.player.setDeltaMovement(horizontalInput ? velocity.x : 0.0, verticalInput ? velocity.y : 0.0,
+                horizontalInput ? velocity.z : 0.0);
         }
 
         @Override
@@ -550,8 +642,10 @@ public final class BuiltinModules {
                 stopVulcanGlideState();
             }
             resetFlightState();
+            setbackPending = false;
             if (MC.player == null || MC.player.isSpectator()) return;
             if (touchedAbilities || "Abilities".equals(lastMode)) abilitiesOff();
+            if (bool("stop-on-disable")) MC.player.setDeltaMovement(Vec3.ZERO);
         }
 
         @Override
@@ -597,6 +691,7 @@ public final class BuiltinModules {
         public boolean onPacketReceive(Packet<?> packet) {
             if (dihclient.util.multi.MultiPilot.isActive()) return false;
             if (MC.player == null || shouldYieldToMeteorFlight()) return false;
+            if (packet instanceof ClientboundPlayerPositionPacket && bool("disable-on-setback")) setbackPending = true;
             updateFlightCache();
             if (!(packet instanceof ClientboundPlayerAbilitiesPacket abilities) || !"Abilities".equals(cachedMode)) return false;
             MC.player.getAbilities().invulnerable = abilities.isInvulnerable();
@@ -610,7 +705,7 @@ public final class BuiltinModules {
             updateFlightCache();
             if (!isEnabled() || shouldYieldToMeteorFlight() || !"Velocity".equals(cachedMode)) return -1.0f;
 
-            return (float) cachedSpeed * (MC.player != null && MC.player.isSprinting() ? 15.0f : 10.0f);
+            return (float) (cachedSpeed * 10.0 * (MC.player != null && MC.player.isSprinting() ? cachedSprintBoost : 1.0));
         }
 
         boolean antiHungerToggle() {
@@ -642,14 +737,14 @@ public final class BuiltinModules {
 
         private void antiKickPacket(ServerboundMovePlayerPacket packet, double currentY) {
             if (delayLeft <= 0 && lastPacketY != Double.MAX_VALUE && shouldFlyDown(currentY, lastPacketY) && isOnAirCached()) {
-                ((DihMovePlayerPacketAccessor) packet).dih$setY(lastPacketY - 0.03130D);
+                ((DihMovePlayerPacketAccessor) packet).dih$setY(lastPacketY - cachedNudge);
             } else {
                 lastPacketY = currentY;
             }
         }
 
         private boolean shouldFlyDown(double currentY, double lastY) {
-            return currentY >= lastY || lastY - currentY < 0.03130D;
+            return currentY >= lastY || lastY - currentY < cachedNudge;
         }
 
         private boolean isOnAirCached() {
@@ -803,7 +898,7 @@ public final class BuiltinModules {
 
         private int vulcanElytraSafeDurability(ItemStack stack) {
             int max = stack == null || !stack.isDamageableItem() ? 0 : stack.getMaxDamage();
-            return Math.max(40, (int) Math.ceil(max * 0.10));
+            return Math.max(Math.max(1, integer("min-durability")), (int) Math.ceil(max * 0.10));
         }
 
         private void resetFlightState() {
@@ -828,6 +923,10 @@ public final class BuiltinModules {
             cachedNoSneak = bool("no-sneak");
             cachedDelay = Math.max(1, integer("delay"));
             cachedOffTime = Math.max(1, integer("off-time"));
+            cachedSprintBoost = Math.max(1.0, decimal("sprint-boost"));
+            cachedGlideSpeed = Math.max(0.0, decimal("glide-speed"));
+            cachedStopInstantly = bool("stop-instantly");
+            cachedNudge = Math.max(0.01, decimal("nudge"));
         }
 
         private boolean shouldYieldToMeteorFlight() {
@@ -854,22 +953,35 @@ public final class BuiltinModules {
     static final class SprintModule extends Module {
         SprintModule() {
             super("sprint", "Sprint", ModuleCategory.MOVEMENT, "Sprints automatically.");
+            add(new BoolSetting("omnidirectional", "Omnidirectional", false)
+                .group("General").description("Sprints in every direction, not only forward").build());
+            add(new BoolSetting("omni-jump", "Jump Toward Movement", false)
+                .group("General").description("Sprint-jumps push you the way you walk, not the way you look")
+                .visibleWhen(() -> bool("omnidirectional")).build());
+            add(new BoolSetting("pause-in-liquids", "Pause In Liquids", false)
+                .group("General").description("Leaves sprinting to you while in water or lava").build());
+
             add(new BoolSetting("ignore-blindness", "Blindness", false)
                 .description("Sprint while blind").group("Ignore").build());
             add(new BoolSetting("ignore-collision", "Collision", false)
                 .description("Sprint against walls").group("Ignore").build());
+            add(new BoolSetting("ignore-item-use", "Item Use", false)
+                .description("Keeps sprinting while you eat, drink or block").group("Ignore").build());
         }
 
         boolean sprintDecision(boolean original, boolean movementTick) {
             boolean sprint = original;
+            if (bool("pause-in-liquids") && (MC.player.isInWater() || MC.player.isInLava())) return original;
             if (isMoving()) sprint = true;
             if (movementTick && shouldPreventSprint()) sprint = false;
             return sprint;
         }
 
         private boolean shouldPreventSprint() {
-            if (((dihclient.mixin.accessor.DihLocalPlayerAccessor) MC.player).dih$isSlowDueToUsingItem()) return true;
+            if (!bool("ignore-item-use")
+                && ((dihclient.mixin.accessor.DihLocalPlayerAccessor) MC.player).dih$isSlowDueToUsingItem()) return true;
             if (MC.player.isShiftKeyDown()) return true;
+            if (omnidirectional()) return false;
 
             dihclient.util.DihRotationUtil.Rotation current = dihclient.util.DihSilentAim.packetRotation();
             if (current == null) return false;
@@ -886,11 +998,11 @@ public final class BuiltinModules {
         }
 
         boolean omnidirectional() {
-            return false;
+            return bool("omnidirectional");
         }
 
         boolean jumpUsesMovementYaw() {
-            return false;
+            return omnidirectional() && bool("omni-jump");
         }
 
         boolean ignoreCollision() {
@@ -911,6 +1023,20 @@ public final class BuiltinModules {
 
         ParkourModule() {
             super("parkour", "Parkour", ModuleCategory.MOVEMENT, "Jumps at block edges.");
+            add(new IntSetting("min-drop", "Min Drop", 1, 1, 6, 1)
+                .group("General").unit("blocks")
+                .description("Only jumps off ledges at least this deep, so it walks down steps").build());
+            add(new IntSetting("lead-ticks", "Jump Early", 1, 1, 3, 1)
+                .group("General").unit("ticks")
+                .description("How many ticks ahead it looks for the edge").build());
+
+            add(new BoolSetting("only-sprinting", "Only Sprinting", false)
+                .group("Conditions").description("Only jumps while you sprint").build());
+            add(new BoolSetting("only-forward", "Only Forward", false)
+                .group("Conditions").description("Only jumps while you hold the forward key").build());
+            add(new DoubleSetting("min-speed", "Min Speed", 0.0, 0.0, 8.0, 0.1)
+                .group("Conditions").unit("b/s")
+                .description("Skips the jump when you move slower than this").build());
         }
 
         @Override
@@ -926,6 +1052,9 @@ public final class BuiltinModules {
             if (!MC.player.onGround() || MC.player.isShiftKeyDown()) return;
             if (MC.options.keyShift.isDown() || MC.options.keyJump.isDown()) return;
             if (MC.player.input.getMoveVector().lengthSquared() <= 0.0F) return;
+            if (bool("only-sprinting") && !MC.player.isSprinting()) return;
+            if (bool("only-forward") && !MC.options.keyUp.isDown()) return;
+            if (MC.player.getDeltaMovement().horizontalDistance() * 20.0 < decimal("min-speed")) return;
             if (onGroundNextTick()) return;
 
             dihclient.util.DihKeyMappingBridge.of(MC.options.keyJump).dih$simulatePress(true);
@@ -934,9 +1063,11 @@ public final class BuiltinModules {
 
         private boolean onGroundNextTick() {
             net.minecraft.world.phys.Vec3 d = MC.player.getDeltaMovement();
+            int lead = Math.max(1, integer("lead-ticks"));
+            double extraDepth = Math.max(0, integer("min-drop") - 1);
             net.minecraft.world.phys.AABB next = MC.player.getBoundingBox()
-                .move(d.x, d.y - 0.08, d.z)
-                .expandTowards(0.0, -0.02, 0.0);
+                .move(d.x * lead, d.y - 0.08, d.z * lead)
+                .expandTowards(0.0, -0.02 - extraDepth, 0.0);
             return !MC.level.noCollision(MC.player, next);
         }
 
@@ -1129,17 +1260,36 @@ public final class BuiltinModules {
         private String lastSpeedMode = "Vanilla";
         private Boolean meteorSpeedActiveCache;
         private long meteorSpeedActiveCacheAt;
+        private volatile boolean setbackPending;
 
         SpeedModule() {
             super("speed", "Speed", ModuleCategory.MOVEMENT, "Boosts movement speed.");
-            add(new ChoiceSetting("mode", "Mode", "Vanilla", "Vanilla", "Strafe").description("Speed method").build());
-            add(new DoubleSetting("vanilla-speed", "Vanilla Speed", 5.6, 0.0, 20.0, 0.1).visibleWhen(() -> "Vanilla".equals(value("mode"))).description("Blocks per second").build());
-            add(new DoubleSetting("strafe-speed", "Strafe Speed", 1.6, 0.0, 3.0, 0.05).visibleWhen(() -> "Strafe".equals(value("mode"))).description("Strafe speed multiplier.").build());
-            add(new BoolSetting("speed-limit", "Speed Limit", false).visibleWhen(() -> "Strafe".equals(value("mode"))).description("Limit max speed.").build());
-            add(new DoubleSetting("timer", "Timer", 1.0, 0.01, 10.0, 0.05).description("Client timer speed."));
-            add(new BoolSetting("in-liquids", "In Liquids", false));
-            add(new BoolSetting("when-sneaking", "When Sneaking", false));
-            add(new BoolSetting("only-on-ground", "Only Ground", false).visibleWhen(() -> "Vanilla".equals(value("mode"))).build());
+            add(new ChoiceSetting("mode", "Mode", "Vanilla", "Vanilla", "Strafe").group("General").description("Speed method").build());
+            add(new DoubleSetting("timer", "Timer", 1.0, 0.01, 10.0, 0.05).group("General").description("Client timer speed.").build());
+
+            add(new DoubleSetting("vanilla-speed", "Vanilla Speed", 5.6, 0.0, 20.0, 0.1).group("Vanilla").visibleWhen(() -> "Vanilla".equals(value("mode"))).description("Blocks per second").build());
+            add(new BoolSetting("speed-effect", "Speed Effect", true).group("Vanilla")
+                .visibleWhen(() -> "Vanilla".equals(value("mode")))
+                .description("Adds the Speed potion bonus on top").build());
+            add(new BoolSetting("auto-jump", "Auto Jump", false).group("Vanilla")
+                .visibleWhen(() -> "Vanilla".equals(value("mode")))
+                .description("Hops whenever you walk on the ground").build());
+
+            add(new DoubleSetting("strafe-speed", "Strafe Speed", 1.6, 0.0, 3.0, 0.05).group("Strafe").visibleWhen(() -> "Strafe".equals(value("mode"))).description("Strafe speed multiplier.").build());
+            add(new DoubleSetting("hop-height", "Hop Height", 0.40123128, 0.2, 0.6, 0.01).group("Strafe")
+                .visibleWhen(() -> "Strafe".equals(value("mode")))
+                .description("Upward speed of each strafe hop; vanilla jumps are 0.42").build());
+            add(new BoolSetting("speed-limit", "Speed Limit", false).group("Strafe").visibleWhen(() -> "Strafe".equals(value("mode"))).description("Limit max speed.").build());
+
+            add(new BoolSetting("in-liquids", "In Liquids", false).group("Conditions").description("Keeps the boost in water and lava").build());
+            add(new BoolSetting("when-sneaking", "When Sneaking", false).group("Conditions").description("Keeps the boost while sneaking").build());
+            add(new BoolSetting("only-on-ground", "Only Ground", false).group("Conditions").visibleWhen(() -> "Vanilla".equals(value("mode"))).description("Only boosts while your feet are on the ground").build());
+            add(new BoolSetting("pause-when-hurt", "Pause When Hurt", false).group("Conditions")
+                .description("Lets knockback play out instead of overwriting it").build());
+            add(new BoolSetting("pause-while-using", "Pause While Using", false).group("Conditions")
+                .description("No boost while you eat, drink, block or draw a bow").build());
+            add(new BoolSetting("disable-on-setback", "Disable On Setback", false).group("Conditions")
+                .description("Turns Speed off when the server teleports you back").build());
         }
 
         @Override
@@ -1155,11 +1305,20 @@ public final class BuiltinModules {
 
         @Override
         public void preMovementTick() {
+            if (setbackPending) {
+                setbackPending = false;
+                disableWithToggleMessage("Speed disabled: server set you back.");
+                return;
+            }
             if (MC.player == null || shouldYieldToMeteorSpeed() || stopSpeed()) return;
             syncSpeedMode();
             if (isInLiquid()) {
                 resetStrafe();
                 return;
+            }
+            if ("Vanilla".equals(choice("mode")) && bool("auto-jump") && MC.player.onGround() && isMoving()
+                && !MC.options.keyJump.isDown()) {
+                MC.player.jumpFromGround();
             }
             lastDistance = Math.sqrt((MC.player.getX() - MC.player.xo) * (MC.player.getX() - MC.player.xo) + (MC.player.getZ() - MC.player.zo) * (MC.player.getZ() - MC.player.zo));
         }
@@ -1175,7 +1334,10 @@ public final class BuiltinModules {
 
         @Override
         public boolean onPacketReceive(Packet<?> packet) {
-            if (packet instanceof ClientboundPlayerPositionPacket) resetStrafe();
+            if (packet instanceof ClientboundPlayerPositionPacket) {
+                resetStrafe();
+                if (bool("disable-on-setback")) setbackPending = true;
+            }
             return false;
         }
 
@@ -1198,7 +1360,7 @@ public final class BuiltinModules {
             Vec3 horizontal = horizontalVelocity(decimal("vanilla-speed"));
             double x = horizontal.x;
             double z = horizontal.z;
-            if (MC.player.hasEffect(MobEffects.SPEED)) {
+            if (bool("speed-effect") && MC.player.hasEffect(MobEffects.SPEED)) {
                 MobEffectInstance effect = MC.player.getEffect(MobEffects.SPEED);
                 if (effect != null) {
                     double multiplier = (effect.getAmplifier() + 1) * 0.205;
@@ -1234,7 +1396,7 @@ public final class BuiltinModules {
             }
             if (strafeStage == 1) {
                 if (isMoving() && MC.player.onGround()) {
-                    movement = new Vec3(movement.x, hop(0.40123128), movement.z);
+                    movement = new Vec3(movement.x, hop(decimal("hop-height")), movement.z);
                     strafeSpeed *= decimal("strafe-speed");
                     strafeStage = 2;
                 }
@@ -1347,6 +1509,8 @@ public final class BuiltinModules {
             if (MC.player == null) return true;
             if (MC.player.isFallFlying() || MC.player.onClimbable() || MC.player.getVehicle() != null) return true;
             if (!bool("when-sneaking") && MC.player.isShiftKeyDown()) return true;
+            if (bool("pause-when-hurt") && MC.player.hurtTime > 0) return true;
+            if (bool("pause-while-using") && MC.player.isUsingItem()) return true;
             boolean inLiquid = isInLiquid();
             boolean liquidSpeedAllowed = inLiquid && bool("in-liquids");
             if (bool("only-on-ground") && !MC.player.onGround() && "Vanilla".equals(choice("mode")) && !liquidSpeedAllowed) return true;
@@ -1404,10 +1568,20 @@ public final class BuiltinModules {
 
     static final class SneakModule extends Module {
         private boolean sentPacketSneak;
+        private boolean heldVanillaSneak;
 
         SneakModule() {
             super("sneak", "Sneak", ModuleCategory.MOVEMENT, "Keeps sneak held for you.");
-            add(new ChoiceSetting("mode", "Mode", "Vanilla", "Vanilla", "Packet").description("Which method to sneak.").build());
+            add(new ChoiceSetting("mode", "Mode", "Vanilla", "Vanilla", "Packet").group("General").description("Which method to sneak.").build());
+
+            add(new BoolSetting("pause-in-air", "Pause In Air", false)
+                .group("Conditions").description("Lets go of sneak while you are off the ground").build());
+            add(new BoolSetting("pause-in-liquids", "Pause In Liquids", false)
+                .group("Conditions").description("Lets go of sneak in water and lava so you don't sink").build());
+            add(new BoolSetting("pause-on-climbable", "Pause On Ladders", false)
+                .group("Conditions").description("Lets go of sneak on ladders, vines and scaffolding").build());
+            add(new BoolSetting("pause-when-sprinting", "Pause When Sprinting", false)
+                .group("Conditions").description("Lets go of sneak while you hold the sprint key").build());
         }
 
         boolean holdsSneakDown() {
@@ -1416,7 +1590,27 @@ public final class BuiltinModules {
                 && !dihclient.util.multi.PacketTeleportController.ownsMainMovement()
                 && !"Packet".equals(choice("mode"))
                 && MC != null && MC.options != null && MC.player != null
-                && !MC.player.getAbilities().flying;
+                && !MC.player.getAbilities().flying
+                && !paused();
+        }
+
+        private boolean paused() {
+            if (MC.player == null || MC.options == null) return false;
+            if (bool("pause-in-air") && !MC.player.onGround()) return true;
+            if (bool("pause-in-liquids") && (MC.player.isInWater() || MC.player.isInLava())) return true;
+            if (bool("pause-on-climbable") && MC.player.onClimbable()) return true;
+            return bool("pause-when-sprinting") && DihKeyMappingBridge.of(MC.options.keySprint).dih$isActuallyDown();
+        }
+
+        private void releaseSneak() {
+            if (sentPacketSneak) {
+                sendInputSneak(false);
+                sentPacketSneak = false;
+            }
+            if (heldVanillaSneak) {
+                heldVanillaSneak = false;
+                MC.options.keyShift.setDown(DihKeyMappingBridge.of(MC.options.keyShift).dih$isActuallyDown());
+            }
         }
 
         @Override
@@ -1435,11 +1629,16 @@ public final class BuiltinModules {
 
             if (dihclient.util.multi.PacketTeleportController.ownsMainMovement()) return;
             if (MC.options == null || MC.player == null || MC.player.getAbilities().flying) return;
+            if (paused()) {
+                releaseSneak();
+                return;
+            }
             if ("Packet".equals(choice("mode"))) {
                 sendInputSneak(true);
                 sentPacketSneak = true;
             } else {
                 MC.options.keyShift.setDown(true);
+                heldVanillaSneak = true;
             }
         }
 
@@ -1453,6 +1652,7 @@ public final class BuiltinModules {
                 sendInputSneak(false);
                 sentPacketSneak = false;
             }
+            heldVanillaSneak = false;
             if (MC.options != null) MC.options.keyShift.setDown(false);
         }
 
@@ -1550,14 +1750,33 @@ public final class BuiltinModules {
 
         NoFallModule() {
             super("no-fall", "NoFall", ModuleCategory.MOVEMENT, "Reduces fall damage.");
-            add(new ChoiceSetting("mode", "Mode", "Packet", "Packet", "AirPlace", "Place").description("Fall protection method.").build());
-            add(new ChoiceSetting("placed-item", "Placed Item", "Bucket", "Bucket", "PowderSnow", "HayBale", "Cobweb", "SlimeBlock").visibleWhen(() -> "Place".equals(value("mode")) || "AirPlace".equals(value("mode"))).build());
-            add(new ChoiceSetting("air-place-mode", "Air Place Mode", "BeforeDeath", "BeforeDamage", "BeforeDeath").visibleWhen(() -> "AirPlace".equals(value("mode"))).build());
-            add(new BoolSetting("anchor", "Anchor", true).visibleWhen(() -> !"Packet".equals(value("mode"))).description("Slow before placing.").build());
-            add(new BoolSetting("anti-bounce", "Anti Bounce", true).description("Stop bounce effects."));
-            add(new BoolSetting("pause-on-mace", "Pause On Mace", true).description("Pause holding mace"));
+            add(new ChoiceSetting("mode", "Mode", "Packet", "Packet", "AirPlace", "Place").group("General").description("Fall protection method.").build());
+            add(new BoolSetting("anti-bounce", "Anti Bounce", true).group("General").description("Stop bounce effects.").build());
+            add(new BoolSetting("pause-on-mace", "Pause On Mace", true).group("General").description("Pause holding mace").build());
 
-            add(new BoolSetting("client-rotate", "Client Rotation", false).visibleWhen(() -> !"Packet".equals(value("mode"))).description("Also rotate camera client-side.").build());
+            add(new DoubleSetting("trigger-speed", "Trigger Speed", 0.5, 0.1, 2.0, 0.05).group("Packet")
+                .visibleWhen(() -> "Packet".equals(value("mode")))
+                .description("Claims ground once you fall faster than this, in blocks per tick").build());
+            add(new BoolSetting("with-flight", "With Flight", true).group("Packet")
+                .visibleWhen(() -> "Packet".equals(value("mode")))
+                .description("Always claims ground while Flight is on").build());
+
+            add(new ChoiceSetting("placed-item", "Placed Item", "Bucket", "Bucket", "PowderSnow", "HayBale", "Cobweb", "SlimeBlock").group("Place").visibleWhen(() -> "Place".equals(value("mode")) || "AirPlace".equals(value("mode"))).description("What it puts down to break the fall; Bucket uses powder snow in the Nether").build());
+            add(new ChoiceSetting("air-place-mode", "Air Place Mode", "BeforeDeath", "BeforeDamage", "BeforeDeath").group("Place").visibleWhen(() -> "AirPlace".equals(value("mode"))).description("Place before any damage, or only before a fall that would kill").build());
+            add(new DoubleSetting("place-height", "Place Height", 3.0, 2.0, 20.0, 0.5).group("Place")
+                .visibleWhen(() -> "Place".equals(value("mode")))
+                .description("Places once you have fallen this many blocks").build());
+            add(new IntSetting("reach-down", "Reach Down", 5, 2, 6, 1).group("Place")
+                .visibleWhen(() -> "Place".equals(value("mode")))
+                .unit("blocks").description("How far below you it looks for ground to place on").build());
+            add(new BoolSetting("skip-water", "Skip Above Water", true).group("Place")
+                .visibleWhen(() -> "Place".equals(value("mode")))
+                .description("Doesn't place when you will land in water anyway").build());
+            add(new BoolSetting("pick-up", "Pick Up", true).group("Place")
+                .visibleWhen(() -> "Place".equals(value("mode")))
+                .description("Scoops the water or powder snow back into the bucket after landing").build());
+            add(new BoolSetting("anchor", "Anchor", true).group("Place").visibleWhen(() -> !"Packet".equals(value("mode"))).description("Slow before placing.").build());
+            add(new BoolSetting("client-rotate", "Client Rotation", false).group("Place").visibleWhen(() -> !"Packet".equals(value("mode"))).description("Also rotate camera client-side.").build());
         }
 
         @Override
@@ -1581,7 +1800,8 @@ public final class BuiltinModules {
             if (MC.player == null || MC.gameMode == null || "Packet".equals(choice("mode"))) return;
 
             if (DihKillAuraRotation.currentOwner() != null && DihKillAuraRotation.hasCurrentRotation()) return;
-            cleanupPlacedFluid();
+            if (bool("pick-up")) cleanupPlacedFluid();
+            else placedFluid = false;
             if (!shouldPlaceModeAct()) return;
             if (bool("anchor")) centerPlayer();
             if ("AirPlace".equals(choice("mode"))) tryAirPlaceBelow();
@@ -1602,9 +1822,9 @@ public final class BuiltinModules {
             if (MC.player == null || MC.player.getAbilities().instabuild) return false;
             if (bool("pause-on-mace") && MC.player.getMainHandItem().is(Items.MACE)) return false;
             Module flight = ModuleRegistry.get("flight");
-            if (flight != null && flight.isEnabled()) return true;
+            if (bool("with-flight") && flight != null && flight.isEnabled()) return true;
             if (MC.player.isFallFlying()) return false;
-            return MC.player.getDeltaMovement().y <= -0.5;
+            return MC.player.getDeltaMovement().y <= -decimal("trigger-speed");
         }
 
         private boolean shouldPlaceModeAct() {
@@ -1619,7 +1839,7 @@ public final class BuiltinModules {
                 }
                 return fall > 2.0;
             }
-            return fall > 3.0 && !isAboveWater();
+            return fall > decimal("place-height") && !(bool("skip-water") && isAboveWater());
         }
 
         private boolean tryPlaceBelow() {
@@ -1630,7 +1850,7 @@ public final class BuiltinModules {
             if (slot < 0) return false;
             BlockHitResult ray = MC.level.clip(new ClipContext(
                 MC.player.position(),
-                MC.player.position().subtract(0, 5, 0),
+                MC.player.position().subtract(0, Math.max(1, integer("reach-down")), 0),
                 ClipContext.Block.OUTLINE,
                 ClipContext.Fluid.NONE,
                 MC.player

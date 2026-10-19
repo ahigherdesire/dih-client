@@ -21,11 +21,16 @@ public final class NoClipModule extends Module {
         instance = this;
 
         add(new DoubleSetting("speed", "Speed", 0.32, 0.1, 0.4, 0.01)
-            .description("Movement speed.").build());
+            .group("General").description("Movement speed.").build());
+        add(new DoubleSetting("vertical-speed", "Vertical Speed", 0.0, 0.0, 0.4, 0.01)
+            .group("General").description("Up and down speed; 0 uses Speed").build());
+        add(new DoubleSetting("sprint-boost", "Sprint Boost", 1.0, 1.0, 3.0, 0.05)
+            .group("General").description("Speed multiplier while you hold sprint").build());
+
         add(new BoolSetting("only-in-vehicle", "Only In Vehicle", false)
-            .description("Only while riding.").build());
+            .group("Conditions").description("Only while riding.").build());
         add(new BoolSetting("disable-on-setback", "Disable On Setback", true)
-            .description("Disable on server setback.").build());
+            .group("Conditions").description("Disable on server setback.").build());
     }
 
     @Override
@@ -50,16 +55,19 @@ public final class NoClipModule extends Module {
         player.fallDistance = 0.0;
         player.setOnGround(false);
 
-        double speed = decimal("speed");
+        double boost = MC.options.keySprint.isDown() ? Math.max(1.0, decimal("sprint-boost")) : 1.0;
+        double speed = decimal("speed") * boost;
+        double configuredVertical = decimal("vertical-speed");
+        double vertical = configuredVertical > 0.0 ? configuredVertical * boost : speed;
         Entity vehicle = player.getControlledVehicle();
         releaseForcedVehicle(vehicle);
         if (vehicle != null) {
             vehicle.noPhysics = true;
             forcedVehicle = vehicle;
 
-            if (!ModuleRegistry.isModuleEnabled("boat-fly")) applyStrafe(vehicle, player, speed);
+            if (!ModuleRegistry.isModuleEnabled("boat-fly")) applyStrafe(vehicle, player, speed, vertical);
         } else {
-            applyStrafe(player, player, speed);
+            applyStrafe(player, player, speed, vertical);
         }
     }
 
@@ -115,9 +123,9 @@ public final class NoClipModule extends Module {
         forcedVehicle = null;
     }
 
-    private static void applyStrafe(Entity target, LocalPlayer player, double speed) {
-        double y = MC.options.keyJump.isDown() ? speed
-            : MC.options.keyShift.isDown() ? -speed
+    private static void applyStrafe(Entity target, LocalPlayer player, double speed, double vertical) {
+        double y = MC.options.keyJump.isDown() ? vertical
+            : MC.options.keyShift.isDown() ? -vertical
             : 0.0;
         target.setDeltaMovement(ModuleMovementUtil.withStrafe(player, new Vec3(0.0, y, 0.0), speed));
     }
