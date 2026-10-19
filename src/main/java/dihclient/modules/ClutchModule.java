@@ -2,17 +2,22 @@ package dihclient.modules;
 
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ChoiceSetting;
+import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
+import dihclient.api.module.RegistryListSetting;
 import dihclient.util.DihEntities;
 import dihclient.util.DihFaceScan;
 import dihclient.util.DihHandArbiter;
 import dihclient.util.DihInventoryHelper;
 import dihclient.util.DihPlacementTick;
 import dihclient.util.DihRotationUtil;
+import dihclient.util.RegistryListCodec;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
@@ -28,6 +33,9 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
+import java.util.HashSet;
+import java.util.Set;
+
 /**
  * Saves you from falling into the void (or off a big drop) by placing blocks back under you
  * against a nearby solid face, one block per tick, through the vanilla use-item path.
@@ -36,20 +44,24 @@ import net.minecraft.world.phys.Vec3;
 public final class ClutchModule extends Module {
     private static final String MODE_VOID = "Void";
     private static final String MODE_BIG_FALLS = "Big Falls";
-    private static final double FALLING_SPEED = -0.08;
+    private static final double FALLING_SPEED = 0.08;
 
     private int airTicks;
     private int placedThisFall;
     private boolean hitThisFall;
     private int originalSlot = -1;
+    private String cachedFilterRaw;
+    private Set<Block> cachedFilterBlocks = Set.of();
 
     ClutchModule() {
         super("clutch", "Clutch", ModuleCategory.MOVEMENT,
             "Places blocks under you when you fall toward the void.");
 
         add(new ChoiceSetting("mode", "Mode", MODE_VOID, MODE_VOID, MODE_BIG_FALLS)
+            .group("General")
             .description("Void: only when nothing is below. Big Falls: also when the ground is too far down.").build());
         add(new IntSetting("fall-height", "Fall Height", 8, 3, 64, 1)
+            .group("General")
             .visibleWhen(() -> MODE_BIG_FALLS.equals(choice("mode")))
             .description("Clutch when no ground is within this many blocks below.").build());
 
@@ -59,11 +71,28 @@ public final class ClutchModule extends Module {
             .group("Trigger").description("Only clutch falls that start with you taking a hit (knockback).").build());
         add(new IntSetting("max-blocks", "Max Blocks", 4, 1, 16, 1)
             .group("Trigger").description("Most blocks placed in one fall.").build());
+        add(new DoubleSetting("trigger-speed", "Trigger Speed", FALLING_SPEED, 0.0, 1.0, 0.01)
+            .group("Trigger").description("Waits until you fall faster than this, in blocks per tick").build());
 
         add(new BoolSetting("rotate", "Rotate", true)
             .group("Placing").description("Turn to look at the face being clicked.").build());
         add(new BoolSetting("switch-back", "Switch Back", true)
             .group("Placing").description("Return to the held slot after landing.").build());
+        add(new BoolSetting("prefer-held", "Prefer Held", true)
+            .group("Placing").description("Uses the block in your hand before switching to a bigger stack").build());
+        add(new IntSetting("search-radius", "Search Radius", 2, 1, 3, 1)
+            .group("Placing").unit("blocks").description("How far sideways it looks for a cell to fill").build());
+
+        add(new ChoiceSetting("filter-mode", "Filter", "Off", "Off", "Whitelist", "Blacklist")
+            .group("Blocks").description("Limits which blocks it may use").build());
+        add(RegistryListSetting.placeableBlocks("blocks", "Blocks")
+            .group("Blocks").description("Blocks the filter allows or skips")
+            .visibleWhen(() -> !"Off".equals(choice("filter-mode"))).build());
+    }
+
+    @Override
+    protected void onOptionValueChanged(String settingId) {
+        if ("blocks".equals(settingId)) cachedFilterRaw = null;
     }
 
     @Override
@@ -97,7 +126,7 @@ public final class ClutchModule extends Module {
             switchBack();
             return;
         }
-        if (player.getDeltaMovement().y > FALLING_SPEED) return;
+        if (player.getDeltaMovement().y > -Math.max(0.0, decimal("trigger-speed"))) return;
         if (bool("only-hit") && !hitThisFall) return;
         if (placedThisFall >= integer("max-blocks")) return;
         if (!inDanger(player, level)) return;
@@ -166,12 +195,13 @@ public final class ClutchModule extends Module {
         int baseZ = Mth.floor(player.getZ());
         int baseY = Mth.floor(player.getY()) - 1;
         boolean sneaking = player.isShiftKeyDown();
+        int radius = Math.max(1, integer("search-radius"));
 
         Placement best = null;
         double bestScore = Double.MAX_VALUE;
         for (int dy = 0; dy >= -1; dy--) {
-            for (int dx = -2; dx <= 2; dx++) {
-                for (int dz = -2; dz <= 2; dz++) {
+            for (int dx = -radius; dx <= radius; dx++) {
+                for (int dz = -radius; dz <= radius; dz++) {
                     BlockPos cell = new BlockPos(baseX + dx, baseY + dy, baseZ + dz);
                     if (!level.getBlockState(cell).canBeReplaced()) continue;
                     if (new AABB(cell).intersects(body)) continue;
@@ -200,12 +230,13 @@ public final class ClutchModule extends Module {
     /** A hotbar slot with a full, non-falling block; the held slot wins, then the biggest stack. */
     private int blockSlot(Inventory inventory) {
         int selected = inventory.getSelectedSlot();
+        boolean preferHeld = bool("prefer-held");
         int best = -1;
         for (int slot = 0; slot < 9; slot++) {
             if (DihHandArbiter.slotReserved(slot, id())) continue;
             ItemStack stack = inventory.getItem(slot);
-            if (!isClutchBlock(stack)) continue;
-            if (slot == selected) return slot;
+            if (!isClutchBlock(stack) || !filterAllows(stack)) continue;
+            if (preferHeld && slot == selected) return slot;
             if (best < 0 || stack.getCount() > inventory.getItem(best).getCount()) best = slot;
         }
         return best;
@@ -216,6 +247,26 @@ public final class ClutchModule extends Module {
         Block block = blockItem.getBlock();
         if (block instanceof FallingBlock || block instanceof EntityBlock) return false;
         return block.defaultBlockState().isCollisionShapeFullBlock(EmptyBlockGetter.INSTANCE, BlockPos.ZERO);
+    }
+
+    private boolean filterAllows(ItemStack stack) {
+        String mode = choice("filter-mode");
+        if ("Off".equals(mode)) return true;
+        boolean listed = filteredBlocks().contains(((BlockItem) stack.getItem()).getBlock());
+        return "Whitelist".equals(mode) ? listed : !listed;
+    }
+
+    private Set<Block> filteredBlocks() {
+        String raw = value("blocks");
+        if (raw.equals(cachedFilterRaw)) return cachedFilterBlocks;
+        Set<Block> blocks = new HashSet<>();
+        for (String entry : list("blocks")) {
+            Identifier id = Identifier.tryParse(RegistryListCodec.normalizeId(entry));
+            if (id != null) BuiltInRegistries.BLOCK.getOptional(id).ifPresent(blocks::add);
+        }
+        cachedFilterRaw = raw;
+        cachedFilterBlocks = Set.copyOf(blocks);
+        return cachedFilterBlocks;
     }
 
     private void switchBack() {

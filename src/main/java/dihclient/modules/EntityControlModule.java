@@ -40,21 +40,22 @@ public final class EntityControlModule extends Module {
     private double lastPacketY = Double.MAX_VALUE;
     private boolean restorePacketPending;
     private boolean sendingSyntheticPacket;
+    private boolean ridingControlled;
 
     public EntityControlModule() {
         super("entity-control", "EntityControl", ModuleCategory.MOVEMENT, "Controls selected rideable entities.");
         instance = this;
 
         add(RegistryListSetting.entityTypes("entities", "Entities", defaultEntities())
-            .group("Control").description("Choose controlled mounts.").build());
+            .group("General").description("Choose controlled mounts.").build());
         add(new BoolSetting("spoof-saddle", "Spoof Saddle", true)
-            .group("Control").description("Control without saddles.").build());
+            .group("General").description("Control without saddles.").build());
         add(new BoolSetting("max-jump", "Max Jump", true)
-            .group("Control").description("Always charge fully.").build());
+            .group("General").description("Always charge fully.").build());
         add(new BoolSetting("lock-yaw", "Lock Yaw", true)
-            .group("Control").description("Match your view.").build());
+            .group("General").description("Match your view.").build());
         add(new BoolSetting("cancel-server-packets", "Cancel Server Packets", true)
-            .group("Control").description("Ignore server corrections.").build());
+            .group("General").description("Ignore server corrections.").build());
 
         add(new BoolSetting("speed", "Speed", false)
             .group("Speed").description("Boost mount speed.").build());
@@ -79,12 +80,16 @@ public final class EntityControlModule extends Module {
         add(new IntSetting("anti-kick-delay", "Anti Kick Delay", 40, 1, 80, 1)
             .group("Flight").visibleWhen(() -> bool("fly") && bool("anti-kick"))
             .description("Sets anti-kick interval.").build());
+
+        add(new BoolSetting("disable-on-dismount", "Disable On Dismount", false)
+            .group("Conditions").description("Turns EntityControl off when you get off a controlled mount").build());
     }
 
     @Override
     public void onEnable() {
         resetAntiKick();
         refreshSelectedEntities();
+        ridingControlled = false;
     }
 
     @Override
@@ -112,6 +117,14 @@ public final class EntityControlModule extends Module {
     @Override
     public void preMovementTick() {
         if (MC.player == null || MC.getConnection() == null) return;
+
+        boolean riding = isControlledVehicle(MC.player.getVehicle());
+        if (ridingControlled && !riding && bool("disable-on-dismount")) {
+            ridingControlled = false;
+            disableWithToggleMessage("EntityControl disabled: you got off your mount.");
+            return;
+        }
+        ridingControlled = riding;
 
         if (restorePacketPending) {
             Entity vehicle = MC.player.getVehicle();

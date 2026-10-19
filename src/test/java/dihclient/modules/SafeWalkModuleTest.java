@@ -33,4 +33,14 @@ final class SafeWalkModuleTest {
         assertEquals(0.30D, SafeWalkModule.safeEdgeDistance(0.30D), 1.0E-9D);
         assertEquals(1.50D, SafeWalkModule.safeEdgeDistance(1.50D), 1.0E-9D);
     }
+
+    @Test
+    void minDropDeepensTheProbeOneBlockPerStep() {
+
+        assertEquals(0.55D, SafeWalkModule.dropProbeDepth(1), 1.0E-9D);
+        assertEquals(0.55D, SafeWalkModule.dropProbeDepth(0), 1.0E-9D);
+
+        assertEquals(1.55D, SafeWalkModule.dropProbeDepth(2), 1.0E-9D);
+        assertEquals(5.55D, SafeWalkModule.dropProbeDepth(6), 1.0E-9D);
+    }
 }

@@ -13,6 +13,7 @@ import dihclient.api.module.RegistryListSetting;
 import dihclient.util.DihHumanRotation;
 import dihclient.util.DihInputClicker;
 import dihclient.util.DihKeyMappingBridge;
+import dihclient.util.DihNotifications;
 import dihclient.util.DihRotationUtil;
 import dihclient.util.DihServerRotationView;
 import dihclient.util.DihSharedState;
@@ -28,6 +29,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.ClientInput;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.resources.Identifier;
@@ -479,28 +481,69 @@ public final class ScaffoldModule extends Module {
     private TellyPlacement tellyTarget;
     private long tellyCycleSerial;
 
+    private int usableBlockCount;
+    private boolean lowBlocksWarned;
+    private volatile boolean setbackPending;
+
     ScaffoldModule() {
         super("scaffold", "Scaffold", ModuleCategory.MOVEMENT, "Places blocks beneath you.");
         add(new ChoiceSetting("mode", "Mode", "Legit", "Legit", "Rage", "Telly")
+            .group("General")
             .description("Choose scaffold mode.")
             .build());
         add(new BoolSetting("remove-limits", "Remove Limits", false)
+            .group("General")
             .visibleWhen(this::isGrimMode)
             .description(REMOVE_LIMITS_TIP)
             .build());
         add(new BoolSetting("switch-back", "Switch Back", SWITCH_BACK_DEFAULT)
+            .group("General")
             .description(SWITCH_BACK_TIP)
             .build());
-        add(new ChoiceSetting("filter-mode", "Filter", "Off", "Off", "Whitelist", "Blacklist")
-            .description("Choose filter mode.")
-            .build());
         add(new IntSetting("rage-blocks", "Blocks Ahead", RAGE_BLOCKS_DEFAULT, 0, RAGE_BLOCKS_MAX, 1)
+            .group("General")
             .visibleWhen(this::isRageMode)
             .description("Blocks built ahead.")
             .build());
+        add(new BoolSetting("show-count", "Show Block Count", false)
+            .group("General")
+            .description("Adds how many usable blocks you have to the module list")
+            .build());
+
+        add(new BoolSetting("auto-switch", "Auto Switch", true)
+            .group("Blocks")
+            .description("Switches to a block in your hotbar; off only places what you hold")
+            .build());
+        add(new ChoiceSetting("block-pick", "Block Pick", "Smart", "Smart", "Biggest Stack", "First Slot")
+            .group("Blocks")
+            .description("Smart prefers solid, normal blocks; or take the biggest stack or the leftmost slot")
+            .visibleWhen(() -> bool("auto-switch"))
+            .build());
+        add(new ChoiceSetting("filter-mode", "Filter", "Off", "Off", "Whitelist", "Blacklist")
+            .group("Blocks")
+            .description("Choose filter mode.")
+            .build());
         add(RegistryListSetting.placeableBlocks("blocks", "Blocks")
+            .group("Blocks")
             .visibleWhen(() -> !"Off".equals(choice("filter-mode")))
             .description("Choose filtered blocks.")
+            .build());
+        add(new IntSetting("low-blocks", "Low Block Warning", 0, 0, 64, 1)
+            .group("Blocks")
+            .description("Warns you once your usable blocks drop to this many; 0 is off")
+            .build());
+
+        add(new BoolSetting("disable-no-blocks", "Disable Out Of Blocks", false)
+            .group("Conditions")
+            .description("Turns Scaffold off when you have no usable blocks left")
+            .build());
+        add(new BoolSetting("disable-on-setback", "Disable On Setback", false)
+            .group("Conditions")
+            .description("Turns Scaffold off when the server teleports you back")
+            .build());
+        add(new BoolSetting("disable-on-death", "Disable On Death", false)
+            .group("Conditions")
+            .description("Turns Scaffold off when you die")
             .build());
         add(new BoolSetting("place-animation", "Place Animation", true)
             .description("Placement ripple effect").group("Animation").build());
@@ -514,6 +557,9 @@ public final class ScaffoldModule extends Module {
 
     @Override
     public void onEnable() {
+        usableBlockCount = 0;
+        lowBlocksWarned = false;
+        setbackPending = false;
         clearRuntime(true);
         rollGrimSessionOffsets();
         grimLiveTraceTicks = DEBUG_LOGS ? 0 : -1;
@@ -529,7 +575,7 @@ public final class ScaffoldModule extends Module {
 
     @Override
     public String info() {
-        return choice("mode");
+        return bool("show-count") ? choice("mode") + " " + usableBlockCount : choice("mode");
     }
 
     @Override
@@ -6531,6 +6577,51 @@ public final class ScaffoldModule extends Module {
     public void tick() {
 
         if (!isEnabled()) advanceGrimWindDown();
+        else tickConditions();
+    }
+
+    private void tickConditions() {
+        if (MC.player == null || MC.level == null) return;
+        if (setbackPending) {
+            setbackPending = false;
+            disableWithToggleMessage("Scaffold disabled: server set you back.");
+            return;
+        }
+        if (bool("disable-on-death") && MC.player.isDeadOrDying()) {
+            disableWithToggleMessage("Scaffold disabled: you died.");
+            return;
+        }
+        usableBlockCount = countUsableBlocks();
+        if (usableBlockCount == 0 && bool("disable-no-blocks") && !MC.player.hasInfiniteMaterials()) {
+            disableWithToggleMessage("Scaffold disabled: out of blocks.");
+            return;
+        }
+        int warnAt = integer("low-blocks");
+        if (warnAt > 0 && usableBlockCount <= warnAt) {
+            if (!lowBlocksWarned) DihNotifications.warning("Scaffold: " + usableBlockCount + " blocks left");
+            lowBlocksWarned = true;
+        } else {
+            lowBlocksWarned = false;
+        }
+    }
+
+    private int countUsableBlocks() {
+        ItemStack main = MC.player.getMainHandItem();
+        if (!bool("auto-switch")) return isValidBlock(main) ? main.getCount() : 0;
+        int count = 0;
+        for (int slot = 0; slot < 9; slot++) {
+            ItemStack stack = MC.player.getInventory().getItem(slot);
+            if (isValidBlock(stack)) count += stack.getCount();
+        }
+        return count;
+    }
+
+    @Override
+    public boolean onPacketReceive(Packet<?> packet) {
+        if (packet instanceof ClientboundPlayerPositionPacket && isEnabled() && bool("disable-on-setback")) {
+            setbackPending = true;
+        }
+        return false;
     }
 
     @Override
@@ -10993,6 +11084,7 @@ public final class ScaffoldModule extends Module {
     }
 
     private int findBestBlockSlot() {
+        if (!bool("auto-switch")) return -1;
         int best = findBestBlockSlot(true);
         return best >= 0 ? best : findBestBlockSlot(false);
     }
@@ -11010,6 +11102,9 @@ public final class ScaffoldModule extends Module {
     }
 
     private int compareBlockStacks(ItemStack first, ItemStack second) {
+        String pick = choice("block-pick");
+        if ("Biggest Stack".equals(pick)) return Integer.compare(first.getCount(), second.getCount());
+        if ("First Slot".equals(pick)) return 0;
         Block firstBlock = ((BlockItem) first.getItem()).getBlock();
         Block secondBlock = ((BlockItem) second.getItem()).getBlock();
         BlockState firstState = firstBlock.defaultBlockState();
