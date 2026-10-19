@@ -2,6 +2,7 @@ package dihclient.modules;
 
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ChoiceSetting;
+import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
@@ -29,20 +30,71 @@ public final class BowAimAssistModule extends Module {
     private float targetYaw = Float.NaN;
     private float targetPitch = Float.NaN;
     private long lastFrameNanos;
+    private int lockedTargetId = -1;
 
     public BowAimAssistModule() {
         super("bow-aim-assist", "BowAimAssist", ModuleCategory.COMBAT, "Aims bows, crossbows and tridents for you.");
-        add(new ChoiceSetting("targets", "Targets", "Players", "Players", "Players + Hostile", "All Living"));
-        add(new IntSetting("fov", "FOV", 60, 5, 180, 5).unit("deg").description("Only targets this close to your crosshair."));
-        add(new IntSetting("range", "Range", 80, 8, 160, 4).unit("blocks"));
-        add(new IntSetting("speed", "Speed", 40, 1, 100, 1).unit("%").description("How fast the view turns to the aim."));
-        add(new ChoiceSetting("aim-at", "Aim At", "Body", "Head", "Body", "Feet"));
-        add(new BoolSetting("predict", "Predict Movement", true).description("Lead moving targets by the flight time."));
+        add(new ChoiceSetting("targets", "Targets", "Players", "Players", "Players + Hostile", "All Living")
+            .group("General")
+            .description("What to aim at."));
+        add(new IntSetting("speed", "Speed", 40, 1, 100, 1).unit("%")
+            .group("General")
+            .description("How fast the view turns to the aim."));
+        add(new ChoiceSetting("axis", "Axis", "Both", "Both", "Horizontal", "Vertical")
+            .group("General")
+            .description("Which way the view is turned: Horizontal leaves your pitch to you."));
+        add(new BoolSetting("predict", "Predict Movement", true)
+            .group("General")
+            .description("Lead moving targets by the flight time."));
+
+        add(new ChoiceSetting("aim-at", "Aim At", "Body", "Head", "Body", "Feet")
+            .group("Aim")
+            .description("Which part of the target the shot is aimed at."));
+        add(new DoubleSetting("aim-offset", "Aim Offset", 0.0D, -0.5D, 0.5D, 0.05D)
+            .group("Aim")
+            .description("Moves the aim up or down, as a share of the target's height."));
+
+        add(new BoolSetting("bows", "Bows", true)
+            .group("Weapons")
+            .description("Aim while drawing a bow."));
+        add(new IntSetting("min-draw", "Min Draw", 0, 0, 100, 5).unit("%")
+            .group("Weapons")
+            .description("Start aiming once the bow is drawn this far.")
+            .visibleWhen(() -> bool("bows")));
+        add(new BoolSetting("crossbows", "Crossbows", true)
+            .group("Weapons")
+            .description("Aim while holding a loaded crossbow."));
+        add(new BoolSetting("tridents", "Tridents", true)
+            .group("Weapons")
+            .description("Aim while readying a trident."));
+
+        add(new IntSetting("fov", "FOV", 60, 5, 180, 5).unit("deg")
+            .group("Targets")
+            .description("Only targets this close to your crosshair."));
+        add(new IntSetting("range", "Range", 80, 8, 160, 4).unit("blocks")
+            .group("Targets")
+            .description("Farthest target to aim at."));
+        add(new ChoiceSetting("priority", "Priority", "Crosshair", "Crosshair", "Distance", "Health")
+            .group("Targets")
+            .description("Which target wins when several are in the cone."));
+        add(new BoolSetting("lock-target", "Lock Target", false)
+            .group("Targets")
+            .description("Stay on the same target while it stays in range and in the cone."));
+        add(new BoolSetting("need-sight", "Need Line Of Sight", false)
+            .group("Targets")
+            .description("Skip targets you can't see."));
+        add(new BoolSetting("ignore-invisible", "Ignore Invisible", false)
+            .group("Targets")
+            .description("Skip invisible entities."));
+        add(new BoolSetting("ignore-naked", "Ignore Naked", false)
+            .group("Targets")
+            .description("Skip players wearing no armor."));
     }
 
     @Override
     public void onDisable() {
         targetYaw = Float.NaN;
+        lockedTargetId = -1;
     }
 
     @Override
@@ -57,6 +109,7 @@ public final class BowAimAssistModule extends Module {
         TrajectorySim.Info info = shots.getFirst().info();
         Vec3 launch = new Vec3(player.getX(), player.getEyeY() - 0.1D, player.getZ());
         LivingEntity target = pickTarget(player);
+        lockedTargetId = target == null ? -1 : target.getId();
         if (target == null) return;
 
         Vec3 relative = bool("predict")
@@ -76,15 +129,22 @@ public final class BowAimAssistModule extends Module {
         }
         if (solution == null) return;
         Vec3 point = aim.add(relative.scale(bool("predict") ? solution.ticks() : 0));
-        targetYaw = (float) Math.toDegrees(Math.atan2(point.z - launch.z, point.x - launch.x)) - 90.0F;
-        targetPitch = solution.pitch();
+        String axis = choice("axis");
+        targetYaw = "Vertical".equals(axis) ? player.getYRot()
+            : (float) Math.toDegrees(Math.atan2(point.z - launch.z, point.x - launch.x)) - 90.0F;
+        targetPitch = "Horizontal".equals(axis) ? player.getXRot() : solution.pitch();
     }
 
-    private static ItemStack aimingStack(LocalPlayer player) {
+    private ItemStack aimingStack(LocalPlayer player) {
         if (player.isUsingItem()) {
             ItemStack using = player.getUseItem();
-            if (using.getItem() instanceof BowItem || using.getItem() instanceof TridentItem) return using;
+            if (using.getItem() instanceof BowItem && bool("bows")
+                && BowItem.getPowerForTime(player.getTicksUsingItem()) >= integer("min-draw") / 100.0F) {
+                return using;
+            }
+            if (using.getItem() instanceof TridentItem && bool("tridents")) return using;
         }
+        if (!bool("crossbows")) return null;
         for (ItemStack held : new ItemStack[] {player.getMainHandItem(), player.getOffhandItem()}) {
             if (held.getItem() instanceof CrossbowItem && CrossbowItem.isCharged(held)) return held;
         }
@@ -96,20 +156,43 @@ public final class BowAimAssistModule extends Module {
         double fov = integer("fov") / 2.0D;
         Vec3 eyes = player.getEyePosition();
         Vec3 look = player.getLookAngle();
+        if (bool("lock-target") && MC.level.getEntity(lockedTargetId) instanceof LivingEntity locked
+            && valid(player, locked) && coneAngle(locked, eyes, look, range) <= fov) {
+            return locked;
+        }
+        String priority = choice("priority");
         LivingEntity best = null;
-        double bestAngle = Double.MAX_VALUE;
+        double bestScore = Double.MAX_VALUE;
         for (Entity entity : MC.level.entitiesForRendering()) {
-            if (!(entity instanceof LivingEntity living) || entity == player || !living.isAlive()) continue;
-            if (!isTarget(entity) || DihAntiBot.suppress(entity) || TeamsModule.isFriendOrTeam(entity)) continue;
-            Vec3 to = entity.getBoundingBox().getCenter().subtract(eyes);
-            double distance = to.length();
-            if (distance > range || distance < 1.0D) continue;
-            double angle = Math.toDegrees(Math.acos(Mth.clamp(to.normalize().dot(look), -1.0D, 1.0D)));
-            if (angle > fov || angle >= bestAngle) continue;
+            if (!(entity instanceof LivingEntity living) || !valid(player, living)) continue;
+            double angle = coneAngle(living, eyes, look, range);
+            if (angle > fov) continue;
+            double score = switch (priority) {
+                case "Distance" -> living.getBoundingBox().getCenter().distanceTo(eyes);
+                case "Health" -> living.getHealth() + living.getAbsorptionAmount();
+                default -> angle;
+            };
+            if (score >= bestScore) continue;
             best = living;
-            bestAngle = angle;
+            bestScore = score;
         }
         return best;
+    }
+
+    /** Degrees between the look and {@code target}, or infinity when it is out of range or too close. */
+    private static double coneAngle(LivingEntity target, Vec3 eyes, Vec3 look, double range) {
+        Vec3 to = target.getBoundingBox().getCenter().subtract(eyes);
+        double distance = to.length();
+        if (distance > range || distance < 1.0D) return Double.POSITIVE_INFINITY;
+        return Math.toDegrees(Math.acos(Mth.clamp(to.normalize().dot(look), -1.0D, 1.0D)));
+    }
+
+    private boolean valid(LocalPlayer player, LivingEntity living) {
+        if (living == player || !living.isAlive()) return false;
+        if (!isTarget(living) || DihAntiBot.suppress(living) || TeamsModule.isFriendOrTeam(living)) return false;
+        if (bool("ignore-invisible") && living.isInvisible()) return false;
+        if (bool("ignore-naked") && living instanceof Player && CombatFilters.wearsNoArmor(living)) return false;
+        return !bool("need-sight") || player.hasLineOfSight(living);
     }
 
     private boolean isTarget(Entity entity) {
@@ -126,6 +209,7 @@ public final class BowAimAssistModule extends Module {
             case "Feet" -> 0.15D;
             default -> 0.55D;
         };
+        fraction = Mth.clamp(fraction + decimal("aim-offset"), 0.0D, 1.0D);
         var box = target.getBoundingBox();
         return new Vec3((box.minX + box.maxX) / 2.0D, box.minY + box.getYsize() * fraction, (box.minZ + box.maxZ) / 2.0D);
     }

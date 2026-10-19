@@ -14,7 +14,13 @@ public final class WTapModule extends SprintResetModule {
     public WTapModule() {
         super("w-tap", "WTap", "Lets go of W after each hit so every hit gets sprint knockback.", 2);
         add(new ChoiceSetting("mode", "Mode", "Legit", "Legit", "Packet")
+            .group("General")
             .description("Legit: really release W. Packet: resend sprint before the hit (anticheats can notice)."));
+    }
+
+    @Override
+    boolean usesKeys() {
+        return !"Packet".equals(value("mode"));
     }
 
     @Override

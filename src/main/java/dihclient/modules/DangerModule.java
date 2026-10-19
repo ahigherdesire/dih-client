@@ -50,6 +50,8 @@ public final class DangerModule extends Module {
     private static final int DEFLECT_COOLDOWN_TICKS = 4;
     private static final int ALERT_MEMORY_TICKS = 100;
     private static final float PATH_LINE_WIDTH = 2.0f;
+    private static final int HUD_OFFSET = 14;
+    private static final int FILL_ALPHA = 0x50;
 
     private static volatile boolean renderHookInstalled;
 
@@ -61,6 +63,9 @@ public final class DangerModule extends Module {
 
     private int cachedRevision = -1;
     private boolean highlight = true;
+    private boolean showPath = true;
+    private float lineWidth = PATH_LINE_WIDTH;
+    private int fillAlpha = FILL_ALPHA;
     private int arrowColor;
     private int fireballColor;
     private int thrownColor;
@@ -70,11 +75,13 @@ public final class DangerModule extends Module {
             "Warns about incoming projectiles and can hit fireballs back.");
 
         add(new IntSetting("range", "Range", 32, 4, 96, 4)
-            .description("How far away to watch projectiles.").build());
+            .group("General").description("How far away to watch projectiles.").build());
         add(new IntSetting("look-ahead", "Look Ahead", 40, 5, 120, 5)
-            .description("Ticks of flight to predict.").build());
+            .group("General").description("Ticks of flight to predict.").build());
         add(new DoubleSetting("margin", "Hit Margin", 0.5, 0.0, 3.0, 0.1)
-            .description("Extra space around you that counts as a hit.").build());
+            .group("General").description("Extra space around you that counts as a hit.").build());
+        add(new BoolSetting("ignore-friends", "Ignore Friends", false)
+            .group("General").description("Skip projectiles fired by friends and teammates.").build());
 
         add(new BoolSetting("arrows", "Arrows", true)
             .group("Projectiles").description("Arrows and tridents.").build());
@@ -85,10 +92,41 @@ public final class DangerModule extends Module {
 
         add(new BoolSetting("hud", "HUD Warning", true)
             .group("Alerts").description("Show incoming projectiles under the crosshair.").build());
+        add(new IntSetting("hud-lines", "HUD Lines", MAX_HUD_LINES, 1, 8, 1)
+            .group("Alerts").visibleWhen(() -> bool("hud"))
+            .description("Most warnings listed at once, nearest first.").build());
+        add(new IntSetting("hud-offset", "HUD Offset", HUD_OFFSET, -120, 120, 2)
+            .group("Alerts").visibleWhen(() -> bool("hud"))
+            .description("Pixels below the crosshair the list starts; negative puts it above.").build());
+        add(new BoolSetting("hud-time", "Show Time", true)
+            .group("Alerts").visibleWhen(() -> bool("hud"))
+            .description("Seconds until the projectile reaches you.").build());
+        add(new BoolSetting("hud-direction", "Show Direction", true)
+            .group("Alerts").visibleWhen(() -> bool("hud"))
+            .description("Arrow pointing to where the projectile is, relative to your view.").build());
+        add(new IntSetting("urgent-time", "Urgent Time", URGENT_TICKS, 0, 40, 1).unit("ticks")
+            .group("Alerts").visibleWhen(() -> bool("hud"))
+            .description("Flash the warning red when the hit is this close; 0 never flashes.").build());
         add(new BoolSetting("sound", "Sound", true)
             .group("Alerts").description("Ping once when a new projectile is coming at you.").build());
+        add(new IntSetting("sound-volume", "Sound Volume", 25, 5, 100, 5).unit("%")
+            .group("Alerts").visibleWhen(() -> bool("sound"))
+            .description("How loud the ping is.").build());
+        add(new IntSetting("sound-pitch", "Sound Pitch", 160, 50, 200, 5).unit("%")
+            .group("Alerts").visibleWhen(() -> bool("sound"))
+            .description("How high the ping is.").build());
+
         add(new BoolSetting("highlight", "Highlight", true)
-            .group("Alerts").description("Draw incoming projectiles and their predicted path.").build());
+            .group("Render").description("Draw incoming projectiles and their predicted path.").build());
+        add(new BoolSetting("show-path", "Show Path", true)
+            .group("Render").visibleWhen(() -> bool("highlight"))
+            .description("Draw the predicted flight path, not just the projectile.").build());
+        add(new DoubleSetting("line-width", "Line Width", PATH_LINE_WIDTH, 1.0, 5.0, 0.5)
+            .group("Render").visibleWhen(() -> bool("highlight"))
+            .description("Thickness of the outline and path.").build());
+        add(new IntSetting("fill-opacity", "Fill Opacity", FILL_ALPHA * 100 / 255, 0, 100, 1).unit("%")
+            .group("Render").visibleWhen(() -> bool("highlight"))
+            .description("How solid the box around the projectile is; 0 draws only the outline.").build());
 
         add(new BoolSetting("deflect", "Deflect Fireballs", false)
             .group("Deflect").description("Hit incoming fireballs that come within reach.").build());
@@ -98,6 +136,9 @@ public final class DangerModule extends Module {
         add(new BoolSetting("rotate", "Return To Sender", true)
             .group("Deflect").visibleWhen(() -> bool("deflect"))
             .description("Look at the fireball before hitting it so it flies back the way it came.").build());
+        add(new IntSetting("deflect-cooldown", "Deflect Cooldown", DEFLECT_COOLDOWN_TICKS, 0, 20, 1).unit("ticks")
+            .group("Deflect").visibleWhen(() -> bool("deflect"))
+            .description("Wait between deflecting hits.").build());
 
         add(new ColorSetting("color-arrow", "Arrow", 0xFFFFD166)
             .group("Colors").description("Arrows and tridents.").build());
@@ -125,17 +166,23 @@ public final class DangerModule extends Module {
         module.refreshSettings();
         Font font = MC.font;
         int screenWidth = DihUiScale.getVirtualScreenWidth();
-        int y = DihUiScale.getVirtualScreenHeight() / 2 + 14;
+        int y = DihUiScale.getVirtualScreenHeight() / 2 + module.integer("hud-offset");
+        int lines = module.integer("hud-lines");
+        boolean showTime = module.bool("hud-time");
+        boolean showDirection = module.bool("hud-direction");
+        int urgentTicks = module.integer("urgent-time");
         int shown = 0;
         for (Threat threat : current) {
-            if (shown++ >= MAX_HUD_LINES) break;
-            String text = String.format(Locale.ROOT, "⚠ %s  %.1fs  %s",
-                threat.label(), threat.ticks() / 20.0, directionArrow(MC.player, threat.entity()));
-            boolean urgent = threat.ticks() <= URGENT_TICKS;
+            if (shown++ >= lines) break;
+            StringBuilder text = new StringBuilder("⚠ ").append(threat.label());
+            if (showTime) text.append(String.format(Locale.ROOT, "  %.1fs", threat.ticks() / 20.0));
+            if (showDirection) text.append("  ").append(directionArrow(MC.player, threat.entity()));
+            boolean urgent = threat.ticks() <= urgentTicks;
             int color = urgent
                 ? ((module.tickCounter / 3) % 2 == 0 ? 0xFFFF3B3B : 0xFFFFFFFF)
                 : module.kindColor(threat.kind());
-            context.text(font, text, (screenWidth - font.width(text)) / 2, y, color, true);
+            String line = text.toString();
+            context.text(font, line, (screenWidth - font.width(line)) / 2, y, color, true);
             y += font.lineHeight + 1;
         }
     }
@@ -187,6 +234,9 @@ public final class DangerModule extends Module {
         if (revision == cachedRevision) return;
         cachedRevision = revision;
         highlight = bool("highlight");
+        showPath = bool("show-path");
+        lineWidth = (float) decimal("line-width");
+        fillAlpha = Math.round(Math.clamp(integer("fill-opacity"), 0, 100) * 255 / 100.0F);
         arrowColor = ModuleRenderUtil.color(this, "color-arrow", 0xFFFFD166);
         fireballColor = ModuleRenderUtil.color(this, "color-fireball", 0xFFFF6B35);
         thrownColor = ModuleRenderUtil.color(this, "color-thrown", 0xFF4CC9F0);
@@ -196,9 +246,11 @@ public final class DangerModule extends Module {
         AABB area = player.getBoundingBox().inflate(integer("range"));
         int lookAhead = integer("look-ahead");
         double margin = decimal("margin");
+        boolean ignoreFriends = bool("ignore-friends");
         List<Threat> out = new ArrayList<>();
         for (Projectile projectile : level.getEntitiesOfClass(Projectile.class, area)) {
             if (projectile.isRemoved() || projectile.getOwner() == player) continue;
+            if (ignoreFriends && projectile.getOwner() != null && TeamsModule.isFriendOrTeam(projectile.getOwner())) continue;
             Kind kind = kindOf(projectile);
             if (kind == null || !watching(kind)) continue;
             Vec3 velocity = projectile.getDeltaMovement();
@@ -238,7 +290,8 @@ public final class DangerModule extends Module {
             if (alertedAt.put(threat.entity().getId(), tickCounter) == null) ping = true;
         }
         if (ping && bool("sound")) {
-            MC.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_PLING, 1.6F));
+            MC.getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.NOTE_BLOCK_PLING.value(),
+                integer("sound-pitch") / 100.0F, integer("sound-volume") / 100.0F));
         }
     }
 
@@ -283,7 +336,7 @@ public final class DangerModule extends Module {
         try {
             MC.gameMode.attack(player, target);
             DihEntities.swing(player, InteractionHand.MAIN_HAND);
-            deflectCooldown = DEFLECT_COOLDOWN_TICKS;
+            deflectCooldown = integer("deflect-cooldown");
         } finally {
             DihHandArbiter.endHandPacketGroup(id());
         }
@@ -361,9 +414,10 @@ public final class DangerModule extends Module {
     }
 
     private void emitFill(PoseStack.Pose pose, VertexConsumer buffer, List<Threat> current, Vec3 camera) {
+        if (fillAlpha <= 0) return;
         for (Threat threat : current) {
             AABB box = threat.entity().getBoundingBox().move(-camera.x, -camera.y, -camera.z).inflate(0.05);
-            EspGeometry.fillBox(pose, buffer, box, EspGeometry.withAlpha(kindColor(threat.kind()), 0x50));
+            EspGeometry.fillBox(pose, buffer, box, EspGeometry.withAlpha(kindColor(threat.kind()), fillAlpha));
         }
     }
 
@@ -371,11 +425,12 @@ public final class DangerModule extends Module {
         for (Threat threat : current) {
             int color = EspGeometry.withAlpha(kindColor(threat.kind()), 0xE0);
             AABB box = threat.entity().getBoundingBox().move(-camera.x, -camera.y, -camera.z).inflate(0.05);
-            EspGeometry.edges(pose, buffer, box, color, PATH_LINE_WIDTH);
+            EspGeometry.edges(pose, buffer, box, color, lineWidth);
+            if (!showPath) continue;
             List<Vec3> path = threat.path();
             for (int i = 0; i + 1 < path.size(); i++) {
                 DihWorldGeometry.line(pose, buffer, path.get(i).subtract(camera), path.get(i + 1).subtract(camera),
-                    color, PATH_LINE_WIDTH);
+                    color, lineWidth);
             }
         }
     }

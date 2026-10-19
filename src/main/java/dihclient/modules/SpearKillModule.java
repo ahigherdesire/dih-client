@@ -11,6 +11,7 @@ import net.minecraft.core.component.DataComponents;
 import net.minecraft.world.entity.EntitySelector;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
+import net.minecraft.world.entity.monster.Enemy;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.component.AttackRange;
@@ -41,23 +42,53 @@ public final class SpearKillModule extends Module {
         super("spear-kill", "SpearKill", ModuleCategory.COMBAT,
             "Makes a charging spear hit at full speed: Poke from where you stand, or Rush the target. Will flag anticheats.");
         add(new ChoiceSetting("mode", "Mode", "Poke", "Poke", "Rush")
+            .group("General")
             .description("Poke: huge hits at your normal speed. Rush: really fly at the target."));
+        add(new BoolSetting("face", "Face Target", true)
+            .group("General")
+            .description("Turn toward the target: the charge only hits what it points at."));
+
         add(new DoubleSetting("boost", "Boost", 9.5D, 1.0D, 22.0D, 0.5D)
+            .group("Poke")
             .description("Blocks a tick the server thinks you charge at. Above 9.5 takes more packets and can miss "
                 + "on a laggy server.")
             .visibleWhen(() -> poke()));
         add(new DoubleSetting("speed", "Speed", 3.0D, 0.5D, 9.5D, 0.5D)
+            .group("Rush")
             .description("Blocks a tick to rush at the target.")
             .visibleWhen(() -> !poke()));
-        add(new DoubleSetting("range", "Range", 12.0D, 2.0D, 32.0D, 1.0D)
-            .description("How far away a target can be picked."));
-        add(new IntSetting("fov", "FOV", 90, 10, 360, 5)
-            .description("How far off the crosshair a target can be picked."));
         add(new DoubleSetting("stop-at", "Stop At", 1.5D, 0.5D, 3.0D, 0.25D)
+            .group("Rush")
             .description("Blocks short of the target to stop, inside the spear's reach.")
             .visibleWhen(() -> !poke()));
-        add(new BoolSetting("face", "Face Target", true)
-            .description("Turn toward the target: the charge only hits what it points at."));
+
+        add(new ChoiceSetting("targets", "Targets", "All Living", "Players", "Players + Hostile", "All Living")
+            .group("Targets")
+            .description("What the charge may be aimed at."));
+        add(new DoubleSetting("range", "Range", 12.0D, 2.0D, 32.0D, 1.0D)
+            .group("Targets")
+            .description("How far away a target can be picked."));
+        add(new IntSetting("fov", "FOV", 90, 10, 360, 5)
+            .group("Targets")
+            .description("How far off the crosshair a target can be picked."));
+        add(new ChoiceSetting("priority", "Priority", "Crosshair", "Crosshair", "Distance", "Health")
+            .group("Targets")
+            .description("Which target wins when several are in the cone."));
+        add(new BoolSetting("crosshair-first", "Crosshair First", true)
+            .group("Targets")
+            .description("Take the entity under your crosshair before anything else."));
+        add(new BoolSetting("lock-target", "Lock Target", true)
+            .group("Targets")
+            .description("Keep charging the same target while it stays valid."));
+        add(new BoolSetting("need-sight", "Need Line Of Sight", false)
+            .group("Targets")
+            .description("Skip targets behind blocks."));
+        add(new BoolSetting("ignore-invisible", "Ignore Invisible", false)
+            .group("Targets")
+            .description("Skip invisible entities."));
+        add(new BoolSetting("ignore-sleeping", "Ignore Sleeping", true)
+            .group("Targets")
+            .description("Skip players in bed."));
     }
 
     @Override
@@ -144,33 +175,55 @@ public final class SpearKillModule extends Module {
         return damaging(player.getTicksUsingItem(), weapon.delayTicks(), maxDuration);
     }
 
-    /** The locked target while it stays valid, else the crosshair's entity, else the one nearest the crosshair. */
+    /** The locked target while it stays valid, else the crosshair's entity, else the best one in the cone. */
     private LivingEntity target(LocalPlayer player) {
         double range = decimal("range");
-        if (MC.level.getEntity(targetId) instanceof LivingEntity locked && valid(player, locked, range)) return locked;
-        if (MC.hitResult instanceof EntityHitResult hit && hit.getType() == HitResult.Type.ENTITY
+        if (bool("lock-target") && MC.level.getEntity(targetId) instanceof LivingEntity locked
+            && valid(player, locked, range)) {
+            return locked;
+        }
+        if (bool("crosshair-first") && MC.hitResult instanceof EntityHitResult hit
+            && hit.getType() == HitResult.Type.ENTITY
             && hit.getEntity() instanceof LivingEntity looked && valid(player, looked, range)) {
             return looked;
         }
         Vec3 eyes = player.getEyePosition();
         DihRotationUtil.Rotation facing = DihRotationUtil.playerRotation(player);
         float halfFov = integer("fov") * 0.5F;
+        Comparator<LivingEntity> byAngle = Comparator.comparingDouble(e -> DihRotationUtil.rotationAngleTo(facing,
+            DihRotationUtil.lookingAt(e.getBoundingBox().getCenter(), eyes)));
+        Comparator<LivingEntity> order = switch (choice("priority")) {
+            case "Distance" -> Comparator.comparingDouble(player::distanceToSqr);
+            case "Health" -> Comparator.comparingDouble(e -> e.getHealth() + e.getAbsorptionAmount());
+            default -> byAngle;
+        };
         return MC.level.getEntitiesOfClass(LivingEntity.class, player.getBoundingBox().inflate(range),
                 e -> valid(player, e, range)
                     && DihRotationUtil.rotationAngleTo(facing,
                         DihRotationUtil.lookingAt(e.getBoundingBox().getCenter(), eyes)) <= halfFov)
             .stream()
-            .min(Comparator.comparingDouble(e -> DihRotationUtil.rotationAngleTo(facing,
-                DihRotationUtil.lookingAt(e.getBoundingBox().getCenter(), eyes))))
+            .min(order.thenComparing(byAngle))
             .orElse(null);
     }
 
-    private static boolean valid(LocalPlayer player, LivingEntity entity, double range) {
+    private boolean valid(LocalPlayer player, LivingEntity entity, double range) {
         if (entity == player || !entity.isAlive() || entity.isRemoved()) return false;
         if (!EntitySelector.CAN_BE_PICKED.test(entity) || entity.hasPassenger(player)) return false;
-        if (entity instanceof Player other && (other.isSpectator() || other.isSleeping())) return false;
+        if (entity instanceof Player other && other.isSpectator()) return false;
+        if (bool("ignore-sleeping") && entity instanceof Player && entity.isSleeping()) return false;
+        if (bool("ignore-invisible") && entity.isInvisible()) return false;
+        if (!isTargetType(entity)) return false;
         if (DihAntiBot.suppress(entity) || TeamsModule.combatExcluded(entity, "killaura")) return false;
-        return player.distanceToSqr(entity) <= range * range;
+        if (player.distanceToSqr(entity) > range * range) return false;
+        return !bool("need-sight") || player.hasLineOfSight(entity);
+    }
+
+    private boolean isTargetType(LivingEntity entity) {
+        return switch (choice("targets")) {
+            case "Players" -> entity instanceof Player;
+            case "Players + Hostile" -> entity instanceof Player || entity instanceof Enemy;
+            default -> true;
+        };
     }
 
     /**

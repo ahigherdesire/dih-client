@@ -2360,25 +2360,74 @@ public final class BuiltinModules {
         private int switchCandidateTicks;
         private String cachedEntityListSource = "";
         private Set<String> cachedEntityIds = Set.of();
+        private final CombatFilters.IdSet heldItemIds = new CombatFilters.IdSet();
 
         AimAssistModule() {
             super("aim-assist", "AimAssist", ModuleCategory.COMBAT, "Smoothly assists your aim toward configured entities.");
-            add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player").build());
-            add(new DoubleSetting("range", "Range", 4.5, 1.0, 8.0, 0.1).build());
-            add(new IntSetting("fov", "FOV", 80, 0, 180, 1).build());
-            add(new ChoiceSetting("target-point", "Target Point", "Nearest", "Nearest", "Center", "Head", "Body", "Feet").build());
+            add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player")
+                .group("General").description("Entity types to aim at.").build());
+            add(new ChoiceSetting("priority", "Priority", "Direction", "Direction", "Type", "Health", "Distance", "HurtTime", "Age")
+                .group("General").description("Who gets aimed at first.").build());
+            add(new ChoiceSetting("axis", "Axis", "Both", "Both", "Horizontal", "Vertical")
+                .group("General").description("Which way your view is turned.").build());
+            add(new BoolSetting("only-on-click", "Only On Click", false)
+                .group("General").description("Only works while you hold the attack key.").build());
+            add(new BoolSetting("pause-mining", "Pause While Mining", true)
+                .group("General").description("Stops while you break a block.").build());
+            add(new BoolSetting("held-items-only", "Held Items Only", false)
+                .group("General").description("Only with listed items.").build());
+            add(RegistryListSetting.items("held-items", "Held Items", CombatFilters.DEFAULT_WEAPONS)
+                .group("General").description("Main-hand items that turn on the assist.")
+                .visibleWhen(() -> bool("held-items-only")).build());
+
+            add(new DoubleSetting("range", "Range", 4.5, 1.0, 8.0, 0.1)
+                .group("Targets").description("Farthest target to aim at, in blocks.").build());
+            add(new IntSetting("fov", "FOV", 80, 0, 180, 1)
+                .group("Targets").description("How far off your crosshair a target may be, in degrees.").build());
+            add(new IntSetting("hurt-time", "Hurt Time", 10, 0, 10, 1)
+                .group("Targets").description("Skips targets flashing from a hit for longer than this, in ticks.").build());
+            add(new IntSetting("switch-delay", "Switch Delay", TARGET_SWITCH_CONFIRM_TICKS, 0, 20, 1)
+                .group("Targets").description("Ticks a better target must stay better before the aim moves to it.").build());
+            add(new BoolSetting("through-walls", "Through Walls", false)
+                .group("Targets").description("Aims at targets behind blocks too.").build());
+            add(new BoolSetting("ignore-invisible", "Ignore Invisible", false)
+                .group("Targets").description("Skips invisible entities.").build());
+            add(new BoolSetting("ignore-naked", "Ignore Naked", false)
+                .group("Targets").description("Skips players wearing no armor.").build());
+            add(new BoolSetting("ignore-named", "Ignore Named", false)
+                .group("Targets").description("Skips mobs with a name tag.").build());
+            add(new BoolSetting("ignore-babies", "Ignore Babies", false)
+                .group("Targets").description("Skips baby mobs.").build());
+            add(new ChoiceSetting("ignore-pets", "Ignore Pets", "Yours", "Off", "Yours", "All")
+                .group("Targets").description("Skips tamed animals: yours, anyone's, or none.").build());
+            add(new IntSetting("max-health", "Max Health", 0, 0, 100, 1)
+                .group("Targets").description("Skips targets with more health than this; 0 is no limit.").build());
+
+            add(new ChoiceSetting("target-point", "Target Point", "Nearest", "Nearest", "Center", "Head", "Body", "Feet")
+                .group("Aim").description("Where on the target to aim.").build());
             add(new IntSetting("safe-zone", "Safe Zone", 5, 0, 100, 1)
+                .group("Aim")
                 .formatter(v -> v + "%")
                 .description("Deadzone around aim point.")
                 .build());
-            add(new ChoiceSetting("priority", "Priority", "Direction", "Direction", "Type", "Health", "Distance", "HurtTime", "Age").build());
-            add(new ChoiceSetting("axis", "Axis", "Both", "Both", "Horizontal", "Vertical").build());
-            add(new IntSetting("hurt-time", "Hurt Time", 10, 0, 10, 1).build());
-            add(new ChoiceSetting("smooth-mode", "Smooth", "Interpolation", "Interpolation", "Instant").group("Smoothing").build());
-            add(new IntSetting("horizontal-speed", "Horizontal", 40, 1, 100, 1).group("Smoothing").formatter(v -> v + "%").visibleWhen(() -> usesSmoothing(this)).build());
-            add(new IntSetting("vertical-speed", "Vertical", 10, 1, 100, 1).group("Smoothing").formatter(v -> v + "%").visibleWhen(() -> usesSmoothing(this)).build());
-            add(new IntSetting("direction-factor", "Direction Factor", 100, 0, 100, 1).group("Smoothing").formatter(v -> v + "%").visibleWhen(() -> usesSmoothing(this)).build());
-            add(new DoubleSetting("midpoint", "Midpoint", 0.35, 0.0, 1.0, 0.05).group("Smoothing").visibleWhen(() -> usesSmoothing(this)).build());
+
+            add(new ChoiceSetting("smooth-mode", "Smooth", "Interpolation", "Interpolation", "Instant").group("Smoothing")
+                .description("Interpolation eases toward the target; Instant snaps to it.").build());
+            add(new IntSetting("horizontal-speed", "Horizontal", 40, 1, 100, 1).group("Smoothing").formatter(v -> v + "%")
+                .description("How fast the view turns sideways.").visibleWhen(() -> usesSmoothing(this)).build());
+            add(new IntSetting("vertical-speed", "Vertical", 10, 1, 100, 1).group("Smoothing").formatter(v -> v + "%")
+                .description("How fast the view turns up and down.").visibleWhen(() -> usesSmoothing(this)).build());
+            add(new IntSetting("direction-factor", "Direction Factor", 100, 0, 100, 1).group("Smoothing").formatter(v -> v + "%")
+                .description("How much a target changing direction slows the turn.").visibleWhen(() -> usesSmoothing(this)).build());
+            add(new DoubleSetting("midpoint", "Midpoint", 0.35, 0.0, 1.0, 0.05).group("Smoothing")
+                .description("Where in each turn the view moves fastest.").visibleWhen(() -> usesSmoothing(this)).build());
+        }
+
+        private boolean paused() {
+            if (bool("pause-mining") && MC.gameMode != null && MC.gameMode.isDestroying()) return true;
+            if (bool("only-on-click") && !DihKeyMappingBridge.of(MC.options.keyAttack).dih$isActuallyDown()) return true;
+            return bool("held-items-only")
+                && !CombatFilters.holds(MC.player.getMainHandItem(), heldItemIds, list("held-items"));
         }
 
         private static boolean usesSmoothing(Module module) {
@@ -2398,7 +2447,8 @@ public final class BuiltinModules {
                 || DihSilentAim.packetRotation() != null
                 || ScaffoldModule.hasActiveSilentMovementRotation()
 
-                || AutoTotemModule.operationActive()) {
+                || AutoTotemModule.operationActive()
+                || paused()) {
                 clearAimState();
                 return;
             }
@@ -2511,7 +2561,7 @@ public final class BuiltinModules {
                 switchCandidateId = best.getId();
                 switchCandidateTicks = 1;
             }
-            if (switchCandidateTicks < TARGET_SWITCH_CONFIRM_TICKS) return tracked;
+            if (switchCandidateTicks < integer("switch-delay")) return tracked;
             switchCandidateId = Integer.MIN_VALUE;
             switchCandidateTicks = 0;
             return best;
@@ -2523,9 +2573,21 @@ public final class BuiltinModules {
             if (TeamsModule.combatExcluded(entity, "aimassist")) return false;
             if (entity.hurtTime > integer("hurt-time")) return false;
             if (!matchesEntity(entity)) return false;
+            if (!passesTargetFilters(entity)) return false;
             if (entity.distanceToSqr(MC.player) > rangeSq) return false;
             DihRotationUtil.Rotation toEntity = DihRotationUtil.lookingAt(entity.getBoundingBox().getCenter(), MC.player.getEyePosition());
             return DihRotationUtil.angleTo(current, toEntity) <= integer("fov");
+        }
+
+        private boolean passesTargetFilters(LivingEntity entity) {
+            boolean player = entity instanceof net.minecraft.world.entity.player.Player;
+            if (bool("ignore-invisible") && entity.isInvisible()) return false;
+            if (bool("ignore-naked") && player && CombatFilters.wearsNoArmor(entity)) return false;
+            if (bool("ignore-named") && !player && entity.hasCustomName()) return false;
+            if (bool("ignore-babies") && entity.isBaby()) return false;
+            if (CombatFilters.ignoredPet(entity, choice("ignore-pets"), MC.player)) return false;
+            int maxHealth = integer("max-health");
+            return maxHealth <= 0 || entity.getHealth() + entity.getAbsorptionAmount() <= maxHealth;
         }
 
         private int compareTargets(LivingEntity a, LivingEntity b, String priority, DihRotationUtil.Rotation current, Vec3 eyes) {
@@ -2588,7 +2650,7 @@ public final class BuiltinModules {
                 case "Feet" -> new Vec3(cx, box.minY + 0.1, cz);
                 default -> nearestPoint(eyes, box);
             };
-            if (visible(eyes, preferred)) return preferred;
+            if (bool("through-walls") || visible(eyes, preferred)) return preferred;
             return bestVisiblePoint(eyes, box);
         }
 
@@ -2603,7 +2665,7 @@ public final class BuiltinModules {
                 player.getZ(),
                 choice("target-point")
             );
-            if (visible(eyes, preferred)) return preferred;
+            if (bool("through-walls") || visible(eyes, preferred)) return preferred;
             return bestVisiblePlayerPoint(eyes, modelBox, player.getX(), player.getZ(), preferred.y);
         }
 
@@ -2751,14 +2813,32 @@ public final class BuiltinModules {
         private static final ValueRange DEFAULT_CPS = new ValueRange(6, 11);
 
         private final dihclient.util.DihClickPacer pacer = new dihclient.util.DihClickPacer();
+        private final CombatFilters.IdSet heldItemIds = new CombatFilters.IdSet();
 
         AutoClickerModule() {
             super("auto-clicker", "AutoClicker", ModuleCategory.COMBAT, "Auto clicks or holds");
             add(new RangeSetting("tps", "CPS", DEFAULT_CPS, 5, 20, 0.5).minSeparation(0.5)
+                .group("General").description("Clicks per second, picked between these.")
                 .visibleWhen(() -> !"Hold".equals(value("mode"))).build());
             add(new ChoiceSetting("mode", "Mode", "Constant", "Constant", "Hold Down", "Hold")
-                .description("Click or hold").build());
-            add(new ChoiceSetting("button", "Button", "Left", "Left", "Right").description("Mouse button").build());
+                .group("General").description("Click or hold").build());
+            add(new ChoiceSetting("button", "Button", "Left", "Left", "Right")
+                .group("General").description("Mouse button").build());
+
+            add(new BoolSetting("break-blocks", "Break Blocks", false)
+                .group("Left Click").description("Holds the button instead of clicking while you aim at a block, so it breaks.")
+                .visibleWhen(() -> !"Right".equals(value("button")) && !"Hold".equals(value("mode"))).build());
+            add(new IntSetting("min-charge", "Min Charge", 0, 0, 100, 5).unit("%")
+                .group("Left Click").description("Skips clicks until the weapon cooldown is this full; 0 never waits.")
+                .visibleWhen(() -> !"Right".equals(value("button")) && !"Hold".equals(value("mode"))).build());
+
+            add(new BoolSetting("held-items-only", "Held Items Only", false)
+                .group("Conditions").description("Only clicks while holding a listed item.").build());
+            add(RegistryListSetting.items("held-items", "Held Items", CombatFilters.DEFAULT_WEAPONS)
+                .group("Conditions").description("Main-hand items that let it click.")
+                .visibleWhen(() -> bool("held-items-only")).build());
+            add(new BoolSetting("pause-using", "Pause While Using", false)
+                .group("Conditions").description("Stops while you eat, drink, block or draw a bow.").build());
         }
 
         @Override
@@ -2779,7 +2859,10 @@ public final class BuiltinModules {
                 || DihSilentAim.packetRotation() != null
                 || ScaffoldModule.hasActiveSilentMovementRotation()
 
-                || AutoTotemModule.operationActive()) {
+                || AutoTotemModule.operationActive()
+                || bool("pause-using") && MC.player.isUsingItem()
+                || bool("held-items-only")
+                    && !CombatFilters.holds(MC.player.getMainHandItem(), heldItemIds, list("held-items"))) {
                 standDown();
                 return;
             }
@@ -2790,11 +2873,21 @@ public final class BuiltinModules {
                 holdConfiguredButton();
                 return;
             }
+            boolean left = !"Right".equals(choice("button"));
+            if (left && bool("break-blocks") && MC.hitResult != null
+                && MC.hitResult.getType() == HitResult.Type.BLOCK) {
+                // Constant mode mines by itself; in Hold Down your own held button already does.
+                pacer.reset();
+                DihInputClicker.setUseHeld(false);
+                DihInputClicker.setAttackHeld("Constant".equals(mode));
+                return;
+            }
             releaseHeldButton();
             if ("Hold Down".equals(mode) && !configuredButtonDown()) {
                 pacer.reset();
                 return;
             }
+            if (left && MC.player.getAttackStrengthScale(0.0f) < integer("min-charge") / 100.0f) return;
 
             ValueRange band = ValueRange.parse(value("tps"), DEFAULT_CPS);
             if (pacer.shouldClick(band.min(), band.max())) {
@@ -2835,20 +2928,62 @@ public final class BuiltinModules {
         private boolean armed;
         private String cachedEntityListSource = "";
         private Set<String> cachedEntityIds = Set.of();
+        private final CombatFilters.IdSet heldItemIds = new CombatFilters.IdSet();
 
         TriggerBotModule() {
             super("trigger-bot", "TriggerBot", ModuleCategory.COMBAT, "Attacks configured entities when your crosshair is on them.");
             add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player")
-                .description("Trigger entities").build());
+                .group("General").description("Trigger entities").build());
             add(new ChoiceSetting("timing", "Timing", "Cooldown", "Cooldown", "CPS")
+                .group("General")
                 .description("Cooldown: hit when the swing is charged. CPS: click at a set rate, like AutoClicker."));
             add(new BoolSetting("respect-cooldown", "Respect Cooldown", true).description("Wait for full cooldown")
+                .group("General")
                 .visibleWhen(() -> !"CPS".equals(value("timing"))));
+            add(new IntSetting("min-charge", "Min Charge", 100, 50, 100, 5).unit("%")
+                .group("General").description("Hits once the weapon cooldown is this full.")
+                .visibleWhen(() -> !"CPS".equals(value("timing")) && bool("respect-cooldown")));
             add(new BoolSetting("randomize-delay", "Randomize Delay", false)
+                .group("General")
                 .description("Small delay after cooldown.").visibleWhen(() -> !"CPS".equals(value("timing"))));
             add(new RangeSetting("cps", "CPS", DEFAULT_CPS, 1, 20, 0.5).minSeparation(0.5)
+                .group("General")
                 .description("Click rate; it drifts and hesitates within this band like AutoClicker.")
                 .visibleWhen(() -> "CPS".equals(value("timing"))));
+            add(new BoolSetting("wait-for-crit", "Wait For Crits", false)
+                .group("General").description("In the air, holds the hit until you fall, so it lands as a critical.").build());
+            add(new BoolSetting("pause-using", "Pause While Using", true)
+                .group("General").description("Stops while you eat, drink, block or draw a bow.").build());
+            add(new BoolSetting("held-items-only", "Held Items Only", false)
+                .group("General").description("Only with listed items.").build());
+            add(RegistryListSetting.items("held-items", "Held Items", CombatFilters.DEFAULT_WEAPONS)
+                .group("General").description("Main-hand items that let it attack.")
+                .visibleWhen(() -> bool("held-items-only")).build());
+
+            add(new IntSetting("hurt-time", "Hurt Time", 10, 0, 10, 1)
+                .group("Targets").description("Skips targets flashing from a hit for longer than this, in ticks.").build());
+            add(new IntSetting("max-health", "Max Health", 0, 0, 100, 1)
+                .group("Targets").description("Skips targets with more health than this; 0 is no limit.").build());
+            add(new BoolSetting("ignore-invisible", "Ignore Invisible", false)
+                .group("Targets").description("Skips invisible entities.").build());
+            add(new BoolSetting("ignore-naked", "Ignore Naked", false)
+                .group("Targets").description("Skips players wearing no armor.").build());
+            add(new BoolSetting("ignore-named", "Ignore Named", false)
+                .group("Targets").description("Skips mobs with a name tag.").build());
+            add(new BoolSetting("ignore-babies", "Ignore Babies", false)
+                .group("Targets").description("Skips baby mobs.").build());
+            add(new ChoiceSetting("ignore-pets", "Ignore Pets", "Yours", "Off", "Yours", "All")
+                .group("Targets").description("Skips tamed animals: yours, anyone's, or none.").build());
+        }
+
+        private boolean waitingForCrit() {
+            if (!bool("wait-for-crit")) return false;
+            var player = MC.player;
+            if (player.onGround() || player.onClimbable() || player.isInWater() || player.isPassenger()
+                || player.getAbilities().flying || player.isFallFlying()) {
+                return false;
+            }
+            return player.fallDistance <= 0.0D || player.getDeltaMovement().y >= 0.0D;
         }
 
         @Override
@@ -2871,7 +3006,10 @@ public final class BuiltinModules {
 
                 || ownsManualFastExp()
 
-                || AutoTotemModule.operationActive()) {
+                || AutoTotemModule.operationActive()
+                || bool("pause-using") && MC.player.isUsingItem()
+                || bool("held-items-only")
+                    && !CombatFilters.holds(MC.player.getMainHandItem(), heldItemIds, list("held-items"))) {
                 resetTrigger();
                 return;
             }
@@ -2879,6 +3017,7 @@ public final class BuiltinModules {
                 resetTrigger();
                 return;
             }
+            if (waitingForCrit()) return;
 
             if ("CPS".equals(choice("timing"))) {
                 ValueRange band = ValueRange.parse(value("cps"), DEFAULT_CPS);
@@ -2887,7 +3026,7 @@ public final class BuiltinModules {
             }
 
             boolean respectCooldown = bool("respect-cooldown");
-            if (respectCooldown && MC.player.getAttackStrengthScale(0.0f) < 1.0f) {
+            if (respectCooldown && MC.player.getAttackStrengthScale(0.0f) < integer("min-charge") / 100.0f) {
                 resetTrigger();
                 return;
             }
@@ -2912,7 +3051,20 @@ public final class BuiltinModules {
             Set<String> ids = cachedEntityIds();
             if (ids.isEmpty()) return false;
             String id = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString().toLowerCase(Locale.ROOT);
-            return ids.contains(id) || ids.contains(id.substring(id.indexOf(':') + 1));
+            if (!ids.contains(id) && !ids.contains(id.substring(id.indexOf(':') + 1))) return false;
+            return !(entity instanceof LivingEntity living) || passesTargetFilters(living);
+        }
+
+        private boolean passesTargetFilters(LivingEntity entity) {
+            boolean player = entity instanceof net.minecraft.world.entity.player.Player;
+            if (entity.hurtTime > integer("hurt-time")) return false;
+            if (bool("ignore-invisible") && entity.isInvisible()) return false;
+            if (bool("ignore-naked") && player && CombatFilters.wearsNoArmor(entity)) return false;
+            if (bool("ignore-named") && !player && entity.hasCustomName()) return false;
+            if (bool("ignore-babies") && entity.isBaby()) return false;
+            if (CombatFilters.ignoredPet(entity, choice("ignore-pets"), MC.player)) return false;
+            int maxHealth = integer("max-health");
+            return maxHealth <= 0 || entity.getHealth() + entity.getAbsorptionAmount() <= maxHealth;
         }
 
         private Set<String> cachedEntityIds() {

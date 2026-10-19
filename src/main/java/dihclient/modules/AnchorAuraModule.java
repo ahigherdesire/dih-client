@@ -32,6 +32,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -178,29 +179,64 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
 
         add(new BoolSetting("place", "Place", true)
             .description("Place new respawn anchors.")
+            .group("General")
             .build());
         add(new BoolSetting("charge", "Charge", true)
             .description("Charge anchors with glowstone.")
+            .group("General")
             .build());
         add(new BoolSetting("detonate", "Detonate", true)
             .description("Detonate charged anchors.")
+            .group("General")
             .build());
+        add(new IntSetting("pause-health", "Pause Health", 0, 0, 36, 1)
+            .description("Stops while your health and absorption are at or below this; 0 never pauses.")
+            .unit("HP")
+            .group("General")
+            .build());
+        add(new BoolSetting("pause-mining", "Pause While Mining", false)
+            .description("Stops while you break a block.")
+            .group("General")
+            .build());
+
         add(new DoubleSetting("target-range", "Target Range", 8.0D, 1.0D, 16.0D, 0.5D)
             .description("Enemy search radius.")
+            .group("Targets")
             .build());
         add(new ChoiceSetting("targeting", "Targeting", "Distance", "Distance", "HP", "FOV")
             .description("How the enemy is picked.")
+            .group("Targets")
             .build());
         add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player")
             .description("Entity types to blast.")
+            .group("Targets")
             .build());
         add(new IntSetting("hurt-time", "Hurt Time", 10, 0, 10, 1)
             .description("Maximum hurt time.")
+            .group("Targets")
+            .build());
+        add(new BoolSetting("ignore-invisible", "Ignore Invisible", false)
+            .description("Skip invisible entities.")
+            .group("Targets")
+            .build());
+        add(new BoolSetting("ignore-naked", "Ignore Naked", false)
+            .description("Skip players wearing no armor.")
+            .group("Targets")
             .build());
 
+        add(new DoubleSetting("place-range", "Range", 6.0D, 1.0D, 6.0D, 0.1D)
+            .description("Farthest anchor to place, charge or detonate, capped by your reach.")
+            .unit("blocks")
+            .group("Place")
+            .build());
+        add(new BoolSetting("switch-back", "Switch Back", true)
+            .description("Return to your previous hotbar slot once idle.")
+            .group("Place")
+            .build());
         add(new IntSetting("switch-back-delay", "Switch Back Delay", 20, 1, 100, 1)
             .description("Idle ticks before switching back.")
             .group("Place")
+            .visibleWhen(() -> bool("switch-back"))
             .build());
         add(new BoolSetting("only-above", "Only Above", false)
             .description("Place above target.")
@@ -230,6 +266,20 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
         add(new BoolSetting("glowstone-shield", "Glowstone Shield", true)
             .description("Shield yourself with glowstone when self damage is too high.")
             .group("Damage")
+            .build());
+        add(new BoolSetting("face-place", "Face Place", false)
+            .description("Accept weaker blasts against a target that is almost dead.")
+            .group("Damage")
+            .build());
+        add(new DoubleSetting("face-place-health", "Face Place Health", 8.0D, 1.0D, 36.0D, 0.5D)
+            .description("Target health and absorption at or below which Face Place starts.")
+            .group("Damage")
+            .visibleWhen(() -> bool("face-place"))
+            .build());
+        add(new DoubleSetting("face-place-damage", "Face Place Damage", 2.0D, 0.0D, 20.0D, 0.5D)
+            .description("Minimum blast damage while face placing.")
+            .group("Damage")
+            .visibleWhen(() -> bool("face-place"))
             .build());
 
         add(new ChoiceSetting("speed", "Speed", "Instant", "Instant", "Smooth")
@@ -399,8 +449,15 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
             && !ScaffoldModule.reservesRageInput()
 
             && !AutoTotemModule.operationActive()
-            && !AutoArmorModule.operationActive();
+            && !AutoArmorModule.operationActive()
+            && !(bool("pause-mining") && MC.gameMode.isDestroying())
+            && !lowHealthPause();
 
+    }
+
+    private boolean lowHealthPause() {
+        int floor = integer("pause-health");
+        return floor > 0 && MC.player.getHealth() + MC.player.getAbsorptionAmount() <= floor;
     }
 
     private static boolean higherRungAiming() {
@@ -444,7 +501,7 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
 
         if (enemy == null) clearPending();
 
-        double range = MC.player.blockInteractionRange();
+        double range = Math.min(MC.player.blockInteractionRange(), decimal("place-range"));
         DihFaceScan.Budget budget = new DihFaceScan.Budget(RAY_BUDGET);
         rebuildDamageOptions();
 
@@ -1129,6 +1186,8 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
 
                 && !TeamsModule.combatExcluded(entity, "killaura")
                 && DihExplosionDamage.effectiveHealth(entity) > 0.0D
+                && !(bool("ignore-invisible") && entity.isInvisible())
+                && !(bool("ignore-naked") && entity instanceof Player && CombatFilters.wearsNoArmor(entity))
 
                 && entity.hurtTime <= integer("hurt-time"));
         if (found.isEmpty()) return null;
@@ -1187,7 +1246,7 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
         int[] offsets = sphere(Mth.ceil(range));
         BlockState anchor = Blocks.RESPAWN_ANCHOR.defaultBlockState();
 
-        double damageFloor = decimal("min-target-damage");
+        double damageFloor = minTargetDamage(enemy);
         double rangeSq = range * range;
         AABB nextBox = nextTickBox();
 
@@ -1308,7 +1367,7 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
         BlockPos origin = player.blockPosition();
         int[] offsets = sphere(Mth.ceil(range));
         BlockState anchor = Blocks.RESPAWN_ANCHOR.defaultBlockState();
-        double damageFloor = decimal("min-target-damage");
+        double damageFloor = minTargetDamage(enemy);
         double selfCeiling = decimal("max-self-damage");
         double rangeSq = range * range;
         AABB nextBox = nextTickBox();
@@ -1605,6 +1664,12 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
 
     private void tickSwitchBack() {
         if (previousSlot < 0) return;
+        if (!bool("switch-back")) {
+            previousSlot = -1;
+            switchedToSlot = -1;
+            switchBackTicks = 0;
+            return;
+        }
 
         if (MC.gui.screen() != null || MC.gui.overlay() != null) return;
 
@@ -1691,9 +1756,19 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
         return new DihExplosionDamage.Ranking(target, self);
     }
 
+    /** The damage floor for {@code enemy}: Min Target Damage, lowered to Face Place Damage when it is almost dead. */
+    private double minTargetDamage(LivingEntity enemy) {
+        double floor = decimal("min-target-damage");
+        if (bool("face-place") && enemy != null
+            && DihExplosionDamage.effectiveHealth(enemy) <= decimal("face-place-health")) {
+            floor = Math.min(floor, decimal("face-place-damage"));
+        }
+        return floor;
+    }
+
     private boolean damagePasses(DihExplosionDamage.Ranking rank) {
         if (DihExplosionDamage.killsSelf(rank.selfDamage())) return false;
-        if (rank.targetDamage() < decimal("min-target-damage")) return false;
+        if (rank.targetDamage() < minTargetDamage(target)) return false;
         if (rank.selfDamage() > decimal("max-self-damage")) return false;
 
         return !bool("efficient") || rank.isEfficient();
