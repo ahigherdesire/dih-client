@@ -40,6 +40,10 @@ public final class GifModule extends Module {
             .group("Image").description("GIF/PNG/JPEG path (absolute, or relative to the .minecraft folder).").build());
         add(new DoubleSetting("speed", "Speed", 1.0, 0.1, 5.0, 0.1)
             .group("Image").description("Animation speed multiplier.").build());
+        add(new BoolSetting("paused", "Paused", false)
+            .group("Image").description("Freezes the animation on the current frame.").build());
+        add(new BoolSetting("play-once", "Play Once", false)
+            .group("Image").description("Stops on the last frame instead of looping.").build());
 
         add(new BoolSetting("hud", "HUD", true)
             .group("HUD").description("Draw the image on the HUD.").build());
@@ -51,6 +55,10 @@ public final class GifModule extends Module {
             .group("HUD").visibleWhen(() -> bool("hud") && !bool("keep-aspect")).description("On-screen height in pixels.").build());
         add(new IntSetting("opacity", "Opacity", 100, 0, 100, 1)
             .group("HUD").visibleWhen(() -> bool("hud")).description("Opacity percent.").build());
+        add(new ColorSetting("tint", "Tint", 0xFFFFFFFF)
+            .group("HUD").visibleWhen(() -> bool("hud")).description("Colour multiplied over the image; white keeps it as is.").build());
+        add(new BoolSetting("hide-in-screens", "Hide In Menus", false)
+            .group("HUD").visibleWhen(() -> bool("hud")).description("Hides the HUD image while a menu or inventory is open.").build());
 
         add(new ChoiceSetting("anchor", "Anchor", "Top Left",
             "Top Left", "Top Right", "Bottom Left", "Bottom Right", "Center")
@@ -79,7 +87,8 @@ public final class GifModule extends Module {
 
     public static boolean shouldRender() {
         GifModule module = get();
-        return module != null && module.isEnabled() && module.bool("hud") && !module.text("image").isBlank();
+        return module != null && module.isEnabled() && module.bool("hud") && !module.text("image").isBlank()
+            && !(module.bool("hide-in-screens") && MC.gui.screen() != null);
     }
 
     public static void render(GuiGraphicsExtractor context) {
@@ -93,7 +102,7 @@ public final class GifModule extends Module {
         if (module == null || !module.isEnabled() || !module.bool("cape")) return null;
         LocalPlayer player = MC.player;
         if (player == null || player.getId() != entityId) return null;
-        Identifier frame = module.cape.frame(module.imagePath("cape-image"), module.speed());
+        Identifier frame = module.cape.frame(module.imagePath("cape-image"), module.speed(), module.bool("play-once"), module.bool("paused"));
         if (frame == null) return null;
         if (!frame.equals(module.capeFrame)) {
             module.capeFrame = frame;
@@ -107,7 +116,7 @@ public final class GifModule extends Module {
         if (!renderingOwnItems) return null;
         GifModule module = get();
         if (module == null || !module.isEnabled() || !module.bool("shield")) return null;
-        return module.shield.frame(module.imagePath("shield-image"), module.speed());
+        return module.shield.frame(module.imagePath("shield-image"), module.speed(), module.bool("play-once"), module.bool("paused"));
     }
 
     /** Marks whether the items being submitted belong to the local player (third-person model or first-person hands). */
@@ -151,6 +160,7 @@ public final class GifModule extends Module {
             }
             case "cape-image" -> cape.reset();
             case "shield-image" -> shield.reset();
+
             default -> {
             }
         }
@@ -170,7 +180,7 @@ public final class GifModule extends Module {
             hud.release();
             return;
         }
-        Identifier frame = hud.frame(text("image").trim(), speed());
+        Identifier frame = hud.frame(text("image").trim(), speed(), bool("play-once"), bool("paused"));
         DihGifImage image = hud.image;
         if (frame == null || image == null) return;
 
@@ -183,9 +193,10 @@ public final class GifModule extends Module {
         float alpha = Math.max(0, Math.min(100, integer("opacity"))) / 100.0f;
         if (alpha <= 0.0f) return;
 
+        int tint = ModuleRenderUtil.color(this, "tint", 0xFFFFFFFF);
         context.blit(RenderPipelines.GUI_TEXTURED, frame, pos[0], pos[1], 0.0F, 0.0F,
             displayWidth, displayHeight, image.width(), image.height(), image.width(), image.height(),
-            ARGB.white(alpha));
+            ARGB.multiply(ARGB.white(alpha), tint | 0xFF000000));
     }
 
     private int[] anchorPosition(int width, int height) {
@@ -208,13 +219,15 @@ public final class GifModule extends Module {
         private DihGifImage image;
         private String loadedPath;
         private long loadStartMs;
+        /** Playback position held while paused, or -1 while playing. */
+        private long pausedElapsed = -1L;
 
         private GifSlot(UnaryOperator<NativeImage> frameTransform) {
             this.frameTransform = frameTransform;
         }
 
         /** The frame to draw now, loading {@code path} first if it changed. Render thread only. */
-        private Identifier frame(String path, double speed) {
+        private Identifier frame(String path, double speed, boolean playOnce, boolean paused) {
             if (path.isEmpty()) {
                 release();
                 return null;
@@ -222,8 +235,24 @@ public final class GifModule extends Module {
             // A failed load keeps loadedPath, so a missing file is not re-read every frame.
             if (!path.equals(loadedPath)) load(path);
             if (image == null) return null;
-            long elapsed = (long) ((System.currentTimeMillis() - loadStartMs) * speed);
+            setPaused(paused, speed);
+            long elapsed = pausedElapsed >= 0L ? pausedElapsed : elapsed(speed);
+            if (playOnce && image.durationMs() > 0) elapsed = Math.min(elapsed, image.durationMs() - 1L);
             return image.frameId(elapsed);
+        }
+
+        private long elapsed(double speed) {
+            return (long) ((System.currentTimeMillis() - loadStartMs) * speed);
+        }
+
+        /** Holds the current frame, or resumes from it. */
+        private void setPaused(boolean paused, double speed) {
+            if (paused) {
+                if (pausedElapsed < 0L) pausedElapsed = elapsed(speed);
+            } else if (pausedElapsed >= 0L) {
+                loadStartMs = System.currentTimeMillis() - (long) (pausedElapsed / speed);
+                pausedElapsed = -1L;
+            }
         }
 
         private void reset() {

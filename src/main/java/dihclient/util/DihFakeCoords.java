@@ -14,6 +14,8 @@ public final class DihFakeCoords {
     private static volatile boolean enabled;
     private static volatile Mode mode = Mode.OFFSET;
     private static volatile boolean fakeY = false;
+    private static volatile boolean spoofDebug = true;
+    private static volatile boolean spoofHud = true;
 
     private static double offX, offY, offZ;
     private static double sclX, sclZ, pivX, pivZ;
@@ -39,6 +41,16 @@ public final class DihFakeCoords {
     public static void setMode(Mode m) { if (m != null) mode = m; }
 
     public static void setFakeY(boolean spoofY) { fakeY = spoofY; }
+
+    /** Which displays get the fake coordinates: the F3 screen and the HUD lines. */
+    public static void setTargets(boolean debug, boolean hud) { spoofDebug = debug; spoofHud = hud; }
+
+    public static boolean spoofsDebug() { return active() && spoofDebug; }
+
+    /** {@link #apply} for the HUD lines, which shows the real position when the HUD is not spoofed. */
+    public static double[] applyHud(double x, double y, double z) {
+        return spoofHud ? apply(x, y, z) : new double[]{x, y, z};
+    }
 
     public static void regenerate() {
         offX = randSpan(); offY = randRange(-120, 200); offZ = randSpan();

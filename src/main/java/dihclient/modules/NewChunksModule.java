@@ -2,9 +2,11 @@ package dihclient.modules;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import dihclient.api.module.ActionSetting;
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ChoiceSetting;
 import dihclient.api.module.ColorSetting;
+import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.util.DihPackets;
 import dihclient.util.DihWorldGeometry;
@@ -46,22 +48,39 @@ public final class NewChunksModule extends Module {
 
     public NewChunksModule() {
         super("new-chunks", "NewChunks", ModuleCategory.RENDER, "Highlights chunks generated while you were near.");
-        add(new IntSetting("render-distance", "Render Distance", 32, 4, 128, 1).unit("chunks"));
-        add(new ChoiceSetting("height-mode", "Height", "Fixed", "Fixed", "Relative")
+        add(new IntSetting("render-distance", "Render Distance", 32, 4, 128, 1).unit("chunks").group("General")
+            .description("Hides marks farther than this."));
+        add(new BoolSetting("persist", "Persist", true).group("General").description("Keep marks after chunks unload."));
+        add(new ActionSetting("clear", "Clear Marks", this::clearMarks).buttonLabel("Clear").group("General")
+            .description("Forgets every marked chunk."));
+
+        add(new ChoiceSetting("height-mode", "Height", "Fixed", "Fixed", "Relative").group("Position")
             .description("Draw at a fixed Y, or relative to your feet."));
-        add(new IntSetting("y", "Y", 0, -64, 320, 1).visibleWhen(() -> "Fixed".equals(choice("height-mode"))));
-        add(new IntSetting("offset", "Offset", -2, -128, 128, 1)
+        add(new IntSetting("y", "Y", 0, -64, 320, 1).group("Position").description("Height of the marks.")
+            .visibleWhen(() -> "Fixed".equals(choice("height-mode"))));
+        add(new IntSetting("offset", "Offset", -2, -128, 128, 1).group("Position").description("Blocks above or below your feet.")
             .visibleWhen(() -> "Relative".equals(choice("height-mode"))));
-        add(new BoolSetting("show-old", "Show Old", true).description("Also colour chunks with no sign of being new."));
-        add(new BoolSetting("smooth", "Smooth", true).description("Tint old chunks next to new ones."));
-        add(new BoolSetting("persist", "Persist", true).description("Keep marks after chunks unload."));
-        add(new ColorSetting("new-color", "New Color", 0x5000FF00));
-        add(new ColorSetting("old-color", "Old Color", 0x50FF0000));
+
+        add(new BoolSetting("show-new", "Show New", true).group("Render").description("Colour chunks that are new."));
+        add(new BoolSetting("show-old", "Show Old", true).group("Render").description("Also colour chunks with no sign of being new."));
+        add(new BoolSetting("smooth", "Smooth", true).group("Render").description("Tint old chunks next to new ones.")
+            .visibleWhen(() -> bool("show-old")));
+        add(new BoolSetting("fill", "Fill", true).group("Render").description("Shade the chunk."));
+        add(new BoolSetting("outline", "Outline", true).group("Render").description("Draw the chunk border."));
+        add(new DoubleSetting("line-width", "Line Width", LINE_WIDTH, 1.0D, 6.0D, 0.25D).group("Render")
+            .description("Border thickness.").visibleWhen(() -> bool("outline")));
+        add(new ColorSetting("new-color", "New Color", 0x5000FF00).group("Colors").description("Colour of new chunks."));
+        add(new ColorSetting("old-color", "Old Color", 0x50FF0000).group("Colors").description("Colour of old chunks."));
         ModuleWorldHooks.install(this, this::draw);
     }
 
     @Override
     public void onDisable() {
+        chunks.clear();
+        toScan.clear();
+    }
+
+    private void clearMarks() {
         chunks.clear();
         toScan.clear();
     }
@@ -158,9 +177,9 @@ public final class NewChunksModule extends Module {
 
     private void draw(LevelRenderContext context, Vec3 camera) {
         if (chunks.isEmpty()) return;
-        context.submitNodeCollector().submitCustomGeometry(context.poseStack(), DihRenderTypes.storageEspFillSeeThrough(),
+        if (bool("fill")) context.submitNodeCollector().submitCustomGeometry(context.poseStack(), DihRenderTypes.storageEspFillSeeThrough(),
             (pose, buffer) -> emit(pose, buffer, camera, false));
-        context.submitNodeCollector().submitCustomGeometry(context.poseStack(), DihRenderTypes.storageEspLinesSeeThrough(),
+        if (bool("outline")) context.submitNodeCollector().submitCustomGeometry(context.poseStack(), DihRenderTypes.storageEspLinesSeeThrough(),
             (pose, buffer) -> emit(pose, buffer, camera, true));
     }
 
@@ -168,6 +187,8 @@ public final class NewChunksModule extends Module {
         int newColor = ModuleRenderUtil.color(this, "new-color", 0x5000FF00);
         int oldColor = ModuleRenderUtil.color(this, "old-color", 0x50FF0000);
         boolean showOld = bool("show-old");
+        boolean showNew = bool("show-new");
+        float width = (float) decimal("line-width");
         boolean smooth = bool("smooth");
         double y = "Relative".equals(choice("height-mode"))
             ? Math.floor(MC.player.getY()) + integer("offset")
@@ -184,6 +205,7 @@ public final class NewChunksModule extends Module {
             if (dx * dx + dz * dz > maxDistSq) continue;
             int color;
             if (entry.getValue() == Kind.NEW) {
+                if (!showNew) continue;
                 color = newColor;
             } else {
                 if (!showOld) continue;
@@ -192,10 +214,10 @@ public final class NewChunksModule extends Module {
             double x1 = minX - camera.x, x2 = x1 + 16.0D, z1 = minZ - camera.z, z2 = z1 + 16.0D, ry = y - camera.y;
             if (outline) {
                 int line = ModuleWorldHooks.withAlpha(color, 2.0D);
-                DihWorldGeometry.line(pose, buffer, x1, ry, z1, x2, ry, z1, line, LINE_WIDTH);
-                DihWorldGeometry.line(pose, buffer, x2, ry, z1, x2, ry, z2, line, LINE_WIDTH);
-                DihWorldGeometry.line(pose, buffer, x2, ry, z2, x1, ry, z2, line, LINE_WIDTH);
-                DihWorldGeometry.line(pose, buffer, x1, ry, z2, x1, ry, z1, line, LINE_WIDTH);
+                DihWorldGeometry.line(pose, buffer, x1, ry, z1, x2, ry, z1, line, width);
+                DihWorldGeometry.line(pose, buffer, x2, ry, z1, x2, ry, z2, line, width);
+                DihWorldGeometry.line(pose, buffer, x2, ry, z2, x1, ry, z2, line, width);
+                DihWorldGeometry.line(pose, buffer, x1, ry, z2, x1, ry, z1, line, width);
             } else {
                 ModuleWorldHooks.sheet(pose, buffer, x1, x2, z1, z2, ry, color);
             }

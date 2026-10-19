@@ -7,9 +7,11 @@ public final class ViewmodelState {
 
     static volatile boolean mainHandOn;
     static volatile float mainHandScale, mainHandX, mainHandY, mainHandRotX, mainHandRotY, mainHandRotZ;
+    static volatile float mainHandSize = 1.0f;
 
     static volatile boolean offHandOn;
     static volatile float offHandScale, offHandX, offHandY, offHandRotX, offHandRotY, offHandRotZ;
+    static volatile float offHandSize = 1.0f;
 
     static volatile int swingDuration = 6;
 
@@ -32,6 +34,7 @@ public final class ViewmodelState {
     public static float mainHandRotX() { return mainHandRotX; }
     public static float mainHandRotY() { return mainHandRotY; }
     public static float mainHandRotZ() { return mainHandRotZ; }
+    public static float mainHandSize() { return mainHandSize; }
 
     public static boolean offHandOn() { return on && offHandOn; }
     public static float offHandScale() { return offHandScale; }
@@ -40,9 +43,11 @@ public final class ViewmodelState {
     public static float offHandRotX() { return offHandRotX; }
     public static float offHandRotY() { return offHandRotY; }
     public static float offHandRotZ() { return offHandRotZ; }
+    public static float offHandSize() { return offHandSize; }
 
     public static int swingDuration() { return swingDuration; }
 
+    /** 0 = 1.7, 1 = Pushdown, -1 = off. */
     public static int blockAnim() { return blockAnim; }
     public static float oneSevenY() { return oneSevenY; }
     public static float oneSevenSwingScale() { return oneSevenSwingScale; }

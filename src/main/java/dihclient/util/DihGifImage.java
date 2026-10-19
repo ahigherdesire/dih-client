@@ -61,6 +61,11 @@ public final class DihGifImage {
         return frameIds.length;
     }
 
+    /** One full playback, in milliseconds; 0 for a still image. */
+    public int durationMs() {
+        return totalDurationMs;
+    }
+
     public boolean animated() {
         return frameIds.length > 1 && totalDurationMs > 0;
     }

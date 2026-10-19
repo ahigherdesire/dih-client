@@ -1784,24 +1784,34 @@ public final class BuiltinModules {
             super("fake-coords", "FakeCoords", ModuleCategory.RENDER,
                 "Spoofs displayed coordinates only.");
             add(new ChoiceSetting("mode", "Mode", "Offset", "Offset", "Scaled", "Rotated", "Scrambled", "Frozen", "Custom")
-                .description("Choose spoofing mode.").build());
+                .group("General").description("Choose spoofing mode.").build());
             add(new BoolSetting("fake-y", "Fake Y", false)
-                .description("Spoof vertical coordinate.").build());
+                .group("General").description("Spoof vertical coordinate.").build());
+            add(new BoolSetting("affect-f3", "Debug Screen", true)
+                .group("General").description("Spoof the coordinates on the F3 screen.").build());
+            add(new BoolSetting("affect-hud", "HUD", true)
+                .group("General").description("Spoof the coordinates in the HUD lines.").build());
+            add(new ActionSetting("reroll", "Reroll", DihFakeCoords::regenerate)
+                .group("General").buttonLabel("Reroll").description("Pick new random fake coordinates.")
+                .visibleWhen(() -> !"Custom".equals(choice("mode"))).build());
+            add(new BoolSetting("reroll-on-join", "Reroll On Join", false)
+                .group("General").description("Pick new fake coordinates every time you join a world.")
+                .visibleWhen(() -> !"Custom".equals(choice("mode"))).build());
             add(new DoubleSetting("custom-x", "Custom X", 0, -30_000_000, 30_000_000, 1)
-                .description("Set displayed X.")
+                .group("Custom").description("Set displayed X.")
                 .numericTextField()
                 .visibleWhen(() -> "Custom".equals(choice("mode"))).build());
             add(new DoubleSetting("custom-y", "Custom Y", 64, -30_000_000, 30_000_000, 1)
-                .description("Set displayed Y.")
+                .group("Custom").description("Set displayed Y.")
                 .numericTextField()
                 .visibleWhen(() -> "Custom".equals(choice("mode"))).build());
             add(new DoubleSetting("custom-z", "Custom Z", 0, -30_000_000, 30_000_000, 1)
-                .description("Set displayed Z.")
+                .group("Custom").description("Set displayed Z.")
                 .numericTextField()
                 .visibleWhen(() -> "Custom".equals(choice("mode"))).build());
             add(new ActionSetting("anchor", "Anchor", this::captureCurrentPosition)
                 .buttonLabel("Capture Position")
-                .description("Use current position.")
+                .group("Custom").description("Use current position.")
                 .visibleWhen(() -> "Custom".equals(choice("mode"))).build());
         }
 
@@ -1811,7 +1821,13 @@ public final class BuiltinModules {
         public void onEnable() {
             DihFakeCoords.Mode m = mode();
             DihFakeCoords.enable(m, bool("fake-y"));
+            DihFakeCoords.setTargets(bool("affect-f3"), bool("affect-hud"));
             if (m == DihFakeCoords.Mode.CUSTOM) pushCustom();
+        }
+
+        @Override
+        public void onGameJoin() {
+            if (isEnabled() && bool("reroll-on-join")) DihFakeCoords.regenerate();
         }
 
         @Override
@@ -1824,6 +1840,7 @@ public final class BuiltinModules {
             DihFakeCoords.Mode m = mode();
             DihFakeCoords.setMode(m);
             DihFakeCoords.setFakeY(bool("fake-y"));
+            DihFakeCoords.setTargets(bool("affect-f3"), bool("affect-hud"));
             if (m == DihFakeCoords.Mode.CUSTOM) pushCustom();
         }
 
@@ -5194,20 +5211,26 @@ public final class BuiltinModules {
             add(new StringSetting("nbt-shortcut", "NBT Shortcut", "Ctrl+Shift+Right-click").group("Info").readonlySummary());
             add(new BoolSetting("block-nbt-inspect", "Block NBT Inspect", false).group("Info").description("Ctrl+Shift+Right-click blocks.").build());
             add(new BoolSetting("open-contents", "Open Contents", true).group("Containers").description("Preview only.").visibleWhen(() -> false).build());
-            add(new BoolSetting("containers", "Containers", true).group("Containers"));
+            add(new BoolSetting("nbt-hint", "NBT Hint", true).group("Info").description("Shows the NBT shortcut line.").build());
+            add(new BoolSetting("containers", "Containers", true).group("Containers").description("Stack count of shulkers and other containers.").build());
             add(new BoolSetting("compact-shulker-tooltip", "Compact Shulker", true).group("Containers").description("Compact counts.").build());
             add(new BoolSetting("echests", "Ender Chests", true).group("Containers").description("Server-side data.").visibleWhen(() -> false).build());
-            add(new BoolSetting("maps", "Maps", true).group("Items"));
+            add(new BoolSetting("maps", "Maps", true).group("Items").description("Map id.").build());
             add(new DoubleSetting("map-scale", "Map Scale", 1.0, 0.5, 4.0, 0.1).group("Items").description("Map preview scale.").visibleWhen(() -> false).build());
-            add(new BoolSetting("books", "Books", true).group("Items"));
-            add(new BoolSetting("banners", "Banners", true).group("Items"));
-            add(new BoolSetting("buckets", "Buckets", true).group("Items"));
-            add(new BoolSetting("bundles", "Bundles", true).group("Items"));
-            add(new BoolSetting("minecraft-name", "Minecraft Name", true).group("Info"));
-            add(new BoolSetting("durability", "Durability", true).group("Info"));
-            add(new BoolSetting("food-info", "Food Info", true).group("Info"));
-            add(new BoolSetting("byte-size", "Byte Size", true).group("Info"));
-            add(new ChoiceSetting("byte-size-format", "Byte Format", "Both", "Raw", "Rounded", "Both").group("Info").build());
+            add(new BoolSetting("books", "Books", true).group("Items").description("Page count of books.").build());
+            add(new BoolSetting("banners", "Banners", true).group("Items").description("Banner patterns.").build());
+            add(new BoolSetting("buckets", "Buckets", true).group("Items").description("Marks buckets holding a mob.").build());
+            add(new BoolSetting("bundles", "Bundles", true).group("Items").description("Stack count of bundles.").build());
+            add(new BoolSetting("minecraft-name", "Minecraft Name", true).group("Info").description("The item's id, such as minecraft:stone.").build());
+            add(new BoolSetting("durability", "Durability", true).group("Info").description("Uses left out of the total.").build());
+            add(new BoolSetting("durability-percent", "Durability %", false).group("Info")
+                .description("Adds the uses left as a percentage.").visibleWhen(() -> bool("durability")).build());
+            add(new BoolSetting("repair-cost", "Repair Cost", false).group("Info")
+                .description("Anvil repair cost in levels, when the item has one.").build());
+            add(new BoolSetting("food-info", "Food Info", true).group("Info").description("Hunger and saturation restored.").build());
+            add(new BoolSetting("byte-size", "Byte Size", true).group("Info").description("How big the item's data is.").build());
+            add(new ChoiceSetting("byte-size-format", "Byte Format", "Both", "Raw", "Rounded", "Both").group("Info")
+                .description("Bytes, KiB, or both.").visibleWhen(() -> bool("byte-size")).build());
             if (firstInstall) setEnabledSilently(true);
         }
 
@@ -5216,12 +5239,17 @@ public final class BuiltinModules {
         public void appendTooltip(ItemStack stack, List<?> lines) {
             if (stack == null || stack.isEmpty()) return;
             List raw = lines;
-            raw.add(Component.literal("NBT: Ctrl+Shift+Right-click").withStyle(ChatFormatting.DARK_GRAY));
+            if (bool("nbt-hint")) raw.add(Component.literal("NBT: Ctrl+Shift+Right-click").withStyle(ChatFormatting.DARK_GRAY));
             if (bool("minecraft-name")) raw.add(Component.literal(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString()).withStyle(ChatFormatting.DARK_GRAY));
             if (bool("durability") && stack.isDamageableItem()) {
                 int maxDamage = Math.max(1, stack.getMaxDamage());
                 int remaining = Math.max(0, maxDamage - stack.getDamageValue());
-                raw.add(Component.literal("Durability: " + remaining + " / " + maxDamage).withStyle(ChatFormatting.GRAY));
+                String percent = bool("durability-percent") ? " (" + Math.round(remaining * 100.0 / maxDamage) + "%)" : "";
+                raw.add(Component.literal("Durability: " + remaining + " / " + maxDamage + percent).withStyle(ChatFormatting.GRAY));
+            }
+            if (bool("repair-cost")) {
+                Integer cost = stack.get(DataComponents.REPAIR_COST);
+                if (cost != null && cost > 0) raw.add(Component.literal("Repair cost: " + cost).withStyle(ChatFormatting.GRAY));
             }
             if (bool("food-info") && stack.has(DataComponents.FOOD)) {
                 FoodProperties food = stack.get(DataComponents.FOOD);
@@ -5286,13 +5314,19 @@ public final class BuiltinModules {
         private String lastLightType = "";
         private int lastMinimumLightLevel = Integer.MIN_VALUE;
         private boolean appliedNightVision;
+        private boolean lastShowIcon = true;
 
         FullbrightModule() {
             super("fullbright", "Fullbright", ModuleCategory.RENDER, "Brightens the world.");
             boolean firstInstall = !DihConfig.getGlobal().modules.containsKey("fullbright");
-            add(new ChoiceSetting("mode", "Mode", "Gamma", "Gamma", "Potion", "Luminance").description("How lighting is boosted.").build());
-            add(new ChoiceSetting("light-type", "Light Type", "BLOCK", "SKY", "BLOCK").visibleWhen(() -> "Luminance".equals(value("mode"))).build());
-            add(new IntSetting("minimum-light-level", "Min Light", 8, 0, 15, 1).visibleWhen(() -> "Luminance".equals(value("mode"))).build());
+            add(new ChoiceSetting("mode", "Mode", "Gamma", "Gamma", "Potion", "Luminance").group("General")
+                .description("How lighting is boosted.").build());
+            add(new BoolSetting("show-icon", "Effect Icon", true).group("General")
+                .description("Shows the night vision icon.").visibleWhen(() -> "Potion".equals(value("mode"))).build());
+            add(new ChoiceSetting("light-type", "Light Type", "BLOCK", "SKY", "BLOCK").group("General")
+                .description("Which light to raise.").visibleWhen(() -> "Luminance".equals(value("mode"))).build());
+            add(new IntSetting("minimum-light-level", "Min Light", 8, 0, 15, 1).group("General")
+                .description("Lowest light level anywhere.").visibleWhen(() -> "Luminance".equals(value("mode"))).build());
             if (firstInstall) setEnabledSilently(true);
         }
 
@@ -5313,6 +5347,11 @@ public final class BuiltinModules {
             String mode = choice("mode");
             String lightType = choice("light-type");
             int minimumLightLevel = integer("minimum-light-level");
+            if (appliedNightVision && bool("show-icon") != lastShowIcon) {
+                disableNightVision();
+                appliedNightVision = false;
+            }
+            lastShowIcon = bool("show-icon");
             boolean changed = !mode.equals(lastMode)
                 || !lightType.equals(lastLightType)
                 || minimumLightLevel != lastMinimumLightLevel;
@@ -5344,7 +5383,7 @@ public final class BuiltinModules {
             if (instance != null) {
                 if (instance.getDuration() < 420) ((DihMobEffectInstanceAccessor) instance).dih$setDuration(420);
             } else {
-                MC.player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 420, 0));
+                MC.player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 420, 0, false, true, bool("show-icon")));
             }
             appliedNightVision = true;
         }
@@ -5379,6 +5418,10 @@ public final class BuiltinModules {
                 .description("Only exposed ores.").visibleWhen(() -> tintStyle() && !oreSimMode()).build());
             add(new BoolSetting("fill", "Fill", true)
                 .description("Shade box interiors.").visibleWhen(this::espStyle).build());
+            add(new IntSetting("fill-opacity", "Fill Opacity", 30, 5, 100, 5).unit("%")
+                .description("How solid the box fill is.").visibleWhen(() -> espStyle() && bool("fill")).build());
+            add(new DoubleSetting("line-width", "Line Width", 1.5, 0.5, 6.0, 0.25)
+                .description("Box edge thickness.").visibleWhen(this::espStyle).build());
 
             add(new StringSetting("oresim-seed", "World Seed", "")
                 .description("Seed for this world")
@@ -5487,16 +5530,36 @@ public final class BuiltinModules {
     static final class FreecamModule extends Module {
         FreecamModule() {
             super("freecam", "Freecam", ModuleCategory.RENDER, "Move the camera away from the player.");
-            add(new DoubleSetting("speed", "Speed", 1.0, 0.05, 30.0, 0.05).description("Horizontal camera speed."));
-            add(new DoubleSetting("vertical-speed", "Vertical Speed", 1.0, 0.05, 30.0, 0.05).description("Vertical camera speed."));
-            add(new BoolSetting("reload-chunks", "Reload Chunks", true).description("Refresh chunk culling."));
-            add(new BoolSetting("interact", "Interact", true).description("Interact from freecam view"));
+            add(new DoubleSetting("speed", "Speed", 1.0, 0.05, 30.0, 0.05).group("Movement").description("Horizontal camera speed."));
+            add(new DoubleSetting("vertical-speed", "Vertical Speed", 1.0, 0.05, 30.0, 0.05).group("Movement")
+                .description("Vertical camera speed."));
+            add(new IntSetting("walk-speed", "Walk Speed", 50, 5, 100, 5).unit("%").group("Movement")
+                .description("Speed without sprint, as a share of the full speed."));
+            add(new BoolSetting("follow-pitch", "Follow Pitch", false).group("Movement")
+                .description("Forward moves where you look, up and down included."));
+            add(new BoolSetting("scroll-speed", "Scroll Speed", true).group("Movement")
+                .description("Scroll the wheel to change the speed."));
+            add(new DoubleSetting("scroll-step", "Scroll Step", 0.5, 0.05, 5.0, 0.05).group("Movement")
+                .description("Speed change per scroll notch.").visibleWhen(() -> bool("scroll-speed")));
+            add(new IntSetting("sensitivity", "Sensitivity", 100, 10, 300, 5).unit("%").group("Movement")
+                .description("How fast the camera turns."));
+
+            add(new BoolSetting("reload-chunks", "Reload Chunks", true).group("General").description("Refresh chunk culling."));
+            add(new BoolSetting("interact", "Interact", true).group("General").description("Interact from freecam view"));
+            add(new BoolSetting("disable-on-damage", "Disable On Damage", false).group("General")
+                .description("Turns off when you take damage."));
+            add(new BoolSetting("disable-on-death", "Disable On Death", true).group("General")
+                .description("Turns off when you die."));
         }
+
+        private float lastHealth = -1.0F;
 
         @Override
         public void onEnable() {
             PackFreecamState.enable(bool("reload-chunks"));
             PackFreecamState.setInteractEnabled(bool("interact"));
+            PackFreecamState.setSensitivity(integer("sensitivity") / 100.0);
+            lastHealth = MC.player == null ? -1.0F : MC.player.getHealth();
         }
 
         @Override
@@ -5507,6 +5570,7 @@ public final class BuiltinModules {
         @Override
         public void onOptionValueChanged(String settingId) {
             if ("interact".equals(settingId)) PackFreecamState.setInteractEnabled(bool("interact"));
+            if ("sensitivity".equals(settingId)) PackFreecamState.setSensitivity(integer("sensitivity") / 100.0);
         }
 
         @Override
@@ -5517,14 +5581,22 @@ public final class BuiltinModules {
         @Override
         public void tick() {
 
-            if (MC.player != null && MC.player.isDeadOrDying()) {
+            if (MC.player == null) return;
+            if (bool("disable-on-death") && MC.player.isDeadOrDying()) {
                 disableWithToggleMessage("Freecam disabled: you died.");
+                return;
             }
+            float health = MC.player.getHealth();
+            if (bool("disable-on-damage") && lastHealth >= 0.0F && health < lastHealth) {
+                disableWithToggleMessage("Freecam disabled: you took damage.");
+            }
+            lastHealth = health;
         }
 
         @Override
         public void preMovementTick() {
-            PackFreecamState.tickMovement(decimal("speed"), decimal("vertical-speed"));
+            PackFreecamState.tickMovement(decimal("speed"), decimal("vertical-speed"),
+                integer("walk-speed") / 100.0, bool("follow-pitch"));
         }
 
         @Override
@@ -5541,23 +5613,52 @@ public final class BuiltinModules {
     static final class EspModule extends Module {
         EspModule() {
             super("esp", "ESP", ModuleCategory.RENDER, "Highlights entities.");
-            add(new ChoiceSetting("mode", "Mode", "2D", "Shader", "2D").description("Entity highlight style.").build());
-            add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player").group("General").build());
-            add(new BoolSetting("fill", "Fill", false).group("General")
-                .visibleWhen(() -> "2D".equals(choice("mode"))).build());
-            add(new DoubleSetting("fade-distance", "Fade Distance", 3.0, 0.0, 12.0, 0.25).group("General"));
-            add(new ColorSetting("players-color", "Players", 0xCCFFFFFF).group("Colors"));
-            add(new ColorSetting("animals-color", "Animals", 0xCC74FF8F).group("Colors"));
-            add(new ColorSetting("water-animals-color", "Water Animals", 0xCC66D9FF).group("Colors"));
-            add(new ColorSetting("monsters-color", "Monsters", 0xCCFF4A4A).group("Colors"));
-            add(new ColorSetting("ambient-color", "Ambient", 0xCCB78CFF).group("Colors"));
-            add(new ColorSetting("misc-color", "Misc", 0xCCCCCCCC).group("Colors"));
+            add(new ChoiceSetting("mode", "Mode", "2D", "Shader", "2D").group("General")
+                .description("Entity highlight style.").build());
+            add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player").group("General")
+                .description("Entities to highlight.").build());
+            add(new DoubleSetting("max-distance", "Max Distance", 0.0, 0.0, 512.0, 8.0).group("General")
+                .description("Farthest entity highlighted; 0 is no limit.").build());
+            add(new DoubleSetting("fade-distance", "Fade Distance", 3.0, 0.0, 12.0, 0.25).group("General")
+                .description("Fades entities closer than this to the camera.").build());
+            add(new BoolSetting("ignore-invisible", "Ignore Invisible", false).group("General")
+                .description("Skips invisible entities.").build());
+
+            add(new ChoiceSetting("box-style", "Box Style", "Full", "Full", "Corners").group("2D")
+                .description("Whole box or only its corners.").visibleWhen(() -> "2D".equals(choice("mode"))).build());
+            add(new BoolSetting("fill", "Fill", false).group("2D")
+                .description("Shade inside the box.").visibleWhen(() -> "2D".equals(choice("mode"))).build());
+            add(new IntSetting("fill-alpha", "Fill Alpha", 50, 5, 255, 5).group("2D")
+                .description("Fill strength out of 255.").visibleWhen(() -> "2D".equals(choice("mode")) && bool("fill")).build());
+            add(new BoolSetting("border", "Border", true).group("2D")
+                .description("Black edge around the box.").visibleWhen(() -> "2D".equals(choice("mode"))).build());
+            add(new BoolSetting("health-bar", "Health Bar", true).group("2D")
+                .description("Health bar beside living entities.").visibleWhen(() -> "2D".equals(choice("mode"))).build());
+            add(new BoolSetting("smooth", "Smooth", true).group("2D")
+                .description("Eases the box between frames.").visibleWhen(() -> "2D".equals(choice("mode"))).build());
+
+            add(new BoolSetting("distance-color", "Distance Color", false).group("Colors")
+                .description("Colour by distance, red near to green far.").build());
+            add(new IntSetting("color-distance", "Color Distance", 40, 8, 256, 4).group("Colors")
+                .description("Distance that counts as far.").visibleWhen(() -> bool("distance-color")).build());
+            add(new ColorSetting("players-color", "Players", 0xCCFFFFFF).group("Colors")
+                .description("Player colour.").visibleWhen(() -> !bool("distance-color")).build());
+            add(new ColorSetting("animals-color", "Animals", 0xCC74FF8F).group("Colors")
+                .description("Passive mob colour.").visibleWhen(() -> !bool("distance-color")).build());
+            add(new ColorSetting("water-animals-color", "Water Animals", 0xCC66D9FF).group("Colors")
+                .description("Water mob colour.").visibleWhen(() -> !bool("distance-color")).build());
+            add(new ColorSetting("monsters-color", "Monsters", 0xCCFF4A4A).group("Colors")
+                .description("Hostile mob colour.").visibleWhen(() -> !bool("distance-color")).build());
+            add(new ColorSetting("ambient-color", "Ambient", 0xCCB78CFF).group("Colors")
+                .description("Bat and other ambient mob colour.").visibleWhen(() -> !bool("distance-color")).build());
+            add(new ColorSetting("misc-color", "Misc", 0xCCCCCCCC).group("Colors")
+                .description("Colour for everything else.").visibleWhen(() -> !bool("distance-color")).build());
 
             add(new BoolSetting("skeleton", "Skeleton", false).group("Skeleton")
                 .description("Draw animated skeletons.").build());
             add(new ChoiceSetting("skeleton-color-mode", "Color Mode", "Static", "Static", "Distance")
                 .group("Skeleton").visibleWhen(() -> bool("skeleton")).description("Skeleton color source.").build());
-            add(new ColorSetting("skeleton-color", "Color", 0xFFFFFFFF).group("Skeleton")
+            add(new ColorSetting("skeleton-color", "Color", 0xFFFFFFFF).group("Skeleton").description("Skeleton colour.")
                 .visibleWhen(() -> bool("skeleton") && "Static".equals(value("skeleton-color-mode"))));
             add(new DoubleSetting("skeleton-width", "Line Width", 2.0, 1.0, 6.0, 0.25).group("Skeleton")
                 .visibleWhen(() -> bool("skeleton")).description("Skeleton line thickness.").build());
@@ -5567,24 +5668,39 @@ public final class BuiltinModules {
     static final class ItemEspModule extends Module {
         ItemEspModule() {
             super("item-esp", "ItemESP", ModuleCategory.RENDER, "Outlines dropped items with the shader outline.");
-            add(new ChoiceSetting("mode", "Mode", "Shader", "Shader").description("Dropped item highlight style.").build());
+            add(new ChoiceSetting("mode", "Mode", "Shader", "Shader").group("General")
+                .description("Dropped item highlight style.").build());
             add(new ChoiceSetting("items-mode", "Items", "All", "All", "Some").group("General").description("Which items to outline").build());
             add(RegistryListSetting.items("items", "Item List", "")
                 .group("General")
                 .visibleWhen(() -> "Some".equals(value("items-mode")))
                 .description("Item ids to outline")
                 .build());
+            add(new IntSetting("min-count", "Min Stack", 1, 1, 64, 1)
+                .group("General")
+                .description("Skips stacks smaller than this")
+                .build());
+            add(new BoolSetting("enchanted-only", "Enchanted Only", false)
+                .group("General")
+                .description("Only enchanted items")
+                .build());
             add(new DoubleSetting("max-distance", "Max Distance", 64.0, 0.0, 256.0, 1.0)
                 .group("General")
                 .description("0 = unlimited.")
                 .build());
-            add(new DoubleSetting("fade-distance", "Fade Distance", 3.0, 0.0, 12.0, 0.25).group("General"));
+            add(new DoubleSetting("fade-distance", "Fade Distance", 3.0, 0.0, 12.0, 0.25).group("General")
+                .description("Fades items closer than this to the camera.").build());
+            add(new BoolSetting("tracers", "Tracers", false).group("Tracers")
+                .description("Line to each outlined item").build());
+            add(new DoubleSetting("tracer-width", "Tracer Width", 2.0, 1.0, 6.0, 0.25).group("Tracers")
+                .description("Line thickness").visibleWhen(() -> bool("tracers")).build());
             add(new ChoiceSetting("color-mode", "Color Mode", "Dynamic", "Dynamic", "Static")
                 .group("Colors")
-                .description("Color mode")
+                .description("Dynamic colours each item by what it is")
                 .build());
             add(new ColorSetting("color", "Color", 0xCCFFD76A)
                 .group("Colors")
+                .description("Outline colour")
                 .visibleWhen(() -> "Static".equals(value("color-mode"))));
         }
     }
@@ -5592,19 +5708,33 @@ public final class BuiltinModules {
     static final class TracersModule extends Module {
         TracersModule() {
             super("tracers", "Tracers", ModuleCategory.RENDER, "Draws tracer lines to entities.");
-            add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player").description("Traced entities.").build());
-            add(new IntSetting("max-distance", "Max Distance", 256, 0, 512, 16));
+            add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player").group("General")
+                .description("Traced entities.").build());
+            add(new IntSetting("max-distance", "Max Distance", 256, 0, 512, 16).group("General")
+                .description("Farthest entity traced; 0 is no limit."));
+            add(new BoolSetting("ignore-invisible", "Ignore Invisible", false).group("General")
+                .description("Skips invisible entities."));
+            add(new ChoiceSetting("target-point", "Target", "Feet", "Feet", "Body", "Head").group("General")
+                .description("Where on the entity the line ends.").build());
             add(new DoubleSetting("line-width", "Line Width", 2.0, 2.0, 6.0, 0.25).group("General").description("Tracer thickness."));
             add(new BoolSetting("height-line", "Height Line", false).group("General").description("Vertical line up the entity."));
+            add(new IntSetting("opacity", "Opacity", 100, 10, 100, 5).unit("%").group("Colors")
+                .description("Line opacity."));
             add(new BoolSetting("distance-color", "Distance Color", false).group("Colors").description("Color by distance"));
             add(new IntSetting("color-distance", "Color Distance", 40, 8, 256, 4).group("Colors")
                 .description("Far color distance").visibleWhen(() -> bool("distance-color")));
-            add(new ColorSetting("players-color", "Players", 0xCCFFFFFF).group("Colors").visibleWhen(() -> !bool("distance-color")));
-            add(new ColorSetting("animals-color", "Animals", 0xCC74FF8F).group("Colors").visibleWhen(() -> !bool("distance-color")));
-            add(new ColorSetting("water-animals-color", "Water Animals", 0xCC66D9FF).group("Colors").visibleWhen(() -> !bool("distance-color")));
-            add(new ColorSetting("monsters-color", "Monsters", 0xCCFF4A4A).group("Colors").visibleWhen(() -> !bool("distance-color")));
-            add(new ColorSetting("ambient-color", "Ambient", 0xCCB78CFF).group("Colors").visibleWhen(() -> !bool("distance-color")));
-            add(new ColorSetting("misc-color", "Misc", 0xCCCCCCCC).group("Colors").visibleWhen(() -> !bool("distance-color")));
+            add(new ColorSetting("players-color", "Players", 0xCCFFFFFF).group("Colors").description("Player colour.")
+                .visibleWhen(() -> !bool("distance-color")));
+            add(new ColorSetting("animals-color", "Animals", 0xCC74FF8F).group("Colors").description("Passive mob colour.")
+                .visibleWhen(() -> !bool("distance-color")));
+            add(new ColorSetting("water-animals-color", "Water Animals", 0xCC66D9FF).group("Colors").description("Water mob colour.")
+                .visibleWhen(() -> !bool("distance-color")));
+            add(new ColorSetting("monsters-color", "Monsters", 0xCCFF4A4A).group("Colors").description("Hostile mob colour.")
+                .visibleWhen(() -> !bool("distance-color")));
+            add(new ColorSetting("ambient-color", "Ambient", 0xCCB78CFF).group("Colors").description("Ambient mob colour.")
+                .visibleWhen(() -> !bool("distance-color")));
+            add(new ColorSetting("misc-color", "Misc", 0xCCCCCCCC).group("Colors").description("Colour for everything else.")
+                .visibleWhen(() -> !bool("distance-color")));
         }
 
         @Override
@@ -5623,19 +5753,26 @@ public final class BuiltinModules {
             super("storage-esp", "StorageESP", ModuleCategory.RENDER, "Highlights chests, shulkers, and other storage.");
 
             add(new BoolSetting("fill", "Fill", false).group("General").description("Draw translucent filled boxes."));
+            add(new IntSetting("fill-opacity", "Fill Opacity", 30, 5, 100, 5).unit("%").group("General")
+                .description("How solid the fill is.").visibleWhen(() -> bool("fill")));
+            add(new BoolSetting("outline", "Outline", true).group("General").description("Draw the box edges."));
+            add(new DoubleSetting("line-width", "Line Width", 1.5, 0.5, 6.0, 0.25).group("General")
+                .description("Edge thickness.").visibleWhen(() -> bool("outline")));
             add(new BoolSetting("meshing", "Meshing", true).group("General")
                 .description("Merge adjacent storage."));
 
             add(new BoolSetting("tracers", "Tracers", false).group("Tracers").description("Line to each target"));
+            add(new DoubleSetting("tracer-width", "Tracer Width", 2.0, 1.0, 6.0, 0.25).group("Tracers")
+                .description("Line thickness.").visibleWhen(() -> bool("tracers")));
 
             add(RegistryListSetting.storages("storage-list", "Storage", ModuleStorageEsp.DEFAULT_VALUE)
                 .group("Storage").description("Blocks and entities"));
 
             add(new ColorSetting("chest-color", "Chest", 0xCCFFA000).group("Colors").description("Chest + chest minecart/boat."));
-            add(new ColorSetting("trapped-chest-color", "Trapped Chest", 0xCCFF2020).group("Colors"));
-            add(new ColorSetting("ender-chest-color", "Ender Chest", 0xCC7800FF).group("Colors"));
-            add(new ColorSetting("barrel-color", "Barrel", 0xCCFFA000).group("Colors"));
-            add(new ColorSetting("shulker-color", "Shulker Box", 0xCCB766FF).group("Colors"));
+            add(new ColorSetting("trapped-chest-color", "Trapped Chest", 0xCCFF2020).group("Colors").description("Trapped chests."));
+            add(new ColorSetting("ender-chest-color", "Ender Chest", 0xCC7800FF).group("Colors").description("Ender chests."));
+            add(new ColorSetting("barrel-color", "Barrel", 0xCCFFA000).group("Colors").description("Barrels."));
+            add(new ColorSetting("shulker-color", "Shulker Box", 0xCCB766FF).group("Colors").description("Shulker boxes."));
             add(new ColorSetting("hopper-color", "Hopper", 0xCC7C8AFF).group("Colors").description("Hopper + minecart."));
             add(new ColorSetting("dispenser-color", "Dispenser", 0xCCB04848).group("Colors").description("Dispenser + dropper."));
             add(new ColorSetting("furnace-color", "Furnace", 0xCCCCB266).group("Colors").description("Furnaces + brewing stand."));
@@ -5643,7 +5780,8 @@ public final class BuiltinModules {
             add(new ColorSetting("other-color", "Other", 0xFF8C8C8C).group("Colors").description("Fallback."));
 
             for (ModuleStorageStructures.Structure structure : ModuleStorageStructures.ALL) {
-                add(new BoolSetting(structure.settingId(), structure.label(), false).group("Ignore Structures"));
+                add(new BoolSetting(structure.settingId(), structure.label(), false).group("Ignore Structures")
+                    .description("Hides storage generated in this structure."));
             }
         }
     }
@@ -5653,15 +5791,23 @@ public final class BuiltinModules {
             super("spawner-esp", "SpawnerESP", ModuleCategory.RENDER, "Highlights monster spawners by spawned mob.");
 
             add(new BoolSetting("fill", "Fill", false).group("General").description("Draw translucent filled boxes."));
+            add(new IntSetting("fill-opacity", "Fill Opacity", 30, 5, 100, 5).unit("%").group("General")
+                .description("How solid the fill is.").visibleWhen(() -> bool("fill")));
+            add(new BoolSetting("outline", "Outline", true).group("General").description("Draw the box edges."));
+            add(new DoubleSetting("line-width", "Line Width", 1.5, 0.5, 6.0, 0.25).group("General")
+                .description("Edge thickness.").visibleWhen(() -> bool("outline")));
             add(new BoolSetting("meshing", "Meshing", true).group("General")
                 .description("Merge adjacent spawners."));
             add(new BoolSetting("tracers", "Tracers", false).group("Tracers").description("Line to each spawner"));
+            add(new DoubleSetting("tracer-width", "Tracer Width", 2.0, 1.0, 6.0, 0.25).group("Tracers")
+                .description("Line thickness.").visibleWhen(() -> bool("tracers")));
             add(RegistryListSetting.entityTypes("spawner-list", "Spawners", ModuleSpawnerEsp.NATURAL_DEFAULT_VALUE)
                 .group("Spawners").description("Mobs to highlight."));
 
             for (ModuleSpawnerEsp.NaturalTarget target : ModuleSpawnerEsp.NATURAL) {
                 String id = target.id();
                 add(new ColorSetting("color-" + id, target.label(), target.color()).group("Colors")
+                    .description("Spawners of this mob.")
                     .visibleWhen(() -> ModuleSpawnerEsp.enabledContains(this, id)));
             }
         }
@@ -5692,12 +5838,19 @@ public final class BuiltinModules {
             add(new BoolSetting("fill", "Fill", false)
                 .group("General")
                 .description("Draw translucent filled boxes."));
+            add(new IntSetting("fill-opacity", "Fill Opacity", 30, 5, 100, 5).unit("%").group("General")
+                .description("How solid the fill is.").visibleWhen(() -> bool("fill")));
+            add(new BoolSetting("outline", "Outline", true).group("General").description("Draw the box edges."));
+            add(new DoubleSetting("line-width", "Line Width", 1.5, 0.5, 6.0, 0.25).group("General")
+                .description("Edge thickness.").visibleWhen(() -> bool("outline")));
             add(new BoolSetting("meshing", "Meshing", true)
                 .group("General")
                 .description("Merge adjacent targets."));
             add(new BoolSetting("tracers", "Tracers", false)
                 .group("Tracers")
                 .description("Line to each target"));
+            add(new DoubleSetting("tracer-width", "Tracer Width", 2.0, 1.0, 6.0, 0.25).group("Tracers")
+                .description("Line thickness.").visibleWhen(() -> bool("tracers")));
             add(RegistryListSetting.blocks("blocks", "Blocks", "minecraft:diamond_ore")
                 .group("Blocks")
                 .description("Blocks to highlight."));

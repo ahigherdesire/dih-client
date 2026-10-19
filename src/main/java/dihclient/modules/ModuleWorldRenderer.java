@@ -64,6 +64,7 @@ public final class ModuleWorldRenderer {
     private static Vec3 espMeshAnchor = Vec3.ZERO;
     private static int espMeshFlags = Integer.MIN_VALUE;
     private static float espMeshXrayAlpha = Float.NaN;
+    private static int espMeshStyleKey;
     private static final long[] espMeshContentIds = new long[6];
 
     private static final double ESP_MESH_ANCHOR_RANGE = 64.0;
@@ -156,6 +157,21 @@ public final class ModuleWorldRenderer {
     private static boolean cachedSpawnerFill;
     private static boolean cachedSpawnerTrace;
     private static boolean cachedXrayFill;
+    private static boolean cachedStorageWire = true;
+    private static boolean cachedBlockWire = true;
+    private static boolean cachedSpawnerWire = true;
+    private static float cachedStorageFillAlpha = 0.3f;
+    private static float cachedBlockFillAlpha = 0.3f;
+    private static float cachedSpawnerFillAlpha = 0.3f;
+    private static float cachedStorageLineWidth = 1.5f;
+    private static float cachedBlockLineWidth = 1.5f;
+    private static float cachedSpawnerLineWidth = 1.5f;
+    private static float cachedXrayLineWidth = 1.5f;
+    private static float cachedStorageTraceWidth = 2.0f;
+    private static float cachedBlockTraceWidth = 2.0f;
+    private static float cachedSpawnerTraceWidth = 2.0f;
+    /** Changes whenever one of the box ESP fill or line options above changes, so the baked meshes rebuild. */
+    private static int cachedBoxStyleKey;
     private static long xrayContentKey = Long.MIN_VALUE;
     private static float pendingEspXrayFillAlpha = 0.3f;
     private static StorageSnapshot xrayNearSnapshot = StorageSnapshot.empty();
@@ -227,6 +243,36 @@ public final class ModuleWorldRenderer {
         cachedBlockBarrier = blockEsp != null && Boolean.parseBoolean(blockEsp.value("barriers"));
         cachedSpawnerFill = spawnerEsp != null && Boolean.parseBoolean(spawnerEsp.value("fill"));
         cachedSpawnerTrace = spawnerEsp != null && Boolean.parseBoolean(spawnerEsp.value("tracers"));
+        cachedStorageWire = outlineOn(storage);
+        cachedBlockWire = outlineOn(blockEsp);
+        cachedSpawnerWire = outlineOn(spawnerEsp);
+        cachedStorageFillAlpha = fillAlpha(storage);
+        cachedBlockFillAlpha = fillAlpha(blockEsp);
+        cachedSpawnerFillAlpha = fillAlpha(spawnerEsp);
+        cachedStorageLineWidth = lineWidth(storage, "line-width", 1.5f);
+        cachedBlockLineWidth = lineWidth(blockEsp, "line-width", 1.5f);
+        cachedSpawnerLineWidth = lineWidth(spawnerEsp, "line-width", 1.5f);
+        cachedXrayLineWidth = lineWidth(xray, "line-width", 1.5f);
+        cachedStorageTraceWidth = lineWidth(storage, "tracer-width", 2.0f);
+        cachedBlockTraceWidth = lineWidth(blockEsp, "tracer-width", 2.0f);
+        cachedSpawnerTraceWidth = lineWidth(spawnerEsp, "tracer-width", 2.0f);
+        cachedBoxStyleKey = java.util.Arrays.hashCode(new float[] {
+            cachedStorageFillAlpha, cachedBlockFillAlpha, cachedSpawnerFillAlpha,
+            cachedStorageLineWidth, cachedBlockLineWidth, cachedSpawnerLineWidth, cachedXrayLineWidth});
+    }
+
+    private static boolean outlineOn(Module module) {
+        return module == null || !"false".equals(module.value("outline"));
+    }
+
+    /** The module's Fill Opacity percent as a 0-1 multiplier; 0.3 when it has none. */
+    private static float fillAlpha(Module module) {
+        if (module == null) return 0.3f;
+        return parseFloat(module.value("fill-opacity"), 30.0f, 0.0f, 100.0f) / 100.0f;
+    }
+
+    private static float lineWidth(Module module, String option, float fallback) {
+        return module == null ? fallback : parseFloat(module.value(option), fallback, 0.5f, 8.0f);
     }
 
     private ModuleWorldRenderer() {
@@ -252,6 +298,7 @@ public final class ModuleWorldRenderer {
             if (PackHideState.isActive()) return;
             if (mc == null || mc.level == null || mc.player == null || mc.gui.hud.isHidden()) return;
             boolean drawTracers = ModuleRenderUtil.hasWorldTracerWork();
+            boolean itemTracers = ModuleRenderUtil.itemEspTracers();
             Module storage = storageEspModule();
             Module blockEsp = blockEspModule();
             Module spawnerEsp = spawnerEspModule();
@@ -278,25 +325,25 @@ public final class ModuleWorldRenderer {
             WaypointSnapshot waypointFrame = waypointsEnabled
                 ? waypointSnapshot(waypoints, mc, mc.level) : WaypointSnapshot.empty();
             List<WaypointDot> waypointBoxes = waypointFrame.dots();
-            if (!drawTracers && !storageEnabled && !blockEnabled && !spawnerEnabled && !xrayBoxes && !xrayGhosts && !airGuide && ghostBoxes.isEmpty() && tpClickBox == null && waypointBoxes.isEmpty()) return;
+            if (!drawTracers && !itemTracers && !storageEnabled && !blockEnabled && !spawnerEnabled && !xrayBoxes && !xrayGhosts && !airGuide && ghostBoxes.isEmpty() && tpClickBox == null && waypointBoxes.isEmpty()) return;
             if (ModuleRenderUtil.shouldSuppressEspForUi()) return;
             Module tracer = tracersModule();
 
             refreshEspFlags(storage, blockEsp, spawnerEsp, xray);
             boolean storageFill = storageEnabled && cachedStorageFill;
-            boolean storageWire = storageEnabled;
+            boolean storageWire = storageEnabled && cachedStorageWire;
             boolean storageTrace = storageEnabled && cachedStorageTrace;
             boolean blockFill = blockEnabled && cachedBlockFill;
-            boolean blockWire = blockEnabled;
+            boolean blockWire = blockEnabled && cachedBlockWire;
             boolean blockTrace = blockEnabled && cachedBlockTrace;
             boolean barrierFill = blockEnabled && cachedBlockBarrier;
             boolean spawnerFill = spawnerEnabled && cachedSpawnerFill;
-            boolean spawnerWire = spawnerEnabled;
+            boolean spawnerWire = spawnerEnabled && cachedSpawnerWire;
             boolean spawnerTrace = spawnerEnabled && cachedSpawnerTrace;
             boolean xrayFill = xrayBoxes && cachedXrayFill;
             boolean xrayWire = xrayBoxes;
             boolean airFill = airGuide && airPlace.renderFill();
-            if (!drawTracers && !storageFill && !storageWire && !storageTrace
+            if (!drawTracers && !itemTracers && !storageFill && !storageWire && !storageTrace
                 && !blockFill && !blockWire && !blockTrace && !barrierFill
                 && !spawnerFill && !spawnerWire && !spawnerTrace && !xrayWire && !xrayGhosts && !airGuide && ghostBoxes.isEmpty() && tpClickBox == null && waypointBoxes.isEmpty()) return;
             CameraRenderState cameraState = context.levelState().cameraRenderState;
@@ -320,16 +367,24 @@ public final class ModuleWorldRenderer {
                 boolean heightLine = Boolean.parseBoolean(tracer == null ? null : tracer.value("height-line"));
                 collectEntityTracers(mc.level, traceStart, tickDelta, tracerWidth, heightLine, tracerLines);
             }
+            if (itemTracers) {
+                float itemWidth = ModuleRenderUtil.itemEspTracerWidth();
+                for (Entity entity : mc.level.entitiesForRendering()) {
+                    if (!ModuleRenderUtil.shouldItemEsp(entity)) continue;
+                    Vec3 at = stableInterpolatedPosition(entity, tickDelta);
+                    tracerLines.add(new TracerLine(traceStart, at, ModuleRenderUtil.itemEspColor(entity), itemWidth));
+                }
+            }
             if (storageTrace && storageFrame != null) {
-                final float traceW = 2.0f;
+                final float traceW = cachedStorageTraceWidth;
                 storageFrame.forEachTrace((target, color) -> tracerLines.add(new TracerLine(traceStart, target, color, traceW)));
             }
             if (blockTrace && blockFrame != null) {
-                final float traceW = 2.0f;
+                final float traceW = cachedBlockTraceWidth;
                 blockFrame.forEachTrace((target, color) -> tracerLines.add(new TracerLine(traceStart, target, color, traceW)));
             }
             if (spawnerTrace && spawnerFrame != null) {
-                final float traceW = 2.0f;
+                final float traceW = cachedSpawnerTraceWidth;
                 spawnerFrame.forEachTrace((target, color) -> tracerLines.add(new TracerLine(traceStart, target, color, traceW)));
             }
             if (!tracerLines.isEmpty()) {
@@ -482,13 +537,13 @@ public final class ModuleWorldRenderer {
                 if (xrayFill && xrayFrame != null) xrayFrame.renderFill(pose, buffer, cam, xrayFillAlpha);
 
                 if (xrayFill && xrayNearFrame != null) xrayNearFrame.renderFill(pose, buffer, cam, 0.6f);
-                if (storageFill && storageFrame != null) storageFrame.renderFill(pose, buffer, cam, 0.3f);
-                if (blockFill && blockFrame != null) blockFrame.renderFill(pose, buffer, cam, 0.3f);
+                if (storageFill && storageFrame != null) storageFrame.renderFill(pose, buffer, cam, cachedStorageFillAlpha);
+                if (blockFill && blockFrame != null) blockFrame.renderFill(pose, buffer, cam, cachedBlockFillAlpha);
                 if (barrierFill && barrierFrame != null) {
 
                     barrierFrame.renderFill(pose, buffer, cam, 0.2f);
                 }
-                if (spawnerFill && spawnerFrame != null) spawnerFrame.renderFill(pose, buffer, cam, 0.3f);
+                if (spawnerFill && spawnerFrame != null) spawnerFrame.renderFill(pose, buffer, cam, cachedSpawnerFillAlpha);
             }
             if (airFill && airBox != null) {
                 fillBox(pose, buffer, airBox.move(-cam.x, -cam.y, -cam.z), withAlpha(airColor, 0.12F));
@@ -535,9 +590,10 @@ public final class ModuleWorldRenderer {
                 if (anyMarkers) {
                     VertexConsumer markerFill = bufferSource.getBuffer(DihRenderTypes.storageEspFillSeeThrough());
                     for (TrajectoriesModule.Path path : trajectories) {
+                        if (path.markerFill() <= 0.0F) continue;
                         for (TrajectoriesModule.Marker marker : path.markers()) {
                             fillBox(pose, markerFill, marker.box().move(-cam.x, -cam.y, -cam.z),
-                                withAlpha(marker.color(), 0.15F));
+                                withAlpha(marker.color(), path.markerFill()));
                         }
                     }
                 }
@@ -549,11 +605,11 @@ public final class ModuleWorldRenderer {
         if (storageWire || blockWire || spawnerWire || xrayWire || airWire || tpClickWire || ghostWire) {
             VertexConsumer buffer = bufferSource.getBuffer(DihRenderTypes.tracerEspLines());
             if (!meshed) {
-                if (xrayWire && xrayFrame != null) xrayFrame.renderWire(pose, buffer, cam, 1.5f);
-                if (xrayWire && xrayNearFrame != null) xrayNearFrame.renderWire(pose, buffer, cam, 1.5f);
-                if (storageWire && storageFrame != null) storageFrame.renderWire(pose, buffer, cam, 1.5f);
-                if (blockWire && blockFrame != null) blockFrame.renderWire(pose, buffer, cam, 1.5f);
-                if (spawnerWire && spawnerFrame != null) spawnerFrame.renderWire(pose, buffer, cam, 1.5f);
+                if (xrayWire && xrayFrame != null) xrayFrame.renderWire(pose, buffer, cam, cachedXrayLineWidth);
+                if (xrayWire && xrayNearFrame != null) xrayNearFrame.renderWire(pose, buffer, cam, cachedXrayLineWidth);
+                if (storageWire && storageFrame != null) storageFrame.renderWire(pose, buffer, cam, cachedStorageLineWidth);
+                if (blockWire && blockFrame != null) blockFrame.renderWire(pose, buffer, cam, cachedBlockLineWidth);
+                if (spawnerWire && spawnerFrame != null) spawnerFrame.renderWire(pose, buffer, cam, cachedSpawnerLineWidth);
             }
             if (airWire && airBox != null) {
                 renderStorageBox(pose, buffer, airBox.move(-cam.x, -cam.y, -cam.z),
@@ -598,6 +654,7 @@ public final class ModuleWorldRenderer {
                 | (blockFill ? 16 : 0) | (blockWire ? 32 : 0)
                 | (barrierFill ? 64 : 0) | (spawnerFill ? 128 : 0) | (spawnerWire ? 256 : 0);
             boolean stale = flags != espMeshFlags
+                || cachedBoxStyleKey != espMeshStyleKey
                 || !anchor.equals(espMeshAnchor)
                 || Float.floatToIntBits(xrayFillAlpha) != Float.floatToIntBits(espMeshXrayAlpha)
                 || espMeshContentIds[0] != contentId(xrayFrame) || espMeshContentIds[1] != contentId(xrayNearFrame)
@@ -609,20 +666,21 @@ public final class ModuleWorldRenderer {
                 espFillMeshReady = ESP_FILL_MESH.bake(DihRenderTypes.storageEspFillSeeThrough(), buffer -> {
                     if (xrayFill && xrayFrame != null) xrayFrame.renderFill(BAKE_POSE, buffer, origin, xrayFillAlpha);
                     if (xrayFill && xrayNearFrame != null) xrayNearFrame.renderFill(BAKE_POSE, buffer, origin, 0.6f);
-                    if (storageFill && storageFrame != null) storageFrame.renderFill(BAKE_POSE, buffer, origin, 0.3f);
-                    if (blockFill && blockFrame != null) blockFrame.renderFill(BAKE_POSE, buffer, origin, 0.3f);
+                    if (storageFill && storageFrame != null) storageFrame.renderFill(BAKE_POSE, buffer, origin, cachedStorageFillAlpha);
+                    if (blockFill && blockFrame != null) blockFrame.renderFill(BAKE_POSE, buffer, origin, cachedBlockFillAlpha);
                     if (barrierFill && barrierFrame != null) barrierFrame.renderFill(BAKE_POSE, buffer, origin, 0.2f);
-                    if (spawnerFill && spawnerFrame != null) spawnerFrame.renderFill(BAKE_POSE, buffer, origin, 0.3f);
+                    if (spawnerFill && spawnerFrame != null) spawnerFrame.renderFill(BAKE_POSE, buffer, origin, cachedSpawnerFillAlpha);
                 });
                 espWireMeshReady = ESP_WIRE_MESH.bake(DihRenderTypes.tracerEspLines(), buffer -> {
-                    if (xrayWire && xrayFrame != null) xrayFrame.renderWire(BAKE_POSE, buffer, origin, 1.5f);
-                    if (xrayWire && xrayNearFrame != null) xrayNearFrame.renderWire(BAKE_POSE, buffer, origin, 1.5f);
-                    if (storageWire && storageFrame != null) storageFrame.renderWire(BAKE_POSE, buffer, origin, 1.5f);
-                    if (blockWire && blockFrame != null) blockFrame.renderWire(BAKE_POSE, buffer, origin, 1.5f);
-                    if (spawnerWire && spawnerFrame != null) spawnerFrame.renderWire(BAKE_POSE, buffer, origin, 1.5f);
+                    if (xrayWire && xrayFrame != null) xrayFrame.renderWire(BAKE_POSE, buffer, origin, cachedXrayLineWidth);
+                    if (xrayWire && xrayNearFrame != null) xrayNearFrame.renderWire(BAKE_POSE, buffer, origin, cachedXrayLineWidth);
+                    if (storageWire && storageFrame != null) storageFrame.renderWire(BAKE_POSE, buffer, origin, cachedStorageLineWidth);
+                    if (blockWire && blockFrame != null) blockFrame.renderWire(BAKE_POSE, buffer, origin, cachedBlockLineWidth);
+                    if (spawnerWire && spawnerFrame != null) spawnerFrame.renderWire(BAKE_POSE, buffer, origin, cachedSpawnerLineWidth);
                 });
                 espMeshAnchor = anchor;
                 espMeshFlags = flags;
+                espMeshStyleKey = cachedBoxStyleKey;
                 espMeshXrayAlpha = xrayFillAlpha;
                 espMeshContentIds[0] = contentId(xrayFrame);
                 espMeshContentIds[1] = contentId(xrayNearFrame);
@@ -809,8 +867,11 @@ public final class ModuleWorldRenderer {
             if (entity == null || entity.isRemoved()) continue;
             Vec3 base = stableInterpolatedPosition(entity, tickDelta);
             Vec3 top = base.add(0.0, entity.getBbHeight(), 0.0);
+            double targetHeight = ModuleRenderUtil.tracerTargetHeight();
+            Vec3 end = targetHeight <= 0.0 ? base
+                : base.add(0.0, targetHeight >= 1.0 ? entity.getEyeHeight() : entity.getBbHeight() * targetHeight, 0.0);
             int color = target.color();
-            if (from.distanceToSqr(base) > 1.0E-8) out.add(new TracerLine(from, base, color, width));
+            if (from.distanceToSqr(end) > 1.0E-8) out.add(new TracerLine(from, end, color, width));
             if (heightLine && base.distanceToSqr(top) > 1.0E-8) out.add(new TracerLine(base, top, color, width));
         }
     }
@@ -1257,7 +1318,7 @@ public final class ModuleWorldRenderer {
             }
             dots.add(new WaypointDot(
                 new AABB(cx - half, cy - half, cz - half, cx + half, cy + half, cz + half),
-                waypoint.color(), name, nameWidth));
+                waypoint.color(), name, nameWidth, waypoint.death()));
             index++;
         }
         WaypointSnapshot next = new WaypointSnapshot(gameTime, revision, scope, dotSize, discRadius,
@@ -1286,19 +1347,44 @@ public final class ModuleWorldRenderer {
         {-1.0f, 1.0f}, {0.0f, 1.0f}, {1.0f, 1.0f}
     };
 
-    private static float waypointScale(double dist) {
+    private static float waypointScale(double dist, double hide) {
         if (dist >= WAYPOINT_FULL_SCALE_DIST) {
 
             return (float) Mth.clamp(dist / WAYPOINT_FAR_SCALE_DIVISOR, 1.0, WAYPOINT_MAX_FAR_SCALE);
         }
         if (dist >= WAYPOINT_FADE_START_DIST) return 1.0f;
         return WAYPOINT_MIN_SCALE + (1.0f - WAYPOINT_MIN_SCALE)
-            * (float) ((dist - WAYPOINT_HIDE_DIST) / (WAYPOINT_FADE_START_DIST - WAYPOINT_HIDE_DIST));
+            * (float) Mth.clamp((dist - hide) / (WAYPOINT_FADE_START_DIST - hide), 0.0, 1.0);
     }
 
-    private static float waypointAlpha(double dist) {
+    private static float waypointAlpha(double dist, double hide) {
         if (dist >= WAYPOINT_FADE_START_DIST) return 1.0f;
-        return (float) Mth.clamp((dist - WAYPOINT_HIDE_DIST) / (WAYPOINT_FADE_START_DIST - WAYPOINT_HIDE_DIST), 0.0, 1.0);
+        return (float) Mth.clamp((dist - hide) / (WAYPOINT_FADE_START_DIST - hide), 0.0, 1.0);
+    }
+
+    /** The Waypoints module's label and visibility options, read once per frame. */
+    private record WaypointStyle(boolean dot, boolean names, boolean distance, boolean outline, float textScale,
+                                 double hideDistance, double maxDistance, boolean deaths) {
+        static WaypointStyle of(Module module) {
+            if (module == null) {
+                return new WaypointStyle(true, true, true, true, 1.0f, WAYPOINT_HIDE_DIST, 0.0, true);
+            }
+            return new WaypointStyle(
+                !"false".equals(module.value("show-dot")),
+                !"false".equals(module.value("show-names")),
+                Boolean.parseBoolean(module.value("show-distance")),
+                !"false".equals(module.value("text-outline")),
+                parseFloat(module.value("text-scale"), 1.0f, 0.5f, 3.0f),
+                parseFloat(module.value("hide-distance"), (float) WAYPOINT_HIDE_DIST, 0.0f, 5.5f),
+                parseFloat(module.value("max-distance"), 0.0f, 0.0f, 100_000.0f),
+                !"false".equals(module.value("show-deaths")));
+        }
+
+        boolean shows(WaypointDot dot, double distSq) {
+            if (dot.death() && !deaths) return false;
+            if (distSq < hideDistance * hideDistance) return false;
+            return maxDistance <= 0.0 || distSq <= maxDistance * maxDistance;
+        }
     }
 
     public static boolean hasPendingWaypointArt() {
@@ -1330,8 +1416,10 @@ public final class ModuleWorldRenderer {
         };
         Identifier discTexture = waypointDiscTexture(mc);
         double baseRadius = snapshot.discRadius();
+        Module waypoints = waypointsModule();
+        WaypointStyle style = WaypointStyle.of(waypoints);
 
-        if (discTexture != null) {
+        if (discTexture != null && style.dot()) {
             VertexConsumer discBuffer = bufferSource.getBuffer(DihRenderTypes.waypointDiscSeeThrough(discTexture));
             for (WaypointDot dot : snapshot.dots()) {
                 double cx = (dot.box().minX + dot.box().maxX) * 0.5D;
@@ -1342,10 +1430,10 @@ public final class ModuleWorldRenderer {
                 double dz = cz - camera.z;
                 double distSq = dx * dx + dy * dy + dz * dz;
 
-                if (distSq < WAYPOINT_HIDE_DIST * WAYPOINT_HIDE_DIST) continue;
+                if (!style.shows(dot, distSq)) continue;
                 double dist = Math.sqrt(distSq);
-                float scale = waypointScale(dist);
-                float alpha = waypointAlpha(dist);
+                float scale = waypointScale(dist, style.hideDistance());
+                float alpha = waypointAlpha(dist, style.hideDistance());
                 if (alpha <= 0.0f) continue;
                 float radius = (float) (baseRadius * scale);
                 int color = withAlpha(dot.color(), alpha);
@@ -1356,8 +1444,11 @@ public final class ModuleWorldRenderer {
             }
         }
 
-        Module waypoints = waypointsModule();
-        boolean showDistance = waypoints == null || Boolean.parseBoolean(waypoints.value("show-distance"));
+        boolean showDistance = style.distance();
+        if (!style.names() && !showDistance) {
+            bufferSource.uploadAndDraw();
+            return;
+        }
         for (WaypointDot dot : snapshot.dots()) {
             double cx = (dot.box().minX + dot.box().maxX) * 0.5D;
             double centerY = (dot.box().minY + dot.box().maxY) * 0.5D;
@@ -1367,33 +1458,38 @@ public final class ModuleWorldRenderer {
             double dz = cz - camera.z;
             double distSq = dx * dx + dy * dy + dz * dz;
 
-            if (distSq < WAYPOINT_HIDE_DIST * WAYPOINT_HIDE_DIST) continue;
+            if (!style.shows(dot, distSq)) continue;
             double dist = Math.sqrt(distSq);
-            float scale = waypointScale(dist);
-            float alpha = waypointAlpha(dist);
+            float scale = waypointScale(dist, style.hideDistance());
+            float alpha = waypointAlpha(dist, style.hideDistance());
             if (alpha <= 0.0f) continue;
             double cy = centerY + scale * (baseRadius + WAYPOINT_DISC_MARGIN + WAYPOINT_TEXT_HALF_HEIGHT);
             int color = withAlpha(dot.color(), alpha);
             int outline = withAlpha(NAMEPLATE_OUTLINE_COLOR, alpha);
-            float poseScale = NAMEPLATE_TEXT_SCALE * scale;
+            float poseScale = NAMEPLATE_TEXT_SCALE * style.textScale() * scale;
 
-            String distanceText = showDistance ? " | " + (int) dist + "m" : "";
+            String distanceText = showDistance ? (style.names() ? " | " : "") + (int) dist + "m" : "";
             float distanceWidth = distanceText.isEmpty() ? 0.0f : mc.font.width(distanceText);
-            float nameX = -(dot.nameWidth() + distanceWidth) * 0.5f;
+            float nameWidth = style.names() ? dot.nameWidth() : 0.0f;
+            float nameX = -(nameWidth + distanceWidth) * 0.5f;
             textPose.set(pose.pose())
                 .translate((float) dx, (float) (cy - camera.y), (float) dz)
                 .rotate(orientation)
                 .scale(poseScale, -poseScale, poseScale);
-            for (float[] offset : NAMEPLATE_OUTLINE_OFFSETS) {
-                mc.font.prepareText(dot.name(), nameX + offset[0], NAMEPLATE_LINE_CENTER_PX + offset[1],
-                    outline, false, false, 0).visit(waypointGlyphs);
+            if (style.names()) {
+                if (style.outline()) {
+                    for (float[] offset : NAMEPLATE_OUTLINE_OFFSETS) {
+                        mc.font.prepareText(dot.name(), nameX + offset[0], NAMEPLATE_LINE_CENTER_PX + offset[1],
+                            outline, false, false, 0).visit(waypointGlyphs);
+                    }
+                }
+                mc.font.prepareText(dot.name(), nameX, NAMEPLATE_LINE_CENTER_PX, color, false, false, 0)
+                    .visit(waypointGlyphs);
             }
-            mc.font.prepareText(dot.name(), nameX, NAMEPLATE_LINE_CENTER_PX, color, false, false, 0)
-                .visit(waypointGlyphs);
             if (showDistance) {
                 int distanceColor = withAlpha(lighten(dot.color(), WAYPOINT_DISTANCE_LIGHTEN), alpha);
-                float distanceX = nameX + dot.nameWidth();
-                for (float[] offset : NAMEPLATE_OUTLINE_OFFSETS) {
+                float distanceX = nameX + nameWidth;
+                if (style.outline()) for (float[] offset : NAMEPLATE_OUTLINE_OFFSETS) {
                     mc.font.prepareText(distanceText, distanceX + offset[0], NAMEPLATE_LINE_CENTER_PX + offset[1],
                         outline, false, 0).visit(waypointGlyphs);
                 }
@@ -1470,7 +1566,7 @@ public final class ModuleWorldRenderer {
         }
     }
 
-    private record WaypointDot(AABB box, int color, FormattedCharSequence name, float nameWidth) {
+    private record WaypointDot(AABB box, int color, FormattedCharSequence name, float nameWidth, boolean death) {
     }
 
     private record StorageSnapshot(long scanKey, int revision, int chunkX, int chunkZ, long contentId,
