@@ -220,35 +220,81 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
 
         add(new BoolSetting("place", "Place", true)
             .description("Place on obsidian and bedrock.")
+            .group("General")
             .build());
         add(new BoolSetting("destroy", "Destroy", true)
             .description("Attack crystals in range.")
+            .group("General")
             .build());
         add(new BoolSetting("obsidian", "Place Obsidian", true)
             .description("Build a support when none exists.")
+            .group("General")
             .build());
+        add(new BoolSetting("auto-switch", "Auto Switch", true)
+            .description("Switch to crystals and obsidian on your hotbar; off only uses what you hold.")
+            .group("General")
+            .build());
+        add(new IntSetting("pause-health", "Pause Health", 0, 0, 36, 1)
+            .description("Stops while your health and absorption are at or below this; 0 never pauses.")
+            .unit("HP")
+            .group("General")
+            .build());
+        add(new BoolSetting("pause-mining", "Pause While Mining", false)
+            .description("Stops while you break a block.")
+            .group("General")
+            .build());
+
         add(new DoubleSetting("target-range", "Target Range", 8.0D, 1.0D, 16.0D, 0.5D)
             .description("Enemy search radius.")
+            .group("Targets")
             .build());
         add(new ChoiceSetting("targeting", "Targeting", "Distance", "Distance", "HP", "FOV")
             .description("How the enemy is picked.")
+            .group("Targets")
             .build());
         add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player")
             .description("Entity types to blast.")
+            .group("Targets")
             .build());
         add(new IntSetting("hurt-time", "Hurt Time", 10, 0, 10, 1)
             .description("Maximum hurt time.")
+            .group("Targets")
+            .build());
+        add(new BoolSetting("ignore-invisible", "Ignore Invisible", false)
+            .description("Skip invisible entities.")
+            .group("Targets")
+            .build());
+        add(new BoolSetting("ignore-naked", "Ignore Naked", false)
+            .description("Skip players wearing no armor.")
+            .group("Targets")
             .build());
 
+        add(new DoubleSetting("place-range", "Place Range", 6.0D, 1.0D, 6.0D, 0.1D)
+            .description("Farthest crystal or obsidian placement, capped by your reach.")
+            .unit("blocks")
+            .group("Place")
+            .visibleWhen(() -> bool("place"))
+            .build());
+        add(new BoolSetting("switch-back", "Switch Back", true)
+            .description("Return to your previous hotbar slot once idle.")
+            .group("Place")
+            .visibleWhen(() -> bool("place") && bool("auto-switch"))
+            .build());
         add(new IntSetting("switch-back-delay", "Switch Back Delay", 20, 1, 100, 1)
             .description("Idle ticks before switching back.")
             .group("Place")
-            .visibleWhen(() -> bool("place"))
+            .visibleWhen(() -> bool("place") && bool("auto-switch") && bool("switch-back"))
             .build());
         add(new BoolSetting("only-above", "Only Above", false)
             .description("Place above target.")
             .group("Place")
             .visibleWhen(() -> bool("place"))
+            .build());
+        add(new DoubleSetting("break-range", "Break Range", 6.0D, 1.0D, 6.0D, 0.1D)
+            .description("Farthest crystal to attack, capped by your reach.")
+            .unit("blocks")
+            .group("Place")
+            .visibleWhen(() -> bool("destroy"))
             .build());
 
         add(new DoubleSetting("min-target-damage", "Min Target Damage", 5.0D, 0.0D, 20.0D, 0.5D)
@@ -266,6 +312,20 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
         add(new BoolSetting("terrain", "Terrain", true)
             .description("Model terrain damage.")
             .group("Damage")
+            .build());
+        add(new BoolSetting("face-place", "Face Place", false)
+            .description("Accept weaker blasts against a target that is almost dead.")
+            .group("Damage")
+            .build());
+        add(new DoubleSetting("face-place-health", "Face Place Health", 8.0D, 1.0D, 36.0D, 0.5D)
+            .description("Target health and absorption at or below which Face Place starts.")
+            .group("Damage")
+            .visibleWhen(() -> bool("face-place"))
+            .build());
+        add(new DoubleSetting("face-place-damage", "Face Place Damage", 2.0D, 0.0D, 20.0D, 0.5D)
+            .description("Minimum blast damage while face placing.")
+            .group("Damage")
+            .visibleWhen(() -> bool("face-place"))
             .build());
 
         add(new ChoiceSetting("speed", "Speed", "Instant", "Instant", "Smooth")
@@ -555,7 +615,14 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
             && !ScaffoldModule.reservesRageInput()
 
             && !AutoTotemModule.operationActive()
-            && !AutoArmorModule.operationActive();
+            && !AutoArmorModule.operationActive()
+            && !(bool("pause-mining") && MC.gameMode.isDestroying())
+            && !lowHealthPause();
+    }
+
+    private boolean lowHealthPause() {
+        int floor = integer("pause-health");
+        return floor > 0 && MC.player.getHealth() + MC.player.getAbsorptionAmount() <= floor;
     }
 
     @Override
@@ -909,6 +976,8 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
                 && !TeamsModule.combatExcluded(entity, "killaura")
 
                 && entity.hurtTime <= integer("hurt-time")
+                && !(bool("ignore-invisible") && entity.isInvisible())
+                && !(bool("ignore-naked") && entity instanceof Player && CombatFilters.wearsNoArmor(entity))
                 && DihExplosionDamage.effectiveHealth(entity) > 0.0D);
         if (found.isEmpty()) return null;
 
@@ -995,7 +1064,8 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
         if (!bool("destroy")) return null;
         LocalPlayer player = MC.player;
 
-        double range = player.getAttributeValue(Attributes.ENTITY_INTERACTION_RANGE);
+        double range = Math.min(player.getAttributeValue(Attributes.ENTITY_INTERACTION_RANGE),
+            decimal("break-range"));
         if (range <= 0.0D) return null;
 
         Vec3 eye = player.getEyePosition();
@@ -1117,7 +1187,7 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
         if (!bool("place")) return null;
         LocalPlayer player = MC.player;
 
-        double range = player.blockInteractionRange();
+        double range = placeRange();
         if (range <= 0.0D) return null;
         if (!hasCrystalAvailable()) return null;
 
@@ -1218,7 +1288,7 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
         BlockPos origin = player.blockPosition();
         int[] offsets = sphere(Mth.ceil(range));
 
-        double floor = decimal("min-target-damage");
+        double floor = minTargetDamage(enemy);
         double rangeSq = range * range;
 
         AABB nextBox = player.getBoundingBox().move(player.getDeltaMovement());
@@ -1338,7 +1408,7 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
 
     private boolean awaitingSupportSync() {
         int tick = DihSharedState.get().getClientTickCounter();
-        int radius = Mth.clamp(Mth.ceil(MC.player.blockInteractionRange()), 0, 8);
+        int radius = Mth.clamp(Mth.ceil(placeRange()), 0, 8);
         BlockPos origin = MC.player.blockPosition();
         if (lastBreakCrystalId >= 0
             && tick - lastBreakTick >= 0 && tick - lastBreakTick < ACTION_SYNC_TICKS) {
@@ -1428,7 +1498,7 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
     private ObsidianPlan planObsidian(LivingEntity enemy, DihFaceScan.Budget budget,
                                       double rivalDamage) {
         LocalPlayer player = MC.player;
-        double range = player.blockInteractionRange();
+        double range = placeRange();
         if (range <= 0.0D) return null;
 
         boolean offhand = isObsidian(player.getOffhandItem())
@@ -1442,7 +1512,7 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
         Vec3 eye = player.getEyePosition();
         BlockPos origin = player.blockPosition();
         int[] offsets = sphere(Mth.ceil(range));
-        double floor = decimal("min-target-damage");
+        double floor = minTargetDamage(enemy);
         double rangeSq = range * range;
         AABB nextBox = player.getBoundingBox().move(player.getDeltaMovement());
         BlockState obsidianState = Blocks.OBSIDIAN.defaultBlockState();
@@ -1614,6 +1684,7 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
         int bestSteps = Integer.MAX_VALUE;
         for (int slot = 0; slot < 9; slot++) {
             if (!isObsidian(player.getInventory().getItem(slot))) continue;
+            if (!bool("auto-switch") && slot != selected) continue;
 
             if (DihHandArbiter.slotReserved(slot, ID)) continue;
             int steps = Math.abs(slot - selected);
@@ -1670,7 +1741,7 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
 
         LivingEntity enemy = defendThreat();
         if (enemy == null) return null;
-        double range = player.blockInteractionRange();
+        double range = placeRange();
         if (range <= 0.0D) return null;
         List<DefendThreat> threats = defendThreatSources(player);
         if (threats.isEmpty()) return null;
@@ -1876,7 +1947,7 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
         if (!playerPos.equals(supportScanPlayerPos) || !enemyPos.equals(supportScanEnemyPos)) {
             supportScanPlayerPos = playerPos.immutable();
             supportScanEnemyPos = enemyPos.immutable();
-            List<BlockPos> supports = rankSupports(enemy, MC.player.blockInteractionRange());
+            List<BlockPos> supports = rankSupports(enemy, placeRange());
             if (!supports.isEmpty()) {
                 builderBanTarget = enemy.getId();
                 builderBanSupport = supports.get(0);
@@ -1915,7 +1986,7 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
 
     private ObsidianPlan aimCommittedObsidian(DihFaceScan.Budget budget) {
         LocalPlayer player = MC.player;
-        double range = player.blockInteractionRange();
+        double range = placeRange();
         if (range <= 0.0D) return null;
         Vec3 eye = player.getEyePosition();
         boolean offhand = committedObsidianSlot < 0;
@@ -1960,7 +2031,7 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
 
     private PlacePlan aimCommittedPlace(LivingEntity enemy, DihFaceScan.Budget budget) {
         LocalPlayer player = MC.player;
-        double range = player.blockInteractionRange();
+        double range = placeRange();
         if (range <= 0.0D) return null;
         Vec3 eye = player.getEyePosition();
         DihRotationUtil.Rotation wire = aimReference();
@@ -2066,6 +2137,7 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
         int bestSteps = Integer.MAX_VALUE;
         for (int slot = 0; slot < 9; slot++) {
             if (!isCrystal(player.getInventory().getItem(slot))) continue;
+            if (!bool("auto-switch") && slot != selected) continue;
 
             if (DihHandArbiter.slotReserved(slot, ID)) continue;
             int steps = Math.abs(slot - selected);
@@ -2080,6 +2152,12 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
 
     private void tickSwitchBack() {
         if (previousSlot < 0) return;
+        if (!bool("switch-back")) {
+            previousSlot = -1;
+            switchedToSlot = -1;
+            switchBackTicks = 0;
+            return;
+        }
 
         if (MC.gui.screen() != null || MC.gui.overlay() != null) return;
 
@@ -2108,10 +2186,24 @@ public final class CrystalAuraModule extends Module implements DihSilentAim.Owne
 
     private boolean damagePasses(LivingEntity enemy, DihExplosionDamage.Ranking rank) {
         if (DihExplosionDamage.killsSelf(rank.selfDamage())) return false;
-        if (rank.targetDamage() < decimal("min-target-damage")) return false;
+        if (rank.targetDamage() < minTargetDamage(enemy)) return false;
         if (rank.selfDamage() > decimal("max-self-damage")) return false;
 
         return !bool("efficient") || rank.isEfficient();
+    }
+
+    /** The damage floor for {@code enemy}: Min Target Damage, lowered to Face Place Damage when it is almost dead. */
+    private double minTargetDamage(LivingEntity enemy) {
+        double floor = decimal("min-target-damage");
+        if (bool("face-place") && enemy != null
+            && DihExplosionDamage.effectiveHealth(enemy) <= decimal("face-place-health")) {
+            floor = Math.min(floor, decimal("face-place-damage"));
+        }
+        return floor;
+    }
+
+    private double placeRange() {
+        return Math.min(MC.player.blockInteractionRange(), decimal("place-range"));
     }
 
     private boolean betterRank(DihExplosionDamage.Ranking candidate,

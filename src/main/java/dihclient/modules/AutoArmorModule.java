@@ -106,9 +106,24 @@ public final class AutoArmorModule extends Module {
         super("auto-armor", "AutoArmor", ModuleCategory.COMBAT, "Equips your best armor.");
 
         add(new BoolSetting("prefer-elytra", "Prefer Elytra", false)
-            .description("Wear elytra over chestplate.").build());
+            .group("General").description("Wear elytra over chestplate.").build());
         add(new BoolSetting("allow-cursed", "Allow Cursed", false)
-            .description("Equip curse-of-binding armor.").build());
+            .group("General").description("Equip curse-of-binding armor.").build());
+        add(new IntSetting("expected-damage", "Expected Hit", (int) EXPECTED_DAMAGE, 1, 30, 1)
+            .group("General").unit("HP")
+            .description("Hit size the armor is ranked for: bigger hits favor toughness over plain armor points.")
+            .build());
+        add(new BoolSetting("inventory-only", "Only In Inventory", false)
+            .group("General").description("Only swap while your inventory screen is open.").build());
+
+        add(new BoolSetting("helmet", "Helmet", true)
+            .group("Slots").description("Manage the helmet slot.").build());
+        add(new BoolSetting("chestplate", "Chestplate", true)
+            .group("Slots").description("Manage the chest slot.").build());
+        add(new BoolSetting("leggings", "Leggings", true)
+            .group("Slots").description("Manage the leggings slot.").build());
+        add(new BoolSetting("boots", "Boots", true)
+            .group("Slots").description("Manage the boots slot.").build());
 
         add(new RangeSetting("click-delay", "Click Delay", new ValueRange(3, 5), 0, 10, 1)
             .group("Timing").unit("ticks").description("Ticks between moves"));
@@ -123,6 +138,8 @@ public final class AutoArmorModule extends Module {
             .group("Constraints").description("Only swap while still.").build());
         add(new BoolSetting("not-using-item", "Not Using Item", true)
             .group("Constraints").description("Not while using item.").build());
+        add(new BoolSetting("pause-movement", "Pause Movement", true)
+            .group("Constraints").description("Hold your movement keys for a tick after each swap click.").build());
 
         add(new BoolSetting("hotbar", "Hotbar", true)
             .group("Hotbar").description("Equip via hotbar swap.").build());
@@ -138,7 +155,6 @@ public final class AutoArmorModule extends Module {
         add(new BoolSetting("auto-open-inventory", "Auto Open Inventory", true)
             .group("Save Armor").visibleWhen(() -> bool("save-armor"))
             .description("Open inventory to save.").build());
-        add(new BoolSetting("pause-movement", "Pause Movement", true));
 
         boolean firstInstall = !DihConfig.getGlobal().modules.containsKey("auto-armor");
         if (firstInstall) setEnabledSilently(true);
@@ -198,6 +214,13 @@ public final class AutoArmorModule extends Module {
             return;
         }
         if (bool("not-using-item") && MC.player.isUsingItem()) return;
+        if (waitsForInventory()) {
+            if (shouldOpenInventoryToSave()) {
+                MC.gui.setScreen(new InventoryScreen(MC.player));
+                openedInventory = true;
+            }
+            return;
+        }
 
         if (bool("no-movement") && isMoving()) {
             if (shouldOpenInventoryToSave()) {
@@ -243,6 +266,13 @@ public final class AutoArmorModule extends Module {
             return;
         }
         if (bool("not-using-item") && MC.player.isUsingItem()) return;
+        if (waitsForInventory()) {
+            if (shouldOpenInventoryToSave()) {
+                MC.gui.setScreen(new InventoryScreen(MC.player));
+                openedInventory = true;
+            }
+            return;
+        }
         if (bool("no-movement") && isMoving()) {
             if (shouldOpenInventoryToSave()) {
                 MC.gui.setScreen(new InventoryScreen(MC.player));
@@ -262,7 +292,8 @@ public final class AutoArmorModule extends Module {
         if (!isEnabled() || PackHideState.isHardLocked()
             || MC.player.containerMenu != MC.player.inventoryMenu
             || DihBlinkManager.holdsActionsWithoutMovement()
-            || bool("not-using-item") && MC.player.isUsingItem()) {
+            || bool("not-using-item") && MC.player.isUsingItem()
+            || waitsForInventory()) {
             endSession(true);
             return;
         }
@@ -316,6 +347,7 @@ public final class AutoArmorModule extends Module {
         }
 
         for (EquipmentSlot slot : ARMOR_ORDER) {
+            if (!manages(slot)) continue;
             Candidate candidate = best.get(slot);
             if (candidate == null || candidate.kind == Kind.ARMOR) continue;
 
@@ -330,6 +362,21 @@ public final class AutoArmorModule extends Module {
     }
 
     private record Move(EquipmentSlot slot, Candidate candidate, ItemStack worn) {
+    }
+
+    /** With Only In Inventory on, whether swaps wait because the inventory screen is closed. */
+    private boolean waitsForInventory() {
+        return bool("inventory-only") && !(MC.gui.screen() instanceof InventoryScreen);
+    }
+
+    private boolean manages(EquipmentSlot slot) {
+        return switch (slot) {
+            case HEAD -> bool("helmet");
+            case CHEST -> bool("chestplate");
+            case LEGS -> bool("leggings");
+            case FEET -> bool("boots");
+            default -> false;
+        };
     }
 
     private boolean shouldOpenInventoryToSave() {
@@ -506,6 +553,7 @@ public final class AutoArmorModule extends Module {
     private boolean hasLowArmorWithReplacement() {
         int threshold = integer("durability-threshold");
         for (EquipmentSlot slot : ARMOR_ORDER) {
+            if (!manages(slot)) continue;
             ItemStack worn = MC.player.getItemBySlot(slot);
 
             if (worn.isEmpty() || !isPlayerArmor(worn) || durability(worn) > threshold || hasCurseOfBinding(worn)) continue;
@@ -536,7 +584,7 @@ public final class AutoArmorModule extends Module {
 
         for (int pass = 0; pass < 2; pass++) {
             Map<EquipmentSlot, KitParam> kit = kitParamsExcludingSelf(current);
-            Comparator<Candidate> comparator = armorComparator(kit, threshold);
+            Comparator<Candidate> comparator = armorComparator(kit, threshold, integer("expected-damage"));
             Map<EquipmentSlot, Candidate> next = new EnumMap<>(EquipmentSlot.class);
             for (Map.Entry<EquipmentSlot, List<Candidate>> entry : byType.entrySet()) {
                 next.put(entry.getKey(), maxBy(entry.getValue(), comparator));
@@ -596,9 +644,10 @@ public final class AutoArmorModule extends Module {
         return kit;
     }
 
-    private static Comparator<Candidate> armorComparator(Map<EquipmentSlot, KitParam> kit, int threshold) {
+    private static Comparator<Candidate> armorComparator(Map<EquipmentSlot, KitParam> kit, int threshold,
+                                                         double expectedDamage) {
         Comparator<Candidate> byReduction =
-            Comparator.comparingDouble(c -> round3(thresholdedDamageReduction(c, kit)));
+            Comparator.comparingDouble(c -> round3(thresholdedDamageReduction(c, kit, expectedDamage)));
         return Comparator
             .comparing((Candidate c) -> durability(c.stack) > threshold)
             .thenComparing(byReduction.reversed())
@@ -609,11 +658,12 @@ public final class AutoArmorModule extends Module {
             .thenComparing(c -> c.kind == Kind.HOTBAR);
     }
 
-    private static double thresholdedDamageReduction(Candidate candidate, Map<EquipmentSlot, KitParam> kit) {
+    private static double thresholdedDamageReduction(Candidate candidate, Map<EquipmentSlot, KitParam> kit,
+                                                     double expectedDamage) {
         KitParam param = kit.getOrDefault(candidate.slot, KitParam.ZERO);
         double defense = param.defense + armorValue(candidate.stack, candidate.slot);
         double toughness = param.toughness + armorToughness(candidate.stack, candidate.slot);
-        return damageFactor(EXPECTED_DAMAGE, defense, toughness) * (1.0 - enchantmentDamageReduction(candidate.stack));
+        return damageFactor(expectedDamage, defense, toughness) * (1.0 - enchantmentDamageReduction(candidate.stack));
     }
 
     private static double damageFactor(double damage, double defense, double toughness) {

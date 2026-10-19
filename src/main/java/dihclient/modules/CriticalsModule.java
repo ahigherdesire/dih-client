@@ -1,6 +1,9 @@
 package dihclient.modules;
 
+import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ChoiceSetting;
+import dihclient.api.module.IntSetting;
+import dihclient.api.module.RegistryListSetting;
 import dihclient.util.DihPackets;
 import dihclient.util.multi.PacketTeleportController;
 import net.minecraft.client.player.LocalPlayer;
@@ -11,6 +14,8 @@ import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.MaceItem;
 
 /**
@@ -28,6 +33,10 @@ public final class CriticalsModule extends Module {
     static final double HOP = 0.0625D;
     /** A held Jump-mode hit goes out anyway after this many ticks. */
     static final int MAX_HOLD_TICKS = 14;
+    /** The server only crits hits charged past this. */
+    static final float CRIT_CHARGE = 0.9F;
+
+    private final CombatFilters.IdSet heldItemIds = new CombatFilters.IdSet();
 
     private ServerboundAttackPacket heldAttack;
     /** The swing that went with the held hit: the server resets the attack charge on a swing, so it waits too. */
@@ -39,7 +48,29 @@ public final class CriticalsModule extends Module {
         super("criticals", "Criticals", ModuleCategory.COMBAT,
             "Turns hits on the ground into critical hits. Packet mode will flag anticheats.");
         add(new ChoiceSetting("mode", "Mode", "Packet", "Packet", "Jump")
+            .group("General")
             .description("Packet: every hit crits at once (anticheats flag it). Jump: really jump and hit on the way down."));
+        add(new IntSetting("max-hold", "Max Hold", MAX_HOLD_TICKS, 4, 20, 1).unit("ticks")
+            .group("General")
+            .description("Let a held hit go after this long even if the jump never comes down.")
+            .visibleWhen(() -> "Jump".equals(value("mode"))));
+        add(new BoolSetting("only-full-hits", "Only Full Hits", false)
+            .group("General")
+            .description("Leave weak hits alone: the server only crits hits charged past 90%."));
+
+        add(new ChoiceSetting("targets", "Targets", "All Living", "Players", "Players + Hostile", "All Living")
+            .group("Targets")
+            .description("Which targets get critical hits."));
+        add(new BoolSetting("skip-hurt", "Skip Hurt Targets", false)
+            .group("Targets")
+            .description("Leave hits on a target still flashing from a hit alone; it only takes damage above the last hit."));
+        add(new BoolSetting("held-items-only", "Held Items Only", false)
+            .group("Targets")
+            .description("Only while holding a listed item."));
+        add(RegistryListSetting.items("held-items", "Held Items", CombatFilters.DEFAULT_WEAPONS)
+            .group("Targets")
+            .description("Main-hand items that get critical hits.")
+            .visibleWhen(() -> bool("held-items-only")));
     }
 
     @Override
@@ -66,6 +97,7 @@ public final class CriticalsModule extends Module {
         if (!(target instanceof LivingEntity living) || !living.isAlive()) return false;
         if (!canCritFromGround(player)) return false;
         if (player.getMainHandItem().getItem() instanceof MaceItem && maceKillActive()) return false;
+        if (!wantsCrit(player, living)) return false;
 
         if ("Jump".equals(choice("mode"))) {
             if (heldAttack != null) return false;
@@ -108,7 +140,7 @@ public final class CriticalsModule extends Module {
             if (swing != null && MC.getConnection() != null) PacketTeleportController.runAtomicClipSend(() -> MC.getConnection().send(swing));
             return;
         }
-        if (fallingForCrit(player.onGround(), player.fallDistance, player.getDeltaMovement().y) || heldTicks >= MAX_HOLD_TICKS
+        if (fallingForCrit(player.onGround(), player.fallDistance, player.getDeltaMovement().y) || heldTicks >= integer("max-hold")
             || player.onGround() && heldTicks > 2) {
             releaseHeld();
         }
@@ -128,6 +160,20 @@ public final class CriticalsModule extends Module {
             if (swing != null) MC.getConnection().send(swing);
             if (sprinting) MC.getConnection().send(new ServerboundPlayerCommandPacket(player, ServerboundPlayerCommandPacket.Action.START_SPRINTING));
         });
+    }
+
+    private boolean wantsCrit(LocalPlayer player, LivingEntity target) {
+        if (bool("only-full-hits") && player.getAttackStrengthScale(0.5F) <= CRIT_CHARGE) return false;
+        if (bool("skip-hurt") && target.hurtTime > 0) return false;
+        if (bool("held-items-only")
+            && !CombatFilters.holds(player.getMainHandItem(), heldItemIds, list("held-items"))) {
+            return false;
+        }
+        return switch (choice("targets")) {
+            case "Players" -> target instanceof Player;
+            case "Players + Hostile" -> target instanceof Player || target instanceof Enemy;
+            default -> true;
+        };
     }
 
     /** Whether a hit from where the player stands could be turned into a crit (on the ground, nothing else blocking it). */

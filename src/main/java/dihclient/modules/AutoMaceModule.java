@@ -52,20 +52,57 @@ public final class AutoMaceModule extends Module {
     public AutoMaceModule() {
         super("auto-mace", "AutoMace", ModuleCategory.COMBAT,
             "Swaps to your mace and smashes what you are falling onto.");
-        add(new ChoiceSetting("targets", "Targets", "Players", "Players", "Players + Hostile", "All Living"));
         add(new ChoiceSetting("aim", "Aim", "Nearby", "Nearby", "Crosshair")
+            .group("General")
             .description("Nearby: hit a target below you in reach and in sight. Crosshair: only what you look at."));
         add(new DoubleSetting("min-fall", "Min Fall", 2.0D, 1.6D, 20.0D, 0.1D).unit("blocks")
+            .group("General")
             .description("Fall at least this far before smashing; more fall, more damage."));
+        add(new DoubleSetting("nearby-range", "Nearby Range", 6.0D, 1.0D, 6.0D, 0.1D).unit("blocks")
+            .group("General")
+            .description("How far a Nearby target may be; never beyond your reach.")
+            .visibleWhen(() -> "Nearby".equals(value("aim"))));
+        add(new BoolSetting("need-sight", "Need Line Of Sight", true)
+            .group("General")
+            .description("Only pick Nearby targets you can see.")
+            .visibleWhen(() -> "Nearby".equals(value("aim"))));
+
+        add(new ChoiceSetting("targets", "Targets", "Players", "Players", "Players + Hostile", "All Living")
+            .group("Targets")
+            .description("What to smash."));
+        add(new BoolSetting("ignore-invisible", "Ignore Invisible", false)
+            .group("Targets")
+            .description("Skip invisible entities."));
+        add(new BoolSetting("ignore-naked", "Ignore Naked", false)
+            .group("Targets")
+            .description("Skip players wearing no armor."));
+        add(new BoolSetting("skip-blocking", "Skip Blocking", false)
+            .group("Targets")
+            .description("Save the smash when the target raises a shield, which stops it."));
+        add(new BoolSetting("skip-hurt", "Skip Hurt Targets", false)
+            .group("Targets")
+            .description("Save the smash while the target still flashes from a hit and takes reduced damage."));
+
+        add(new BoolSetting("auto-swap", "Swap To Mace", true)
+            .group("Swap")
+            .description("Switch to a mace on your hotbar for the hit; off only smashes with a mace already in hand."));
         add(new ChoiceSetting("prefer", "Prefer", "Density", "Density", "Breach", "Wind Burst")
-            .description("Which mace to use when your hotbar holds more than one."));
-        add(new BoolSetting("swap-back", "Swap Back", true).description("Go back to the item you held after the hit."));
+            .group("Swap")
+            .description("Which mace to use when your hotbar holds more than one.")
+            .visibleWhen(() -> bool("auto-swap")));
+        add(new BoolSetting("swap-back", "Swap Back", true)
+            .group("Swap")
+            .description("Go back to the item you held after the hit.")
+            .visibleWhen(() -> bool("auto-swap")));
         add(new IntSetting("swap-back-delay", "Swap Back Delay", 2, 0, 20, 1).unit("ticks")
-            .visibleWhen(() -> bool("swap-back")));
+            .group("Swap")
+            .description("Ticks to keep the mace out after the hit.")
+            .visibleWhen(() -> bool("auto-swap") && bool("swap-back")));
 
         add(new BoolSetting("elytra-swap", "Elytra Swap", false).group("Elytra")
             .description("Mid-flight, swap the elytra for a chestplate when a target is in your sights below."));
         add(new IntSetting("elytra-range", "Sight Range", 32, 8, 96, 4).unit("blocks").group("Elytra")
+            .description("How far ahead along your view a target counts.")
             .visibleWhen(() -> bool("elytra-swap")));
         add(new IntSetting("elytra-drop", "Min Height Above", 6, 2, 40, 1).unit("blocks").group("Elytra")
             .description("Only drop on targets at least this far below you.")
@@ -127,7 +164,8 @@ public final class AutoMaceModule extends Module {
         EntityHitResult hit = target(player);
         if (hit == null) return;
         Inventory inventory = player.getInventory();
-        int mace = bestMace(inventory);
+        int mace = bool("auto-swap") ? bestMace(inventory)
+            : player.getMainHandItem().getItem() instanceof MaceItem ? inventory.getSelectedSlot() : -1;
         if (mace < 0) return;
         if (!DihCombatClicker.queueAttack(hit)) return; // another module owns the attack key this tick
 
@@ -162,7 +200,7 @@ public final class AutoMaceModule extends Module {
         if (!"Nearby".equals(choice("aim"))) return null;
 
         Vec3 eyes = player.getEyePosition();
-        double range = player.entityInteractionRange();
+        double range = Math.min(player.entityInteractionRange(), decimal("nearby-range"));
         LivingEntity best = null;
         double bestDistance = Double.MAX_VALUE;
         for (Entity entity : MC.level.getEntities(player, player.getBoundingBox().inflate(range + 1.0D))) {
@@ -170,8 +208,9 @@ public final class AutoMaceModule extends Module {
             AABB box = living.getBoundingBox();
             // Below you means their feet are not above yours; you may already be dropping through their hitbox.
             if (box.minY > player.getY() || !player.isWithinEntityInteractionRange(living, 0.0D)) continue;
-            if (!player.hasLineOfSight(living)) continue;
+            if (bool("need-sight") && !player.hasLineOfSight(living)) continue;
             double distance = box.distanceToSqr(eyes);
+            if (distance > range * range) continue;
             if (distance < bestDistance) {
                 best = living;
                 bestDistance = distance;
@@ -187,6 +226,10 @@ public final class AutoMaceModule extends Module {
     private boolean validTarget(LivingEntity living) {
         if (living == MC.player || !living.isAlive() || living.isSpectator()) return false;
         if (DihAntiBot.suppress(living) || TeamsModule.isFriendOrTeam(living)) return false;
+        if (bool("ignore-invisible") && living.isInvisible()) return false;
+        if (bool("ignore-naked") && living instanceof Player && CombatFilters.wearsNoArmor(living)) return false;
+        if (bool("skip-blocking") && living.isBlocking()) return false;
+        if (bool("skip-hurt") && living.hurtTime > 0) return false;
         return switch (choice("targets")) {
             case "All Living" -> true;
             case "Players + Hostile" -> living instanceof Player || living instanceof Enemy;

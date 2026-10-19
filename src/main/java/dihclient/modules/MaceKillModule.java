@@ -1,6 +1,7 @@
 package dihclient.modules;
 
 import dihclient.api.module.BoolSetting;
+import dihclient.api.module.ChoiceSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.util.multi.PacketTeleportController;
 import net.minecraft.client.player.LocalPlayer;
@@ -9,6 +10,8 @@ import net.minecraft.network.protocol.game.ServerboundAttackPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.monster.Enemy;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.MaceItem;
 import net.minecraft.world.phys.AABB;
 
@@ -34,12 +37,28 @@ public final class MaceKillModule extends Module {
         super("mace-kill", "MaceKill", ModuleCategory.COMBAT,
             "Fakes a fall before each mace hit so it lands as a smash. Will flag anticheats.");
         add(new IntSetting("fall-height", "Fall Height", 22, MIN_HEIGHT, 22, 1)
+            .group("General")
             .description("Most blocks of fall to fake; under a roof the lift stops below it."));
+        add(new IntSetting("min-height", "Min Height", MIN_HEIGHT, MIN_HEIGHT, 22, 1)
+            .group("General")
+            .description("Swing normally when a roof leaves less room than this: a short smash adds little."));
         add(new IntSetting("spam-packets", "Spam Packets", 3, 0, COUNTED_PACKETS - 1, 1)
+            .group("General")
             .description("Rotation packets sent first to raise the server's movement allowance. At 4, a normal move"
                 + " already sent that tick makes six and the server turns the lift down."));
+        add(new BoolSetting("only-on-ground", "Only On Ground", false)
+            .group("General")
+            .description("Only fake the fall for hits made standing on the ground."));
+
+        add(new ChoiceSetting("targets", "Targets", "All Living", "Players", "Players + Hostile", "All Living")
+            .group("Targets")
+            .description("Which targets get smash hits; others get a normal swing."));
         add(new BoolSetting("skip-hurt", "Skip Hurt Targets", true)
+            .group("Targets")
             .description("Swing normally at a target still recovering from a hit: a refused smash would leave you the fall."));
+        add(new BoolSetting("skip-blocking", "Skip Blocking Targets", false)
+            .group("Targets")
+            .description("Swing normally at a target raising a shield, which stops the smash."));
     }
 
     @Override
@@ -52,12 +71,15 @@ public final class MaceKillModule extends Module {
         Entity target = MC.level.getEntity(attack.entityId());
         if (!(target instanceof LivingEntity living) || !living.isAlive()) return false;
         if (bool("skip-hurt") && living.hurtTime > 0) return false;
+        if (bool("skip-blocking") && living.isBlocking()) return false;
+        if (bool("only-on-ground") && !player.onGround()) return false;
+        if (!isTarget(living)) return false;
 
         int spam = integer("spam-packets");
         int max = Math.min(integer("fall-height"), allowedHeight(spam));
         AABB box = player.getBoundingBox();
         int height = clearHeight(max, up -> MC.level.noCollision(player, box.move(0.0D, up, 0.0D)));
-        if (height < MIN_HEIGHT) return false;
+        if (height < Math.max(MIN_HEIGHT, integer("min-height"))) return false;
 
         double x = player.getX(), y = player.getY(), z = player.getZ();
         float yaw = player.getYRot(), pitch = player.getXRot();
@@ -70,6 +92,14 @@ public final class MaceKillModule extends Module {
             MC.getConnection().send(attack);
         });
         return true;
+    }
+
+    private boolean isTarget(LivingEntity entity) {
+        return switch (choice("targets")) {
+            case "Players" -> entity instanceof Player;
+            case "Players + Hostile" -> entity instanceof Player || entity instanceof Enemy;
+            default -> true;
+        };
     }
 
     /** The highest fall the server lets one move cover after {@code spam} other move packets in the same tick. */
