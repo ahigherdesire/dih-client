@@ -51,20 +51,61 @@ public final class PacketMineModule extends Module {
     public PacketMineModule() {
         super("packet-mine", "PacketMine", ModuleCategory.PLAYER, "Click a block to mine it in the background.");
         add(new ChoiceSetting("mode", "Mode", "Normal", "Normal", "Immediate")
+            .group("General")
             .description("Normal: STOP when the block is done. Immediate: START and STOP at once, for servers that"
                 + " only check the time between them."));
-        add(new DoubleSetting("range", "Range", 4.5D, 1.0D, 6.0D, 0.1D).unit("blocks"));
+        add(new DoubleSetting("range", "Range", 4.5D, 1.0D, 6.0D, 0.1D).unit("blocks")
+            .group("General")
+            .description("Mines only while the block is this close"));
         add(new DoubleSetting("keep-range", "Keep Range", 8.0D, 1.0D, 64.0D, 0.5D).unit("blocks")
+            .group("General")
             .description("Drop the target past this distance."));
+        add(new BoolSetting("rotate", "Rotate", false)
+            .group("General")
+            .description("Face the block for the START and STOP packets."));
+
         add(new ChoiceSetting("switch", "Switch", "On Stop", "On Stop", "Always", "Never")
+            .group("Tool")
             .description("When to hold the best tool: just for the STOP packet, the whole time, or never."));
-        add(new BoolSetting("rotate", "Rotate", false).description("Face the block for the START and STOP packets."));
+        add(new BoolSetting("save-tools", "Save Tools", true)
+            .group("Tool")
+            .description("Skips tools with 2 or less durability left")
+            .visibleWhen(() -> !"Never".equals(choice("switch"))));
+        add(new BoolSetting("silk-touch", "Silk Touch", false)
+            .group("Tool")
+            .description("Only switches to Silk Touch tools")
+            .visibleWhen(() -> !"Never".equals(choice("switch"))));
+
         add(new DoubleSetting("break-damage", "Break Damage", 1.0D, 0.5D, 1.0D, 0.05D)
+            .group("Timing")
             .description("Progress at which STOP is sent; vanilla servers accept from 0.7."));
         add(new IntSetting("post-break-delay", "Post Break Delay", 6, 0, 20, 1).unit("ticks")
+            .group("Timing")
             .description("Wait before starting the next block (vanilla waits 5)."));
-        add(new ColorSetting("color", "Color", 0x90FFFF00).group("Render"));
-        add(new ColorSetting("done-color", "Done Color", 0x9000FF00).group("Render"));
+        add(new BoolSetting("retry", "Retry", true)
+            .group("Timing")
+            .description("Mines the block again if the server did not break it; off drops it"));
+        add(new IntSetting("confirm-ticks", "Confirm Time", CONFIRM_TICKS, 2, 40, 1).unit("ticks")
+            .group("Timing")
+            .description("How long to wait for the server to remove a finished block"));
+        add(new BoolSetting("pause-while-using", "Pause While Using", true)
+            .group("Timing")
+            .description("Holds the STOP while you eat or drink so the tool swap does not cancel it")
+            .visibleWhen(() -> "On Stop".equals(choice("switch"))));
+
+        add(new BoolSetting("render", "Render", true)
+            .group("Render")
+            .description("Shows the block being mined"));
+        add(new BoolSetting("grow-box", "Grow Box", true)
+            .group("Render")
+            .description("The filled box grows as the block breaks; off fills it fully")
+            .visibleWhen(() -> bool("render")));
+        add(new ColorSetting("color", "Color", 0x90FFFF00).group("Render")
+            .description("Color while mining")
+            .visibleWhen(() -> bool("render")));
+        add(new ColorSetting("done-color", "Done Color", 0x9000FF00).group("Render")
+            .description("Color once the block is ready to break")
+            .visibleWhen(() -> bool("render")));
         instance = this;
         ModuleWorldHooks.install(this, this::draw);
     }
@@ -138,12 +179,17 @@ public final class PacketMineModule extends Module {
         if (DihBreakMath.distanceSq(MC, eyes, target, state) > range * range) return;
         face = DihBreakMath.faceToward(eyes, target);
 
-        int bestSlot = "Never".equals(choice("switch")) ? -1 : DihAutoTool.bestToolSlot(MC, state, 9, false);
+        int bestSlot = "Never".equals(choice("switch")) ? -1
+            : DihAutoTool.bestToolSlot(MC, state, 9, !bool("save-tools"), bool("silk-touch"));
         ItemStack tool = bestSlot >= 0 ? player.getInventory().getItem(bestSlot) : player.getMainHandItem();
 
         if (finished) {
             // The server should remove the block shortly; if it does not, mine it again.
-            if (++finishedTicks > CONFIRM_TICKS) {
+            if (++finishedTicks > integer("confirm-ticks")) {
+                if (!bool("retry")) {
+                    clear(false);
+                    return;
+                }
                 started = false;
                 finished = false;
             }
@@ -167,9 +213,10 @@ public final class PacketMineModule extends Module {
             finish();
             return;
         }
-        rotate(eyes);
         boolean swap = "On Stop".equals(choice("switch")) && bestSlot >= 0
             && bestSlot != player.getInventory().getSelectedSlot();
+        if (swap && bool("pause-while-using") && player.isUsingItem()) return;
+        rotate(eyes);
         if (swap) MC.getConnection().send(new ServerboundSetCarriedItemPacket(bestSlot));
         action(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK);
         swing();
@@ -230,13 +277,13 @@ public final class PacketMineModule extends Module {
 
     private void draw(LevelRenderContext context, Vec3 camera) {
         BlockPos pos = target;
-        if (pos == null) return;
+        if (pos == null || !bool("render")) return;
         double done = Math.min(1.0D, progress / Math.max(0.05D, decimal("break-damage")));
         if (finished) done = 1.0D;
         int color = ModuleWorldHooks.blend(ModuleRenderUtil.color(this, "color", 0x90FFFF00),
             ModuleRenderUtil.color(this, "done-color", 0x9000FF00), done);
         // The box grows from the centre as the block breaks.
-        double inset = 0.5D * (1.0D - (started ? done : 0.0D));
+        double inset = bool("grow-box") ? 0.5D * (1.0D - (started ? done : 0.0D)) : 0.0D;
         AABB box = new AABB(pos).deflate(Math.min(0.499D, inset)).move(camera.scale(-1.0D));
         AABB outline = new AABB(pos).move(camera.scale(-1.0D));
         context.submitNodeCollector().submitCustomGeometry(context.poseStack(), DihRenderTypes.storageEspFillSeeThrough(),

@@ -20,8 +20,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.ArrayList;
@@ -45,17 +48,72 @@ public final class NukerModule extends Module {
     public NukerModule() {
         super("nuker", "Nuker", ModuleCategory.PLAYER, "Breaks blocks around you.");
         add(new ChoiceSetting("mode", "Mode", "Legit", "Legit", "Instant")
+            .group("General")
             .description("Legit: one block at a time at normal speed. Instant: every block that breaks in one tick."));
-        add(new ChoiceSetting("area", "Area", "Sphere", "Sphere", "Flatten")
-            .description("Sphere: all around you. Flatten: only at or above your feet."));
-        add(new DoubleSetting("range", "Range", 4.5D, 1.0D, 6.0D, 0.1D).unit("blocks"));
+        add(new DoubleSetting("range", "Range", 4.5D, 1.0D, 6.0D, 0.1D).unit("blocks")
+            .group("General")
+            .description("Farthest block it breaks"));
         add(new IntSetting("per-tick", "Blocks Per Tick", 8, 1, 64, 1)
+            .group("General")
+            .description("Most blocks Instant breaks in one tick")
             .visibleWhen(() -> "Instant".equals(choice("mode"))));
-        add(new ChoiceSetting("filter", "Filter", "Off", "Off", "Whitelist", "Blacklist"));
-        add(RegistryListSetting.blocks("blocks", "Blocks").visibleWhen(() -> !"Off".equals(choice("filter"))));
-        add(new BoolSetting("rotate", "Rotate", false).description("Face each block for the server."));
-        add(new BoolSetting("pause-in-containers", "Pause In Containers", true));
-        add(new ColorSetting("color", "Color", 0x90FF5050).group("Render"));
+        add(new BoolSetting("rotate", "Rotate", false)
+            .group("General")
+            .description("Face each block for the server."));
+
+        add(new ChoiceSetting("area", "Area", "Sphere", "Sphere", "Flatten")
+            .group("Area")
+            .description("Sphere: all around you. Flatten: only at or above your feet."));
+        add(new ChoiceSetting("shape", "Shape", "Sphere", "Sphere", "Cube")
+            .group("Area")
+            .description("Round reach, or a full box out to the range"));
+        add(new IntSetting("up-limit", "Up Limit", 6, 0, 6, 1).unit("blocks")
+            .group("Area")
+            .description("How far above your feet it reaches"));
+        add(new IntSetting("down-limit", "Down Limit", 6, 0, 6, 1).unit("blocks")
+            .group("Area")
+            .description("How far below your feet it reaches")
+            .visibleWhen(() -> !"Flatten".equals(choice("area"))));
+        add(new BoolSetting("keep-floor", "Keep Floor", true)
+            .group("Area")
+            .description("Leaves the block you stand on until nothing else is left"));
+
+        add(new ChoiceSetting("sort", "Sort", "Nearest", "Nearest", "Farthest", "Top Down", "Softest")
+            .group("Targets")
+            .description("Which block it breaks first"));
+        add(new BoolSetting("through-walls", "Through Walls", true)
+            .group("Targets")
+            .description("Breaks blocks you cannot see; off needs a clear line to the block"));
+        add(new BoolSetting("avoid-liquids", "Avoid Liquids", false)
+            .group("Targets")
+            .description("Skips blocks next to water or lava so nothing floods"));
+        add(new BoolSetting("only-drops", "Only With Drops", false)
+            .group("Targets")
+            .description("Skips blocks your held tool would not get drops from"));
+        add(new ChoiceSetting("filter", "Filter", "Off", "Off", "Whitelist", "Blacklist")
+            .group("Targets")
+            .description("Limit which blocks it breaks"));
+        add(RegistryListSetting.blocks("blocks", "Blocks")
+            .group("Targets")
+            .description("Blocks the filter uses")
+            .visibleWhen(() -> !"Off".equals(choice("filter"))));
+
+        add(new BoolSetting("pause-in-containers", "Pause In Containers", true)
+            .group("Conditions")
+            .description("Stops while a chest or other container is open"));
+        add(new BoolSetting("only-on-ground", "Only On Ground", false)
+            .group("Conditions")
+            .description("Waits while you are jumping or falling"));
+        add(new BoolSetting("pause-while-using", "Pause While Using", false)
+            .group("Conditions")
+            .description("Waits while you eat, drink or block"));
+
+        add(new BoolSetting("render", "Render", true)
+            .group("Render")
+            .description("Outlines the blocks being broken"));
+        add(new ColorSetting("color", "Color", 0x90FF5050).group("Render")
+            .description("Outline color")
+            .visibleWhen(() -> bool("render")));
         instance = this;
         ModuleWorldHooks.install(this, this::draw);
     }
@@ -86,6 +144,8 @@ public final class NukerModule extends Module {
         recent.clear();
         if (player == null || MC.level == null || MC.gameMode == null || MC.getConnection() == null) return;
         if (bool("pause-in-containers") && MC.gui.screen() instanceof AbstractContainerScreen<?>) return;
+        if (bool("only-on-ground") && !player.onGround()) return;
+        if (bool("pause-while-using") && player.isUsingItem()) return;
         if ("Instant".equals(choice("mode"))) {
             tickInstant(player);
         } else {
@@ -151,8 +211,20 @@ public final class NukerModule extends Module {
                 }
             }
         }
-        out.sort(Comparator.comparingDouble(p -> Vec3.atCenterOf(p).distanceToSqr(eyes)));
-        return withoutFloor(out, player.getBoundingBox().move(0.0D, -1.0D, 0.0D));
+        out.sort(order(player, eyes));
+        return bool("keep-floor") ? withoutFloor(out, player.getBoundingBox().move(0.0D, -1.0D, 0.0D)) : out;
+    }
+
+    private Comparator<BlockPos> order(LocalPlayer player, Vec3 eyes) {
+        Comparator<BlockPos> nearest = Comparator.comparingDouble(p -> Vec3.atCenterOf(p).distanceToSqr(eyes));
+        return switch (choice("sort")) {
+            case "Farthest" -> nearest.reversed();
+            case "Top Down" -> Comparator.<BlockPos>comparingInt(p -> -p.getY()).thenComparing(nearest);
+            case "Softest" -> Comparator.<BlockPos>comparingDouble(
+                p -> -DihBreakMath.progressPerTick(MC, player, MC.level.getBlockState(p), p, player.getMainHandItem()))
+                .thenComparing(nearest);
+            default -> nearest;
+        };
     }
 
     /** Leaves out the blocks under your feet unless nothing else is left. */
@@ -167,10 +239,35 @@ public final class NukerModule extends Module {
     private boolean valid(LocalPlayer player, Vec3 eyes, BlockPos pos, BlockState state) {
         if (state.isAir() || state.getShape(MC.level, pos).isEmpty()) return false;
         if (state.getDestroySpeed(MC.level, pos) < 0.0F && !player.isCreative()) return false;
-        if ("Flatten".equals(choice("area")) && pos.getY() < player.getBlockY()) return false;
+        int feet = player.getBlockY();
+        if ("Flatten".equals(choice("area")) && pos.getY() < feet) return false;
+        if (pos.getY() > feet + integer("up-limit") || pos.getY() < feet - integer("down-limit")) return false;
         double range = decimal("range");
-        if (DihBreakMath.distanceSq(MC, eyes, pos, state) > range * range) return false;
+        if ("Cube".equals(choice("shape"))) {
+            if (Math.abs(pos.getX() + 0.5D - eyes.x) > range + 0.5D || Math.abs(pos.getY() + 0.5D - eyes.y) > range + 0.5D
+                || Math.abs(pos.getZ() + 0.5D - eyes.z) > range + 0.5D) return false;
+        } else if (DihBreakMath.distanceSq(MC, eyes, pos, state) > range * range) {
+            return false;
+        }
+        if (bool("only-drops") && !player.isCreative() && state.requiresCorrectToolForDrops()
+            && !player.hasCorrectToolForDrops(state)) return false;
+        if (bool("avoid-liquids") && nextToLiquid(pos)) return false;
+        if (!bool("through-walls") && !visible(player, eyes, pos)) return false;
         return passesFilter(BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString());
+    }
+
+    private static boolean nextToLiquid(BlockPos pos) {
+        for (Direction direction : Direction.values()) {
+            if (direction == Direction.DOWN) continue;
+            if (!MC.level.getFluidState(pos.relative(direction)).isEmpty()) return true;
+        }
+        return false;
+    }
+
+    private static boolean visible(LocalPlayer player, Vec3 eyes, BlockPos pos) {
+        BlockHitResult hit = MC.level.clip(new ClipContext(eyes, Vec3.atCenterOf(pos), ClipContext.Block.OUTLINE,
+            ClipContext.Fluid.NONE, player));
+        return hit.getType() == HitResult.Type.MISS || hit.getBlockPos().equals(pos);
     }
 
     private boolean passesFilter(String id) {
@@ -194,6 +291,7 @@ public final class NukerModule extends Module {
     }
 
     private void draw(LevelRenderContext context, Vec3 camera) {
+        if (!bool("render")) return;
         List<BlockPos> boxes = new ArrayList<>(recent);
         if (target != null && !boxes.contains(target)) boxes.add(target);
         if (boxes.isEmpty()) return;

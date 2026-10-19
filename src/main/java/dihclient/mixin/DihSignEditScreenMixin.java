@@ -95,23 +95,24 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
             }
         }
 
-        if (!empty && !autoSign.editExisting()) return;
+        boolean hanging = sign instanceof net.minecraft.world.level.block.entity.HangingSignBlockEntity;
+        if (!autoSign.shouldFill(empty, dih$front(), hanging)) return;
 
-        String[] lines = autoSign.signLines();
+        String[] lines = autoSign.fill(java.util.Arrays.copyOf(messages, messages.length));
         int maxWidth = sign == null ? 90 : sign.getMaxTextLineWidth();
         for (int i = 0; i < messages.length && i < lines.length; i++) {
             messages[i] = this.font.plainSubstrByWidth(lines[i], maxWidth);
         }
 
-        yang$autoSignDonePending = autoSign.autoDone();
+        yang$autoSignDoneTicks = autoSign.autoDone() ? autoSign.doneDelay() : -1;
     }
 
-    @Unique private boolean yang$autoSignDonePending;
+    @Unique private int yang$autoSignDoneTicks = -1;
 
     @Inject(method = "tick", at = @At("HEAD"))
     private void yang$autoSignDone(CallbackInfo ci) {
-        if (!yang$autoSignDonePending) return;
-        yang$autoSignDonePending = false;
+        if (yang$autoSignDoneTicks < 0) return;
+        if (yang$autoSignDoneTicks-- > 0) return;
         this.onClose();
     }
 
