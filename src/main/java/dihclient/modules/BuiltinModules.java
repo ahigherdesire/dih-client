@@ -213,6 +213,7 @@ public final class BuiltinModules {
         ModuleRegistry.register(new ScaffoldModule());
         ModuleRegistry.register(new NoFallModule());
         ModuleRegistry.register(new ClutchModule());
+        ModuleRegistry.register(new PearlChargeModule());
         ModuleRegistry.register(new NoInteractModule());
         ModuleRegistry.register(new AirPlaceModule());
         ModuleRegistry.register(new GhostBlockModule());

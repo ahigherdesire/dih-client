@@ -29,7 +29,8 @@ final class MovementModuleSettingsTest {
             new BuiltinModules.FlightModule(), new BuiltinModules.SpeedModule(), new BuiltinModules.SprintModule(),
             new BuiltinModules.SneakModule(), new BuiltinModules.ParkourModule(), new BuiltinModules.InvMoveModule(),
             new BuiltinModules.NoFallModule(), new AirJumpModule(), new BoatFlyModule(), new ClutchModule(),
-            new EntityControlModule(), new NoClipModule(), new SafeWalkModule(), new ScaffoldModule());
+            new PearlChargeModule(), new EntityControlModule(), new NoClipModule(), new SafeWalkModule(),
+            new ScaffoldModule());
     }
 
     @Test

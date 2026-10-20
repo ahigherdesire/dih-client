@@ -29,6 +29,7 @@
       "dihclient.gui.PaletteTourGameTest",
       "dihclient.gui.ModulePanelGameTest",
       "dihclient.modules.CombatModulesGameTest",
+      "dihclient.modules.PearlChargeGameTest",
       "dihclient.modules.AutoMaceGameTest",
       "dihclient.modules.BedwarsModulesGameTest",
       "baritone.construct.ConstructGameTest",
