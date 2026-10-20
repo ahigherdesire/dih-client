@@ -32,6 +32,7 @@
       "dihclient.modules.PearlChargeGameTest",
       "dihclient.modules.AutoMaceGameTest",
       "dihclient.modules.BedwarsModulesGameTest",
+      "dihclient.modules.ClutchWaterGameTest",
       "baritone.construct.ConstructGameTest",
       "dihclient.ai.ToolsGameTest",
       "dihclient.ai.ToolCatalogGameTest",

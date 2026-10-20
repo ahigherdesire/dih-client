@@ -24,13 +24,17 @@ import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.EmptyBlockGetter;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.EntityBlock;
 import net.minecraft.world.level.block.FallingBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.HashSet;
@@ -45,6 +49,8 @@ public final class ClutchModule extends Module {
     private static final String MODE_VOID = "Void";
     private static final String MODE_BIG_FALLS = "Big Falls";
     private static final double FALLING_SPEED = 0.08;
+    /** Vanilla fall damage starts above three blocks; below this an MLG is not worth the bucket. */
+    private static final double WATER_MIN_FALL = 3.0;
 
     private int airTicks;
     private int placedThisFall;
@@ -52,6 +58,10 @@ public final class ClutchModule extends Module {
     private int originalSlot = -1;
     private String cachedFilterRaw;
     private Set<Block> cachedFilterBlocks = Set.of();
+
+    private boolean placedWater;
+    private BlockPos placedWaterCell;
+    private int placedWaterTimer;
 
     ClutchModule() {
         super("clutch", "Clutch", ModuleCategory.MOVEMENT,
@@ -64,6 +74,16 @@ public final class ClutchModule extends Module {
             .group("General")
             .visibleWhen(() -> MODE_BIG_FALLS.equals(choice("mode")))
             .description("Clutch when no ground is within this many blocks below.").build());
+
+        add(new ChoiceSetting("clutch-with", "Clutch With",
+            ClutchDecision.BLOCKS, ClutchDecision.BLOCKS, ClutchDecision.WATER, ClutchDecision.AUTO)
+            .group("General")
+            .description("Blocks: place blocks. Water: MLG a water bucket onto the ground below. "
+                + "Auto: water when it will catch you, blocks otherwise (and in the Nether).").build());
+        add(new BoolSetting("water-pickup", "Pick Up Water", true)
+            .group("Water")
+            .visibleWhen(() -> !ClutchDecision.BLOCKS.equals(choice("clutch-with")))
+            .description("Scoop the water back into the bucket once you have landed.").build());
 
         add(new IntSetting("air-window", "Air Window", 20, 2, 100, 1)
             .group("Trigger").description("Only clutch within this many ticks of leaving the ground.").build());
@@ -99,12 +119,14 @@ public final class ClutchModule extends Module {
     public void onDisable() {
         switchBack();
         resetFall();
+        resetWater();
     }
 
     @Override
     public void onGameLeft() {
         originalSlot = -1;
         resetFall();
+        resetWater();
     }
 
     @Override
@@ -112,6 +134,9 @@ public final class ClutchModule extends Module {
         LocalPlayer player = MC.player;
         ClientLevel level = MC.level;
         if (player == null || level == null || MC.gameMode == null) return;
+
+        // Scooping the water back happens after landing, so run it before the on-ground bail-out below.
+        cleanupWater(player, level);
 
         if (player.onGround() || player.isInWater() || player.isInLava() || player.isPassenger()
             || player.getAbilities().flying || player.isFallFlying()) {
@@ -129,8 +154,24 @@ public final class ClutchModule extends Module {
         if (player.getDeltaMovement().y > -Math.max(0.0, decimal("trigger-speed"))) return;
         if (bool("only-hit") && !hitThisFall) return;
         if (placedThisFall >= integer("max-blocks")) return;
-        if (!inDanger(player, level)) return;
         if (DihBlinkManager.holdsActionsWithoutMovement()) return;
+
+        String method = choice("clutch-with");
+        if (!ClutchDecision.BLOCKS.equals(method) && !placedWater) {
+            BlockHitResult ground = !isNether(level) && waterBucketSlot(player.getInventory()) >= 0
+                ? groundWithinReach(player, level) : null;
+            boolean fallBigEnough = player.fallDistance > WATER_MIN_FALL;
+            ClutchDecision.Plan plan = ClutchDecision.plan(method, isNether(level),
+                waterBucketSlot(player.getInventory()) >= 0, fallBigEnough, ground != null);
+            if (plan == ClutchDecision.Plan.WATER) {
+                placeWater(player, ground);
+                return;
+            }
+            if (plan == ClutchDecision.Plan.WAIT) return;
+            // plan == BLOCKS: fall through to the block clutch below.
+        }
+
+        if (!inDanger(player, level)) return;
 
         int slot = blockSlot(player.getInventory());
         if (slot < 0) return;
@@ -288,6 +329,110 @@ public final class ClutchModule extends Module {
         airTicks = 0;
         placedThisFall = 0;
         hitThisFall = false;
+    }
+
+    private void resetWater() {
+        placedWater = false;
+        placedWaterCell = null;
+        placedWaterTimer = 0;
+    }
+
+    private static boolean isNether(ClientLevel level) {
+        return "the_nether".equals(level.dimension().identifier().getPath());
+    }
+
+    /** First solid block straight below whose top face is within block reach, or null when none is close. */
+    private BlockHitResult groundWithinReach(LocalPlayer player, ClientLevel level) {
+        double reach = player.blockInteractionRange();
+        Vec3 from = player.position();
+        Vec3 to = from.subtract(0.0, reach + 1.0, 0.0);
+        BlockHitResult ray = level.clip(new ClipContext(from, to,
+            ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));
+        if (ray == null || ray.getType() != HitResult.Type.BLOCK) return null;
+        BlockPos ground = ray.getBlockPos();
+        if (!level.getBlockState(ground.above()).canBeReplaced()) return null;
+        Vec3 topFace = Vec3.atCenterOf(ground).add(0.0, 0.5, 0.0);
+        if (player.getEyePosition().distanceToSqr(topFace) > reach * reach) return null;
+        return new BlockHitResult(topFace, Direction.UP, ground, false);
+    }
+
+    /** Puts a water source in the cell above the ground block, so you drop into it instead of the floor. */
+    private void placeWater(LocalPlayer player, BlockHitResult ground) {
+        if (ground == null) return;
+        int slot = waterBucketSlot(player.getInventory());
+        if (slot < 0) return;
+        if (!DihHandArbiter.beginHandPacketGroup(id())) return;
+        try {
+            if (!DihPlacementTick.claim(id())) return;
+            int selected = player.getInventory().getSelectedSlot();
+            if (slot != selected) {
+                if (originalSlot < 0) originalSlot = selected;
+                DihInventoryHelper.selectHotbarSlot(MC, slot);
+            }
+            if (bool("rotate")) {
+                DihRotationUtil.Rotation look = DihRotationUtil.lookingAt(ground.getLocation(), player.getEyePosition());
+                player.setYRot(look.yaw());
+                player.setXRot(look.pitch());
+            }
+            InteractionResult result = MC.gameMode.useItem(player, InteractionHand.MAIN_HAND);
+            if (result instanceof InteractionResult.Success) {
+                placedWater = true;
+                placedWaterCell = ground.getBlockPos().above();
+                placedWaterTimer = 0;
+                placedThisFall++;
+            }
+        } finally {
+            DihHandArbiter.endHandPacketGroup(id());
+        }
+    }
+
+    /** After landing, scoops the water back up (reusing the bucket) once you are standing in it. */
+    private void cleanupWater(LocalPlayer player, ClientLevel level) {
+        if (!placedWater || placedWaterCell == null) return;
+        if (!bool("water-pickup") || ++placedWaterTimer > 40) {
+            resetWater();
+            return;
+        }
+        boolean insideWater = player.getInBlockState().is(Blocks.WATER);
+        if (!insideWater && player.fallDistance > 0.0f) return;
+        int bucket = emptyBucketSlot(player.getInventory());
+        if (bucket < 0) {
+            resetWater();
+            return;
+        }
+        if (!DihHandArbiter.beginHandPacketGroup(id())) return;
+        try {
+            if (!DihPlacementTick.claim(id())) return;
+            int selected = player.getInventory().getSelectedSlot();
+            if (bucket != selected) {
+                if (originalSlot < 0) originalSlot = selected;
+                DihInventoryHelper.selectHotbarSlot(MC, bucket);
+            }
+            Vec3 target = Vec3.atCenterOf(placedWaterCell);
+            DihRotationUtil.Rotation look = DihRotationUtil.lookingAt(target, player.getEyePosition());
+            player.setYRot(look.yaw());
+            player.setXRot(look.pitch());
+            MC.gameMode.useItem(player, InteractionHand.MAIN_HAND);
+            resetWater();
+        } finally {
+            DihHandArbiter.endHandPacketGroup(id());
+        }
+    }
+
+    private int waterBucketSlot(Inventory inventory) {
+        for (int slot = 0; slot < 9; slot++) {
+            if (DihHandArbiter.slotReserved(slot, id())) continue;
+            if (inventory.getItem(slot).is(Items.WATER_BUCKET)) return slot;
+        }
+        return -1;
+    }
+
+    private int emptyBucketSlot(Inventory inventory) {
+        for (int slot = 0; slot < 9; slot++) {
+            if (DihHandArbiter.slotReserved(slot, id())) continue;
+            if (inventory.getItem(slot).is(Items.BUCKET)) return slot;
+        }
+        return -1;
     }
 
     private record Placement(BlockPos cell, BlockHitResult hit) {

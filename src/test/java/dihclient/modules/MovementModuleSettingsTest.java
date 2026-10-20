@@ -72,6 +72,7 @@ final class MovementModuleSettingsTest {
         Module clutch = new ClutchModule();
         assertTrue("0.08".equals(clutch.value("trigger-speed")));
         assertTrue("2".equals(clutch.value("search-radius")));
+        assertTrue("Blocks".equals(clutch.value("clutch-with")), "Clutch keeps placing blocks by default");
 
         Module scaffold = new ScaffoldModule();
         assertTrue("true".equals(scaffold.value("auto-switch")));
