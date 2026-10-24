@@ -178,10 +178,10 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
             return false;
         }
         IStaticSchematic parsed;
-        try {
-            parsed = format.get().parse(new FileInputStream(schematic));
+        try (FileInputStream in = new FileInputStream(schematic)) {
+            parsed = format.get().parse(in);
         } catch (Exception e) {
-            e.printStackTrace();
+            logDirect(e.getMessage() != null ? e.getMessage() : e.toString());
             return false;
         }
         ISchematic schem = applyMapArtAndSelection(origin, parsed);

@@ -19,12 +19,6 @@ package baritone.utils.schematic.format;
 
 import baritone.api.schematic.IStaticSchematic;
 import baritone.api.schematic.format.ISchematicFormat;
-import baritone.utils.schematic.format.defaults.LitematicaSchematic;
-import baritone.utils.schematic.format.defaults.MCEditSchematic;
-import baritone.utils.schematic.format.defaults.SpongeSchematic;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.NbtAccounter;
-import net.minecraft.nbt.NbtIo;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.File;
@@ -34,7 +28,8 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Default implementations of {@link ISchematicFormat}
+ * Default implementations of {@link ISchematicFormat}. Each reads through {@link SchematicLoader}, which tells the
+ * format from the file's contents, so the extension only picks which files are offered.
  *
  * @author Brady
  * @since 12/13/2019
@@ -44,59 +39,34 @@ public enum DefaultSchematicFormats implements ISchematicFormat {
     /**
      * The MCEdit schematic specification. Commonly denoted by the ".schematic" file extension.
      */
-    MCEDIT("schematic") {
-        @Override
-        public IStaticSchematic parse(InputStream input) throws IOException {
-            return new MCEditSchematic(NbtIo.readCompressed(input, NbtAccounter.unlimitedHeap()));
-        }
-    },
+    MCEDIT("schematic"),
 
     /**
      * The SpongePowered Schematic Specification. Commonly denoted by the ".schem" file extension.
      *
      * @see <a href="https://github.com/SpongePowered/Schematic-Specification">Sponge Schematic Specification</a>
      */
-    SPONGE("schem") {
-        @Override
-        public IStaticSchematic parse(InputStream input) throws IOException {
-            CompoundTag nbt = NbtIo.readCompressed(input, NbtAccounter.unlimitedHeap());
-            int version = nbt.getInt("Version").orElse(-1);
-            switch (version) {
-                case 1:
-                case 2:
-                    return new SpongeSchematic(nbt);
-                default:
-                    throw new UnsupportedOperationException("Unsupported Version of a Sponge Schematic");
-            }
-        }
-    },
+    SPONGE("schem"),
 
     /**
      * The Litematica schematic specification. Commonly denoted by the ".litematic" file extension.
      */
-    LITEMATICA("litematic") {
-        @Override
-        public IStaticSchematic parse(InputStream input) throws IOException {
-            CompoundTag nbt = NbtIo.readCompressed(input, NbtAccounter.unlimitedHeap());
-            int version = nbt.getInt("Version").orElse(-1);
-            switch (version) {
-                case 4: //1.12
-                case 5: //1.13-1.17
-                    throw new UnsupportedOperationException("This litematic Version is too old.");
-                case 6: //1.18-1.20
-                    throw new UnsupportedOperationException("This litematic Version is too old.");
-                case 7: //1.21+
-                    return new LitematicaSchematic(nbt);
-                default:
-                    throw new UnsupportedOperationException("Unsuported Version of a Litematica Schematic");
-            }
-        }
-    };
+    LITEMATICA("litematic"),
+
+    /**
+     * Vanilla structure block files, ".nbt".
+     */
+    STRUCTURE("nbt");
 
     private final String extension;
 
     DefaultSchematicFormats(String extension) {
         this.extension = extension;
+    }
+
+    @Override
+    public IStaticSchematic parse(InputStream input) throws IOException {
+        return SchematicLoader.load(input, "schematic." + this.extension);
     }
 
     @Override
