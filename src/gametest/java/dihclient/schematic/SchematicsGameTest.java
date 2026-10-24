@@ -99,6 +99,13 @@ public final class SchematicsGameTest implements FabricClientGameTest {
                     }
                 }
                 context.takeScreenshot("schematic-overlay");
+                context.setScreen(() -> new dihclient.gui.screen.DihSchematicsScreen(null));
+                context.waitTicks(5);
+                context.takeScreenshot("schematics-screen");
+                context.setScreen(() -> new dihclient.gui.screen.DihSchematicPlacementScreen(placement, null));
+                context.waitTicks(5);
+                context.takeScreenshot("schematic-placement-screen");
+                context.setScreen(() -> null);
 
                 // a block placed later moves from missing to right once the server's update arrives
                 setBlock(world, origin.offset(2, 0, 0), "minecraft:cobblestone");
