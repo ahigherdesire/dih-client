@@ -81,6 +81,7 @@ public final class DihClientMod implements ClientModInitializer {
         dihclient.util.DihBaritonePathRenderer.initialize();
 
         dihclient.modules.HoleEspModule.initialize();
+        dihclient.modules.SchematicsModule.initialize();
         DihFemaleBodyRenderer.initialize();
         dihclient.commands.DihCommands.init();
 
@@ -193,9 +194,11 @@ public final class DihClientMod implements ClientModInitializer {
             runSafe("join.macroEditor", dihclient.util.DihMacroEditorOverlay::onPlayJoin);
             runSafe("join.updateNotice", dihclient.util.DihUpdateChecker::announceOnJoin);
             runSafe("join.acquireKnowledge", baritone.acquire.knowledge.VanillaKnowledge::preload);
+            runSafe("join.schematics", () -> dihclient.schematic.Schematics.get().tick(client));
         });
         DihPlatform.onPlayDisconnect(() -> {
             runSafe("leave.seedMap", baritone.command.defaults.SeedMapCommand::onDisconnect);
+            runSafe("leave.schematics", () -> dihclient.schematic.Schematics.get().leave());
             runSafe("leave.remoteView", () -> dihclient.util.DihRemoteView.stop(false));
             runSafe("leave.persist", dihclient.util.DihConfig::enqueuePendingSaveNow);
             runSafe("leave.stopMacro", () -> {

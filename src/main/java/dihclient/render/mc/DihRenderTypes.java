@@ -169,6 +169,63 @@ public final class DihRenderTypes {
             .createRenderSetup()
     );
 
+    /** Pulls schematic overlays just in front of the block faces they sit on, as the crumbling overlay does. */
+    private static final DepthStencilState SCHEMATIC_DEPTH = new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false, 1.0F, 10.0F);
+
+    private static final RenderPipeline SCHEMATIC_GHOST_PIPELINE = copyLayouts(RenderPipeline.builder(), RenderPipelines.GUI_TEXTURED)
+        .withLocation(Identifier.fromNamespaceAndPath("dihclient", "pipeline/schematic_ghost"))
+        .withVertexShader("core/position_tex_color")
+        .withFragmentShader("core/position_tex_color")
+        .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+        .withCull(false)
+        .withVertexBinding(0, DefaultVertexFormat.POSITION_TEX_COLOR)
+        .withPrimitiveTopology(PrimitiveTopology.QUADS)
+        .withDepthStencilState(SCHEMATIC_DEPTH)
+        .build();
+
+    private static final RenderType SCHEMATIC_GHOST = RenderType.create(
+        "dih_schematic_ghost",
+        RenderSetup.builder(SCHEMATIC_GHOST_PIPELINE)
+            .withTexture("Sampler0", Sheets.BLOCKS_MAPPER.sheet(),
+                () -> RenderSystem.getSamplerCache().getSampler(
+                    AddressMode.CLAMP_TO_EDGE, AddressMode.CLAMP_TO_EDGE,
+                    FilterMode.LINEAR, FilterMode.NEAREST, true))
+            .sortOnUpload()
+            .createRenderSetup()
+    );
+
+    private static final RenderPipeline SCHEMATIC_FILL_PIPELINE = copyLayouts(RenderPipeline.builder(), RenderPipelines.DEBUG_FILLED_BOX)
+        .withLocation(Identifier.fromNamespaceAndPath("dihclient", "pipeline/schematic_fill"))
+        .withVertexShader("core/position_color")
+        .withFragmentShader("core/position_color")
+        .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+        .withCull(false)
+        .withVertexBinding(0, DefaultVertexFormat.POSITION_COLOR)
+        .withPrimitiveTopology(PrimitiveTopology.QUADS)
+        .withDepthStencilState(SCHEMATIC_DEPTH)
+        .build();
+
+    private static final RenderType SCHEMATIC_FILL = RenderType.create(
+        "dih_schematic_fill",
+        RenderSetup.builder(SCHEMATIC_FILL_PIPELINE).sortOnUpload().createRenderSetup()
+    );
+
+    private static final RenderPipeline SCHEMATIC_LINES_PIPELINE = copyLayouts(RenderPipeline.builder(), RenderPipelines.LINES)
+        .withLocation(Identifier.fromNamespaceAndPath("dihclient", "pipeline/schematic_lines"))
+        .withVertexShader("core/rendertype_lines")
+        .withFragmentShader("core/rendertype_lines")
+        .withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))
+        .withCull(false)
+        .withVertexBinding(0, DefaultVertexFormat.POSITION_COLOR_NORMAL_LINE_WIDTH)
+        .withPrimitiveTopology(PrimitiveTopology.LINES)
+        .withDepthStencilState(SCHEMATIC_DEPTH)
+        .build();
+
+    private static final RenderType SCHEMATIC_LINES = RenderType.create(
+        "dih_schematic_lines",
+        RenderSetup.builder(SCHEMATIC_LINES_PIPELINE).createRenderSetup()
+    );
+
     private static final Function<Identifier, RenderType> FEMALE_BODY_TRANSLUCENT_CULL = Util.memoize(
         (Function<Identifier, RenderType>) texture -> RenderType.create(
             "dih_female_body_translucent_cull",
@@ -214,6 +271,19 @@ public final class DihRenderTypes {
 
     public static RenderType oreGhostSeeThrough() {
         return ORE_GHOST;
+    }
+
+    /** Schematic ghost blocks: block-atlas textured, translucent, hidden behind real blocks. */
+    public static RenderType schematicGhost() {
+        return SCHEMATIC_GHOST;
+    }
+
+    public static RenderType schematicFill() {
+        return SCHEMATIC_FILL;
+    }
+
+    public static RenderType schematicLines() {
+        return SCHEMATIC_LINES;
     }
 
     public static RenderType femaleBodyTranslucentCull(Identifier texture) {

@@ -105,6 +105,7 @@ public final class ModuleEspChunkCache {
     }
 
     public static void onPacketReceived(Packet<?> packet) {
+        SchematicOverlayRenderer.onPacketReceived(packet);
         if (BLOCK_ESP.chunks.isEmpty() && STORAGE_BE.chunks.isEmpty() && BARRIER_ESP.chunks.isEmpty()
             && SPAWNER_ESP.chunks.isEmpty() && XRAY_ESP.chunks.isEmpty()) return;
         if (packet instanceof ClientboundBlockUpdatePacket update) {

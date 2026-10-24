@@ -34,6 +34,7 @@
       "dihclient.modules.BedwarsModulesGameTest",
       "dihclient.modules.ClutchWaterGameTest",
       "baritone.construct.ConstructGameTest",
+      "dihclient.schematic.SchematicsGameTest",
       "dihclient.ai.ToolsGameTest",
       "dihclient.ai.ToolCatalogGameTest",
       "dihclient.ai.AiRunGameTest",

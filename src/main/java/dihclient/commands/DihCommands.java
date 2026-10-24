@@ -79,6 +79,7 @@ public final class DihCommands {
             register(new dihclient.commands.impl.GhostBlockCommand());
             register(new dihclient.commands.impl.FriendCommand());
             register(new dihclient.commands.impl.WaypointsCommand());
+            register(new dihclient.commands.impl.SchematicCommand());
             register(new dihclient.commands.impl.GamemodeCommand());
             register(new dihclient.commands.impl.FakeGmCommand());
             register(new dihclient.commands.impl.XCarryCommand());

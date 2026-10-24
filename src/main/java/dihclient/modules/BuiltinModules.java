@@ -247,6 +247,7 @@ public final class BuiltinModules {
         ModuleRegistry.register(new StorageEspModule());
         ModuleRegistry.register(new BlockEspModule());
         ModuleRegistry.register(new HoleEspModule());
+        ModuleRegistry.register(new SchematicsModule());
         ModuleRegistry.register(new NoRenderModule());
         ModuleRegistry.register(new XCarryModule());
         ModuleRegistry.register(new HudModule());
