@@ -57,6 +57,10 @@ public class SchematicCommand extends Command {
                     .executes(ctx -> place(StringArgumentType.getString(ctx, "file"), null))
                     .then(coordinates(ctx -> place(StringArgumentType.getString(ctx, "file"), position(ctx))))));
         }
+        root.then(literal("open").executes(ctx -> openLater(() -> dihclient.schematic.SchematicDrop.pick(Minecraft.getInstance()))));
+        root.then(literal("import")
+            .then(RequiredArgumentBuilder.<DihCommandSource, String>argument("path", StringArgumentType.greedyString())
+                .executes(ctx -> importAndPlace(StringArgumentType.getString(ctx, "path")))));
         root.then(literal("select")
             .then(placementArgument().executes(ctx -> withPlacement(ctx, p -> {
                 Schematics.get().select(p);
@@ -164,6 +168,9 @@ public class SchematicCommand extends Command {
         say("§eSchematics §7(files in §f" + Schematics.folder() + "§7)");
         say("§7" + p + "list §8- §7files you can place");
         say("§7" + p + "place <file> [x y z] §8- §7place one at you or at a position");
+        say("§7" + p + "open §8- §7pick a file from anywhere on your PC and place it");
+        say("§7" + p + "import <path> §8- §7the same with a typed path (or a name in Downloads)");
+        say("§7Or drag a file onto the game window to place it.");
         say("§7" + p + "placements / select <n> / info §8- §7your placements here");
         say("§7" + p + "move <x y z> / here / nudge <dx dy dz> / adjust §8- §7move the selected one");
         say("§7" + p + "rotate [quarters] / mirror [none|x|z] §8- §7turn it");
@@ -178,7 +185,8 @@ public class SchematicCommand extends Command {
     private static int listFiles() {
         List<String> files = Schematics.files();
         if (files.isEmpty()) {
-            say("§7No schematic files in §f" + Schematics.folder());
+            say("§7No schematic files in §f" + Schematics.folder() + "§7. Pick one with §f"
+                + DihCommands.effectivePrefix() + "schem open§7 or drag one onto the game window.");
             return SUCCESS;
         }
         say("§eSchematic files §7(" + files.size() + "):");
@@ -214,6 +222,39 @@ public class SchematicCommand extends Command {
             say("§c" + e.getMessage());
         }
         return SUCCESS;
+    }
+
+    /**
+     * Copies a file from anywhere (a pasted Windows path, quoted or not, or a name in Downloads) into the schematics
+     * folder and places it.
+     */
+    private static int importAndPlace(String typed) {
+        String raw = typed.strip();
+        if (raw.length() >= 2 && raw.startsWith("\"") && raw.endsWith("\"")) {
+            raw = raw.substring(1, raw.length() - 1);
+        }
+        java.nio.file.Path path;
+        try {
+            path = java.nio.file.Path.of(raw);
+            if (!path.isAbsolute()) {
+                path = dihclient.schematic.SchematicFiles.downloadsFolder().resolve(raw);
+            }
+        } catch (java.nio.file.InvalidPathException e) {
+            say("§cNot a file path: " + raw);
+            return SUCCESS;
+        }
+        if (!dihclient.schematic.SchematicFiles.isSchematic(path)) {
+            say("§cNo .litematic, .schematic, .schem or .nbt file at §f" + path);
+            return SUCCESS;
+        }
+        try {
+            String file = Schematics.importFile(path);
+            say("§7Copied into §f" + Schematics.folder() + "§7 as §f" + file);
+            return place(file, null);
+        } catch (IllegalArgumentException e) {
+            say("§c" + e.getMessage());
+            return SUCCESS;
+        }
     }
 
     private static int withPlacement(CommandContext<DihCommandSource> ctx, Consumer<SchematicPlacement> action) {

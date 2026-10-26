@@ -31,7 +31,7 @@ public final class SchematicsModule extends Module {
 
     private int cachedRevision = -1;
     private SchematicOverlayRenderer.Style style;
-    private final boolean[] keyWasDown = new boolean[4];
+    private final boolean[] keyWasDown = new boolean[5];
 
     public SchematicsModule() {
         super("schematics", "Schematics", ModuleCategory.RENDER,
@@ -66,6 +66,8 @@ public final class SchematicsModule extends Module {
 
         add(new KeybindSetting("menu-key", "Menu Key", -1)
             .group("Keys").description("Opens the Schematics screen.").build());
+        add(new KeybindSetting("open-key", "Open File Key", -1)
+            .group("Keys").description("Picks a schematic file from anywhere on your computer and places it.").build());
         add(new KeybindSetting("adjust-key", "Adjust Key", -1)
             .group("Keys").description("Moves the selected placement with the mouse.").build());
         add(new KeybindSetting("rotate-key", "Rotate Key", -1)
@@ -124,6 +126,7 @@ public final class SchematicsModule extends Module {
                 Schematics.get().changed();
             }
         });
+        key(4, "open-key", () -> dihclient.schematic.SchematicDrop.pick(MC));
         key(3, "mirror-key", () -> {
             SchematicPlacement selected = selectedOrSay();
             if (selected != null) {

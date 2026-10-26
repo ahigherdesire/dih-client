@@ -66,6 +66,25 @@ public abstract class DihMouseHandlerMixin {
         else if (b == InputConstants.MOUSE_BUTTON_RIGHT) DihCpsTracker.recordRight();
     }
 
+    @Inject(method = "onDrop", at = @At("HEAD"), cancellable = true)
+    //? if >=26.3 {
+    /*private void dih$dropSchematics(long window, java.util.List<String> names, CallbackInfo ci) {
+        java.util.List<java.nio.file.Path> paths = new java.util.ArrayList<>();
+        for (String name : names) {
+            try {
+                paths.add(java.nio.file.Path.of(name));
+            } catch (java.nio.file.InvalidPathException e) {
+                return;
+            }
+        }
+    *///?} else {
+    private void dih$dropSchematics(long window, java.util.List<java.nio.file.Path> paths, int failed, CallbackInfo ci) {
+    //?}
+        if (minecraft != null && dihclient.schematic.SchematicDrop.handle(minecraft, paths)) {
+            ci.cancel();
+        }
+    }
+
     @Inject(method = "onScroll", at = @At("HEAD"), cancellable = true)
     private void dih$freecamScrollSpeed(long window, double xOffset, double yOffset, CallbackInfo ci) {
 

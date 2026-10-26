@@ -98,6 +98,27 @@ public final class Schematics {
     }
 
     /**
+     * @return the newest schematic files in the Downloads folder, so a file just downloaded can be placed without
+     *     moving it first
+     */
+    public static List<Path> downloads() {
+        return SchematicFiles.newest(SchematicFiles.downloadsFolder(), 20);
+    }
+
+    /**
+     * Copies a schematic from anywhere into the schematics folder (see {@link SchematicFiles#importInto}).
+     *
+     * @return its path relative to the folder, ready for {@link #place}
+     */
+    public static String importFile(Path source) {
+        try {
+            return SchematicFiles.importInto(folder().toPath(), source);
+        } catch (IOException | RuntimeException e) {
+            throw new IllegalArgumentException("Couldn't copy " + source.getFileName() + " into " + folder() + ": " + e.getMessage());
+        }
+    }
+
+    /**
      * @return the file for a path relative to the schematics folder, or null if it would leave the folder
      */
     public static File resolve(String relative) {
