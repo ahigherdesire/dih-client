@@ -749,10 +749,7 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
         }
         if (toBreak.isEmpty()) {
             if (logMissing && !missing.isEmpty()) {
-                logDirect("Missing materials for at least:");
-                logDirect(missing.entrySet().stream()
-                        .map(e -> String.format("%sx %s", e.getValue(), e.getKey()))
-                        .collect(Collectors.joining("\n")));
+                logMissing(missing);
             }
             if (logMissing && !flowingLiquids.isEmpty()) {
                 logDirect("Unreplaceable liquids at at least:");
@@ -763,6 +760,29 @@ public final class BuilderProcess extends BaritoneProcessHelper implements IBuil
             return null;
         }
         return new GoalComposite(toBreak.toArray(new Goal[0]));
+    }
+
+    private static final int MISSING_LINES = 10;
+
+    /**
+     * Lists what ran out, one block per line with the count still to place (block states of one block are added up),
+     * most needed first.
+     */
+    private void logMissing(Map<BlockState, Integer> missing) {
+        Map<Block, Integer> byBlock = new HashMap<>();
+        missing.forEach((state, count) -> byBlock.merge(state.getBlock(), count, Integer::sum));
+        List<Map.Entry<Block, Integer>> lines = byBlock.entrySet().stream()
+                .sorted(Map.Entry.<Block, Integer>comparingByValue().reversed())
+                .toList();
+        logDirect("Out of materials. Still to place, at least:");
+        for (int i = 0; i < Math.min(MISSING_LINES, lines.size()); i++) {
+            Map.Entry<Block, Integer> line = lines.get(i);
+            logDirect(line.getValue() + "x " + line.getKey().getName().getString());
+        }
+        if (lines.size() > MISSING_LINES) {
+            logDirect("... and " + (lines.size() - MISSING_LINES) + " more blocks");
+        }
+        logDirect("Put them in your inventory (not in shulker boxes), then #resume.");
     }
 
     public static class JankyGoalComposite implements Goal {

@@ -2,6 +2,8 @@ package dihclient.schematic;
 
 import baritone.api.BaritoneAPI;
 import baritone.api.IBaritone;
+import baritone.api.Settings;
+import baritone.api.utils.SettingsUtil;
 import baritone.utils.schematic.LoadedSchematic;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
@@ -130,11 +132,19 @@ public final class SchematicActions {
         if (!p.isLoaded()) {
             return p.error().isEmpty() ? p.name() + " is still loading" : p.name() + " is not loaded: " + p.error();
         }
+        // Without allowInventory Baritone only places what is already on the hotbar.
+        Settings settings = BaritoneAPI.getSettings();
+        String inventory = "";
+        if (!settings.allowInventory.value) {
+            settings.allowInventory.value = true;
+            SettingsUtil.save(settings);
+            inventory = "; turned on #allowInventory so it uses your whole inventory";
+        }
         IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
         PlacementBuildSchematic schematic = new PlacementBuildSchematic(p);
         baritone.getBuilderProcess().build(p.name(), schematic, schematic.origin());
         BlockPos o = schematic.origin();
-        return "Building " + p.name() + " from " + o.getX() + " " + o.getY() + " " + o.getZ() + " (#stop to stop; if"
-            + " Baritone pauses on stairs or other turned blocks, #buildIgnoreDirection true lets it place them)";
+        return "Building " + p.name() + " from " + o.getX() + " " + o.getY() + " " + o.getZ() + " (#stop to stop" + inventory
+            + "; if Baritone pauses on stairs or other turned blocks, #buildIgnoreDirection true lets it place them)";
     }
 }
