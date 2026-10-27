@@ -21,6 +21,7 @@
       bare: name.slice(1).toLowerCase(),
       aliases: aliases,
       bareAliases: aliases.map(function (a) { return a.slice(1).toLowerCase(); }),
+      beta: el.hasAttribute('data-beta'),
       summary: sum ? sum.textContent : '',
       summaryLow: sum ? sum.textContent.toLowerCase() : '',
       body: el.textContent.toLowerCase()
@@ -82,7 +83,8 @@
     none.hidden = !searching || results.length > 0;
     input.setAttribute('aria-expanded', String(searching && results.length > 0));
     hits.innerHTML = results.map(function (e, i) {
-      var also = e.aliases.length ? '<small>' + esc(e.aliases.join(' ')) + '</small>' : '';
+      var also = (e.beta ? '<span class="beta-tag">beta</span>' : '')
+        + (e.aliases.length ? '<small>' + esc(e.aliases.join(' ')) + '</small>' : '');
       return '<li role="presentation"><a role="option" id="hit-' + i + '" href="#' + e.id + '"'
         + (i === active ? ' aria-selected="true"' : '') + '>'
         + '<span class="hit-name"><span>' + markName(e.name, bare) + '</span>' + also + '</span>'

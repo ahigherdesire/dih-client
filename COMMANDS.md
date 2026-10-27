@@ -43,8 +43,14 @@ Examples use the default `.` prefix. Swap in yours if you changed it.
 ### Lite builds and addons
 
 Lite builds leave out `setting`, `irc`, `matchmaking`, `multi`, `toggle`, `modules`, `oresim`, `ghostblock`,
-`friend`, `waypoints`, `gamemode`, `fakegm`, `xcarry`, `rv` and `namescrape`. Addons can add their own `.`
-commands; one whose name is already taken shows up as `<addon>:<name>`.
+`friend`, `waypoints`, `gamemode`, `fakegm`, `xcarry`, `rv` and `namescrape`, and in the beta also `schem`,
+`invsee`, `tools` and `ai`. Addons can add their own `.` commands; one whose name is already taken shows up as
+`<addon>:<name>`.
+
+### Beta commands
+
+Commands marked **Beta** are in the 5.1 beta builds and not in 5.0.1 stable. The beta download is on the website
+and on [GitHub releases](https://github.com/ahigherdesire/dih-client/releases). Everything else works in both.
 
 ### Same name, different command
 
@@ -56,6 +62,7 @@ The two systems are separate, so these pairs do different things.
 | `.set` changes a module setting. | `#set` changes a Baritone setting. |
 | `.gui` saves, desyncs and reloads container screens. | `#gui` is `#menu`, which reads and clicks plugin GUIs. |
 | `.help` lists client commands. | `#help` lists pathfinder commands. |
+| `.ai` (beta) gives the AI an objective it works through with its tools. | `#ai` sets up the chat AI that plays through Baritone commands. |
 
 Two `#` aliases also point somewhere other than their help text says. `#flee` opens the Flee trigger system, so
 use `#runaway` or `#escape` to run away. `#s` opens `#sel`, so use `#search` or `#blocks` to search.
@@ -229,6 +236,114 @@ Run macros, loop them, or build them from chat. Macros are saved in `config/dih/
 ```
 
 While you pilot a Multi bot, `.macro` runs, loops and stops on that bot instead of you.
+
+### Schematics
+
+#### .schem
+
+Aliases: `.schematic`, `.schematics`
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Load schematic files, place them in the world, see what is still to build, and let Baritone build them. Works like a built-in Litematica.
+
+It reads `.litematic`, `.schematic` (MCEdit, Schematica and WorldEdit), `.schem` (Sponge v1 to v3) and vanilla `.nbt`
+files. Files live in `.minecraft/schematics`. You don't need the Litematica mod; if you have it, its placements stay
+separate and `#litematica` still builds those.
+
+##### Get a file in
+
+| Usage | Effect |
+|---|---|
+| `.schem menu` | Open the Schematics screen: your files on the left, this world's placements on the right. The module's Menu Key does the same. |
+| `.schem open` | Pick a file from anywhere with your system's file picker, starting in Downloads. The module's Open File Key does the same. |
+| `.schem import <path>` | The same with a typed path, quotes and backslashes allowed, or a file name in Downloads. |
+| `.schem list` | List the files in the schematics folder. |
+| `.schem place <file> [x y z]` | Place a file from the folder in front of you, or at a position. `.schem load` is the same. |
+
+You can also drag files onto the game window. One file is placed straight away; several open the Schematics screen.
+The screen also lists your 20 newest schematic downloads, tagged "Downloads". Picked and dropped files are copied into
+the schematics folder, and nothing there is overwritten: a different file with the same name becomes `name (2).litematic`.
+
+##### Place it
+
+A new placement goes four blocks in front of you and you are straight back in the game with the camera free. Until you
+keep it, these keys move it, and a panel at the top of the screen lists them:
+
+| Key | Does |
+|---|---|
+| Arrow keys | Move it forward, back, left or right, relative to where you face. Hold to repeat. |
+| Page Up / Page Down | Move it up or down. |
+| R | Turn it 90° clockwise. |
+| M | Mirror it (none, then x, then z). |
+| G | Drop it onto the ground at its column. |
+| Enter | Keep it where it is. |
+| Backspace | Remove it. |
+
+The keys only do this while a new placement is being placed and no screen is open, so they never clash with the game
+otherwise. If another mod also uses R, M or G, it may react too while you place.
+
+##### Move it later
+
+| Usage | Effect |
+|---|---|
+| `.schem adjust` | Open the mouse placement screen: right-click or drag puts it where you point, the wheel turns it, Shift + wheel pushes it nearer or farther, middle-drag looks around, left-click keeps it and Esc puts it back. The **Move** button and the Adjust Key open it too. |
+| `.schem move <x y z>` | Put its corner at those coordinates. |
+| `.schem here` | Put its corner where you stand. |
+| `.schem nudge <dx dy dz>` | Shift it by that many blocks. |
+| `.schem rotate [quarters]` | Turn it 90° clockwise, or by -3 to 3 quarter turns. The Rotate Key does one turn. |
+| `.schem mirror [none\|x\|z]` | Cycle the mirror, or set it. The Mirror Key cycles it. |
+
+These act on the selected placement: the last one you placed or picked.
+
+##### Remove it or hide it
+
+| Usage | Effect |
+|---|---|
+| `.schem remove` | Remove the selected placement from the world. |
+| `.schem remove <n>` | Remove placement `n`, by its number in `.schem placements` or the start of its name. |
+| `.schem remove all` | Remove every placement in this world. |
+| `.schem hide [n]` | Stop drawing it but keep it, with its position and turn. `.schem show [n]` brings it back. |
+| Schematics screen | Click the placement on the right, then **Remove** or **Show / Hide**. |
+| Backspace | Removes a placement you haven't kept yet. |
+
+Removing only takes the placement out of the world; the file stays in the schematics folder. To hide every placement at
+once without losing them, turn the Schematics module off, for example with `.toggle schematics`.
+
+##### See what it needs
+
+| Usage | Effect |
+|---|---|
+| `.schem materials [n]` | The first items still needed, in chat, against your inventory. |
+| **Materials** | In the Schematics screen: the whole list as a table with Total, Have and Missing, biggest shortfall first. It updates every 2 seconds, scrolls, and **Missing only** hides what you have enough of. |
+| `.schem materials csv [n]` | Save the list to `.minecraft/schematics/materials/<name>-materials.csv` for a spreadsheet, with item, name, needed, have and missing. **Save CSV** in the screen does the same. Saving again replaces the file. |
+| `.schem verify [n]` | Count the blocks that are right, missing, the wrong block, the wrong state or extra, in loaded chunks. |
+
+In the world, the overlay tints blocks that aren't right: blue missing, red the wrong block, orange the right block
+turned wrong, pink an extra block. Blocks in shulker boxes or chests don't count as yours.
+
+##### Build it
+
+| Usage | Effect |
+|---|---|
+| `.schem build [n]` | Hand the placement to Baritone's builder, the one `#build` uses. **Build** in the screen does the same. |
+
+It turns on `#allowInventory` so blocks anywhere in your inventory get used, and it pauses when a block runs out, then
+lists what is still to place. Get those and type `#resume`. If it stops on stairs or other turned blocks,
+`#buildIgnoreDirection true` lets it place them. To build with no blocks at all, see `#construct`.
+
+##### Placements and layers
+
+| Usage | Effect |
+|---|---|
+| `.schem placements` | List this world's placements with their numbers. |
+| `.schem select <n>` | Make placement `n` the selected one. |
+| `.schem info [n]` | Its file, position, turn, size and block count. |
+| `.schem reload [n]` | Read its file again after you changed it. |
+| `.schem layer <all\|single\|below\|above> [y]` | Draw every layer, one, or those below or above a height (your feet by default). |
+
+Placements are saved per server, or per world folder in singleplayer, and come back when you rejoin. The list shows
+placements from every dimension, marked "(Nether)" and so on when they're not in yours.
 
 ### Packets
 
@@ -545,6 +660,39 @@ Collect player names from the server and copy them to the clipboard.
 | `.namescrape resume` | Resume it. |
 | `.namescrape stop` | Stop it. |
 
+#### .enchant
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Enchant the item in your hand with any enchantment, at any level up to 255. Needs creative mode.
+
+| Usage | Effect |
+|---|---|
+| `.enchant <enchantment> [level]` | Add one, at its normal maximum level unless you give one. Tab completes the names. |
+| `.enchant all [level]` | Add every enchantment. |
+| `.enchant remove <enchantment>` | Take one off. |
+| `.enchant clear` | Take them all off. |
+| `.enchant plan <enchantments>` | Works in survival: from the villager trades you've opened in this world, find who sells those books and plan the trip. |
+
+```
+.enchant sharpness 10
+.enchant all
+.enchant plan mending unbreaking
+```
+
+#### .invsee
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Look at a loaded player's armour and held items, with durability and enchantments. View only.
+
+```
+.invsee
+.invsee <player>
+```
+
+With no name it opens for the player you're looking at.
+
 ### Server, chat & network
 
 #### .server
@@ -623,6 +771,52 @@ Send a message to your Matchmaking lobby. Join or create a lobby first.
 ```
 .irc <message>
 ```
+
+### Addons & AI tools
+
+#### .addons
+
+Aliases: `.addon`
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Open the addon store: browse, install and manage addons. **My Addons** lists what is installed.
+
+Install from a card, click **Install** again to confirm, and restart Minecraft. DIH checks each download's SHA-256 before
+installing it. The store is also on the website's Addons page.
+
+#### .ai
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Give the AI an objective in plain words and let it work through it with its tools.
+
+| Usage | Effect |
+|---|---|
+| `.ai start <objective>` | Start a run, for example `.ai start get full iron armor`. The progress panel opens. |
+| `.ai status` | What it's doing. |
+| `.ai why` | Why it made its last choice. |
+| `.ai pause` | Pause the run. `.ai resume` carries on. |
+| `.ai stop` | Stop the run. |
+| `.ai confirm` | Allow a step it asked permission for. |
+| `.ai setup` | Pick the model and key. |
+| `.ai panel` | Show or hide the progress panel. |
+
+This is a different thing from `#ai`, the chat AI that plays through Baritone commands.
+
+#### .tools
+
+Aliases: `.tool`
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Run one of the AI's tools yourself, without the AI.
+
+| Usage | Effect |
+|---|---|
+| `.tools` | List every tool by category. |
+| `.tools help <tool>` | Its arguments and what it does. |
+| `.tools <tool> [args]` | Run it. Tab completes tools and arguments. Tools that could cost you something ask you to click **[confirm]** first. |
 
 ### Updates
 
@@ -895,6 +1089,99 @@ Build the schematic open in Litematica.
 #### #blacklist
 
 While heading to a block, skip the closest one.
+
+#### #construct
+
+Aliases: `#buildfromscratch`
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Build a schematic starting with none of its blocks. It works out what the blocks cost, gathers a batch that fits your
+inventory with `#acquire`, builds what it can, and repeats until it's done.
+
+| Usage | Effect |
+|---|---|
+| `#construct <file> [x y z]` | Build a file from the schematics folder here, or at x y z. |
+| `#construct plan <file> [x y z]` | List what it takes and what you still need to gather. |
+| `#construct status` | What it's doing. |
+| `#construct stop` | Stop. `#stop` and `#cancel` work too. |
+
+It never mines inside the build, keeps the blocks it gathered, and skips blocks no item places, like water. It turns
+`allowInventory` on while it runs and back off after.
+
+### Survival on autopilot
+
+#### #acquire
+
+Aliases: `#aquire`
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Get an item from whatever you have now: it plans the whole chain (trees, planks, tools, ore, a furnace, mobs) and runs it.
+
+| Usage | Effect |
+|---|---|
+| `#acquire <item> [count]` | Get it, such as `#acquire stone_pickaxe` or `#acquire torch 64`. |
+| `#acquire <count> <item>` | The same, count first. |
+| `#acquire food [count]` | The cheapest food that covers 10 to 20 food points, or `count` of it. |
+| `#acquire plan <item> [count]` | Print the steps without doing anything. |
+| `#acquire status` | The current step and progress. |
+| `#acquire stop` | Stop. `#stop` works too, and `#pause` pauses it. |
+
+Items can be typed loosely: `iron pick`, `Iron Pickaxe` and `iron_pickaxe` all work. It counts what you already carry,
+uses a crafting table or furnace nearby or places its own, eats when you're hurt or hungry, and re-plans from your real
+inventory when a step falls short or a tool breaks. It never runs server commands or teleports. Tune it with the
+`acquire` settings in `#set`, such as `acquireDropJunk` to let it throw junk away when full.
+
+#### #eat
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Eat one item now. It never eats on its own.
+
+| Usage | Effect |
+|---|---|
+| `#eat` | Eat the food that fills your missing hunger with the least waste. |
+| `#eat <item>` | Eat that item, such as `#eat golden_apple`. |
+| `#eat stop` | Stop eating. |
+
+Harmful food is only eaten when you're starving and have nothing else, and golden apples only at low health. Pathing
+pauses while you eat.
+
+#### #beat
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Play towards beating the game in 9 phases: gear, a nether portal, blaze rods, pearls, home, eyes of ender, the
+stronghold, the End and the dragon. Progress is saved per world.
+
+| Usage | Effect |
+|---|---|
+| `#beat` | Start, or carry on with this world's saved run. |
+| `#beat plan` | Print every phase and step first. |
+| `#beat resume` | Continue the saved run. |
+| `#beat status` | The phase and its progress. |
+| `#beat stop` | Stop. The run stays saved. |
+| `#beat restart` | Forget the saved run and start over. |
+
+Phases that aren't finished yet, like going through portals, finding structures and the dragon fight, stop the run with
+a message saying so.
+
+#### #parkour
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Run parkour with each jump solved exactly, using only normal key presses and turning.
+
+| Usage | Effect |
+|---|---|
+| `#parkour` | Follow the course you're standing on until no jumps are left ahead. |
+| `#parkour goto <x> <y> <z>` | Jump your way to that block. |
+| `#parkour solve <x> <y> <z>` | Work out one jump onto that block and say how, without moving. |
+| `#parkour status` | What it's doing. |
+| `#parkour stop` | Stop. `#stop` and `#cancel` work too. |
+
+It handles neos, strafes, head-hitters, ladders and momentum jumps.
 
 ### Search & memory
 

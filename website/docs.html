@@ -19,8 +19,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Kanit:ital,wght@1,800;1,900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css?v=a8b7e675">
-<link rel="stylesheet" href="assets/docs.css?v=1">
-<script defer src="assets/docs.js?v=1"></script>
+<link rel="stylesheet" href="assets/docs.css?v=a482cf15">
+<script defer src="assets/docs.js?v=dfdcf4dc"></script>
 </head>
 <body class="docs-page">
 <a class="skip" href="#doc">Skip to content</a>
@@ -65,6 +65,7 @@
 <a class="toc-topic" href="#basics-turning-dih-off">Turning DIH off</a>
 <a class="toc-topic" href="#basics-notation">Notation</a>
 <a class="toc-topic" href="#basics-lite-builds-and-addons">Lite builds and addons</a>
+<a class="toc-topic" href="#basics-beta-commands">Beta commands</a>
 <a class="toc-topic" href="#basics-same-name-different-command">Same name, different command</a>
 </div>
 <div class="toc-sys"><a class="toc-head" href="#client-commands"><span class="sys-mark" aria-hidden="true">.</span>Client commands</a>
@@ -87,6 +88,9 @@
 </ul>
 <p class="toc-grp">Macros</p><ul>
 <li><a href="#dot-macro" class="mono"><span class="pfx">.</span>macro</a></li>
+</ul>
+<p class="toc-grp">Schematics</p><ul>
+<li><a href="#dot-schem" class="mono beta-tag"><span class="pfx">.</span>schem</a></li>
 </ul>
 <p class="toc-grp">Packets</p><ul>
 <li><a href="#dot-packet" class="mono"><span class="pfx">.</span>packet</a></li>
@@ -120,6 +124,8 @@
 <li><a href="#dot-damage" class="mono"><span class="pfx">.</span>damage</a></li>
 <li><a href="#dot-rv" class="mono"><span class="pfx">.</span>rv</a></li>
 <li><a href="#dot-namescrape" class="mono"><span class="pfx">.</span>namescrape</a></li>
+<li><a href="#dot-enchant" class="mono beta-tag"><span class="pfx">.</span>enchant</a></li>
+<li><a href="#dot-invsee" class="mono beta-tag"><span class="pfx">.</span>invsee</a></li>
 </ul>
 <p class="toc-grp">Server, chat &amp; network</p><ul>
 <li><a href="#dot-server" class="mono"><span class="pfx">.</span>server</a></li>
@@ -133,6 +139,11 @@
 <li><a href="#dot-sync" class="mono"><span class="pfx">.</span>sync</a></li>
 <li><a href="#dot-matchmaking" class="mono"><span class="pfx">.</span>matchmaking</a></li>
 <li><a href="#dot-irc" class="mono"><span class="pfx">.</span>irc</a></li>
+</ul>
+<p class="toc-grp">Addons &amp; AI tools</p><ul>
+<li><a href="#dot-addons" class="mono beta-tag"><span class="pfx">.</span>addons</a></li>
+<li><a href="#dot-ai" class="mono beta-tag"><span class="pfx">.</span>ai</a></li>
+<li><a href="#dot-tools" class="mono beta-tag"><span class="pfx">.</span>tools</a></li>
 </ul>
 <p class="toc-grp">Updates</p><ul>
 <li><a href="#dot-update" class="mono"><span class="pfx">.</span>update</a></li>
@@ -175,6 +186,13 @@
 <li><a href="#hash-build" class="mono"><span class="pfx">#</span>build</a></li>
 <li><a href="#hash-litematica" class="mono"><span class="pfx">#</span>litematica</a></li>
 <li><a href="#hash-blacklist" class="mono"><span class="pfx">#</span>blacklist</a></li>
+<li><a href="#hash-construct" class="mono beta-tag"><span class="pfx">#</span>construct</a></li>
+</ul>
+<p class="toc-grp">Survival on autopilot</p><ul>
+<li><a href="#hash-acquire" class="mono beta-tag"><span class="pfx">#</span>acquire</a></li>
+<li><a href="#hash-eat" class="mono beta-tag"><span class="pfx">#</span>eat</a></li>
+<li><a href="#hash-beat" class="mono beta-tag"><span class="pfx">#</span>beat</a></li>
+<li><a href="#hash-parkour" class="mono beta-tag"><span class="pfx">#</span>parkour</a></li>
 </ul>
 <p class="toc-grp">Search &amp; memory</p><ul>
 <li><a href="#hash-search" class="mono"><span class="pfx">#</span>search</a></li>
@@ -228,7 +246,7 @@
   <header class="doc-head">
     <h1>Commands</h1>
     <p class="doc-lede">Every chat command in DIH Client and how to type it. Client commands start with <code>.</code> and never reach the server. Pathfinder and AI commands start with <code>#</code>.</p>
-    <p class="doc-meta mono"><b id="cmd-count">105</b> commands · Minecraft 26.2<span class="key-hint"> · press <kbd>/</kbd> to search</span></p>
+    <p class="doc-meta mono"><b id="cmd-count">116</b> commands · Minecraft 26.2<span class="key-hint"> · press <kbd>/</kbd> to search</span></p>
   </header>
 <!-- docs:start -->
 <section class="sys" id="basics" aria-labelledby="basics-h">
@@ -255,12 +273,16 @@
 </section>
 <section class="grp" id="basics-lite-builds-and-addons">
 <h3>Lite builds and addons</h3>
-<p>Lite builds leave out <code>setting</code>, <code>irc</code>, <code>matchmaking</code>, <code>multi</code>, <code>toggle</code>, <code>modules</code>, <code>oresim</code>, <code>ghostblock</code>, <code>friend</code>, <code>waypoints</code>, <code>gamemode</code>, <code>fakegm</code>, <code>xcarry</code>, <code>rv</code> and <code>namescrape</code>. Addons can add their own <code>.</code> commands; one whose name is already taken shows up as <code>&lt;addon&gt;:&lt;name&gt;</code>.</p>
+<p>Lite builds leave out <code>setting</code>, <code>irc</code>, <code>matchmaking</code>, <code>multi</code>, <code>toggle</code>, <code>modules</code>, <code>oresim</code>, <code>ghostblock</code>, <code>friend</code>, <code>waypoints</code>, <code>gamemode</code>, <code>fakegm</code>, <code>xcarry</code>, <code>rv</code> and <code>namescrape</code>, and in the beta also <code>schem</code>, <code>invsee</code>, <code>tools</code> and <code>ai</code>. Addons can add their own <code>.</code> commands; one whose name is already taken shows up as <code>&lt;addon&gt;:&lt;name&gt;</code>.</p>
+</section>
+<section class="grp" id="basics-beta-commands">
+<h3>Beta commands</h3>
+<p>Commands marked <strong>Beta</strong> are in the 5.1 beta builds and not in 5.0.1 stable. The beta download is on the website and on <a href="https://github.com/ahigherdesire/dih-client/releases">GitHub releases</a>. Everything else works in both.</p>
 </section>
 <section class="grp" id="basics-same-name-different-command">
 <h3>Same name, different command</h3>
 <p>The two systems are separate, so these pairs do different things.</p>
-<div class="table"><table><thead><tr><th scope="col">Client</th><th scope="col">Pathfinder</th></tr></thead><tbody><tr><td><a class="ref" href="#dot-waypoints"><code>.wp</code></a> saves DIH waypoints, which <a class="ref" href="#dot-tp"><code>.tp</code></a> can use.</td><td><a class="ref" href="#hash-waypoints"><code>#wp</code></a> manages Baritone's tagged waypoints.</td></tr><tr><td><a class="ref" href="#dot-setting"><code>.set</code></a> changes a module setting.</td><td><a class="ref" href="#hash-set"><code>#set</code></a> changes a Baritone setting.</td></tr><tr><td><a class="ref" href="#dot-gui"><code>.gui</code></a> saves, desyncs and reloads container screens.</td><td><a class="ref" href="#hash-menu"><code>#gui</code></a> is <a class="ref" href="#hash-menu"><code>#menu</code></a>, which reads and clicks plugin GUIs.</td></tr><tr><td><a class="ref" href="#dot-help"><code>.help</code></a> lists client commands.</td><td><a class="ref" href="#hash-help"><code>#help</code></a> lists pathfinder commands.</td></tr></tbody></table></div>
+<div class="table"><table><thead><tr><th scope="col">Client</th><th scope="col">Pathfinder</th></tr></thead><tbody><tr><td><a class="ref" href="#dot-waypoints"><code>.wp</code></a> saves DIH waypoints, which <a class="ref" href="#dot-tp"><code>.tp</code></a> can use.</td><td><a class="ref" href="#hash-waypoints"><code>#wp</code></a> manages Baritone's tagged waypoints.</td></tr><tr><td><a class="ref" href="#dot-setting"><code>.set</code></a> changes a module setting.</td><td><a class="ref" href="#hash-set"><code>#set</code></a> changes a Baritone setting.</td></tr><tr><td><a class="ref" href="#dot-gui"><code>.gui</code></a> saves, desyncs and reloads container screens.</td><td><a class="ref" href="#hash-menu"><code>#gui</code></a> is <a class="ref" href="#hash-menu"><code>#menu</code></a>, which reads and clicks plugin GUIs.</td></tr><tr><td><a class="ref" href="#dot-help"><code>.help</code></a> lists client commands.</td><td><a class="ref" href="#hash-help"><code>#help</code></a> lists pathfinder commands.</td></tr><tr><td><a class="ref" href="#dot-ai"><code>.ai</code></a> (beta) gives the AI an objective it works through with its tools.</td><td><a class="ref" href="#hash-ai"><code>#ai</code></a> sets up the chat AI that plays through Baritone commands.</td></tr></tbody></table></div>
 <p>Two <code>#</code> aliases also point somewhere other than their help text says. <a class="ref" href="#hash-flee"><code>#flee</code></a> opens the Flee trigger system, so use <a class="ref" href="#hash-runaway"><code>#runaway</code></a> or <a class="ref" href="#hash-runaway"><code>#escape</code></a> to run away. <a class="ref" href="#hash-sel"><code>#s</code></a> opens <a class="ref" href="#hash-sel"><code>#sel</code></a>, so use <a class="ref" href="#hash-search"><code>#search</code></a> or <a class="ref" href="#hash-search"><code>#blocks</code></a> to search.</p>
 </section>
 </section>
@@ -375,6 +397,39 @@
 .macro dupe1 10 20
 .macro stop</code></pre>
 <p>While you pilot a Multi bot, <code>.macro</code> runs, loops and stops on that bot instead of you.</p>
+</article>
+</section>
+<section class="grp" id="client-commands-schematics">
+<h3>Schematics</h3>
+
+<article class="cmd" id="dot-schem" data-name=".schem" data-aliases=".schematic .schematics" data-beta="1">
+<h4><a class="self" href="#dot-schem"><span class="pfx">.</span>schem</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+<p class="aka"><span>Also</span> <code>.schematic</code> <code>.schematics</code></p>
+<p class="sum">Load schematic files, place them in the world, see what is still to build, and let Baritone build them. Works like a built-in Litematica.</p>
+<p>It reads <code>.litematic</code>, <code>.schematic</code> (MCEdit, Schematica and WorldEdit), <code>.schem</code> (Sponge v1 to v3) and vanilla <a class="ref" href="#dot-nbt"><code>.nbt</code></a> files. Files live in <code>.minecraft/schematics</code>. You don't need the Litematica mod; if you have it, its placements stay separate and <a class="ref" href="#hash-litematica"><code>#litematica</code></a> still builds those.</p>
+<h5>Get a file in</h5>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.schem menu</code></td><td>Open the Schematics screen: your files on the left, this world's placements on the right. The module's Menu Key does the same.</td></tr><tr><td><code>.schem open</code></td><td>Pick a file from anywhere with your system's file picker, starting in Downloads. The module's Open File Key does the same.</td></tr><tr><td><code>.schem import &lt;path&gt;</code></td><td>The same with a typed path, quotes and backslashes allowed, or a file name in Downloads.</td></tr><tr><td><code>.schem list</code></td><td>List the files in the schematics folder.</td></tr><tr><td><code>.schem place &lt;file&gt; [x y z]</code></td><td>Place a file from the folder in front of you, or at a position. <code>.schem load</code> is the same.</td></tr></tbody></table></div>
+<p>You can also drag files onto the game window. One file is placed straight away; several open the Schematics screen. The screen also lists your 20 newest schematic downloads, tagged "Downloads". Picked and dropped files are copied into the schematics folder, and nothing there is overwritten: a different file with the same name becomes <code>name (2).litematic</code>.</p>
+<h5>Place it</h5>
+<p>A new placement goes four blocks in front of you and you are straight back in the game with the camera free. Until you keep it, these keys move it, and a panel at the top of the screen lists them:</p>
+<div class="table"><table><thead><tr><th scope="col">Key</th><th scope="col">Does</th></tr></thead><tbody><tr><td>Arrow keys</td><td>Move it forward, back, left or right, relative to where you face. Hold to repeat.</td></tr><tr><td>Page Up / Page Down</td><td>Move it up or down.</td></tr><tr><td>R</td><td>Turn it 90° clockwise.</td></tr><tr><td>M</td><td>Mirror it (none, then x, then z).</td></tr><tr><td>G</td><td>Drop it onto the ground at its column.</td></tr><tr><td>Enter</td><td>Keep it where it is.</td></tr><tr><td>Backspace</td><td>Remove it.</td></tr></tbody></table></div>
+<p>The keys only do this while a new placement is being placed and no screen is open, so they never clash with the game otherwise. If another mod also uses R, M or G, it may react too while you place.</p>
+<h5>Move it later</h5>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.schem adjust</code></td><td>Open the mouse placement screen: right-click or drag puts it where you point, the wheel turns it, Shift + wheel pushes it nearer or farther, middle-drag looks around, left-click keeps it and Esc puts it back. The <strong>Move</strong> button and the Adjust Key open it too.</td></tr><tr><td><code>.schem move &lt;x y z&gt;</code></td><td>Put its corner at those coordinates.</td></tr><tr><td><code>.schem here</code></td><td>Put its corner where you stand.</td></tr><tr><td><code>.schem nudge &lt;dx dy dz&gt;</code></td><td>Shift it by that many blocks.</td></tr><tr><td><code>.schem rotate [quarters]</code></td><td>Turn it 90° clockwise, or by -3 to 3 quarter turns. The Rotate Key does one turn.</td></tr><tr><td><code>.schem mirror [none|x|z]</code></td><td>Cycle the mirror, or set it. The Mirror Key cycles it.</td></tr></tbody></table></div>
+<p>These act on the selected placement: the last one you placed or picked.</p>
+<h5>Remove it or hide it</h5>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.schem remove</code></td><td>Remove the selected placement from the world.</td></tr><tr><td><code>.schem remove &lt;n&gt;</code></td><td>Remove placement <code>n</code>, by its number in <code>.schem placements</code> or the start of its name.</td></tr><tr><td><code>.schem remove all</code></td><td>Remove every placement in this world.</td></tr><tr><td><code>.schem hide [n]</code></td><td>Stop drawing it but keep it, with its position and turn. <code>.schem show [n]</code> brings it back.</td></tr><tr><td>Schematics screen</td><td>Click the placement on the right, then <strong>Remove</strong> or <strong>Show / Hide</strong>.</td></tr><tr><td>Backspace</td><td>Removes a placement you haven't kept yet.</td></tr></tbody></table></div>
+<p>Removing only takes the placement out of the world; the file stays in the schematics folder. To hide every placement at once without losing them, turn the Schematics module off, for example with <code>.toggle schematics</code>.</p>
+<h5>See what it needs</h5>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.schem materials [n]</code></td><td>The first items still needed, in chat, against your inventory.</td></tr><tr><td><strong>Materials</strong></td><td>In the Schematics screen: the whole list as a table with Total, Have and Missing, biggest shortfall first. It updates every 2 seconds, scrolls, and <strong>Missing only</strong> hides what you have enough of.</td></tr><tr><td><code>.schem materials csv [n]</code></td><td>Save the list to <code>.minecraft/schematics/materials/&lt;name&gt;-materials.csv</code> for a spreadsheet, with item, name, needed, have and missing. <strong>Save CSV</strong> in the screen does the same. Saving again replaces the file.</td></tr><tr><td><code>.schem verify [n]</code></td><td>Count the blocks that are right, missing, the wrong block, the wrong state or extra, in loaded chunks.</td></tr></tbody></table></div>
+<p>In the world, the overlay tints blocks that aren't right: blue missing, red the wrong block, orange the right block turned wrong, pink an extra block. Blocks in shulker boxes or chests don't count as yours.</p>
+<h5>Build it</h5>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.schem build [n]</code></td><td>Hand the placement to Baritone's builder, the one <a class="ref" href="#hash-build"><code>#build</code></a> uses. <strong>Build</strong> in the screen does the same.</td></tr></tbody></table></div>
+<p>It turns on <code>#allowInventory</code> so blocks anywhere in your inventory get used, and it pauses when a block runs out, then lists what is still to place. Get those and type <a class="ref" href="#hash-resume"><code>#resume</code></a>. If it stops on stairs or other turned blocks, <code>#buildIgnoreDirection true</code> lets it place them. To build with no blocks at all, see <a class="ref" href="#hash-construct"><code>#construct</code></a>.</p>
+<h5>Placements and layers</h5>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.schem placements</code></td><td>List this world's placements with their numbers.</td></tr><tr><td><code>.schem select &lt;n&gt;</code></td><td>Make placement <code>n</code> the selected one.</td></tr><tr><td><code>.schem info [n]</code></td><td>Its file, position, turn, size and block count.</td></tr><tr><td><code>.schem reload [n]</code></td><td>Read its file again after you changed it.</td></tr><tr><td><code>.schem layer &lt;all|single|below|above&gt; [y]</code></td><td>Draw every layer, one, or those below or above a height (your feet by default).</td></tr></tbody></table></div>
+<p>Placements are saved per server, or per world folder in singleplayer, and come back when you rejoin. The list shows placements from every dimension, marked "(Nether)" and so on when they're not in yours.</p>
 </article>
 </section>
 <section class="grp" id="client-commands-packets">
@@ -563,6 +618,25 @@
 <p class="sum">Collect player names from the server and copy them to the clipboard.</p>
 <div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.namescrape [count]</code></td><td>Scrape, stopping at <code>count</code> names if given.</td></tr><tr><td><code>.namescrape deep [count]</code></td><td>Scrape exhaustively.</td></tr><tr><td><code>.namescrape pause</code></td><td>Pause a running scrape.</td></tr><tr><td><code>.namescrape resume</code></td><td>Resume it.</td></tr><tr><td><code>.namescrape stop</code></td><td>Stop it.</td></tr></tbody></table></div>
 </article>
+<article class="cmd" id="dot-enchant" data-name=".enchant" data-aliases="" data-beta="1">
+<h4><a class="self" href="#dot-enchant"><span class="pfx">.</span>enchant</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+
+<p class="sum">Enchant the item in your hand with any enchantment, at any level up to 255. Needs creative mode.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.enchant &lt;enchantment&gt; [level]</code></td><td>Add one, at its normal maximum level unless you give one. Tab completes the names.</td></tr><tr><td><code>.enchant all [level]</code></td><td>Add every enchantment.</td></tr><tr><td><code>.enchant remove &lt;enchantment&gt;</code></td><td>Take one off.</td></tr><tr><td><code>.enchant clear</code></td><td>Take them all off.</td></tr><tr><td><code>.enchant plan &lt;enchantments&gt;</code></td><td>Works in survival: from the villager trades you've opened in this world, find who sells those books and plan the trip.</td></tr></tbody></table></div>
+<pre><code>.enchant sharpness 10
+.enchant all
+.enchant plan mending unbreaking</code></pre>
+</article>
+<article class="cmd" id="dot-invsee" data-name=".invsee" data-aliases="" data-beta="1">
+<h4><a class="self" href="#dot-invsee"><span class="pfx">.</span>invsee</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+
+<p class="sum">Look at a loaded player's armour and held items, with durability and enchantments. View only.</p>
+<pre><code>.invsee
+.invsee &lt;player&gt;</code></pre>
+<p>With no name it opens for the player you're looking at.</p>
+</article>
 </section>
 <section class="grp" id="client-commands-server-chat-network">
 <h3>Server, chat &amp; network</h3>
@@ -626,6 +700,32 @@
 
 <p class="sum">Send a message to your Matchmaking lobby. Join or create a lobby first.</p>
 <pre><code>.irc &lt;message&gt;</code></pre>
+</article>
+</section>
+<section class="grp" id="client-commands-addons-ai-tools">
+<h3>Addons &amp; AI tools</h3>
+
+<article class="cmd" id="dot-addons" data-name=".addons" data-aliases=".addon" data-beta="1">
+<h4><a class="self" href="#dot-addons"><span class="pfx">.</span>addons</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+<p class="aka"><span>Also</span> <code>.addon</code></p>
+<p class="sum">Open the addon store: browse, install and manage addons. <strong>My Addons</strong> lists what is installed.</p>
+<p>Install from a card, click <strong>Install</strong> again to confirm, and restart Minecraft. DIH checks each download's SHA-256 before installing it. The store is also on the website's Addons page.</p>
+</article>
+<article class="cmd" id="dot-ai" data-name=".ai" data-aliases="" data-beta="1">
+<h4><a class="self" href="#dot-ai"><span class="pfx">.</span>ai</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+
+<p class="sum">Give the AI an objective in plain words and let it work through it with its tools.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.ai start &lt;objective&gt;</code></td><td>Start a run, for example <code>.ai start get full iron armor</code>. The progress panel opens.</td></tr><tr><td><code>.ai status</code></td><td>What it's doing.</td></tr><tr><td><code>.ai why</code></td><td>Why it made its last choice.</td></tr><tr><td><code>.ai pause</code></td><td>Pause the run. <code>.ai resume</code> carries on.</td></tr><tr><td><code>.ai stop</code></td><td>Stop the run.</td></tr><tr><td><code>.ai confirm</code></td><td>Allow a step it asked permission for.</td></tr><tr><td><code>.ai setup</code></td><td>Pick the model and key.</td></tr><tr><td><code>.ai panel</code></td><td>Show or hide the progress panel.</td></tr></tbody></table></div>
+<p>This is a different thing from <a class="ref" href="#hash-ai"><code>#ai</code></a>, the chat AI that plays through Baritone commands.</p>
+</article>
+<article class="cmd" id="dot-tools" data-name=".tools" data-aliases=".tool" data-beta="1">
+<h4><a class="self" href="#dot-tools"><span class="pfx">.</span>tools</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+<p class="aka"><span>Also</span> <code>.tool</code></p>
+<p class="sum">Run one of the AI's tools yourself, without the AI.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.tools</code></td><td>List every tool by category.</td></tr><tr><td><code>.tools help &lt;tool&gt;</code></td><td>Its arguments and what it does.</td></tr><tr><td><code>.tools &lt;tool&gt; [args]</code></td><td>Run it. Tab completes tools and arguments. Tools that could cost you something ask you to click <strong>[confirm]</strong> first.</td></tr></tbody></table></div>
 </article>
 </section>
 <section class="grp" id="client-commands-updates">
@@ -852,6 +952,50 @@
 
 <p class="sum">While heading to a block, skip the closest one.</p>
 
+</article>
+<article class="cmd" id="hash-construct" data-name="#construct" data-aliases="#buildfromscratch" data-beta="1">
+<h4><a class="self" href="#hash-construct"><span class="pfx">#</span>construct</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+<p class="aka"><span>Also</span> <code>#buildfromscratch</code></p>
+<p class="sum">Build a schematic starting with none of its blocks. It works out what the blocks cost, gathers a batch that fits your inventory with <a class="ref" href="#hash-acquire"><code>#acquire</code></a>, builds what it can, and repeats until it's done.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#construct &lt;file&gt; [x y z]</code></td><td>Build a file from the schematics folder here, or at x y z.</td></tr><tr><td><code>#construct plan &lt;file&gt; [x y z]</code></td><td>List what it takes and what you still need to gather.</td></tr><tr><td><code>#construct status</code></td><td>What it's doing.</td></tr><tr><td><code>#construct stop</code></td><td>Stop. <a class="ref" href="#hash-cancel"><code>#stop</code></a> and <a class="ref" href="#hash-cancel"><code>#cancel</code></a> work too.</td></tr></tbody></table></div>
+<p>It never mines inside the build, keeps the blocks it gathered, and skips blocks no item places, like water. It turns <code>allowInventory</code> on while it runs and back off after.</p>
+</article>
+</section>
+<section class="grp" id="pathfinder-ai-commands-survival-on-autopilot">
+<h3>Survival on autopilot</h3>
+
+<article class="cmd" id="hash-acquire" data-name="#acquire" data-aliases="#aquire" data-beta="1">
+<h4><a class="self" href="#hash-acquire"><span class="pfx">#</span>acquire</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+<p class="aka"><span>Also</span> <code>#aquire</code></p>
+<p class="sum">Get an item from whatever you have now: it plans the whole chain (trees, planks, tools, ore, a furnace, mobs) and runs it.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#acquire &lt;item&gt; [count]</code></td><td>Get it, such as <code>#acquire stone_pickaxe</code> or <code>#acquire torch 64</code>.</td></tr><tr><td><code>#acquire &lt;count&gt; &lt;item&gt;</code></td><td>The same, count first.</td></tr><tr><td><code>#acquire food [count]</code></td><td>The cheapest food that covers 10 to 20 food points, or <code>count</code> of it.</td></tr><tr><td><code>#acquire plan &lt;item&gt; [count]</code></td><td>Print the steps without doing anything.</td></tr><tr><td><code>#acquire status</code></td><td>The current step and progress.</td></tr><tr><td><code>#acquire stop</code></td><td>Stop. <a class="ref" href="#hash-cancel"><code>#stop</code></a> works too, and <a class="ref" href="#hash-pause"><code>#pause</code></a> pauses it.</td></tr></tbody></table></div>
+<p>Items can be typed loosely: <code>iron pick</code>, <code>Iron Pickaxe</code> and <code>iron_pickaxe</code> all work. It counts what you already carry, uses a crafting table or furnace nearby or places its own, eats when you're hurt or hungry, and re-plans from your real inventory when a step falls short or a tool breaks. It never runs server commands or teleports. Tune it with the <code>acquire</code> settings in <a class="ref" href="#hash-set"><code>#set</code></a>, such as <code>acquireDropJunk</code> to let it throw junk away when full.</p>
+</article>
+<article class="cmd" id="hash-eat" data-name="#eat" data-aliases="" data-beta="1">
+<h4><a class="self" href="#hash-eat"><span class="pfx">#</span>eat</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+
+<p class="sum">Eat one item now. It never eats on its own.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#eat</code></td><td>Eat the food that fills your missing hunger with the least waste.</td></tr><tr><td><code>#eat &lt;item&gt;</code></td><td>Eat that item, such as <code>#eat golden_apple</code>.</td></tr><tr><td><code>#eat stop</code></td><td>Stop eating.</td></tr></tbody></table></div>
+<p>Harmful food is only eaten when you're starving and have nothing else, and golden apples only at low health. Pathing pauses while you eat.</p>
+</article>
+<article class="cmd" id="hash-beat" data-name="#beat" data-aliases="" data-beta="1">
+<h4><a class="self" href="#hash-beat"><span class="pfx">#</span>beat</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+
+<p class="sum">Play towards beating the game in 9 phases: gear, a nether portal, blaze rods, pearls, home, eyes of ender, the stronghold, the End and the dragon. Progress is saved per world.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#beat</code></td><td>Start, or carry on with this world's saved run.</td></tr><tr><td><code>#beat plan</code></td><td>Print every phase and step first.</td></tr><tr><td><code>#beat resume</code></td><td>Continue the saved run.</td></tr><tr><td><code>#beat status</code></td><td>The phase and its progress.</td></tr><tr><td><code>#beat stop</code></td><td>Stop. The run stays saved.</td></tr><tr><td><code>#beat restart</code></td><td>Forget the saved run and start over.</td></tr></tbody></table></div>
+<p>Phases that aren't finished yet, like going through portals, finding structures and the dragon fight, stop the run with a message saying so.</p>
+</article>
+<article class="cmd" id="hash-parkour" data-name="#parkour" data-aliases="" data-beta="1">
+<h4><a class="self" href="#hash-parkour"><span class="pfx">#</span>parkour</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+
+<p class="sum">Run parkour with each jump solved exactly, using only normal key presses and turning.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#parkour</code></td><td>Follow the course you're standing on until no jumps are left ahead.</td></tr><tr><td><code>#parkour goto &lt;x&gt; &lt;y&gt; &lt;z&gt;</code></td><td>Jump your way to that block.</td></tr><tr><td><code>#parkour solve &lt;x&gt; &lt;y&gt; &lt;z&gt;</code></td><td>Work out one jump onto that block and say how, without moving.</td></tr><tr><td><code>#parkour status</code></td><td>What it's doing.</td></tr><tr><td><code>#parkour stop</code></td><td>Stop. <a class="ref" href="#hash-cancel"><code>#stop</code></a> and <a class="ref" href="#hash-cancel"><code>#cancel</code></a> work too.</td></tr></tbody></table></div>
+<p>It handles neos, strafes, head-hitters, ladders and momentum jumps.</p>
 </article>
 </section>
 <section class="grp" id="pathfinder-ai-commands-search-memory">

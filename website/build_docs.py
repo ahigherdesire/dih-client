@@ -4,7 +4,7 @@ With no path it updates website/docs.html here. The live site is the ahigherdesi
 so pass that checkout's docs.html to update it (its assets/docs.css and docs.js are copies of the ones here).
 
 COMMANDS.md is the source. Its shape is fixed: `##` is a system (Basics, Client commands, Pathfinder & AI
-commands), `###` a group, `####` one command named in plain text, an optional `Aliases:` line under it, then
+commands), `###` a group, `####` one command named in plain text, optional `Aliases:` and `Beta:` lines under it, then
 a one-line summary and any tables, code blocks or `#####` sub-headings. Rerun this after editing COMMANDS.md
 and commit both files."""
 import html
@@ -55,7 +55,7 @@ def parse(lines):
                 entry = None
                 blocks = group["intro"]
             elif level == 4:
-                entry = {"name": text, "id": command_id(text), "aliases": [], "blocks": []}
+                entry = {"name": text, "id": command_id(text), "aliases": [], "beta": "", "blocks": []}
                 group["entries"].append(entry)
                 blocks = entry["blocks"]
             else:
@@ -88,6 +88,8 @@ def parse(lines):
         text = " ".join(para)
         if entry is not None and text.startswith("Aliases:") and not entry["blocks"]:
             entry["aliases"] = re.findall(r"`([^`]+)`", text)
+        elif entry is not None and text.startswith("Beta:") and not entry["blocks"]:
+            entry["beta"] = text[len("Beta:"):].strip()
         else:
             blocks.append(("p", text))
     return systems
@@ -173,8 +175,11 @@ class Renderer:
         if entry["aliases"]:
             aliases = ('<p class="aka"><span>Also</span> '
                        + " ".join(f"<code>{html.escape(a)}</code>" for a in entry["aliases"]) + "</p>")
+        if entry["beta"]:
+            aliases = (f'<p class="aka"><span class="beta-tag">Beta</span> {html.escape(entry["beta"])}</p>\n' + aliases)
         attrs = (f'id="{entry["id"]}" data-name="{html.escape(name)}" '
-                 f'data-aliases="{html.escape(" ".join(entry["aliases"]))}"')
+                 f'data-aliases="{html.escape(" ".join(entry["aliases"]))}"'
+                 + (' data-beta="1"' if entry["beta"] else ""))
         out = (f'<article class="cmd" {attrs}>\n'
                f'<h4><a class="self" href="#{entry["id"]}"><span class="pfx">{html.escape(prefix)}</span>'
                f'{html.escape(rest)}</a></h4>\n{aliases}\n'
@@ -200,7 +205,7 @@ class Renderer:
                     for entry in group["entries"]:
                         body.append(self.entry(entry))
                         n = entry["name"]
-                        nav.append(f'<li><a href="#{entry["id"]}" class="mono"><span class="pfx">{html.escape(n[0])}</span>'
+                        nav.append(f'<li><a href="#{entry["id"]}" class="mono{" beta-tag" if entry["beta"] else ""}"><span class="pfx">{html.escape(n[0])}</span>'
                                    f'{html.escape(n[1:])}</a></li>')
                     nav.append("</ul>")
                 else:
