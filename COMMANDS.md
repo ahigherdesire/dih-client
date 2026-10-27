@@ -1,981 +1,1294 @@
-# DIH Client — Command Manual
+# DIH Client commands
 
-Every chat command in DIH Client, what it does, and how to use it. Written from the source in
-`src/main/java/dihclient/commands/impl/` (dot commands) and
-`src/main/java/baritone/command/defaults/` (`#` commands).
+Every chat command in DIH Client and how to type it. Minecraft 26.2, Fabric Loader 0.19.3+, Java 25. The website
+shows the same manual at `/docs`.
 
-> Minecraft **26.2** · Fabric Loader **0.19.3+** · Java **25**
+## Basics
 
----
+### Two prefixes
 
-## Contents
+DIH has two command systems, both typed in normal chat.
 
-1. [The basics](#1-the-basics)
-2. [Reading this manual](#2-reading-this-manual)
-3. [Client (`.`) commands](#3-client--commands)
-   - [Help & info](#31-help--info)
-   - [Modules & settings](#32-modules--settings)
-   - [Keybinds & prefix](#33-keybinds--prefix)
-   - [Macros](#34-macros)
-   - [Packets](#35-packets)
-   - [Container GUIs](#36-container-guis)
-   - [Inventory & items](#37-inventory--items)
-   - [Movement & position](#38-movement--position)
-   - [Player & world](#39-player--world)
-   - [Server, chat & network](#310-server-chat--network)
-   - [Multi, LAN Sync & Matchmaking](#311-multi-lan-sync--matchmaking)
-   - [Updates](#312-updates)
-4. [Pathfinding & AI (`#`) commands](#4-pathfinding--ai--commands)
-   - [Control](#41-control)
-   - [Goals & navigation](#42-goals--navigation)
-   - [Mining, farming & building](#43-mining-farming--building)
-   - [Search, cache & memory](#44-search-cache--memory)
-   - [Seeds & structures](#45-seeds--structures)
-   - [Safety & automation](#46-safety--automation)
-   - [AI](#47-ai)
-   - [Waypoints & homes](#48-waypoints--homes)
-   - [Selections (WorldEdit-style)](#49-selections-worldedit-style)
-   - [Settings & maintenance](#410-settings--maintenance)
-5. [Name clashes between `.` and `#`](#5-name-clashes-between--and-)
-6. [Quick reference](#6-quick-reference)
+| Prefix | What it runs | List them with |
+|---|---|---|
+| `.` | DIH client commands. They never reach the server. | `.commands` or `.help` |
+| `#` | The built-in Baritone pathfinder and the AI. | `#help` |
 
----
+The `.` prefix is `%` instead when Meteor Client is also installed, because Meteor already uses `.`. Change it
+with `.prefix`; the choices are `. % - _ * # @ & =`. The `#` prefix is the Baritone `prefix` setting.
 
-## 1. The basics
+### Getting help in game
 
-DIH has **two command systems**, both typed in normal chat:
+Type a command with no arguments to see its usage. `.help <command>` shows a client command's description and
+aliases, and `#help <command>` prints the full help of a `#` command. Tab completion works on every argument:
+modules, macros, item and block ids, packet classes, slot names, players and waypoints.
 
-| Prefix | System | Lists commands | Notes |
-|---|---|---|---|
-| `.` | DIH client commands | `.commands`, `.help` | Never sent to the server. Prefix can be changed with `.prefix`. |
-| `#` | Integrated Baritone + AI | `#help` | Pathfinding, mining, seed tools, AI. Prefix is the Baritone `prefix` setting. |
+### Turning DIH off
 
-- **Default `.` prefix:** `.` — or `%` when Meteor Client is also installed (Meteor already owns `.`).
-  The prefix can be any of `. % - _ * # @ & =`.
-- **Tab completion** works on every argument: module names, macro names, item/block ids, packet class
-  names, slot names, player names, waypoints.
-- **Typing a command with no arguments** prints its usage.
-- **`.help <command>`** shows the description and aliases of any `.` command.
-  **`#help <command>`** prints the full built-in help of any `#` command (click it in `#help` to open).
-- **`^toggledih`** (typed in chat as-is) turns the whole client on or off.
-- **Panic / hide mode:** while the client is hard-locked by panic hide, *all* DIH commands are swallowed
-  silently (under any prefix) so nothing leaks to the server.
-- **Lite builds** ship without: `setting`, `irc`, `matchmaking`, `multi`, `toggle`, `modules`, `oresim`,
-  `ghostblock`, `friend`, `waypoints`, `gamemode`, `fakegm`, `xcarry`, `rv`, `namescrape`.
-- **Addons** can register more `.` commands. If an addon's command name collides with an existing one it
-  is registered as `<addonId>:<name>` instead.
+`^toggledih`, typed in chat exactly like that, turns the whole client on or off. While panic hide has locked the
+client, every DIH command is swallowed under any prefix, so nothing reaches the server.
 
-## 2. Reading this manual
+### Notation
 
-- `<arg>` — required, `[arg]` — optional, `a|b` — pick one, `…` — any number of words.
-- Examples use the default `.` prefix — substitute yours if you changed it.
-- **State words.** Wherever a command takes `on|off|toggle`, the client accepts
-  `on`/`enable`/`true`/`1`, `off`/`disable`/`false`/`0`, and `toggle`. Leaving it out toggles.
+| Written | Means |
+|---|---|
+| `<arg>` | Required. |
+| `[arg]` | Optional. |
+| `a\|b` | Pick one. |
+| `…` | Any number of words. |
+| `on\|off\|toggle` | Also accepts `enable`/`true`/`1` and `disable`/`false`/`0`. Leaving it out toggles. |
 
----
+Examples use the default `.` prefix. Swap in yours if you changed it.
 
-## 3. Client (`.`) commands
+### Lite builds and addons
 
-### 3.1 Help & info
+Lite builds leave out `setting`, `irc`, `matchmaking`, `multi`, `toggle`, `modules`, `oresim`, `ghostblock`,
+`friend`, `waypoints`, `gamemode`, `fakegm`, `xcarry`, `rv` and `namescrape`. Addons can add their own `.`
+commands; one whose name is already taken shows up as `<addon>:<name>`.
 
-#### `.help [command]`
-With no argument, prints every command with its one-line description. With a command name (or alias),
-prints that command's description and aliases.
+### Same name, different command
+
+The two systems are separate, so these pairs do different things.
+
+| Client | Pathfinder |
+|---|---|
+| `.wp` saves DIH waypoints, which `.tp` can use. | `#wp` manages Baritone's tagged waypoints. |
+| `.set` changes a module setting. | `#set` changes a Baritone setting. |
+| `.gui` saves, desyncs and reloads container screens. | `#gui` is `#menu`, which reads and clicks plugin GUIs. |
+| `.help` lists client commands. | `#help` lists pathfinder commands. |
+
+Two `#` aliases also point somewhere other than their help text says. `#flee` opens the Flee trigger system, so
+use `#runaway` or `#escape` to run away. `#s` opens `#sel`, so use `#search` or `#blocks` to search.
+
+## Client commands
+
+### Help & info
+
+#### .help
+
+Show every client command, or the description and aliases of one.
+
 ```
 .help
 .help macro
 ```
 
-#### `.commands` — alias `.cmds`
-Compact comma-separated list of every registered command and the current prefix.
+#### .commands
 
-#### `.modules` — alias `.features`
-Lists every installed module name (built-in and addon).
+Aliases: `.cmds`
 
-#### `.oresim`
-Diagnostic report for OreSim (the Xray module's ore predictor): whether Xray is on, its mode and style,
-the seed it is using (or why it's invalid/missing), the scope the seed is saved under, how many ore
-families are selected, the local worldgen status, chunks simulated, and how many nearby real ores match.
-Use it when OreSim isn't drawing anything.
+List every command name on a few lines, with the current prefix.
 
----
+#### .modules
 
-### 3.2 Modules & settings
+Aliases: `.features`
 
-#### `.toggle <module> [on|off|toggle]` — alias `.t`
-Turns a module on, off, or flips it.
+List every installed module, built-in and addon.
+
+#### .oresim
+
+Explain why OreSim (the Xray module's ore predictor) is or isn't drawing ores.
+
+It reports whether Xray is on, its mode and style, the seed in use or why it's missing, where that seed is
+saved, how many ore families are selected, the local worldgen status, chunks simulated, and how many nearby
+real ores matched a prediction.
+
+### Modules & settings
+
+#### .toggle
+
+Aliases: `.t`
+
+Turn a module on, off, or flip it.
+
+```
+.toggle <module> [on|off|toggle]
+```
+
 ```
 .toggle killaura
 .t scaffold on
-.t freecam off
 ```
 
-#### `.setting <module> [key] [value…]` — alias `.set`
-Reads or writes any module setting without opening the ClickGUI.
+#### .setting
 
-| Form | Effect |
+Aliases: `.set`
+
+Read or change any module setting without opening the module menu.
+
+| Usage | Effect |
 |---|---|
-| `.setting <module>` | List every setting of the module with its current value. |
-| `.setting <module> <key>` | Print one setting. |
-| `.setting <module> <key> <value…>` | Set it. Use `reset` or `default` as the value to restore the default. |
+| `.setting <module>` | List every setting with its value. |
+| `.setting <module> <key>` | Show one setting. |
+| `.setting <module> <key> <value…>` | Set it. `reset` or `default` restores the default. |
 
-Module names with spaces can be written with `-` (e.g. `storage-esp`).
+Write module names that contain spaces with `-`, such as `storage-esp`.
+
 ```
-.setting xray
-.set xray mode
 .set killaura range 4.2
 .set killaura range reset
 ```
 
-#### `.friend [add|remove|clear] [name]` — alias `.team`
-Manages the friends/teams list used by combat and ESP modules.
+#### .friend
 
-| Form | Effect |
+Aliases: `.team`
+
+Manage your friends list. Combat modules leave friends alone, and ESP and nametags can mark them.
+
+| Usage | Effect |
 |---|---|
-| `.friend` | Show the friend list. |
-| `.friend add <name>` | Add a player (tab-completes online players). |
+| `.friend` | Show the list. |
+| `.friend add <name>` | Add a player. Tab completes players on the server. |
 | `.friend remove <name>` | Remove a player. |
 | `.friend clear` | Empty the list. |
 
-#### `.ghostblock …` — alias `.gb`
-Client-side "ghost" blocks that only you can see (controls the GhostBlock module).
+#### .ghostblock
 
-| Form | Effect |
+Aliases: `.gb`
+
+Place blocks that only you can see.
+
+| Usage | Effect |
 |---|---|
-| `.gb toggle` | Turn the module on/off. |
-| `.gb reset` | Remove every ghost block and restore the real blocks. |
-| `.gb creative [on|off|toggle]` | Fake creative mode — whatever you place becomes a ghost block. Turning it on also enables the module. |
-| `.gb block` | Show the currently armed block. |
-| `.gb block <id>` | Arm a block for placement (e.g. `diamond_block`). Enables the module. |
-| `.gb block off` | Disarm (`none`/`reset` also work) — held blocks become ghosts again. |
+| `.gb toggle` | Turn the GhostBlock module on or off. |
+| `.gb reset` | Remove every ghost block and show the real blocks again. |
+| `.gb creative [on\|off\|toggle]` | Fake creative mode: everything you place becomes a ghost block. Also turns the module on. |
+| `.gb block` | Show the armed block. |
+| `.gb block <id>` | Arm a block to place, such as `diamond_block`. Also turns the module on. |
+| `.gb block off` | Disarm it (`none` and `reset` work too), so held blocks place ghosts again. |
 
----
+### Keybinds & prefix
 
-### 3.3 Keybinds & prefix
+#### .bind
 
-#### `.bind <key> <command…>` / `.bind clear <key>`
-Binds a key to run any chat line — a DIH command, a `#` command, or plain chat.
+Bind a key to any chat line: a client command, a `#` command or plain chat.
+
+```
+.bind <key> <command…>
+.bind clear <key>
+```
+
 ```
 .bind G .macro myMacro
 .bind H #goto 0 0
 .bind clear G
 ```
 
-#### `.binds`
-Lists all command keybinds.
+Right Shift (module menu) and V (reload the stored GUI) are set in the config, not with `.bind`. The packet
+queue keys (flush, clear, toggle send, toggle delay, toggle logger) start unbound.
 
-#### `.prefix [new|reset]`
-Shows, changes or resets the `.` command prefix. Allowed: `. % - _ * # @ & =`. `reset` goes back to the
-environment default (`.` or `%` with Meteor). If Meteor is installed and you pick `.`, the client keeps
-`%` and warns you.
+#### .binds
+
+List every command keybind.
+
+#### .prefix
+
+Show, change or reset the client command prefix.
+
 ```
 .prefix
 .prefix -
 .prefix reset
 ```
 
-> Built-in key defaults (changed in the config, not with `.bind`): **Right Shift** opens the module menu,
-> **V** reloads the stored GUI. Flush queue / clear queue / toggle send / toggle delay / toggle logger are
-> unbound by default.
+The choices are `. % - _ * # @ & =`. `reset` goes back to `.`, or `%` with Meteor installed. Picking `.` while
+Meteor is installed keeps `%` and warns you.
 
----
+### Macros
 
-### 3.4 Macros
+#### .macro
 
-Macros are built in the macro editor (module menu → Macros) or entirely from chat with the subcommands
-below. They're stored in `config/dih/dih_macros.nbt`.
+Run macros, loop them, or build them from chat. Macros are saved in `config/dih/dih_macros.nbt`.
 
-#### Running
-| Form | Effect |
+##### Run
+
+| Usage | Effect |
 |---|---|
-| `.macro <name>` | Run the macro once. |
-| `.macro <name> <times>` | Run it `times` times (1–100 000) back to back; each run waits for the previous to finish. |
-| `.macro <name> <times> <delayTicks>` | Same, with `delayTicks` (0–72 000; 20 ticks = 1 s) between runs. |
-| `.macro stop` | Stop every running macro and loop. |
+| `.macro <name>` | Run once. |
+| `.macro <name> <times>` | Run up to 100 000 times, each run starting when the last one ends. |
+| `.macro <name> <times> <delayTicks>` | Same, waiting `delayTicks` between runs (20 ticks is 1 second, up to 72 000). |
+| `.macro stop` | Stop every macro and loop. |
 | `.macro stop <name>` | Stop one macro and its loop. |
-| `.macro clear` | Cancel queued loops (the current run is allowed to finish). |
+| `.macro clear` | Cancel queued loops and let the current run finish. |
 
-#### Authoring from chat
-| Form | Effect |
+##### Build from chat
+
+| Usage | Effect |
 |---|---|
 | `.macro new <name>` | Create an empty macro. |
-| `.macro add <name> <TYPE> [field=value …]` | Append an action. `TYPE` tab-completes from every macro action type. Fields are the action's public fields; enums, booleans, ints, longs, floats, doubles and strings are accepted (no spaces in values). |
-| `.macro show <name>` | List the steps with their indices. |
-| `.macro removeaction <name> <index>` | Delete step `index` (0-based). |
+| `.macro add <name> <TYPE> [field=value …]` | Add a step. `TYPE` tab completes. Values can't contain spaces. |
+| `.macro show <name>` | List the steps with their numbers. |
+| `.macro removeaction <name> <index>` | Delete step `index`, counting from 0. |
 | `.macro delete <name>` | Delete the macro. |
 
 ```
 .macro new dupe1
 .macro add dupe1 DELAY ticks=5
-.macro show dupe1
-.macro dupe1 10 20        # run 10 times, 1 second apart
+.macro dupe1 10 20
 .macro stop
 ```
 
-> When you are piloting a Multi bot (POV mode), `.macro` runs, loops and stops on **that bot** instead of
-> your own player.
+While you pilot a Multi bot, `.macro` runs, loops and stops on that bot instead of you.
 
----
+### Packets
 
-### 3.5 Packets
+#### .packet
 
-DIH sits on every outgoing packet. These commands drive the same controls as the on-screen
-Send / Delay / Flush / Clear buttons and the packet gate manager.
+Aliases: `.pkt`
 
-#### `.packet …` — alias `.pkt`
-| Form | Effect |
+Control the outgoing packet queue, the same as the Send, Delay, Flush and Clear buttons.
+
+| Usage | Effect |
 |---|---|
-| `.packet status` | Show whether sending and delaying are on, and how many packets are queued. |
-| `.packet send [on|off|toggle]` | Toggle sending of GUI/outgoing packets. Off = packets are not sent. |
-| `.packet delay [on|off|toggle]` | Toggle the delay queue. Turning delay off flushes what was held. |
-| `.packet flush` | Release every queued packet to the server now. |
-| `.packet clear` | Throw away every queued packet. |
+| `.packet status` | Show whether send and delay are on, and how many packets are queued. |
+| `.packet send [on\|off\|toggle]` | With send off, GUI packets aren't sent. |
+| `.packet delay [on\|off\|toggle]` | Hold packets in the queue. Turning delay off sends what was held. |
+| `.packet flush` | Send every queued packet now. |
+| `.packet clear` | Throw every queued packet away. |
 
-#### `.delay [on|off|toggle]`
+#### .delay
+
 Shortcut for `.packet delay`.
 
-#### `.gate …` — alias `.packetgate`
-A *gate* is a rule that cancels, holds, or whitelists specific packet types until you end it.
-Packet names are class names (tab-complete), separated by spaces or commas.
+```
+.delay [on|off|toggle]
+```
 
-| Form | Effect |
+#### .gate
+
+Aliases: `.packetgate`
+
+Cancel, hold or whitelist specific packet types until you end the gate.
+
+| Usage | Effect |
 |---|---|
 | `.gate cancel <packet…>` | Drop matching packets. |
 | `.gate delay <packet…>` | Hold matching packets in the queue. |
-| `.gate allow <packet…>` | Drop **everything except** these. |
-| `.gate end [id]` | End a gate and flush what it held. The default id for gates made here is `cli`. |
+| `.gate allow <packet…>` | Drop every packet except these. |
+| `.gate end [id]` | End a gate and send what it held. Gates made here use the id `cli`. |
 | `.gate clear` | End every gate. |
 | `.gate status` | List active gates. |
 
+Name packets by class (they tab complete), separated by spaces or commas.
+
 ```
 .gate cancel ServerboundContainerClosePacket
-.gate status
 .gate end
 ```
 
-#### `.send <PacketClass> [field=value …]`
-Builds and sends any client-to-server packet by class name. Press **Tab** after the space to search
-packet classes and, after the packet name, its fields. Sending bypasses the delay queue. Server-to-client
-packets are refused. If the arguments are incomplete the client prints the fields the packet needs.
-Add `dry` (also `dryrun`, `preview`, `nosend`) to build the packet without sending it. Values can be quoted
-(`message="hello"`) and raw bytes given as `hex:…`.
+#### .send
+
+Build and send any client-to-server packet by class name.
+
+```
+.send <PacketClass> [field=value …]
+```
+
+Press Tab after the space to search packet classes, and again after the name for its fields. If you leave
+fields out, DIH lists the ones the packet needs. Quote values with spaces (`message="hello"`) and give raw bytes
+as `hex:…`. Add `dry` (or `dryrun`, `preview`, `nosend`) to build the packet without sending it. Sent packets
+skip the delay queue, and server-to-client packets are refused.
+
 ```
 .send ServerboundSetCarriedItemPacket slot=0
 .send ServerboundChatPacket message="hello" dry
 ```
 
----
+### Container GUIs
 
-### 3.6 Container GUIs
+#### .gui
 
-#### `.gui …` — alias `.screen`
-The building blocks of the desync workflow (same code as the on-screen buttons).
+Aliases: `.screen`
 
-| Form | Effect |
+Save, desync and reload container screens, the same as the on-screen buttons.
+
+| Usage | Effect |
 |---|---|
-| `.gui save` | Store the current container screen locally (no packet). |
-| `.gui desync` | Send the close-container packet to the server but keep the screen open on your side. |
-| `.gui load` | Re-open the stored screen (same as the **V** key). |
-| `.gui close` / `.gui close packet` | Close the screen and tell the server. |
-| `.gui close nopacket` | Close the screen locally only. |
+| `.gui save` | Store the open screen on your side. Sends nothing. |
+| `.gui desync` | Tell the server the screen closed but keep it open for you. |
+| `.gui load` | Reopen the stored screen, like the V key. |
+| `.gui close` | Close the screen and tell the server. `.gui close packet` does the same. |
+| `.gui close nopacket` | Close the screen on your side only. |
 
-#### `.click-slot <slot> [click] [times]`
-Clicks a slot in the open GUI or your inventory.
+#### .click-slot
 
-**Slot names:** `gui1`, `gui2`… (container slots), `hotbar1`–`hotbar9`, `inventory1`–`inventory27`,
-`helmet`, `chestplate`, `leggings`, `boots`, `offhand`, or a raw visible numeric id.
+Click a slot in the open GUI or your inventory.
 
-**Click modes** (default `left`; `times` up to 100 000):
+```
+.click-slot <slot> [click] [times]
+```
 
-| Mode | What it does |
+Slots: `gui1`, `gui2`… for container slots, `hotbar1`–`hotbar9`, `inventory1`–`inventory27`, `helmet`,
+`chestplate`, `leggings`, `boots`, `offhand`, or a raw slot number.
+
+| Click | Does |
 |---|---|
-| `left` / `right` / `middle` | Normal pick-up clicks. |
-| `shift-left` / `shift-right` | Quick-move. |
+| `left`, `right`, `middle` | Normal clicks. `left` is the default. |
+| `shift-left`, `shift-right` | Quick move. |
 | `clone` | Middle-click clone (creative). |
 | `pickup-all` | Double-click collect. |
 | `drop-item` | Drop `times` items from the slot. |
-| `drop-stack` | Drop the whole stack (no repeat count). |
+| `drop-stack` | Drop the whole stack. Takes no count. |
 | `swap <1-9> [times]` | Swap with that hotbar slot. |
 
+`times` goes up to 100 000.
+
 ```
-.click-slot gui5
 .click-slot gui5 shift-left
 .click-slot hotbar1 swap 3
 .click-slot inventory4 drop-item 16
 ```
 
-#### `.click-item "<item name>" [click] [times]`
-Same as `.click-slot`, but finds the slot by the item's **visible name** in the current GUI
-(case/format-insensitive). Quote names with spaces.
+#### .click-item
+
+Click an item in the open GUI by its visible name. Takes the same clicks as `.click-slot`.
+
+```
+.click-item "<item name>" [click] [times]
+```
+
+Matching ignores case and colour codes. Quote names that contain spaces.
+
 ```
 .click-item "Confirm"
 .click-item "Diamond Sword" shift-left
 ```
 
-#### `.xcarry <slot>`
-Stashes the item in your hand into a slot the server doesn't expect to hold items, so you keep it.
-Open your inventory (**E**) first.
-Slots: `craft1`–`craft4`, `craft5` (also `crafting5`/`result`, the crafting output), `helmet`,
-`chestplate`, `leggings`, `boots`, `offhand`, or `cursor` (keep holding it on the cursor).
+#### .xcarry
+
+Stash the item in your hand in a slot the server doesn't expect to hold items, so you keep it.
+
 ```
-.xcarry craft1
-.xcarry cursor
+.xcarry <slot>
 ```
 
----
+Open your inventory with E first. Slots: `craft1`–`craft4`, `craft5` (the crafting output, also `result`),
+`helmet`, `chestplate`, `leggings`, `boots`, `offhand`, or `cursor` to keep holding it on the cursor.
 
-### 3.7 Inventory & items
+### Inventory & items
 
-#### `.drop …`
-| Form | Effect |
+#### .drop
+
+Drop your held stack, your whole inventory, or a set amount of an item.
+
+| Usage | Effect |
 |---|---|
-| `.drop hand` | Drop the whole held stack. |
-| `.drop fullinventory` | Drop every stack in the main inventory and hotbar. |
-| `.drop <amount>` | Drop `amount` of the held item, pulling from other stacks of it if needed. |
-| `.drop <amount> <item_id>` | Drop `amount` of a specific item from anywhere in the inventory. |
+| `.drop hand` | Drop the held stack. |
+| `.drop fullinventory` | Drop every stack in the inventory and hotbar. |
+| `.drop <amount>` | Drop `amount` of the held item, taking from other stacks of it if needed. |
+| `.drop <amount> <item>` | Drop `amount` of that item from anywhere in the inventory. |
 
 ```
 .drop 32
 .drop 10 diamond
 ```
 
-#### `.change-slot <1-9>`
-Selects a hotbar slot.
+#### .change-slot
 
-#### `.give <item> [count]`
-Puts an item (count 1–64) into the selected hotbar slot. **Creative mode required.**
+Select a hotbar slot.
+
 ```
-.give netherite_sword
+.change-slot <1-9>
+```
+
+#### .give
+
+Put an item in your selected hotbar slot. Needs creative mode.
+
+```
+.give <item> [count]
+```
+
+`count` is 1 to 64.
+
+```
 .give tnt 64
 ```
 
-#### `.nbt [get|copy]`
-- `.nbt` / `.nbt get` — open the component/NBT inspector for the item in your main hand (or offhand).
-- `.nbt copy` — copy a `/give` command that recreates the held item to your clipboard.
+#### .nbt
 
----
+Inspect or copy the item in your hand.
 
-### 3.8 Movement & position
-
-#### `.vclip …`
-Clips vertically through blocks using movement packets.
-
-| Form | Effect |
+| Usage | Effect |
 |---|---|
-| `.vclip <blocks>` | Move up (positive) or down (negative) by `blocks`. |
-| `.vclip top` / `.vclip bottom` | Clip to the top/bottom free space. |
-| `.vclip default <blocks>` / `.vclip paper <blocks>` | Same as `<blocks>` (Paper-safe padding). |
-| `.vclip single <blocks>` / `.vclip normal <blocks>` | One single movement packet. |
-| `.vclip custom <blocks> <segment> [maxPackets] [updateLocal] [vehicle] [forceGround]` | Full control: `segment` 1–50 blocks per step, `maxPackets` 1–100, then `true`/`false` flags. |
+| `.nbt` | Open the component (NBT) inspector for the item in your main hand, or offhand if it's empty. `.nbt get` does the same. |
+| `.nbt copy` | Copy a `/give` command that recreates the item. |
+
+### Movement & position
+
+#### .vclip
+
+Clip up or down through blocks with movement packets.
+
+| Usage | Effect |
+|---|---|
+| `.vclip <blocks>` | Move up (positive) or down (negative). |
+| `.vclip top` | Find a safe spot above you and clip there. |
+| `.vclip bottom` | Find a safe spot below you and clip there. |
+| `.vclip paper <blocks>` | Same as `<blocks>`, padded for Paper servers. `default` is the same. |
+| `.vclip single <blocks>` | Use one movement packet. `normal` is the same. |
+| `.vclip custom <blocks> <segment> [maxPackets] [updateLocal] [vehicle] [forceGround]` | Set every option: `segment` 1–50 blocks per step, `maxPackets` 1–100, then `true` or `false` for each flag. |
 
 ```
 .vclip 5
 .vclip -30
-.vclip top
 .vclip custom -25 10 20 true true
 ```
 
-#### `.hclip …`
-Clips horizontally (in the direction you face).
+#### .hclip
 
-| Form | Effect |
+Clip forward through blocks with movement packets.
+
+| Usage | Effect |
 |---|---|
 | `.hclip <blocks>` | Clip forward `blocks`. |
-| `.hclip forward` / `.hclip back` | Clip to the next free space forward/back. |
-| `.hclip default\|paper\|padding <blocks>` | Padded (Paper-safe) variants. |
-| `.hclip single\|normal <blocks>` | One single movement packet. |
-| `.hclip custom <blocks> <segment> [maxPackets] [updateLocal] [vehicle] [forceGround]` | Full control, same as vclip. |
+| `.hclip forward` | Clip through the wall in front of you to the free space past it. |
+| `.hclip back` | Same, through the wall behind you. |
+| `.hclip paper <blocks>` | Padded for Paper servers. `default` and `padding` are the same. |
+| `.hclip single <blocks>` | Use one movement packet. `normal` is the same. |
+| `.hclip custom <blocks> <segment> [maxPackets] [updateLocal] [vehicle] [forceGround]` | Set every option, like `.vclip custom`. |
 
-#### `.tp …`
-Ground-first teleport made of paced HClip bursts.
+#### .tp
 
-| Form | Effect |
+Teleport in paced HClip bursts, ground first.
+
+| Usage | Effect |
 |---|---|
 | `.tp <x> <y> <z> [maxPackets] [pauseMs]` | Teleport. `~` offsets work. `maxPackets` 1–100 per burst, `pauseMs` 50–10 000 between bursts. |
-| `.tp <waypoint>` / `.tp "<waypoint name>"` | Teleport to a saved DIH waypoint. |
+| `.tp <waypoint>` | Teleport to a saved DIH waypoint. Quote names with spaces. |
 | `.tp status` | Show the running teleport. |
 | `.tp stop` | Cancel it. |
 | `.tp config <maxPackets> <pauseMs>` | Save new defaults. |
-| `.tp reset` | Restore defaults (20 packets, 500 ms). |
+| `.tp reset` | Go back to 20 packets and 500 ms. |
 
-It won't start while a macro is running. Works while riding.
+It works while riding but won't start while a macro runs.
+
 ```
 .tp ~100 ~ ~
 .tp 1200 64 -300 30 400
 .tp base
 ```
 
-#### `.copypos`
-Copies your block position (`x y z`) to the clipboard. Uses your vehicle's position while riding and the
-camera position while in freecam.
+#### .copypos
 
-#### `.waypoints …` — alias `.wp`
-DIH's own waypoints (separate from Baritone's `#wp`), saved per server/world.
+Copy your block position as `x y z`. Uses your vehicle while riding and the camera in freecam.
 
-| Form | Effect |
+#### .waypoints
+
+Aliases: `.wp`
+
+Save and manage DIH waypoints for this server or world. They're separate from Baritone's `#wp`.
+
+| Usage | Effect |
 |---|---|
-| `.wp` | Save a waypoint at your position (auto-named `Waypoint N`). |
+| `.wp` | Save a waypoint here, named `Waypoint 1`, `Waypoint 2`… |
 | `.wp <x> <y> <z>` | Save one at those coordinates. |
-| `.wp gui` / `.wp list` | Open the waypoint manager. |
+| `.wp gui` | Open the waypoint manager. `.wp list` does the same. |
 | `.wp del <name>` | Delete a waypoint. |
-| `.wp clear` | Delete all waypoints for this server/world. |
+| `.wp clear` | Delete every waypoint for this server or world. |
 
-#### `.dismount`
-Force-dismounts from any vehicle.
+#### .dismount
 
----
+Get off any vehicle.
 
-### 3.9 Player & world
+### Player & world
 
-#### `.gamemode <survival|creative|adventure|spectator>`
-Changes your **real** game mode without sending a chat command (needs permission on the server).
+#### .gamemode
 
-#### `.fakegm <survival|creative|adventure|spectator|reset>`
-Client-side-only fake game mode. `reset` (or `r`) returns to the real one.
+Change your real game mode without sending a chat command. The server still has to allow it.
 
-#### `.damage <amount>`
-Sends `/damage @s <amount>` (0.1–1024). Only works where you're allowed to use `/damage` (op).
+```
+.gamemode <survival|creative|adventure|spectator>
+```
 
-#### `.rv [player|stop]`
-Remote view: watch another loaded player's point of view.
-- `.rv` — watch the player you're looking at.
-- `.rv <name>` — watch a named loaded player.
-- `.rv stop` — return to your own view.
+#### .fakegm
 
-#### `.namescrape [count] | deep [count] | pause | resume | stop` — alias `.scrapenames`
-Collects player names from the server and copies them to the clipboard. `count` limits how many,
-`deep` does an exhaustive scrape; `pause`/`resume`/`stop` control a running scrape.
+Show a different game mode on your side only.
 
----
+```
+.fakegm <survival|creative|adventure|spectator|reset>
+```
 
-### 3.10 Server, chat & network
+`reset` (or `r`) goes back to your real mode.
 
-#### `.server [info|plugins|tps]`
-- `.server` / `.server info` — open the server info panel.
-- `.server plugins` — open the plugin scanner tab.
-- `.server tps` — print the estimated server TPS.
+#### .damage
 
-#### `.plugins`
+Send `/damage @s <amount>`. Works only where you can use `/damage`.
+
+```
+.damage <amount>
+```
+
+`amount` is 0.1 to 1024.
+
+#### .rv
+
+Watch another loaded player's point of view.
+
+| Usage | Effect |
+|---|---|
+| `.rv` | Watch the player you're looking at. |
+| `.rv <name>` | Watch a player by name. |
+| `.rv stop` | Go back to your own view. |
+
+#### .namescrape
+
+Aliases: `.scrapenames`
+
+Collect player names from the server and copy them to the clipboard.
+
+| Usage | Effect |
+|---|---|
+| `.namescrape [count]` | Scrape, stopping at `count` names if given. |
+| `.namescrape deep [count]` | Scrape exhaustively. |
+| `.namescrape pause` | Pause a running scrape. |
+| `.namescrape resume` | Resume it. |
+| `.namescrape stop` | Stop it. |
+
+### Server, chat & network
+
+#### .server
+
+Open the server panel or check TPS.
+
+| Usage | Effect |
+|---|---|
+| `.server` | Open the server info panel. `.server info` does the same. |
+| `.server plugins` | Open the plugin scanner. |
+| `.server tps` | Print the estimated server TPS. |
+
+#### .plugins
+
 Shortcut for `.server plugins`.
 
-#### `.say <message>`
-Sends a chat message. If it starts with `/` it's sent as a server command. Useful in binds and macros,
-and for sending text that begins with your DIH prefix.
+#### .say
 
-#### `.clear` — alias `.cls`
-Clears the chat window.
+Send a chat message, or a server command if it starts with `/`.
 
-#### `.disconnect`
-Disconnects from the server.
+```
+.say <message>
+```
 
----
+Use it in binds and macros, or to send a line that starts with your DIH prefix.
 
-### 3.11 Multi, LAN Sync & Matchmaking
+#### .clear
 
-#### `.multi …`
-Multi runs several accounts (bots) at once.
+Aliases: `.cls`
 
-| Form | Effect |
+Clear the chat window.
+
+#### .disconnect
+
+Leave the server.
+
+### Multi, LAN Sync & Matchmaking
+
+#### .multi
+
+Run several accounts at once.
+
+| Usage | Effect |
 |---|---|
-| `.multi` / `.multi open` | Open the Multi menu (or the console if a batch is running). |
-| `.multi launch <profile>` | Start a saved Multi profile. |
-| `.multi status` | Batch name, ready and connected counts. |
-| `.multi stop` | Disconnect every bot in the batch. |
-| `.multi macro <macro> [bot]` | Run a macro on one bot, or on all bots if none is named. |
+| `.multi` | Open the Multi menu, or the console while a batch runs. `.multi open` does the same. |
+| `.multi launch <profile>` | Start a saved profile. |
+| `.multi status` | Show the batch name and how many bots are ready and connected. |
+| `.multi stop` | Disconnect every bot. |
+| `.multi macro <macro> [bot]` | Run a macro on one bot, or all of them. |
 
-**POV mode.** While you're piloting a bot, these commands run on the bot instead of you:
-`click-slot`, `click-item`, `change-slot`, `drop`, `send`, `say`, `damage`, `hclip`, `vclip`, `tp`
-(`disconnect` disconnects the bot). These are blocked in POV so they can't touch your main account:
-`delay`, `gamemode`, `server`, `plugins`, `matchmaking`/`mm`, `dismount`.
+While you pilot a bot, `click-slot`, `click-item`, `change-slot`, `drop`, `send`, `say`, `damage`, `hclip`,
+`vclip` and `tp` run on the bot, and `disconnect` disconnects the bot. `delay`, `gamemode`, `server`, `plugins`,
+`matchmaking` and `dismount` are blocked so they can't touch your main account.
 
-#### `.sync …` — aliases `.lan-sync`, `.lansync`
-Requires an active LAN Sync session.
-- `.sync send <message or /command>` — send the same chat line from every synced client.
-- `.sync macro <name>` — start a macro on every synced client at the same moment.
+#### .sync
 
-#### `.matchmaking` — alias `.mm`
-Toggles the Matchmaking overlay.
+Aliases: `.lan-sync`, `.lansync`
 
-#### `.irc <message>`
-Sends a message to your Matchmaking lobby's chat (join or create a lobby first).
+Run the same thing on every client in your LAN Sync session. Join a session first.
 
----
+| Usage | Effect |
+|---|---|
+| `.sync send <message or /command>` | Send the line from every synced client. |
+| `.sync macro <name>` | Start a macro on every synced client at the same moment. |
 
-### 3.12 Updates
+#### .matchmaking
 
-#### `.update [check|download|on|off]` — alias `.updates`
-| Form | Effect |
+Aliases: `.mm`
+
+Show or hide the Matchmaking overlay.
+
+#### .irc
+
+Send a message to your Matchmaking lobby. Join or create a lobby first.
+
+```
+.irc <message>
+```
+
+### Updates
+
+#### .update
+
+Aliases: `.updates`
+
+Check for a newer DIH build.
+
+| Usage | Effect |
 |---|---|
 | `.update` | Show whether a newer build exists. |
 | `.update check` | Ask GitHub again. |
-| `.update download` | Open the new jar's download page. Replace the old jar in `mods` and restart. |
-| `.update on` / `.update off` | Turn automatic update checks on/off. With checks off, DIH never contacts GitHub. |
+| `.update download` | Open the new jar's download. Replace the old jar in `mods` and restart. |
+| `.update on` | Turn automatic checks on. |
+| `.update off` | Turn them off. DIH then never contacts GitHub. |
 
----
+## Pathfinder & AI commands
 
-## 4. Pathfinding & AI (`#`) commands
+Coordinates accept `~` like vanilla commands. `#help` lists everything; `#help <command>` shows one command's
+full help.
 
-The integrated Baritone engine. Wherever coordinates are expected you can use `~` like vanilla commands.
-`#help` lists every command; `#help <command>` prints its full built-in help.
+### Control
 
-### 4.1 Control
+#### #cancel
 
-| Command | Aliases | Effect |
-|---|---|---|
-| `#cancel` | `#c`, `#stop` | Stop whatever Baritone is doing. |
-| `#forcecancel` | | Like cancel, but more forceful. |
-| `#pause` | `#p`, `#paws` | Pause the current task. |
-| `#resume` | `#r`, `#unpause`, `#unpaws` | Resume after a pause. |
-| `#paused` | | Say whether Baritone is paused. |
-| `#proc` | | Show the process that is in control. |
-| `#eta` | | Estimated time to the next segment and the goal. |
+Aliases: `#c`, `#stop`
 
-### 4.2 Goals & navigation
+Stop whatever Baritone is doing.
 
-#### `#goto`
+#### #forcecancel
+
+Stop harder than `#cancel` when it doesn't work.
+
+#### #pause
+
+Aliases: `#p`, `#paws`
+
+Pause the current task.
+
+#### #resume
+
+Aliases: `#r`, `#unpause`, `#unpaws`
+
+Pick up where `#pause` left off.
+
+#### #paused
+
+Say whether Baritone is paused.
+
+#### #proc
+
+Show which process is in control and its state.
+
+#### #eta
+
+Estimate the time to the next path segment and to the goal.
+
+### Going places
+
+#### #goto
+
+Walk to a block type, a Y level or coordinates.
+
 ```
-#goto <block>          go to a block type anywhere it's known
-#goto <y>              go to a Y level
-#goto <x> <z>          go to X,Z
-#goto <x> <y> <z>      go to X,Y,Z
-```
-
-#### `#goal` / `#path`
-`#goal` sets a goal without moving; `#path` starts walking to it.
-```
-#goal                  goal = your position
-#goal <y> | <x> <z> | <x> <y> <z>
-#goal clear            (reset / none also work)
-#path
-```
-
-#### Other movement
-| Command | Aliases | Usage |
-|---|---|---|
-| `#come` | | Walk to where your camera is (handy with freecam). |
-| `#thisway <distance>` | `#forward` | Goal `distance` blocks in the direction you face. |
-| `#axis` | `#highway` | Head to the nearest axis (X=0 or Z=0). |
-| `#surface` | `#top` | Get out of caves to the nearest surface/open air. |
-| `#invert` | | Run away from the current goal instead of toward it. |
-| `#runaway [distance]` | `#escape` | Get at least `distance` blocks (default 32) from where you stand. *(`#flee` is taken by the Flee command — see §4.6.)* |
-| `#follow players` | | Follow all players. |
-| `#follow player <name…>` | | Follow specific players. |
-| `#follow entities` | | Follow all living entities. |
-| `#follow entity <type…>` | | Follow entity types (e.g. `horse`). |
-| `#explore [x z]` | | Explore outward from you (or from X,Z). |
-| `#explorefilter <path> [invert]` | | Load a JSON chunk list (`[{"x":0,"z":0},…]`) marking chunks as explored (or *not* explored with `invert`) before `#explore`. |
-
-#### `#elytra`
-Flies with elytra and rockets (needs elytra worn + fireworks in inventory). Works in every dimension.
-```
-#elytra goto <x> <z>
-#elytra goto <x> <y> <z>
-#elytra                    fly to the current #goal
-#elytra reset              reset pathfinding, keep the goal
-#elytra repack             re-feed loaded chunks to the pathfinder
-#elytra supported          check the native library loaded
+#goto <block>
+#goto <y>
+#goto <x> <z>
+#goto <x> <y> <z>
 ```
 
-#### `#nether` — aliases `#nc`, `#coords`
-Converts coordinates between Overworld and Nether (X/Z ÷8 or ×8, Y unchanged).
+#### #goal
+
+Set a goal without moving. Start walking with `#path`.
+
 ```
-#nether                       your position, auto-detects dimension
-#nether <x> <y> <z>           auto-detects direction
-#nether <x> <z>
-#nether overworld <x> <y> <z> overworld → nether
-#nether nether <x> <y> <z>    nether → overworld
+#goal
+#goal <y>
+#goal <x> <z>
+#goal <x> <y> <z>
+#goal clear
 ```
 
-#### `#portal` — aliases `#whereportal`, `#findportal`
-Walk to (and by default into) the nearest cached nether portal; explores if none is known.
-`#portal skip` blacklists the nearest one and goes to the next. Turn off auto-entry with
-`#set enterPortal false`.
+`#goal` alone uses your position. `reset` and `none` work like `clear`.
 
-#### `#sleep` / `#autosleep`
-- `#sleep` — go to the nearest cached bed and sleep when it's night (or thundering); waits there if it's day.
-- `#autosleep [on|off|interrupt|status]` (alias `#nightowl`) — do that automatically every night.
-  `interrupt` toggles whether it may interrupt other tasks (default: only when idle).
+#### #path
 
-### 4.3 Mining, farming & building
+Start walking to the current goal.
 
-| Command | Usage |
+#### #come
+
+Walk to where your camera is. Use it with freecam.
+
+#### #thisway
+
+Aliases: `#forward`
+
+Set a goal some distance straight ahead.
+
+```
+#thisway <distance>
+```
+
+#### #axis
+
+Aliases: `#highway`
+
+Head to the nearest axis, X=0 or Z=0.
+
+#### #surface
+
+Aliases: `#top`
+
+Get out of a cave to the nearest surface or open air.
+
+#### #invert
+
+Walk away from the current goal instead of toward it.
+
+#### #runaway
+
+Aliases: `#escape`
+
+Get at least `distance` blocks from where you stand.
+
+```
+#runaway [distance]
+```
+
+The default is 32. `#flee` opens the Flee triggers instead, not this.
+
+#### #follow
+
+Follow players or mobs.
+
+| Usage | Effect |
 |---|---|
-| `#mine <block…>` | Find and mine blocks. Stone/deepslate ore variants are paired automatically (`#mine diamond_ore` gets both). See `#set legitMine`. |
-| `#tunnel` | Mine a straight 1×2 tunnel the way you face. |
-| `#tunnel <height> <width> <depth>` | Custom-size tunnel. |
-| `#farm [range] [waypoint]` | Harvest mature crops and replant, optionally within `range` of you or of a waypoint. |
-| `#pickup [item…]` | Pick up dropped items (all, or only listed items). |
-| `#build <file> [x y z]` | Build `<file>.schematic` here or at a position. |
-| `#litematica [#]` | Build the schematic open in Litematica. |
-| `#blacklist` | While heading to a block, blacklist the closest one so Baritone skips it. |
+| `#follow players` | Follow every player. |
+| `#follow player <name…>` | Follow these players. |
+| `#follow entities` | Follow every living entity. |
+| `#follow entity <type…>` | Follow these entity types, such as `horse`. |
 
-### 4.4 Search, cache & memory
+#### #explore
 
-These read Baritone's chunk cache — no extra packets.
+Explore outward from you, or from X Z.
 
-#### `#search <block> [goto]` — alias `#blocks`
-Lists the nearest matches (loaded chunks + cache) with distance and direction.
-`#search <block> goto` paths to the nearest; `#search <N> goto` paths to result N.
-
-> The built-in help also lists `#s` as an alias, but `#s` actually opens `#sel`. Use `#search` or `#blocks`.
-
-#### `#find <block…>`
-Looks up cached positions of blocks (tab-complete only offers cached blocks).
-
-#### `#chest` — aliases `#chests`, `#findchest`
-DIH records the contents of every container you open. Search it:
 ```
-#chest <item>          containers holding <item> (partial, case-insensitive)
-#chest <item> goto     search and path to the best result
-#chest <N> goto        path to result N of the last search
-#chest list [page]     browse everything recorded
-#chest stats
-#chest forget <N>
-#chest clear
+#explore [x z]
 ```
+
+#### #explorefilter
+
+Mark chunks as already explored before `#explore`.
+
+```
+#explorefilter <path> [invert]
+```
+
+The file is JSON like `[{"x":0,"z":0}]`. With `invert`, the listed chunks count as not explored.
+
+#### #elytra
+
+Fly with an elytra and rockets in any dimension. Wear the elytra and carry fireworks.
+
+| Usage | Effect |
+|---|---|
+| `#elytra goto <x> <z>` | Fly to X Z. |
+| `#elytra goto <x> <y> <z>` | Fly to an exact block. |
+| `#elytra` | Fly to the current `#goal`. |
+| `#elytra reset` | Reset pathfinding and keep the goal. |
+| `#elytra repack` | Send the loaded chunks to the pathfinder again. |
+| `#elytra supported` | Check that the native library loaded. |
+
+#### #nether
+
+Aliases: `#nc`, `#coords`
+
+Convert coordinates between the Overworld and the Nether. X and Z divide or multiply by 8; Y stays.
+
+| Usage | Effect |
+|---|---|
+| `#nether` | Convert your position, detecting your dimension. |
+| `#nether <x> <y> <z>` | Convert these, detecting the direction. |
+| `#nether <x> <z>` | Convert X and Z only. |
+| `#nether overworld <x> <y> <z>` | Overworld to Nether. |
+| `#nether nether <x> <y> <z>` | Nether to Overworld. |
+
+#### #portal
+
+Aliases: `#whereportal`, `#findportal`
+
+Walk to the nearest known nether portal and step in. Explores if it knows none.
+
+`#portal skip` skips the nearest one and goes to the next. `#set enterPortal false` stops it stepping in.
+
+#### #sleep
+
+Go to the nearest known bed and sleep once it's night or thundering. In the day it waits at the bed.
+
+#### #autosleep
+
+Aliases: `#nightowl`
+
+Do `#sleep` on its own every night.
+
+| Usage | Effect |
+|---|---|
+| `#autosleep` | Toggle it. `on` and `off` work too. |
+| `#autosleep interrupt` | Toggle whether it may stop another task. Off by default. |
+| `#autosleep status` | Show the settings. |
+
+### Mining, farming & building
+
+#### #mine
+
+Find and mine blocks.
+
+```
+#mine <block…>
+```
+
+Stone and deepslate ores pair up, so `#mine diamond_ore` gets both. See `#set legitMine` for a less obvious
+style.
+
+#### #tunnel
+
+Dig straight ahead the way you face.
+
+```
+#tunnel
+#tunnel <height> <width> <depth>
+```
+
+With no size it digs 1 wide and 2 high.
+
+#### #farm
+
+Harvest grown crops and replant them.
+
+```
+#farm [range] [waypoint]
+```
+
+`range` limits it to that many blocks from you, or from `waypoint`.
+
+#### #pickup
+
+Pick up dropped items, all of them or only the ones you name.
+
+```
+#pickup [item…]
+```
+
+#### #build
+
+Build `<file>.schematic` here or at a position.
+
+```
+#build <file> [x y z]
+```
+
+#### #litematica
+
+Build the schematic open in Litematica.
+
+```
+#litematica [#]
+```
+
+#### #blacklist
+
+While heading to a block, skip the closest one.
+
+### Search & memory
+
+These read Baritone's chunk cache, so they send no extra packets.
+
+#### #search
+
+Aliases: `#blocks`
+
+List the nearest matches for a block, with distance and direction, and walk to one.
+
+| Usage | Effect |
+|---|---|
+| `#search <block>` | List the nearest matches. |
+| `#search <block> goto` | List them and walk to the nearest. |
+| `#search <N> goto` | Walk to match N from the last search. |
+
+It searches loaded chunks plus the cache, so ores you saw before anti-xray hid them still show up.
+
+#### #find
+
+Look up cached positions of blocks. Tab completion only offers blocks in the cache.
+
+```
+#find <block…>
+```
+
+#### #chest
+
+Aliases: `#chests`, `#findchest`
+
+Search what's inside every container you've opened. DIH records them as you play.
+
+| Usage | Effect |
+|---|---|
+| `#chest <item>` | Containers holding `item`. Partial names match. |
+| `#chest <item> goto` | Search and walk to the best match. |
+| `#chest <N> goto` | Walk to match N from the last search. |
+| `#chest list [page]` | Browse everything recorded. |
+| `#chest stats` | Count the recorded containers. |
+| `#chest forget <N>` | Delete match N from the record. |
+| `#chest clear` | Delete the whole record. |
+
 Saved in `baritone/chest_memory.json`.
 
-#### `#bases` — alias `#basefinder`
-Clusters cached "base indicator" blocks (beacons, ender chests, enchanting tables, anvils, shulkers…)
-into likely player bases.
-```
-#bases            top 10 in this dimension
-#bases <N>
-#bases pie        breakdown by indicator type
-#bases <N> goto   path to base N
-```
-Tune with `baseFinderMinScore` (30), `baseFinderMinIndicators` (3), `baseFinderEpsilon` (50). Run
-`#repack` first to include freshly loaded chunks.
+#### #bases
 
-#### `#heatmap` — alias `#activity`
-Scores 512×512 zones by player activity (adds portals, hoppers, observers, heads, jukeboxes).
-`#heatmap [N]`, `#heatmap <N> goto`. Also drawn as a JourneyMap layer.
+Aliases: `#basefinder`
 
-#### `#players` — aliases `#player`, `#seen`
-Player-sighting log (always recorded, even with `#threats` off).
+Find likely player bases from clusters of beacons, ender chests, enchanting tables, anvils, shulkers and similar
+blocks.
+
+| Usage | Effect |
+|---|---|
+| `#bases [N]` | Top N bases in this dimension (10 by default). |
+| `#bases pie` | Break the finds down by block type. |
+| `#bases <N> goto` | Walk to base N. |
+
+Run `#repack` first to include chunks you just loaded. Tune it with `#set baseFinderMinScore` (30),
+`baseFinderMinIndicators` (3) and `baseFinderEpsilon` (50, the cluster radius in blocks).
+
+#### #heatmap
+
+Aliases: `#activity`
+
+Rank 512 × 512 block zones by signs of players, including portals, hoppers, observers, player heads and jukeboxes.
+
 ```
-#players              everyone seen
-#players <name>       sighting history
-#players goto <name>  path to their last known position
-#players forget <name>
-#players clear
-#players stats
+#heatmap [N]
+#heatmap <N> goto
 ```
 
-#### `#menu` — alias `#gui`
-Reads and clicks server plugin GUIs (shops, warp menus, RTP).
-```
-#menu dump                     print every non-empty slot of the open menu
-#menu click <matcher>          click a slot in the open menu
-#menu run <command> <matcher>  run /command, wait for the menu, click
-#menu stop                     cancel a pending click
-```
-Matchers: `item:<id>` (most reliable), `slot:<n>` (0-based), or text from the name/lore.
+It also shows as a JourneyMap layer.
+
+#### #players
+
+Aliases: `#player`, `#seen`
+
+Look up every player you've seen and where. Sightings are recorded even with `#threats` off.
+
+| Usage | Effect |
+|---|---|
+| `#players` | Everyone seen. |
+| `#players <name>` | Where and when you saw them. |
+| `#players goto <name>` | Walk to where you last saw them. |
+| `#players forget <name>` | Delete them from the record. |
+| `#players clear` | Delete the whole record. |
+| `#players stats` | Summarise the record. |
+
+#### #menu
+
+Aliases: `#gui`
+
+Read and click server plugin GUIs, such as shops, warp menus and random teleport.
+
+| Usage | Effect |
+|---|---|
+| `#menu dump` | Print every filled slot of the open menu. |
+| `#menu click <matcher>` | Click a slot in the open menu. |
+| `#menu run <command> <matcher>` | Run `/command`, wait for the menu, then click. |
+| `#menu stop` | Cancel a pending click. |
+
+A matcher is `item:<id>` (most reliable), `slot:<n>` counting from 0, or text from the item's name or lore. Run
+`#menu dump` with the GUI open first to see the real names.
+
 ```
 #menu run warps item:compass
 #menu click slot:18
 ```
 
-### 4.5 Seeds & structures
+### Seeds & structures
 
-#### `#seedinput` — alias `#seed`
-Stores the world seed for the current server (needed for `#seedmap`, `#structure`, `#where` on
-multiplayer; shared with OreSim). Singleplayer needs nothing.
+#### #seedinput
+
+Aliases: `#seed`
+
+Save this server's world seed so `#seedmap`, `#structure` and `#where` work in multiplayer. OreSim uses it too.
+
+| Usage | Effect |
+|---|---|
+| `#seedinput <seed>` | Save it. Text converts like on the world creation screen. |
+| `#seedinput <seed> force` | Save it even if it doesn't match the server. |
+| `#seedinput` | Show the seed and whether it matches. `#seedinput check` does the same. |
+| `#seedinput clear` | Forget it. |
+
+The server sends a hash of its real seed when you join, and a seed that doesn't match is refused. Singleplayer
+needs no seed.
+
+#### #structure
+
+Aliases: `#struct`, `#locate`
+
+Find the nearest structure and walk there.
+
 ```
-#seedinput <seed>         number or text (text is converted like world creation)
-#seedinput <seed> force   keep it even if it fails verification
-#seedinput / check        show the seed and whether it matches the server's hash
-#seedinput clear
-```
-
-#### `#structure <name>` — aliases `#struct`, `#locate`
-Finds the nearest structure and paths there. Names: `village`, `stronghold`, `fortress`
-(`nether_fortress`), `bastion`, `mansion`, `monument`, `ancient_city`, `end_city`, `mineshaft`,
-`buried_treasure`, `desert_pyramid`, `jungle_pyramid`, `pillager_outpost`, `shipwreck`, `igloo`,
-`swamp_hut`, `ocean_ruin`, `ruined_portal`, `trial_chambers`, `trail_ruins`.
-
-#### `#where [structure]`
-`#where` prints your X Y Z and dimension. `#where <structure>` gives the nearest structure's coordinates,
-distance and direction **without** moving.
-
-#### `#seedmap` — aliases `#structures`, `#smap`
-Draws every biome-validated structure on the JourneyMap fullscreen map (chat list without JourneyMap).
-```
-#seedmap                     everything within 2000 blocks
-#seedmap <radius>            up to 8000
-#seedmap <kinds…>            e.g. #seedmap village monument
-#seedmap <r> at <x> <z>      centre elsewhere
-#seedmap wp                  also add landmark waypoints
-#seedmap strongholds         nearest strongholds (+ all 128)
-#seedmap off                 hide the overlay
+#structure <name>
 ```
 
-### 4.6 Safety & automation
+Names: `village`, `stronghold`, `fortress` (or `nether_fortress`), `bastion`, `mansion`, `monument`,
+`ancient_city`, `end_city`, `mineshaft`, `buried_treasure`, `desert_pyramid`, `jungle_pyramid`,
+`pillager_outpost`, `shipwreck`, `igloo`, `swamp_hut`, `ocean_ruin`, `ruined_portal`, `trial_chambers`,
+`trail_ruins`.
 
-#### `#threats` — alias `#threat`
-Chat alert when a player enters range. `#threats` toggles; `on`, `off`, `<N>` (radius, default 64),
-`status`.
+#### #where
 
-#### `#flee`
-Disconnects you (or runs a command) when a trigger fires. All triggers start **off**; by default they're
+Show your position, or a structure's coordinates without walking there.
+
+```
+#where
+#where <structure>
+```
+
+With a structure it prints coordinates, distance and direction. It takes the same names as `#structure`.
+
+#### #seedmap
+
+Aliases: `#structures`, `#smap`
+
+Draw every structure the seed really generates on the JourneyMap fullscreen map. Without JourneyMap it lists
+them in chat.
+
+| Usage | Effect |
+|---|---|
+| `#seedmap` | Everything within 2000 blocks. |
+| `#seedmap <radius>` | Up to 8000 blocks. |
+| `#seedmap <kinds…>` | Only these, such as `village monument`. |
+| `#seedmap <r> at <x> <z>` | Centre the search somewhere else. |
+| `#seedmap wp` | Also add waypoints on landmarks. |
+| `#seedmap strongholds` | The nearest strongholds, plus all 128. |
+| `#seedmap off` | Hide the overlay. |
+
+### Safety & automation
+
+#### #threats
+
+Aliases: `#threat`
+
+Alert you in chat when a player comes within range.
+
+| Usage | Effect |
+|---|---|
+| `#threats` | Toggle alerts. `on` and `off` work too. |
+| `#threats <N>` | Set the range to N blocks (64 by default). |
+| `#threats status` | Show the state and range. |
+
+#### #flee
+
+Disconnect, or run a command, when something goes wrong. Every trigger starts off, and by default triggers are
 only checked while Baritone is busy.
+
+| Usage | Effect |
+|---|---|
+| `#flee` | Show the status. |
+| `#flee on` | Turn Flee on. `off` turns it off. |
+| `#flee players [on\|off\|N]` | Trigger on a player within N blocks. |
+| `#flee health <hearts>` | Trigger at that many hearts. |
+| `#flee hunger <food>` | Trigger at that food level. |
+| `#flee tool <durability>` | Trigger when your tool gets that low. |
+| `#flee pickaxe` | Trigger when you run out of pickaxes while mining. |
+| `#flee full` | Trigger when your inventory is full. |
+| `#flee action <disconnect\|command\|stop>` | What happens when a trigger fires. |
+| `#flee command <command>` | The command to run, such as `/spawn`. |
+| `#flee check always` | Also check while Baritone is idle. |
+| `#flee reconnect on` | Let AutoReconnect rejoin afterwards. |
+| `#flee gui` | Open the settings screen. |
+| `#flee test` | Fire the action now. |
+
+#### #listentomine
+
+Aliases: `#ltm`
+
+Watch chat for a word, then warp and mine. By default it waits for `legendary`, runs `/warp mine`, drops a stack
+if your inventory is full, and mines `ancient_debris`.
+
 ```
-#flee                     status
-#flee on | off            master switch
-#flee players [on|off|N]  players within N blocks
-#flee health <hearts>
-#flee hunger <food>
-#flee tool <durability>
-#flee pickaxe             none left while mining
-#flee full                inventory full
-#flee action disconnect|command|stop
-#flee command /spawn      command to run with action=command
-#flee check always        also check while idle (default: busy)
-#flee reconnect on        let AutoReconnect reconnect afterwards
-#flee gui                 settings screen
-#flee test                fire the action now
+#ltm [on|off|status]
 ```
 
-#### `#listentomine` — alias `#ltm`
-Watches chat for a word (default `legendary`), then runs a warp (default `/warp mine`), waits, frees a
-slot if the inventory is full, and `#mine`s the target (default `ancient_debris`).
-`#ltm` toggles; `on`, `off`, `status`. Configure with `#set listenToMineWord`, `listenToMineWarp`,
-`listenToMineTarget`, `listenToMineWarpDelay` (40), `listenToMineCooldown` (200).
+Change it with `#set listenToMineWord`, `listenToMineWarp`, `listenToMineTarget`, `listenToMineWarpDelay` (40
+ticks) and `listenToMineCooldown` (200 ticks).
 
-### 4.7 AI
+### AI
 
-#### `#ai`
-A language model reads server chat and plays by issuing `#` commands. Trusted players' messages are
-instructions; everyone else's are context only.
+#### #ai
 
-**Setup**
+Let a language model read server chat and play by running `#` commands. Messages from trusted players are
+orders; everyone else's are only context.
+
+##### Set up
+
 ```
-#ai key <api-key>     (or set MINECRAFTAI_LLM_KEY)
-#ai url <base-url>    any OpenAI-compatible endpoint
-#ai model <name>      default qwen-plus
-#ai trust <player>    let that player command the bot
+#ai key <api-key>
+#ai url <base-url>
+#ai model <name>
+#ai trust <player>
 #ai on
 ```
 
-**Day to day**
-| Form | Effect |
+The key can also come from the `MINECRAFTAI_LLM_KEY` environment variable. Any OpenAI-compatible endpoint
+works, and the default model is `qwen-plus`.
+
+##### Use
+
+| Usage | Effect |
 |---|---|
-| `#ai <anything>` | Tell the AI to do something yourself. |
-| `#ai status` | Config, token usage, last error. |
+| `#ai <anything>` | Tell it to do something yourself. |
+| `#ai status` | Show the setup, token use and last error. |
 | `#ai off` | Stop listening. |
-| `#ai auto [on|off]` | Let it think on its own timer. |
-| `#ai chat [on|off]` | Whether it may talk in server chat. |
-| `#ai trigger <word|none>` | Require a wake word from trusted players. |
-| `#ai goal <text>` | Its standing objective. |
-| `#ai persona [text]` | Show/set its personality. |
-| `#ai trust [name]` / `#ai untrust <name>` | Manage trusted players (`trust` alone lists them). |
-| `#ai deny <command>` / `#ai allow <command>` | Forbid / re-allow a `#` command. |
-| `#ai extra <json|none>` | Extra JSON merged into every API request. |
-| `#ai forget [all|text]` | Inspect or wipe long-term memory. |
+| `#ai auto [on\|off]` | Let it think on a timer. |
+| `#ai chat [on\|off]` | Let it talk in server chat. |
+| `#ai trigger <word\|none>` | Make trusted players start orders with a wake word. |
+| `#ai goal <text>` | Give it a standing objective. |
+| `#ai persona [text]` | Show or set its personality. |
+| `#ai trust [name]` | Trust a player, or list trusted players. |
+| `#ai untrust <name>` | Stop trusting a player. |
+| `#ai deny <command>` | Forbid a `#` command. |
+| `#ai allow <command>` | Allow it again. |
+| `#ai extra <json\|none>` | Add JSON to every API request. |
+| `#ai forget [all\|text]` | See or wipe its long-term memory. |
 | `#ai clear` | Forget the current conversation. |
 
-Stored in `baritone/ai.json` and `baritone/ai_memory.json`.
+Saved in `baritone/ai.json` and `baritone/ai_memory.json`.
 
-### 4.8 Waypoints & homes
+### Waypoints & homes
 
-#### `#home` — aliases `#homes`, `#sethome`
-```
-#home set <name>      save your position (#sethome <name> does the same)
-#home <name>          path there
-#home list            list with distances
-#home del <name>
-```
+#### #home
+
+Aliases: `#homes`, `#sethome`
+
+Save named homes and walk back to them.
+
+| Usage | Effect |
+|---|---|
+| `#home set <name>` | Save your position. `#sethome <name>` does the same. |
+| `#home <name>` | Walk there. |
+| `#home list` | List homes with distances. |
+| `#home del <name>` | Delete one. |
+
 Saved in `baritone/homes.json`.
 
-#### `#waypoints` — aliases `#waypoint`, `#wp`
-Baritone's tagged waypoints (not the DIH `.wp` ones).
-```
-#wp [list] [tag]
-#wp save [tag] [name] [pos]
-#wp info <tag|name>
-#wp delete <tag|name>
-#wp restore <n>             undo the last n deletions
-#wp clear <tag>
-#wp goal <tag|name>         set as goal
-#wp goto <tag|name>         set as goal and go
-```
-Short forms: `l`, `s`, `i`/`show`, `d`, `c`, `g`.
+#### #waypoints
 
-### 4.9 Selections (WorldEdit-style)
+Aliases: `#waypoint`, `#wp`
 
-#### `#sel` — aliases `#selection`, `#s`
-```
-#sel pos1 [x y z]   /  #sel pos2 [x y z]     (p1/1, p2/2)
-#sel clear (c)      #sel undo (u)
-#sel set [block]           fill (also fill/s/f)
-#sel walls [block]         (w)
-#sel shell [block]         walls + floor + ceiling (shl)
-#sel sphere [block]        (sph)     #sel hsphere [block]  hollow (hsph)
-#sel cylinder [block] [axis]  (cyl)  #sel hcylinder …       hollow (hcyl)
-#sel cleararea             set air (ca)
-#sel replace <blocks…> <with>  (r)
-#sel copy [x y z]  (cp)    #sel paste [x y z]  (p)
-#sel expand <target> <direction> <blocks>   (ex)
-#sel contract <target> <direction> <blocks> (ct)
-#sel shift <target> <direction> <blocks>    (sh)
-```
-Targets: `a`/`all`, `n`/`newest`, `o`/`oldest`. Selections are drawn in-world.
+Manage Baritone's tagged waypoints. DIH's own waypoints are `.wp`.
 
-### 4.10 Settings & maintenance
+| Usage | Effect |
+|---|---|
+| `#wp [list] [tag]` | List waypoints, or only one tag. Short form `l`. |
+| `#wp save [tag] [name] [pos]` | Save one. With nothing else it saves here, tagged USER. Short form `s`. |
+| `#wp info <tag\|name>` | Show one. Also `show` or `i`. |
+| `#wp delete <tag\|name>` | Delete one. Short form `d`. |
+| `#wp restore <n>` | Bring back the last n deleted. |
+| `#wp clear <tag>` | Delete every waypoint with that tag. Short form `c`. |
+| `#wp goal <tag\|name>` | Make it the goal. Short form `g`. |
+| `#wp goto <tag\|name>` | Make it the goal and walk there. |
 
-| Command | Aliases | Effect |
-|---|---|---|
-| `#set` | `#setting`, `#settings` | `#set [list [page]]`, `#set modified [page]`, `#set <setting> [value]`, `#set toggle <setting>`, `#set reset <setting>\|all`, `#set save`, `#set load [file]`. |
-| `#modified` | `#mod`, `#baritone`, `#modifiedsettings` | Shortcut for `#set modified`. |
-| `#reset` | | Shortcut for `#set reset`. |
-| `#repack` | `#rescan` | Re-cache the chunks around you. |
-| `#reloadall` | | Reload the world cache. |
-| `#saveall` | | Save the world cache. |
-| `#render` | | Fix glitched chunk rendering. |
-| `#click` | | Open Baritone's click-to-go screen. |
-| `#gc` | | Run Java garbage collection. |
-| `#version` | | Baritone version. |
-| `#help [command]` | `#?` | List commands or show one command's help. |
+### Building selections
 
-Useful settings: `prefix` (`#`), `renderPath`, `renderGoal`, `enterPortal`, `legitMine`,
+#### #sel
+
+Aliases: `#selection`, `#s`
+
+Select areas like WorldEdit, then fill, clear, copy or paste them. Selections show in the world.
+
+| Usage | Effect |
+|---|---|
+| `#sel pos1 [x y z]` | Set corner 1, here or at a position. Also `p1` or `1`. |
+| `#sel pos2 [x y z]` | Set corner 2. Also `p2` or `2`. |
+| `#sel clear` | Clear the selection. Short form `c`. |
+| `#sel undo` | Undo the last change to the selection. Short form `u`. |
+| `#sel set [block]` | Fill it. Also `fill`, `s` or `f`. |
+| `#sel walls [block]` | Fill the walls. Short form `w`. |
+| `#sel shell [block]` | Walls, floor and ceiling. Short form `shl`. |
+| `#sel sphere [block]` | A sphere inside it. Short form `sph`. `hsphere` is hollow. |
+| `#sel cylinder [block] [axis]` | A cylinder along an axis, `y` by default. Short form `cyl`. `hcylinder` is hollow. |
+| `#sel cleararea` | Fill it with air. Short form `ca`. |
+| `#sel replace <blocks…> <with>` | Swap blocks for another. Short form `r`. |
+| `#sel copy [x y z]` | Copy it. Short form `cp`. |
+| `#sel paste [x y z]` | Build the copy. Short form `p`. |
+| `#sel expand <target> <direction> <blocks>` | Grow selections. Short form `ex`. |
+| `#sel contract <target> <direction> <blocks>` | Shrink them. Short form `ct`. |
+| `#sel shift <target> <direction> <blocks>` | Move them without resizing. Short form `sh`. |
+
+A target is `all` (`a`), `newest` (`n`) or `oldest` (`o`).
+
+### Settings & upkeep
+
+#### #set
+
+Aliases: `#setting`, `#settings`
+
+View or change Baritone settings.
+
+| Usage | Effect |
+|---|---|
+| `#set` | List settings. `#set list [page]` does the same. |
+| `#set modified [page]` | List the ones you changed. |
+| `#set <setting>` | Show one. |
+| `#set <setting> <value>` | Change it. |
+| `#set toggle <setting>` | Flip a true/false setting. |
+| `#set reset <setting>` | Reset one. `#set reset all` resets everything. |
+| `#set save` | Save now. It also saves on its own. |
+| `#set load [file]` | Load settings from a file in `minecraft/baritone`. |
+
+Settings mentioned on this page: `prefix`, `renderPath`, `renderGoal`, `enterPortal`, `legitMine`,
 `colorCurrentPath`, `pathRenderLineWidthPixels`.
 
----
+#### #modified
 
-## 5. Name clashes between `.` and `#`
+Aliases: `#mod`, `#baritone`, `#modifiedsettings`
 
-The two systems are separate, so similar names do different things:
+Shortcut for `#set modified`.
 
-| You type | Does |
-|---|---|
-| `.wp` | DIH waypoints (per server, used by `.tp`). |
-| `#wp` | Baritone waypoints (tagged, used by `#wp goto`). |
-| `.set` | DIH module setting. |
-| `#set` | Baritone setting. |
-| `.gui` | Save / desync / load container screens. |
-| `#gui` | `#menu` — read and click plugin GUIs. |
-| `.help` | DIH command help. |
-| `#help` | Baritone command help. |
+#### #reset
 
-Inside the `#` system, later registrations win:
-- `#flee` is the **Flee** trigger system; the run-away command is `#runaway` / `#escape`.
-- `#s` is **`#sel`**; for search use `#search` / `#blocks`.
+Shortcut for `#set reset`.
 
----
+#### #repack
 
-## 6. Quick reference
+Aliases: `#rescan`
 
-### `.` commands
+Re-cache the chunks around you.
 
-| Command | Aliases | Summary |
-|---|---|---|
-| `bind <key> <cmd…>` / `bind clear <key>` | | Bind a key to a chat line. |
-| `binds` | | List command binds. |
-| `change-slot <1-9>` | | Select hotbar slot. |
-| `clear` | `cls` | Clear chat. |
-| `click-item "<name>" [click] [times]` | | Click an item by visible name. |
-| `click-slot <slot> [click] [times]` | | Click a slot. |
-| `commands` | `cmds` | List commands. |
-| `copypos` | | Copy coordinates. |
-| `damage <amount>` | | `/damage @s`. |
-| `delay [on\|off\|toggle]` | | Toggle packet delay queue. |
-| `disconnect` | | Leave the server. |
-| `dismount` | | Leave vehicle. |
-| `drop hand\|fullinventory\|<n> [item]` | | Drop items. |
-| `fakegm <mode\|reset>` | | Fake gamemode. |
-| `friend [add\|remove\|clear] [name]` | `team` | Friends list. |
-| `gamemode <mode>` | | Real gamemode. |
-| `gate cancel\|delay\|allow\|end\|clear\|status` | `packetgate` | Packet gates. |
-| `ghostblock toggle\|reset\|creative\|block` | `gb` | Ghost blocks. |
-| `give <item> [count]` | | Creative give. |
-| `gui save\|desync\|load\|close` | `screen` | Container screen tools. |
-| `hclip …` | | Horizontal clip. |
-| `help [command]` | | Help. |
-| `irc <message>` | | Matchmaking lobby chat. |
-| `macro …` | | Run / author macros. |
-| `matchmaking` | `mm` | Matchmaking overlay. |
-| `modules` | `features` | List modules. |
-| `multi [open\|launch\|status\|stop\|macro]` | | Multi accounts. |
-| `namescrape …` | `scrapenames` | Scrape player names. |
-| `nbt [get\|copy]` | | Inspect / copy item NBT. |
-| `oresim` | | OreSim diagnostics. |
-| `packet status\|send\|delay\|flush\|clear` | `pkt` | Packet queue. |
-| `plugins` | | Plugin scanner. |
-| `prefix [new\|reset]` | | Command prefix. |
-| `rv [player\|stop]` | | Remote view. |
-| `say <message>` | | Send chat / command. |
-| `send <Packet> [k=v…]` | | Send a raw packet. |
-| `server [info\|plugins\|tps]` | | Server panel. |
-| `setting <module> [key] [value]` | `set` | Module settings. |
-| `sync send\|macro` | `lan-sync`, `lansync` | LAN Sync. |
-| `toggle <module> [state]` | `t` | Toggle module. |
-| `tp <x y z>\|<waypoint>\|stop\|status\|config\|reset` | | Paced teleport. |
-| `update [check\|download\|on\|off]` | `updates` | Update checker. |
-| `vclip …` | | Vertical clip. |
-| `waypoints [x y z\|gui\|del\|clear]` | `wp` | DIH waypoints. |
-| `xcarry <slot>` | | Stash item in XCarry slot. |
+#### #reloadall
 
-### `#` commands
+Reload the world cache from disk.
 
-| Command | Aliases |
-|---|---|
-| `ai` | |
-| `autosleep` | `nightowl` |
-| `axis` | `highway` |
-| `bases` | `basefinder` |
-| `blacklist` | |
-| `build` | |
-| `cancel` | `c`, `stop` |
-| `chest` | `chests`, `findchest` |
-| `click` | |
-| `come` | |
-| `elytra` | |
-| `eta` | |
-| `explore` | |
-| `explorefilter` | |
-| `farm` | |
-| `find` | |
-| `flee` | |
-| `follow` | |
-| `forcecancel` | |
-| `gc` | |
-| `goal` | |
-| `goto` | |
-| `heatmap` | `activity` |
-| `help` | `?` |
-| `home` | `homes`, `sethome` |
-| `invert` | |
-| `listentomine` | `ltm` |
-| `litematica` | |
-| `menu` | `gui` |
-| `mine` | |
-| `modified` | `mod`, `baritone`, `modifiedsettings` |
-| `nether` | `nc`, `coords` |
-| `path` | |
-| `pause` | `p`, `paws` |
-| `paused` | |
-| `pickup` | |
-| `players` | `player`, `seen` |
-| `portal` | `whereportal`, `findportal` |
-| `proc` | |
-| `reloadall` | |
-| `render` | |
-| `repack` | `rescan` |
-| `reset` | |
-| `resume` | `r`, `unpause`, `unpaws` |
-| `runaway` | `escape` |
-| `saveall` | |
-| `search` | `blocks` |
-| `seedinput` | `seed` |
-| `seedmap` | `structures`, `smap` |
-| `sel` | `selection`, `s` |
-| `set` | `setting`, `settings` |
-| `sleep` | |
-| `structure` | `struct`, `locate` |
-| `surface` | `top` |
-| `thisway` | `forward` |
-| `threats` | `threat` |
-| `tunnel` | |
-| `version` | |
-| `waypoints` | `waypoint`, `wp` |
-| `where` | |
+#### #saveall
+
+Save the world cache to disk.
+
+#### #render
+
+Fix chunks that render wrong.
+
+#### #click
+
+Open Baritone's click-to-go screen.
+
+#### #gc
+
+Run Java garbage collection.
+
+#### #version
+
+Show the Baritone version.
+
+#### #help
+
+Aliases: `#?`
+
+List `#` commands, or show one command's full help.
+
+```
+#help [command]
+```

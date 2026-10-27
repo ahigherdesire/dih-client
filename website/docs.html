@@ -1,0 +1,1108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Commands · DIH Client</title>
+<meta name="description" content="Every DIH Client chat command and how to type it: client commands with the . prefix, and Baritone pathfinder and AI commands with #.">
+<meta name="theme-color" content="#08080a">
+<meta name="color-scheme" content="dark">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml">
+<link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
+<link rel="apple-touch-icon" href="assets/icon-180.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="DIH Client">
+<meta property="og:title" content="DIH Client commands">
+<meta property="og:description" content="Every chat command in DIH Client and how to type it.">
+<meta property="og:image" content="https://raw.githubusercontent.com/ahigherdesire/dih-client-site/main/assets/og.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Kanit:ital,wght@1,800;1,900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/style.css?v=a8b7e675">
+<link rel="stylesheet" href="assets/docs.css?v=1">
+<script defer src="assets/docs.js?v=1"></script>
+</head>
+<body class="docs-page">
+<a class="skip" href="#doc">Skip to content</a>
+
+<header class="bar solid" id="top">
+  <a class="brand" href="/" aria-label="DIH Client home">
+    <svg class="brand-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><use href="#pixel-d"/></svg>
+    <span>DIH</span>
+  </a>
+  <nav class="nav" aria-label="Sections">
+    <a href="/#features">Features</a>
+    <a href="/#modules">Modules</a>
+    <a href="/addons">Addons</a>
+    <a href="/docs" class="on" aria-current="page">Docs</a>
+    <a href="/#install">Install</a>
+    <a href="https://github.com/ahigherdesire/dih-client" rel="noopener">GitHub</a>
+    <a href="https://discord.gg/C5JkKsxapC" rel="noopener">Discord</a>
+  </nav>
+  <a class="bar-dl" href="/#install">
+    <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8m0 0L4.8 7.3M8 10.5l3.2-3.2M3 13.5h10"/></svg>
+    Get DIH
+  </a>
+</header>
+
+<div class="docs">
+<aside class="side" id="side" aria-label="Commands">
+  <div class="find" role="search">
+    <svg class="find-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5"/><path d="m10.5 10.5 3 3"/></svg>
+    <label class="sr" for="q">Search commands</label>
+    <input id="q" type="search" placeholder="Search commands" autocomplete="off" spellcheck="false"
+      role="combobox" aria-expanded="false" aria-controls="hits" aria-autocomplete="list">
+    <kbd class="find-key" aria-hidden="true">/</kbd>
+    <button class="toc-toggle" id="toc-toggle" type="button" aria-expanded="false" aria-controls="toc">Contents</button>
+  </div>
+  <ul class="hits" id="hits" role="listbox" aria-label="Matching commands" hidden></ul>
+  <p class="hits-none" id="hits-none" hidden>No command matches. Try a word from what it does, like <code>teleport</code> or <code>waypoint</code>.</p>
+  <nav class="toc" id="toc" aria-label="All commands">
+<!-- toc:start -->
+<div class="toc-sys"><a class="toc-head" href="#basics">Basics</a>
+<a class="toc-topic" href="#basics-two-prefixes">Two prefixes</a>
+<a class="toc-topic" href="#basics-getting-help-in-game">Getting help in game</a>
+<a class="toc-topic" href="#basics-turning-dih-off">Turning DIH off</a>
+<a class="toc-topic" href="#basics-notation">Notation</a>
+<a class="toc-topic" href="#basics-lite-builds-and-addons">Lite builds and addons</a>
+<a class="toc-topic" href="#basics-same-name-different-command">Same name, different command</a>
+</div>
+<div class="toc-sys"><a class="toc-head" href="#client-commands"><span class="sys-mark" aria-hidden="true">.</span>Client commands</a>
+<p class="toc-grp">Help &amp; info</p><ul>
+<li><a href="#dot-help" class="mono"><span class="pfx">.</span>help</a></li>
+<li><a href="#dot-commands" class="mono"><span class="pfx">.</span>commands</a></li>
+<li><a href="#dot-modules" class="mono"><span class="pfx">.</span>modules</a></li>
+<li><a href="#dot-oresim" class="mono"><span class="pfx">.</span>oresim</a></li>
+</ul>
+<p class="toc-grp">Modules &amp; settings</p><ul>
+<li><a href="#dot-toggle" class="mono"><span class="pfx">.</span>toggle</a></li>
+<li><a href="#dot-setting" class="mono"><span class="pfx">.</span>setting</a></li>
+<li><a href="#dot-friend" class="mono"><span class="pfx">.</span>friend</a></li>
+<li><a href="#dot-ghostblock" class="mono"><span class="pfx">.</span>ghostblock</a></li>
+</ul>
+<p class="toc-grp">Keybinds &amp; prefix</p><ul>
+<li><a href="#dot-bind" class="mono"><span class="pfx">.</span>bind</a></li>
+<li><a href="#dot-binds" class="mono"><span class="pfx">.</span>binds</a></li>
+<li><a href="#dot-prefix" class="mono"><span class="pfx">.</span>prefix</a></li>
+</ul>
+<p class="toc-grp">Macros</p><ul>
+<li><a href="#dot-macro" class="mono"><span class="pfx">.</span>macro</a></li>
+</ul>
+<p class="toc-grp">Packets</p><ul>
+<li><a href="#dot-packet" class="mono"><span class="pfx">.</span>packet</a></li>
+<li><a href="#dot-delay" class="mono"><span class="pfx">.</span>delay</a></li>
+<li><a href="#dot-gate" class="mono"><span class="pfx">.</span>gate</a></li>
+<li><a href="#dot-send" class="mono"><span class="pfx">.</span>send</a></li>
+</ul>
+<p class="toc-grp">Container GUIs</p><ul>
+<li><a href="#dot-gui" class="mono"><span class="pfx">.</span>gui</a></li>
+<li><a href="#dot-click-slot" class="mono"><span class="pfx">.</span>click-slot</a></li>
+<li><a href="#dot-click-item" class="mono"><span class="pfx">.</span>click-item</a></li>
+<li><a href="#dot-xcarry" class="mono"><span class="pfx">.</span>xcarry</a></li>
+</ul>
+<p class="toc-grp">Inventory &amp; items</p><ul>
+<li><a href="#dot-drop" class="mono"><span class="pfx">.</span>drop</a></li>
+<li><a href="#dot-change-slot" class="mono"><span class="pfx">.</span>change-slot</a></li>
+<li><a href="#dot-give" class="mono"><span class="pfx">.</span>give</a></li>
+<li><a href="#dot-nbt" class="mono"><span class="pfx">.</span>nbt</a></li>
+</ul>
+<p class="toc-grp">Movement &amp; position</p><ul>
+<li><a href="#dot-vclip" class="mono"><span class="pfx">.</span>vclip</a></li>
+<li><a href="#dot-hclip" class="mono"><span class="pfx">.</span>hclip</a></li>
+<li><a href="#dot-tp" class="mono"><span class="pfx">.</span>tp</a></li>
+<li><a href="#dot-copypos" class="mono"><span class="pfx">.</span>copypos</a></li>
+<li><a href="#dot-waypoints" class="mono"><span class="pfx">.</span>waypoints</a></li>
+<li><a href="#dot-dismount" class="mono"><span class="pfx">.</span>dismount</a></li>
+</ul>
+<p class="toc-grp">Player &amp; world</p><ul>
+<li><a href="#dot-gamemode" class="mono"><span class="pfx">.</span>gamemode</a></li>
+<li><a href="#dot-fakegm" class="mono"><span class="pfx">.</span>fakegm</a></li>
+<li><a href="#dot-damage" class="mono"><span class="pfx">.</span>damage</a></li>
+<li><a href="#dot-rv" class="mono"><span class="pfx">.</span>rv</a></li>
+<li><a href="#dot-namescrape" class="mono"><span class="pfx">.</span>namescrape</a></li>
+</ul>
+<p class="toc-grp">Server, chat &amp; network</p><ul>
+<li><a href="#dot-server" class="mono"><span class="pfx">.</span>server</a></li>
+<li><a href="#dot-plugins" class="mono"><span class="pfx">.</span>plugins</a></li>
+<li><a href="#dot-say" class="mono"><span class="pfx">.</span>say</a></li>
+<li><a href="#dot-clear" class="mono"><span class="pfx">.</span>clear</a></li>
+<li><a href="#dot-disconnect" class="mono"><span class="pfx">.</span>disconnect</a></li>
+</ul>
+<p class="toc-grp">Multi, LAN Sync &amp; Matchmaking</p><ul>
+<li><a href="#dot-multi" class="mono"><span class="pfx">.</span>multi</a></li>
+<li><a href="#dot-sync" class="mono"><span class="pfx">.</span>sync</a></li>
+<li><a href="#dot-matchmaking" class="mono"><span class="pfx">.</span>matchmaking</a></li>
+<li><a href="#dot-irc" class="mono"><span class="pfx">.</span>irc</a></li>
+</ul>
+<p class="toc-grp">Updates</p><ul>
+<li><a href="#dot-update" class="mono"><span class="pfx">.</span>update</a></li>
+</ul>
+</div>
+<div class="toc-sys"><a class="toc-head" href="#pathfinder-ai-commands"><span class="sys-mark" aria-hidden="true">#</span>Pathfinder &amp; AI commands</a>
+<p class="toc-grp">Control</p><ul>
+<li><a href="#hash-cancel" class="mono"><span class="pfx">#</span>cancel</a></li>
+<li><a href="#hash-forcecancel" class="mono"><span class="pfx">#</span>forcecancel</a></li>
+<li><a href="#hash-pause" class="mono"><span class="pfx">#</span>pause</a></li>
+<li><a href="#hash-resume" class="mono"><span class="pfx">#</span>resume</a></li>
+<li><a href="#hash-paused" class="mono"><span class="pfx">#</span>paused</a></li>
+<li><a href="#hash-proc" class="mono"><span class="pfx">#</span>proc</a></li>
+<li><a href="#hash-eta" class="mono"><span class="pfx">#</span>eta</a></li>
+</ul>
+<p class="toc-grp">Going places</p><ul>
+<li><a href="#hash-goto" class="mono"><span class="pfx">#</span>goto</a></li>
+<li><a href="#hash-goal" class="mono"><span class="pfx">#</span>goal</a></li>
+<li><a href="#hash-path" class="mono"><span class="pfx">#</span>path</a></li>
+<li><a href="#hash-come" class="mono"><span class="pfx">#</span>come</a></li>
+<li><a href="#hash-thisway" class="mono"><span class="pfx">#</span>thisway</a></li>
+<li><a href="#hash-axis" class="mono"><span class="pfx">#</span>axis</a></li>
+<li><a href="#hash-surface" class="mono"><span class="pfx">#</span>surface</a></li>
+<li><a href="#hash-invert" class="mono"><span class="pfx">#</span>invert</a></li>
+<li><a href="#hash-runaway" class="mono"><span class="pfx">#</span>runaway</a></li>
+<li><a href="#hash-follow" class="mono"><span class="pfx">#</span>follow</a></li>
+<li><a href="#hash-explore" class="mono"><span class="pfx">#</span>explore</a></li>
+<li><a href="#hash-explorefilter" class="mono"><span class="pfx">#</span>explorefilter</a></li>
+<li><a href="#hash-elytra" class="mono"><span class="pfx">#</span>elytra</a></li>
+<li><a href="#hash-nether" class="mono"><span class="pfx">#</span>nether</a></li>
+<li><a href="#hash-portal" class="mono"><span class="pfx">#</span>portal</a></li>
+<li><a href="#hash-sleep" class="mono"><span class="pfx">#</span>sleep</a></li>
+<li><a href="#hash-autosleep" class="mono"><span class="pfx">#</span>autosleep</a></li>
+</ul>
+<p class="toc-grp">Mining, farming &amp; building</p><ul>
+<li><a href="#hash-mine" class="mono"><span class="pfx">#</span>mine</a></li>
+<li><a href="#hash-tunnel" class="mono"><span class="pfx">#</span>tunnel</a></li>
+<li><a href="#hash-farm" class="mono"><span class="pfx">#</span>farm</a></li>
+<li><a href="#hash-pickup" class="mono"><span class="pfx">#</span>pickup</a></li>
+<li><a href="#hash-build" class="mono"><span class="pfx">#</span>build</a></li>
+<li><a href="#hash-litematica" class="mono"><span class="pfx">#</span>litematica</a></li>
+<li><a href="#hash-blacklist" class="mono"><span class="pfx">#</span>blacklist</a></li>
+</ul>
+<p class="toc-grp">Search &amp; memory</p><ul>
+<li><a href="#hash-search" class="mono"><span class="pfx">#</span>search</a></li>
+<li><a href="#hash-find" class="mono"><span class="pfx">#</span>find</a></li>
+<li><a href="#hash-chest" class="mono"><span class="pfx">#</span>chest</a></li>
+<li><a href="#hash-bases" class="mono"><span class="pfx">#</span>bases</a></li>
+<li><a href="#hash-heatmap" class="mono"><span class="pfx">#</span>heatmap</a></li>
+<li><a href="#hash-players" class="mono"><span class="pfx">#</span>players</a></li>
+<li><a href="#hash-menu" class="mono"><span class="pfx">#</span>menu</a></li>
+</ul>
+<p class="toc-grp">Seeds &amp; structures</p><ul>
+<li><a href="#hash-seedinput" class="mono"><span class="pfx">#</span>seedinput</a></li>
+<li><a href="#hash-structure" class="mono"><span class="pfx">#</span>structure</a></li>
+<li><a href="#hash-where" class="mono"><span class="pfx">#</span>where</a></li>
+<li><a href="#hash-seedmap" class="mono"><span class="pfx">#</span>seedmap</a></li>
+</ul>
+<p class="toc-grp">Safety &amp; automation</p><ul>
+<li><a href="#hash-threats" class="mono"><span class="pfx">#</span>threats</a></li>
+<li><a href="#hash-flee" class="mono"><span class="pfx">#</span>flee</a></li>
+<li><a href="#hash-listentomine" class="mono"><span class="pfx">#</span>listentomine</a></li>
+</ul>
+<p class="toc-grp">AI</p><ul>
+<li><a href="#hash-ai" class="mono"><span class="pfx">#</span>ai</a></li>
+</ul>
+<p class="toc-grp">Waypoints &amp; homes</p><ul>
+<li><a href="#hash-home" class="mono"><span class="pfx">#</span>home</a></li>
+<li><a href="#hash-waypoints" class="mono"><span class="pfx">#</span>waypoints</a></li>
+</ul>
+<p class="toc-grp">Building selections</p><ul>
+<li><a href="#hash-sel" class="mono"><span class="pfx">#</span>sel</a></li>
+</ul>
+<p class="toc-grp">Settings &amp; upkeep</p><ul>
+<li><a href="#hash-set" class="mono"><span class="pfx">#</span>set</a></li>
+<li><a href="#hash-modified" class="mono"><span class="pfx">#</span>modified</a></li>
+<li><a href="#hash-reset" class="mono"><span class="pfx">#</span>reset</a></li>
+<li><a href="#hash-repack" class="mono"><span class="pfx">#</span>repack</a></li>
+<li><a href="#hash-reloadall" class="mono"><span class="pfx">#</span>reloadall</a></li>
+<li><a href="#hash-saveall" class="mono"><span class="pfx">#</span>saveall</a></li>
+<li><a href="#hash-render" class="mono"><span class="pfx">#</span>render</a></li>
+<li><a href="#hash-click" class="mono"><span class="pfx">#</span>click</a></li>
+<li><a href="#hash-gc" class="mono"><span class="pfx">#</span>gc</a></li>
+<li><a href="#hash-version" class="mono"><span class="pfx">#</span>version</a></li>
+<li><a href="#hash-help" class="mono"><span class="pfx">#</span>help</a></li>
+</ul>
+</div>
+<!-- toc:end -->
+  </nav>
+</aside>
+
+<main class="doc" id="doc">
+  <header class="doc-head">
+    <h1>Commands</h1>
+    <p class="doc-lede">Every chat command in DIH Client and how to type it. Client commands start with <code>.</code> and never reach the server. Pathfinder and AI commands start with <code>#</code>.</p>
+    <p class="doc-meta mono"><b id="cmd-count">105</b> commands · Minecraft 26.2<span class="key-hint"> · press <kbd>/</kbd> to search</span></p>
+  </header>
+<!-- docs:start -->
+<section class="sys" id="basics" aria-labelledby="basics-h">
+<h2 id="basics-h">Basics</h2>
+
+<section class="grp" id="basics-two-prefixes">
+<h3>Two prefixes</h3>
+<p>DIH has two command systems, both typed in normal chat.</p>
+<div class="table"><table><thead><tr><th scope="col">Prefix</th><th scope="col">What it runs</th><th scope="col">List them with</th></tr></thead><tbody><tr><td><code>.</code></td><td>DIH client commands. They never reach the server.</td><td><a class="ref" href="#dot-commands"><code>.commands</code></a> or <a class="ref" href="#dot-help"><code>.help</code></a></td></tr><tr><td><code>#</code></td><td>The built-in Baritone pathfinder and the AI.</td><td><a class="ref" href="#hash-help"><code>#help</code></a></td></tr></tbody></table></div>
+<p>The <code>.</code> prefix is <code>%</code> instead when Meteor Client is also installed, because Meteor already uses <code>.</code>. Change it with <a class="ref" href="#dot-prefix"><code>.prefix</code></a>; the choices are <code>. % - _ * # @ &amp; =</code>. The <code>#</code> prefix is the Baritone <code>prefix</code> setting.</p>
+</section>
+<section class="grp" id="basics-getting-help-in-game">
+<h3>Getting help in game</h3>
+<p>Type a command with no arguments to see its usage. <code>.help &lt;command&gt;</code> shows a client command's description and aliases, and <code>#help &lt;command&gt;</code> prints the full help of a <code>#</code> command. Tab completion works on every argument: modules, macros, item and block ids, packet classes, slot names, players and waypoints.</p>
+</section>
+<section class="grp" id="basics-turning-dih-off">
+<h3>Turning DIH off</h3>
+<p><code>^toggledih</code>, typed in chat exactly like that, turns the whole client on or off. While panic hide has locked the client, every DIH command is swallowed under any prefix, so nothing reaches the server.</p>
+</section>
+<section class="grp" id="basics-notation">
+<h3>Notation</h3>
+<div class="table"><table><thead><tr><th scope="col">Written</th><th scope="col">Means</th></tr></thead><tbody><tr><td><code>&lt;arg&gt;</code></td><td>Required.</td></tr><tr><td><code>[arg]</code></td><td>Optional.</td></tr><tr><td><code>a|b</code></td><td>Pick one.</td></tr><tr><td><code>…</code></td><td>Any number of words.</td></tr><tr><td><code>on|off|toggle</code></td><td>Also accepts <code>enable</code>/<code>true</code>/<code>1</code> and <code>disable</code>/<code>false</code>/<code>0</code>. Leaving it out toggles.</td></tr></tbody></table></div>
+<p>Examples use the default <code>.</code> prefix. Swap in yours if you changed it.</p>
+</section>
+<section class="grp" id="basics-lite-builds-and-addons">
+<h3>Lite builds and addons</h3>
+<p>Lite builds leave out <code>setting</code>, <code>irc</code>, <code>matchmaking</code>, <code>multi</code>, <code>toggle</code>, <code>modules</code>, <code>oresim</code>, <code>ghostblock</code>, <code>friend</code>, <code>waypoints</code>, <code>gamemode</code>, <code>fakegm</code>, <code>xcarry</code>, <code>rv</code> and <code>namescrape</code>. Addons can add their own <code>.</code> commands; one whose name is already taken shows up as <code>&lt;addon&gt;:&lt;name&gt;</code>.</p>
+</section>
+<section class="grp" id="basics-same-name-different-command">
+<h3>Same name, different command</h3>
+<p>The two systems are separate, so these pairs do different things.</p>
+<div class="table"><table><thead><tr><th scope="col">Client</th><th scope="col">Pathfinder</th></tr></thead><tbody><tr><td><a class="ref" href="#dot-waypoints"><code>.wp</code></a> saves DIH waypoints, which <a class="ref" href="#dot-tp"><code>.tp</code></a> can use.</td><td><a class="ref" href="#hash-waypoints"><code>#wp</code></a> manages Baritone's tagged waypoints.</td></tr><tr><td><a class="ref" href="#dot-setting"><code>.set</code></a> changes a module setting.</td><td><a class="ref" href="#hash-set"><code>#set</code></a> changes a Baritone setting.</td></tr><tr><td><a class="ref" href="#dot-gui"><code>.gui</code></a> saves, desyncs and reloads container screens.</td><td><a class="ref" href="#hash-menu"><code>#gui</code></a> is <a class="ref" href="#hash-menu"><code>#menu</code></a>, which reads and clicks plugin GUIs.</td></tr><tr><td><a class="ref" href="#dot-help"><code>.help</code></a> lists client commands.</td><td><a class="ref" href="#hash-help"><code>#help</code></a> lists pathfinder commands.</td></tr></tbody></table></div>
+<p>Two <code>#</code> aliases also point somewhere other than their help text says. <a class="ref" href="#hash-flee"><code>#flee</code></a> opens the Flee trigger system, so use <a class="ref" href="#hash-runaway"><code>#runaway</code></a> or <a class="ref" href="#hash-runaway"><code>#escape</code></a> to run away. <a class="ref" href="#hash-sel"><code>#s</code></a> opens <a class="ref" href="#hash-sel"><code>#sel</code></a>, so use <a class="ref" href="#hash-search"><code>#search</code></a> or <a class="ref" href="#hash-search"><code>#blocks</code></a> to search.</p>
+</section>
+</section>
+<section class="sys" id="client-commands" aria-labelledby="client-commands-h">
+<h2 id="client-commands-h"><span class="sys-mark" aria-hidden="true">.</span>Client commands</h2>
+
+<section class="grp" id="client-commands-help-info">
+<h3>Help &amp; info</h3>
+
+<article class="cmd" id="dot-help" data-name=".help" data-aliases="">
+<h4><a class="self" href="#dot-help"><span class="pfx">.</span>help</a></h4>
+
+<p class="sum">Show every client command, or the description and aliases of one.</p>
+<pre><code>.help
+.help macro</code></pre>
+</article>
+<article class="cmd" id="dot-commands" data-name=".commands" data-aliases=".cmds">
+<h4><a class="self" href="#dot-commands"><span class="pfx">.</span>commands</a></h4>
+<p class="aka"><span>Also</span> <code>.cmds</code></p>
+<p class="sum">List every command name on a few lines, with the current prefix.</p>
+
+</article>
+<article class="cmd" id="dot-modules" data-name=".modules" data-aliases=".features">
+<h4><a class="self" href="#dot-modules"><span class="pfx">.</span>modules</a></h4>
+<p class="aka"><span>Also</span> <code>.features</code></p>
+<p class="sum">List every installed module, built-in and addon.</p>
+
+</article>
+<article class="cmd" id="dot-oresim" data-name=".oresim" data-aliases="">
+<h4><a class="self" href="#dot-oresim"><span class="pfx">.</span>oresim</a></h4>
+
+<p class="sum">Explain why OreSim (the Xray module's ore predictor) is or isn't drawing ores.</p>
+<p>It reports whether Xray is on, its mode and style, the seed in use or why it's missing, where that seed is saved, how many ore families are selected, the local worldgen status, chunks simulated, and how many nearby real ores matched a prediction.</p>
+</article>
+</section>
+<section class="grp" id="client-commands-modules-settings">
+<h3>Modules &amp; settings</h3>
+
+<article class="cmd" id="dot-toggle" data-name=".toggle" data-aliases=".t">
+<h4><a class="self" href="#dot-toggle"><span class="pfx">.</span>toggle</a></h4>
+<p class="aka"><span>Also</span> <code>.t</code></p>
+<p class="sum">Turn a module on, off, or flip it.</p>
+<pre><code>.toggle &lt;module&gt; [on|off|toggle]</code></pre>
+<pre><code>.toggle killaura
+.t scaffold on</code></pre>
+</article>
+<article class="cmd" id="dot-setting" data-name=".setting" data-aliases=".set">
+<h4><a class="self" href="#dot-setting"><span class="pfx">.</span>setting</a></h4>
+<p class="aka"><span>Also</span> <code>.set</code></p>
+<p class="sum">Read or change any module setting without opening the module menu.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.setting &lt;module&gt;</code></td><td>List every setting with its value.</td></tr><tr><td><code>.setting &lt;module&gt; &lt;key&gt;</code></td><td>Show one setting.</td></tr><tr><td><code>.setting &lt;module&gt; &lt;key&gt; &lt;value…&gt;</code></td><td>Set it. <code>reset</code> or <code>default</code> restores the default.</td></tr></tbody></table></div>
+<p>Write module names that contain spaces with <code>-</code>, such as <code>storage-esp</code>.</p>
+<pre><code>.set killaura range 4.2
+.set killaura range reset</code></pre>
+</article>
+<article class="cmd" id="dot-friend" data-name=".friend" data-aliases=".team">
+<h4><a class="self" href="#dot-friend"><span class="pfx">.</span>friend</a></h4>
+<p class="aka"><span>Also</span> <code>.team</code></p>
+<p class="sum">Manage your friends list. Combat modules leave friends alone, and ESP and nametags can mark them.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.friend</code></td><td>Show the list.</td></tr><tr><td><code>.friend add &lt;name&gt;</code></td><td>Add a player. Tab completes players on the server.</td></tr><tr><td><code>.friend remove &lt;name&gt;</code></td><td>Remove a player.</td></tr><tr><td><code>.friend clear</code></td><td>Empty the list.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="dot-ghostblock" data-name=".ghostblock" data-aliases=".gb">
+<h4><a class="self" href="#dot-ghostblock"><span class="pfx">.</span>ghostblock</a></h4>
+<p class="aka"><span>Also</span> <code>.gb</code></p>
+<p class="sum">Place blocks that only you can see.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.gb toggle</code></td><td>Turn the GhostBlock module on or off.</td></tr><tr><td><code>.gb reset</code></td><td>Remove every ghost block and show the real blocks again.</td></tr><tr><td><code>.gb creative [on|off|toggle]</code></td><td>Fake creative mode: everything you place becomes a ghost block. Also turns the module on.</td></tr><tr><td><code>.gb block</code></td><td>Show the armed block.</td></tr><tr><td><code>.gb block &lt;id&gt;</code></td><td>Arm a block to place, such as <code>diamond_block</code>. Also turns the module on.</td></tr><tr><td><code>.gb block off</code></td><td>Disarm it (<code>none</code> and <code>reset</code> work too), so held blocks place ghosts again.</td></tr></tbody></table></div>
+</article>
+</section>
+<section class="grp" id="client-commands-keybinds-prefix">
+<h3>Keybinds &amp; prefix</h3>
+
+<article class="cmd" id="dot-bind" data-name=".bind" data-aliases="">
+<h4><a class="self" href="#dot-bind"><span class="pfx">.</span>bind</a></h4>
+
+<p class="sum">Bind a key to any chat line: a client command, a <code>#</code> command or plain chat.</p>
+<pre><code>.bind &lt;key&gt; &lt;command…&gt;
+.bind clear &lt;key&gt;</code></pre>
+<pre><code>.bind G .macro myMacro
+.bind H #goto 0 0
+.bind clear G</code></pre>
+<p>Right Shift (module menu) and V (reload the stored GUI) are set in the config, not with <code>.bind</code>. The packet queue keys (flush, clear, toggle send, toggle delay, toggle logger) start unbound.</p>
+</article>
+<article class="cmd" id="dot-binds" data-name=".binds" data-aliases="">
+<h4><a class="self" href="#dot-binds"><span class="pfx">.</span>binds</a></h4>
+
+<p class="sum">List every command keybind.</p>
+
+</article>
+<article class="cmd" id="dot-prefix" data-name=".prefix" data-aliases="">
+<h4><a class="self" href="#dot-prefix"><span class="pfx">.</span>prefix</a></h4>
+
+<p class="sum">Show, change or reset the client command prefix.</p>
+<pre><code>.prefix
+.prefix -
+.prefix reset</code></pre>
+<p>The choices are <code>. % - _ * # @ &amp; =</code>. <code>reset</code> goes back to <code>.</code>, or <code>%</code> with Meteor installed. Picking <code>.</code> while Meteor is installed keeps <code>%</code> and warns you.</p>
+</article>
+</section>
+<section class="grp" id="client-commands-macros">
+<h3>Macros</h3>
+
+<article class="cmd" id="dot-macro" data-name=".macro" data-aliases="">
+<h4><a class="self" href="#dot-macro"><span class="pfx">.</span>macro</a></h4>
+
+<p class="sum">Run macros, loop them, or build them from chat. Macros are saved in <code>config/dih/dih_macros.nbt</code>.</p>
+<h5>Run</h5>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.macro &lt;name&gt;</code></td><td>Run once.</td></tr><tr><td><code>.macro &lt;name&gt; &lt;times&gt;</code></td><td>Run up to 100 000 times, each run starting when the last one ends.</td></tr><tr><td><code>.macro &lt;name&gt; &lt;times&gt; &lt;delayTicks&gt;</code></td><td>Same, waiting <code>delayTicks</code> between runs (20 ticks is 1 second, up to 72 000).</td></tr><tr><td><code>.macro stop</code></td><td>Stop every macro and loop.</td></tr><tr><td><code>.macro stop &lt;name&gt;</code></td><td>Stop one macro and its loop.</td></tr><tr><td><code>.macro clear</code></td><td>Cancel queued loops and let the current run finish.</td></tr></tbody></table></div>
+<h5>Build from chat</h5>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.macro new &lt;name&gt;</code></td><td>Create an empty macro.</td></tr><tr><td><code>.macro add &lt;name&gt; &lt;TYPE&gt; [field=value …]</code></td><td>Add a step. <code>TYPE</code> tab completes. Values can't contain spaces.</td></tr><tr><td><code>.macro show &lt;name&gt;</code></td><td>List the steps with their numbers.</td></tr><tr><td><code>.macro removeaction &lt;name&gt; &lt;index&gt;</code></td><td>Delete step <code>index</code>, counting from 0.</td></tr><tr><td><code>.macro delete &lt;name&gt;</code></td><td>Delete the macro.</td></tr></tbody></table></div>
+<pre><code>.macro new dupe1
+.macro add dupe1 DELAY ticks=5
+.macro dupe1 10 20
+.macro stop</code></pre>
+<p>While you pilot a Multi bot, <code>.macro</code> runs, loops and stops on that bot instead of you.</p>
+</article>
+</section>
+<section class="grp" id="client-commands-packets">
+<h3>Packets</h3>
+
+<article class="cmd" id="dot-packet" data-name=".packet" data-aliases=".pkt">
+<h4><a class="self" href="#dot-packet"><span class="pfx">.</span>packet</a></h4>
+<p class="aka"><span>Also</span> <code>.pkt</code></p>
+<p class="sum">Control the outgoing packet queue, the same as the Send, Delay, Flush and Clear buttons.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.packet status</code></td><td>Show whether send and delay are on, and how many packets are queued.</td></tr><tr><td><code>.packet send [on|off|toggle]</code></td><td>With send off, GUI packets aren't sent.</td></tr><tr><td><code>.packet delay [on|off|toggle]</code></td><td>Hold packets in the queue. Turning delay off sends what was held.</td></tr><tr><td><code>.packet flush</code></td><td>Send every queued packet now.</td></tr><tr><td><code>.packet clear</code></td><td>Throw every queued packet away.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="dot-delay" data-name=".delay" data-aliases="">
+<h4><a class="self" href="#dot-delay"><span class="pfx">.</span>delay</a></h4>
+
+<p class="sum">Shortcut for <code>.packet delay</code>.</p>
+<pre><code>.delay [on|off|toggle]</code></pre>
+</article>
+<article class="cmd" id="dot-gate" data-name=".gate" data-aliases=".packetgate">
+<h4><a class="self" href="#dot-gate"><span class="pfx">.</span>gate</a></h4>
+<p class="aka"><span>Also</span> <code>.packetgate</code></p>
+<p class="sum">Cancel, hold or whitelist specific packet types until you end the gate.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.gate cancel &lt;packet…&gt;</code></td><td>Drop matching packets.</td></tr><tr><td><code>.gate delay &lt;packet…&gt;</code></td><td>Hold matching packets in the queue.</td></tr><tr><td><code>.gate allow &lt;packet…&gt;</code></td><td>Drop every packet except these.</td></tr><tr><td><code>.gate end [id]</code></td><td>End a gate and send what it held. Gates made here use the id <code>cli</code>.</td></tr><tr><td><code>.gate clear</code></td><td>End every gate.</td></tr><tr><td><code>.gate status</code></td><td>List active gates.</td></tr></tbody></table></div>
+<p>Name packets by class (they tab complete), separated by spaces or commas.</p>
+<pre><code>.gate cancel ServerboundContainerClosePacket
+.gate end</code></pre>
+</article>
+<article class="cmd" id="dot-send" data-name=".send" data-aliases="">
+<h4><a class="self" href="#dot-send"><span class="pfx">.</span>send</a></h4>
+
+<p class="sum">Build and send any client-to-server packet by class name.</p>
+<pre><code>.send &lt;PacketClass&gt; [field=value …]</code></pre>
+<p>Press Tab after the space to search packet classes, and again after the name for its fields. If you leave fields out, DIH lists the ones the packet needs. Quote values with spaces (<code>message=&quot;hello&quot;</code>) and give raw bytes as <code>hex:…</code>. Add <code>dry</code> (or <code>dryrun</code>, <code>preview</code>, <code>nosend</code>) to build the packet without sending it. Sent packets skip the delay queue, and server-to-client packets are refused.</p>
+<pre><code>.send ServerboundSetCarriedItemPacket slot=0
+.send ServerboundChatPacket message=&quot;hello&quot; dry</code></pre>
+</article>
+</section>
+<section class="grp" id="client-commands-container-guis">
+<h3>Container GUIs</h3>
+
+<article class="cmd" id="dot-gui" data-name=".gui" data-aliases=".screen">
+<h4><a class="self" href="#dot-gui"><span class="pfx">.</span>gui</a></h4>
+<p class="aka"><span>Also</span> <code>.screen</code></p>
+<p class="sum">Save, desync and reload container screens, the same as the on-screen buttons.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.gui save</code></td><td>Store the open screen on your side. Sends nothing.</td></tr><tr><td><code>.gui desync</code></td><td>Tell the server the screen closed but keep it open for you.</td></tr><tr><td><code>.gui load</code></td><td>Reopen the stored screen, like the V key.</td></tr><tr><td><code>.gui close</code></td><td>Close the screen and tell the server. <code>.gui close packet</code> does the same.</td></tr><tr><td><code>.gui close nopacket</code></td><td>Close the screen on your side only.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="dot-click-slot" data-name=".click-slot" data-aliases="">
+<h4><a class="self" href="#dot-click-slot"><span class="pfx">.</span>click-slot</a></h4>
+
+<p class="sum">Click a slot in the open GUI or your inventory.</p>
+<pre><code>.click-slot &lt;slot&gt; [click] [times]</code></pre>
+<p>Slots: <code>gui1</code>, <code>gui2</code>… for container slots, <code>hotbar1</code>–<code>hotbar9</code>, <code>inventory1</code>–<code>inventory27</code>, <code>helmet</code>, <code>chestplate</code>, <code>leggings</code>, <code>boots</code>, <code>offhand</code>, or a raw slot number.</p>
+<div class="table"><table><thead><tr><th scope="col">Click</th><th scope="col">Does</th></tr></thead><tbody><tr><td><code>left</code>, <code>right</code>, <code>middle</code></td><td>Normal clicks. <code>left</code> is the default.</td></tr><tr><td><code>shift-left</code>, <code>shift-right</code></td><td>Quick move.</td></tr><tr><td><code>clone</code></td><td>Middle-click clone (creative).</td></tr><tr><td><code>pickup-all</code></td><td>Double-click collect.</td></tr><tr><td><code>drop-item</code></td><td>Drop <code>times</code> items from the slot.</td></tr><tr><td><code>drop-stack</code></td><td>Drop the whole stack. Takes no count.</td></tr><tr><td><code>swap &lt;1-9&gt; [times]</code></td><td>Swap with that hotbar slot.</td></tr></tbody></table></div>
+<p><code>times</code> goes up to 100 000.</p>
+<pre><code>.click-slot gui5 shift-left
+.click-slot hotbar1 swap 3
+.click-slot inventory4 drop-item 16</code></pre>
+</article>
+<article class="cmd" id="dot-click-item" data-name=".click-item" data-aliases="">
+<h4><a class="self" href="#dot-click-item"><span class="pfx">.</span>click-item</a></h4>
+
+<p class="sum">Click an item in the open GUI by its visible name. Takes the same clicks as <a class="ref" href="#dot-click-slot"><code>.click-slot</code></a>.</p>
+<pre><code>.click-item &quot;&lt;item name&gt;&quot; [click] [times]</code></pre>
+<p>Matching ignores case and colour codes. Quote names that contain spaces.</p>
+<pre><code>.click-item &quot;Confirm&quot;
+.click-item &quot;Diamond Sword&quot; shift-left</code></pre>
+</article>
+<article class="cmd" id="dot-xcarry" data-name=".xcarry" data-aliases="">
+<h4><a class="self" href="#dot-xcarry"><span class="pfx">.</span>xcarry</a></h4>
+
+<p class="sum">Stash the item in your hand in a slot the server doesn't expect to hold items, so you keep it.</p>
+<pre><code>.xcarry &lt;slot&gt;</code></pre>
+<p>Open your inventory with E first. Slots: <code>craft1</code>–<code>craft4</code>, <code>craft5</code> (the crafting output, also <code>result</code>), <code>helmet</code>, <code>chestplate</code>, <code>leggings</code>, <code>boots</code>, <code>offhand</code>, or <code>cursor</code> to keep holding it on the cursor.</p>
+</article>
+</section>
+<section class="grp" id="client-commands-inventory-items">
+<h3>Inventory &amp; items</h3>
+
+<article class="cmd" id="dot-drop" data-name=".drop" data-aliases="">
+<h4><a class="self" href="#dot-drop"><span class="pfx">.</span>drop</a></h4>
+
+<p class="sum">Drop your held stack, your whole inventory, or a set amount of an item.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.drop hand</code></td><td>Drop the held stack.</td></tr><tr><td><code>.drop fullinventory</code></td><td>Drop every stack in the inventory and hotbar.</td></tr><tr><td><code>.drop &lt;amount&gt;</code></td><td>Drop <code>amount</code> of the held item, taking from other stacks of it if needed.</td></tr><tr><td><code>.drop &lt;amount&gt; &lt;item&gt;</code></td><td>Drop <code>amount</code> of that item from anywhere in the inventory.</td></tr></tbody></table></div>
+<pre><code>.drop 32
+.drop 10 diamond</code></pre>
+</article>
+<article class="cmd" id="dot-change-slot" data-name=".change-slot" data-aliases="">
+<h4><a class="self" href="#dot-change-slot"><span class="pfx">.</span>change-slot</a></h4>
+
+<p class="sum">Select a hotbar slot.</p>
+<pre><code>.change-slot &lt;1-9&gt;</code></pre>
+</article>
+<article class="cmd" id="dot-give" data-name=".give" data-aliases="">
+<h4><a class="self" href="#dot-give"><span class="pfx">.</span>give</a></h4>
+
+<p class="sum">Put an item in your selected hotbar slot. Needs creative mode.</p>
+<pre><code>.give &lt;item&gt; [count]</code></pre>
+<p><code>count</code> is 1 to 64.</p>
+<pre><code>.give tnt 64</code></pre>
+</article>
+<article class="cmd" id="dot-nbt" data-name=".nbt" data-aliases="">
+<h4><a class="self" href="#dot-nbt"><span class="pfx">.</span>nbt</a></h4>
+
+<p class="sum">Inspect or copy the item in your hand.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.nbt</code></td><td>Open the component (NBT) inspector for the item in your main hand, or offhand if it's empty. <code>.nbt get</code> does the same.</td></tr><tr><td><code>.nbt copy</code></td><td>Copy a <code>/give</code> command that recreates the item.</td></tr></tbody></table></div>
+</article>
+</section>
+<section class="grp" id="client-commands-movement-position">
+<h3>Movement &amp; position</h3>
+
+<article class="cmd" id="dot-vclip" data-name=".vclip" data-aliases="">
+<h4><a class="self" href="#dot-vclip"><span class="pfx">.</span>vclip</a></h4>
+
+<p class="sum">Clip up or down through blocks with movement packets.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.vclip &lt;blocks&gt;</code></td><td>Move up (positive) or down (negative).</td></tr><tr><td><code>.vclip top</code></td><td>Find a safe spot above you and clip there.</td></tr><tr><td><code>.vclip bottom</code></td><td>Find a safe spot below you and clip there.</td></tr><tr><td><code>.vclip paper &lt;blocks&gt;</code></td><td>Same as <code>&lt;blocks&gt;</code>, padded for Paper servers. <code>default</code> is the same.</td></tr><tr><td><code>.vclip single &lt;blocks&gt;</code></td><td>Use one movement packet. <code>normal</code> is the same.</td></tr><tr><td><code>.vclip custom &lt;blocks&gt; &lt;segment&gt; [maxPackets] [updateLocal] [vehicle] [forceGround]</code></td><td>Set every option: <code>segment</code> 1–50 blocks per step, <code>maxPackets</code> 1–100, then <code>true</code> or <code>false</code> for each flag.</td></tr></tbody></table></div>
+<pre><code>.vclip 5
+.vclip -30
+.vclip custom -25 10 20 true true</code></pre>
+</article>
+<article class="cmd" id="dot-hclip" data-name=".hclip" data-aliases="">
+<h4><a class="self" href="#dot-hclip"><span class="pfx">.</span>hclip</a></h4>
+
+<p class="sum">Clip forward through blocks with movement packets.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.hclip &lt;blocks&gt;</code></td><td>Clip forward <code>blocks</code>.</td></tr><tr><td><code>.hclip forward</code></td><td>Clip through the wall in front of you to the free space past it.</td></tr><tr><td><code>.hclip back</code></td><td>Same, through the wall behind you.</td></tr><tr><td><code>.hclip paper &lt;blocks&gt;</code></td><td>Padded for Paper servers. <code>default</code> and <code>padding</code> are the same.</td></tr><tr><td><code>.hclip single &lt;blocks&gt;</code></td><td>Use one movement packet. <code>normal</code> is the same.</td></tr><tr><td><code>.hclip custom &lt;blocks&gt; &lt;segment&gt; [maxPackets] [updateLocal] [vehicle] [forceGround]</code></td><td>Set every option, like <code>.vclip custom</code>.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="dot-tp" data-name=".tp" data-aliases="">
+<h4><a class="self" href="#dot-tp"><span class="pfx">.</span>tp</a></h4>
+
+<p class="sum">Teleport in paced HClip bursts, ground first.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.tp &lt;x&gt; &lt;y&gt; &lt;z&gt; [maxPackets] [pauseMs]</code></td><td>Teleport. <code>~</code> offsets work. <code>maxPackets</code> 1–100 per burst, <code>pauseMs</code> 50–10 000 between bursts.</td></tr><tr><td><code>.tp &lt;waypoint&gt;</code></td><td>Teleport to a saved DIH waypoint. Quote names with spaces.</td></tr><tr><td><code>.tp status</code></td><td>Show the running teleport.</td></tr><tr><td><code>.tp stop</code></td><td>Cancel it.</td></tr><tr><td><code>.tp config &lt;maxPackets&gt; &lt;pauseMs&gt;</code></td><td>Save new defaults.</td></tr><tr><td><code>.tp reset</code></td><td>Go back to 20 packets and 500 ms.</td></tr></tbody></table></div>
+<p>It works while riding but won't start while a macro runs.</p>
+<pre><code>.tp ~100 ~ ~
+.tp 1200 64 -300 30 400
+.tp base</code></pre>
+</article>
+<article class="cmd" id="dot-copypos" data-name=".copypos" data-aliases="">
+<h4><a class="self" href="#dot-copypos"><span class="pfx">.</span>copypos</a></h4>
+
+<p class="sum">Copy your block position as <code>x y z</code>. Uses your vehicle while riding and the camera in freecam.</p>
+
+</article>
+<article class="cmd" id="dot-waypoints" data-name=".waypoints" data-aliases=".wp">
+<h4><a class="self" href="#dot-waypoints"><span class="pfx">.</span>waypoints</a></h4>
+<p class="aka"><span>Also</span> <code>.wp</code></p>
+<p class="sum">Save and manage DIH waypoints for this server or world. They're separate from Baritone's <a class="ref" href="#hash-waypoints"><code>#wp</code></a>.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.wp</code></td><td>Save a waypoint here, named <code>Waypoint 1</code>, <code>Waypoint 2</code>…</td></tr><tr><td><code>.wp &lt;x&gt; &lt;y&gt; &lt;z&gt;</code></td><td>Save one at those coordinates.</td></tr><tr><td><code>.wp gui</code></td><td>Open the waypoint manager. <code>.wp list</code> does the same.</td></tr><tr><td><code>.wp del &lt;name&gt;</code></td><td>Delete a waypoint.</td></tr><tr><td><code>.wp clear</code></td><td>Delete every waypoint for this server or world.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="dot-dismount" data-name=".dismount" data-aliases="">
+<h4><a class="self" href="#dot-dismount"><span class="pfx">.</span>dismount</a></h4>
+
+<p class="sum">Get off any vehicle.</p>
+
+</article>
+</section>
+<section class="grp" id="client-commands-player-world">
+<h3>Player &amp; world</h3>
+
+<article class="cmd" id="dot-gamemode" data-name=".gamemode" data-aliases="">
+<h4><a class="self" href="#dot-gamemode"><span class="pfx">.</span>gamemode</a></h4>
+
+<p class="sum">Change your real game mode without sending a chat command. The server still has to allow it.</p>
+<pre><code>.gamemode &lt;survival|creative|adventure|spectator&gt;</code></pre>
+</article>
+<article class="cmd" id="dot-fakegm" data-name=".fakegm" data-aliases="">
+<h4><a class="self" href="#dot-fakegm"><span class="pfx">.</span>fakegm</a></h4>
+
+<p class="sum">Show a different game mode on your side only.</p>
+<pre><code>.fakegm &lt;survival|creative|adventure|spectator|reset&gt;</code></pre>
+<p><code>reset</code> (or <code>r</code>) goes back to your real mode.</p>
+</article>
+<article class="cmd" id="dot-damage" data-name=".damage" data-aliases="">
+<h4><a class="self" href="#dot-damage"><span class="pfx">.</span>damage</a></h4>
+
+<p class="sum">Send <code>/damage @s &lt;amount&gt;</code>. Works only where you can use <code>/damage</code>.</p>
+<pre><code>.damage &lt;amount&gt;</code></pre>
+<p><code>amount</code> is 0.1 to 1024.</p>
+</article>
+<article class="cmd" id="dot-rv" data-name=".rv" data-aliases="">
+<h4><a class="self" href="#dot-rv"><span class="pfx">.</span>rv</a></h4>
+
+<p class="sum">Watch another loaded player's point of view.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.rv</code></td><td>Watch the player you're looking at.</td></tr><tr><td><code>.rv &lt;name&gt;</code></td><td>Watch a player by name.</td></tr><tr><td><code>.rv stop</code></td><td>Go back to your own view.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="dot-namescrape" data-name=".namescrape" data-aliases=".scrapenames">
+<h4><a class="self" href="#dot-namescrape"><span class="pfx">.</span>namescrape</a></h4>
+<p class="aka"><span>Also</span> <code>.scrapenames</code></p>
+<p class="sum">Collect player names from the server and copy them to the clipboard.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.namescrape [count]</code></td><td>Scrape, stopping at <code>count</code> names if given.</td></tr><tr><td><code>.namescrape deep [count]</code></td><td>Scrape exhaustively.</td></tr><tr><td><code>.namescrape pause</code></td><td>Pause a running scrape.</td></tr><tr><td><code>.namescrape resume</code></td><td>Resume it.</td></tr><tr><td><code>.namescrape stop</code></td><td>Stop it.</td></tr></tbody></table></div>
+</article>
+</section>
+<section class="grp" id="client-commands-server-chat-network">
+<h3>Server, chat &amp; network</h3>
+
+<article class="cmd" id="dot-server" data-name=".server" data-aliases="">
+<h4><a class="self" href="#dot-server"><span class="pfx">.</span>server</a></h4>
+
+<p class="sum">Open the server panel or check TPS.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.server</code></td><td>Open the server info panel. <code>.server info</code> does the same.</td></tr><tr><td><code>.server plugins</code></td><td>Open the plugin scanner.</td></tr><tr><td><code>.server tps</code></td><td>Print the estimated server TPS.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="dot-plugins" data-name=".plugins" data-aliases="">
+<h4><a class="self" href="#dot-plugins"><span class="pfx">.</span>plugins</a></h4>
+
+<p class="sum">Shortcut for <code>.server plugins</code>.</p>
+
+</article>
+<article class="cmd" id="dot-say" data-name=".say" data-aliases="">
+<h4><a class="self" href="#dot-say"><span class="pfx">.</span>say</a></h4>
+
+<p class="sum">Send a chat message, or a server command if it starts with <code>/</code>.</p>
+<pre><code>.say &lt;message&gt;</code></pre>
+<p>Use it in binds and macros, or to send a line that starts with your DIH prefix.</p>
+</article>
+<article class="cmd" id="dot-clear" data-name=".clear" data-aliases=".cls">
+<h4><a class="self" href="#dot-clear"><span class="pfx">.</span>clear</a></h4>
+<p class="aka"><span>Also</span> <code>.cls</code></p>
+<p class="sum">Clear the chat window.</p>
+
+</article>
+<article class="cmd" id="dot-disconnect" data-name=".disconnect" data-aliases="">
+<h4><a class="self" href="#dot-disconnect"><span class="pfx">.</span>disconnect</a></h4>
+
+<p class="sum">Leave the server.</p>
+
+</article>
+</section>
+<section class="grp" id="client-commands-multi-lan-sync-matchmaking">
+<h3>Multi, LAN Sync &amp; Matchmaking</h3>
+
+<article class="cmd" id="dot-multi" data-name=".multi" data-aliases="">
+<h4><a class="self" href="#dot-multi"><span class="pfx">.</span>multi</a></h4>
+
+<p class="sum">Run several accounts at once.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.multi</code></td><td>Open the Multi menu, or the console while a batch runs. <code>.multi open</code> does the same.</td></tr><tr><td><code>.multi launch &lt;profile&gt;</code></td><td>Start a saved profile.</td></tr><tr><td><code>.multi status</code></td><td>Show the batch name and how many bots are ready and connected.</td></tr><tr><td><code>.multi stop</code></td><td>Disconnect every bot.</td></tr><tr><td><code>.multi macro &lt;macro&gt; [bot]</code></td><td>Run a macro on one bot, or all of them.</td></tr></tbody></table></div>
+<p>While you pilot a bot, <code>click-slot</code>, <code>click-item</code>, <code>change-slot</code>, <code>drop</code>, <code>send</code>, <code>say</code>, <code>damage</code>, <code>hclip</code>, <code>vclip</code> and <code>tp</code> run on the bot, and <code>disconnect</code> disconnects the bot. <code>delay</code>, <code>gamemode</code>, <code>server</code>, <code>plugins</code>, <code>matchmaking</code> and <code>dismount</code> are blocked so they can't touch your main account.</p>
+</article>
+<article class="cmd" id="dot-sync" data-name=".sync" data-aliases=".lan-sync .lansync">
+<h4><a class="self" href="#dot-sync"><span class="pfx">.</span>sync</a></h4>
+<p class="aka"><span>Also</span> <code>.lan-sync</code> <code>.lansync</code></p>
+<p class="sum">Run the same thing on every client in your LAN Sync session. Join a session first.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.sync send &lt;message or /command&gt;</code></td><td>Send the line from every synced client.</td></tr><tr><td><code>.sync macro &lt;name&gt;</code></td><td>Start a macro on every synced client at the same moment.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="dot-matchmaking" data-name=".matchmaking" data-aliases=".mm">
+<h4><a class="self" href="#dot-matchmaking"><span class="pfx">.</span>matchmaking</a></h4>
+<p class="aka"><span>Also</span> <code>.mm</code></p>
+<p class="sum">Show or hide the Matchmaking overlay.</p>
+
+</article>
+<article class="cmd" id="dot-irc" data-name=".irc" data-aliases="">
+<h4><a class="self" href="#dot-irc"><span class="pfx">.</span>irc</a></h4>
+
+<p class="sum">Send a message to your Matchmaking lobby. Join or create a lobby first.</p>
+<pre><code>.irc &lt;message&gt;</code></pre>
+</article>
+</section>
+<section class="grp" id="client-commands-updates">
+<h3>Updates</h3>
+
+<article class="cmd" id="dot-update" data-name=".update" data-aliases=".updates">
+<h4><a class="self" href="#dot-update"><span class="pfx">.</span>update</a></h4>
+<p class="aka"><span>Also</span> <code>.updates</code></p>
+<p class="sum">Check for a newer DIH build.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.update</code></td><td>Show whether a newer build exists.</td></tr><tr><td><code>.update check</code></td><td>Ask GitHub again.</td></tr><tr><td><code>.update download</code></td><td>Open the new jar's download. Replace the old jar in <code>mods</code> and restart.</td></tr><tr><td><code>.update on</code></td><td>Turn automatic checks on.</td></tr><tr><td><code>.update off</code></td><td>Turn them off. DIH then never contacts GitHub.</td></tr></tbody></table></div>
+</article>
+</section>
+</section>
+<section class="sys" id="pathfinder-ai-commands" aria-labelledby="pathfinder-ai-commands-h">
+<h2 id="pathfinder-ai-commands-h"><span class="sys-mark" aria-hidden="true">#</span>Pathfinder &amp; AI commands</h2>
+<p>Coordinates accept <code>~</code> like vanilla commands. <a class="ref" href="#hash-help"><code>#help</code></a> lists everything; <code>#help &lt;command&gt;</code> shows one command's full help.</p>
+<section class="grp" id="pathfinder-ai-commands-control">
+<h3>Control</h3>
+
+<article class="cmd" id="hash-cancel" data-name="#cancel" data-aliases="#c #stop">
+<h4><a class="self" href="#hash-cancel"><span class="pfx">#</span>cancel</a></h4>
+<p class="aka"><span>Also</span> <code>#c</code> <code>#stop</code></p>
+<p class="sum">Stop whatever Baritone is doing.</p>
+
+</article>
+<article class="cmd" id="hash-forcecancel" data-name="#forcecancel" data-aliases="">
+<h4><a class="self" href="#hash-forcecancel"><span class="pfx">#</span>forcecancel</a></h4>
+
+<p class="sum">Stop harder than <a class="ref" href="#hash-cancel"><code>#cancel</code></a> when it doesn't work.</p>
+
+</article>
+<article class="cmd" id="hash-pause" data-name="#pause" data-aliases="#p #paws">
+<h4><a class="self" href="#hash-pause"><span class="pfx">#</span>pause</a></h4>
+<p class="aka"><span>Also</span> <code>#p</code> <code>#paws</code></p>
+<p class="sum">Pause the current task.</p>
+
+</article>
+<article class="cmd" id="hash-resume" data-name="#resume" data-aliases="#r #unpause #unpaws">
+<h4><a class="self" href="#hash-resume"><span class="pfx">#</span>resume</a></h4>
+<p class="aka"><span>Also</span> <code>#r</code> <code>#unpause</code> <code>#unpaws</code></p>
+<p class="sum">Pick up where <a class="ref" href="#hash-pause"><code>#pause</code></a> left off.</p>
+
+</article>
+<article class="cmd" id="hash-paused" data-name="#paused" data-aliases="">
+<h4><a class="self" href="#hash-paused"><span class="pfx">#</span>paused</a></h4>
+
+<p class="sum">Say whether Baritone is paused.</p>
+
+</article>
+<article class="cmd" id="hash-proc" data-name="#proc" data-aliases="">
+<h4><a class="self" href="#hash-proc"><span class="pfx">#</span>proc</a></h4>
+
+<p class="sum">Show which process is in control and its state.</p>
+
+</article>
+<article class="cmd" id="hash-eta" data-name="#eta" data-aliases="">
+<h4><a class="self" href="#hash-eta"><span class="pfx">#</span>eta</a></h4>
+
+<p class="sum">Estimate the time to the next path segment and to the goal.</p>
+
+</article>
+</section>
+<section class="grp" id="pathfinder-ai-commands-going-places">
+<h3>Going places</h3>
+
+<article class="cmd" id="hash-goto" data-name="#goto" data-aliases="">
+<h4><a class="self" href="#hash-goto"><span class="pfx">#</span>goto</a></h4>
+
+<p class="sum">Walk to a block type, a Y level or coordinates.</p>
+<pre><code>#goto &lt;block&gt;
+#goto &lt;y&gt;
+#goto &lt;x&gt; &lt;z&gt;
+#goto &lt;x&gt; &lt;y&gt; &lt;z&gt;</code></pre>
+</article>
+<article class="cmd" id="hash-goal" data-name="#goal" data-aliases="">
+<h4><a class="self" href="#hash-goal"><span class="pfx">#</span>goal</a></h4>
+
+<p class="sum">Set a goal without moving. Start walking with <a class="ref" href="#hash-path"><code>#path</code></a>.</p>
+<pre><code>#goal
+#goal &lt;y&gt;
+#goal &lt;x&gt; &lt;z&gt;
+#goal &lt;x&gt; &lt;y&gt; &lt;z&gt;
+#goal clear</code></pre>
+<p><code>#goal</code> alone uses your position. <code>reset</code> and <code>none</code> work like <code>clear</code>.</p>
+</article>
+<article class="cmd" id="hash-path" data-name="#path" data-aliases="">
+<h4><a class="self" href="#hash-path"><span class="pfx">#</span>path</a></h4>
+
+<p class="sum">Start walking to the current goal.</p>
+
+</article>
+<article class="cmd" id="hash-come" data-name="#come" data-aliases="">
+<h4><a class="self" href="#hash-come"><span class="pfx">#</span>come</a></h4>
+
+<p class="sum">Walk to where your camera is. Use it with freecam.</p>
+
+</article>
+<article class="cmd" id="hash-thisway" data-name="#thisway" data-aliases="#forward">
+<h4><a class="self" href="#hash-thisway"><span class="pfx">#</span>thisway</a></h4>
+<p class="aka"><span>Also</span> <code>#forward</code></p>
+<p class="sum">Set a goal some distance straight ahead.</p>
+<pre><code>#thisway &lt;distance&gt;</code></pre>
+</article>
+<article class="cmd" id="hash-axis" data-name="#axis" data-aliases="#highway">
+<h4><a class="self" href="#hash-axis"><span class="pfx">#</span>axis</a></h4>
+<p class="aka"><span>Also</span> <code>#highway</code></p>
+<p class="sum">Head to the nearest axis, X=0 or Z=0.</p>
+
+</article>
+<article class="cmd" id="hash-surface" data-name="#surface" data-aliases="#top">
+<h4><a class="self" href="#hash-surface"><span class="pfx">#</span>surface</a></h4>
+<p class="aka"><span>Also</span> <code>#top</code></p>
+<p class="sum">Get out of a cave to the nearest surface or open air.</p>
+
+</article>
+<article class="cmd" id="hash-invert" data-name="#invert" data-aliases="">
+<h4><a class="self" href="#hash-invert"><span class="pfx">#</span>invert</a></h4>
+
+<p class="sum">Walk away from the current goal instead of toward it.</p>
+
+</article>
+<article class="cmd" id="hash-runaway" data-name="#runaway" data-aliases="#escape">
+<h4><a class="self" href="#hash-runaway"><span class="pfx">#</span>runaway</a></h4>
+<p class="aka"><span>Also</span> <code>#escape</code></p>
+<p class="sum">Get at least <code>distance</code> blocks from where you stand.</p>
+<pre><code>#runaway [distance]</code></pre>
+<p>The default is 32. <a class="ref" href="#hash-flee"><code>#flee</code></a> opens the Flee triggers instead, not this.</p>
+</article>
+<article class="cmd" id="hash-follow" data-name="#follow" data-aliases="">
+<h4><a class="self" href="#hash-follow"><span class="pfx">#</span>follow</a></h4>
+
+<p class="sum">Follow players or mobs.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#follow players</code></td><td>Follow every player.</td></tr><tr><td><code>#follow player &lt;name…&gt;</code></td><td>Follow these players.</td></tr><tr><td><code>#follow entities</code></td><td>Follow every living entity.</td></tr><tr><td><code>#follow entity &lt;type…&gt;</code></td><td>Follow these entity types, such as <code>horse</code>.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="hash-explore" data-name="#explore" data-aliases="">
+<h4><a class="self" href="#hash-explore"><span class="pfx">#</span>explore</a></h4>
+
+<p class="sum">Explore outward from you, or from X Z.</p>
+<pre><code>#explore [x z]</code></pre>
+</article>
+<article class="cmd" id="hash-explorefilter" data-name="#explorefilter" data-aliases="">
+<h4><a class="self" href="#hash-explorefilter"><span class="pfx">#</span>explorefilter</a></h4>
+
+<p class="sum">Mark chunks as already explored before <a class="ref" href="#hash-explore"><code>#explore</code></a>.</p>
+<pre><code>#explorefilter &lt;path&gt; [invert]</code></pre>
+<p>The file is JSON like <code>[{&quot;x&quot;:0,&quot;z&quot;:0}]</code>. With <code>invert</code>, the listed chunks count as not explored.</p>
+</article>
+<article class="cmd" id="hash-elytra" data-name="#elytra" data-aliases="">
+<h4><a class="self" href="#hash-elytra"><span class="pfx">#</span>elytra</a></h4>
+
+<p class="sum">Fly with an elytra and rockets in any dimension. Wear the elytra and carry fireworks.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#elytra goto &lt;x&gt; &lt;z&gt;</code></td><td>Fly to X Z.</td></tr><tr><td><code>#elytra goto &lt;x&gt; &lt;y&gt; &lt;z&gt;</code></td><td>Fly to an exact block.</td></tr><tr><td><code>#elytra</code></td><td>Fly to the current <a class="ref" href="#hash-goal"><code>#goal</code></a>.</td></tr><tr><td><code>#elytra reset</code></td><td>Reset pathfinding and keep the goal.</td></tr><tr><td><code>#elytra repack</code></td><td>Send the loaded chunks to the pathfinder again.</td></tr><tr><td><code>#elytra supported</code></td><td>Check that the native library loaded.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="hash-nether" data-name="#nether" data-aliases="#nc #coords">
+<h4><a class="self" href="#hash-nether"><span class="pfx">#</span>nether</a></h4>
+<p class="aka"><span>Also</span> <code>#nc</code> <code>#coords</code></p>
+<p class="sum">Convert coordinates between the Overworld and the Nether. X and Z divide or multiply by 8; Y stays.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#nether</code></td><td>Convert your position, detecting your dimension.</td></tr><tr><td><code>#nether &lt;x&gt; &lt;y&gt; &lt;z&gt;</code></td><td>Convert these, detecting the direction.</td></tr><tr><td><code>#nether &lt;x&gt; &lt;z&gt;</code></td><td>Convert X and Z only.</td></tr><tr><td><code>#nether overworld &lt;x&gt; &lt;y&gt; &lt;z&gt;</code></td><td>Overworld to Nether.</td></tr><tr><td><code>#nether nether &lt;x&gt; &lt;y&gt; &lt;z&gt;</code></td><td>Nether to Overworld.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="hash-portal" data-name="#portal" data-aliases="#whereportal #findportal">
+<h4><a class="self" href="#hash-portal"><span class="pfx">#</span>portal</a></h4>
+<p class="aka"><span>Also</span> <code>#whereportal</code> <code>#findportal</code></p>
+<p class="sum">Walk to the nearest known nether portal and step in. Explores if it knows none.</p>
+<p><code>#portal skip</code> skips the nearest one and goes to the next. <code>#set enterPortal false</code> stops it stepping in.</p>
+</article>
+<article class="cmd" id="hash-sleep" data-name="#sleep" data-aliases="">
+<h4><a class="self" href="#hash-sleep"><span class="pfx">#</span>sleep</a></h4>
+
+<p class="sum">Go to the nearest known bed and sleep once it's night or thundering. In the day it waits at the bed.</p>
+
+</article>
+<article class="cmd" id="hash-autosleep" data-name="#autosleep" data-aliases="#nightowl">
+<h4><a class="self" href="#hash-autosleep"><span class="pfx">#</span>autosleep</a></h4>
+<p class="aka"><span>Also</span> <code>#nightowl</code></p>
+<p class="sum">Do <a class="ref" href="#hash-sleep"><code>#sleep</code></a> on its own every night.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#autosleep</code></td><td>Toggle it. <code>on</code> and <code>off</code> work too.</td></tr><tr><td><code>#autosleep interrupt</code></td><td>Toggle whether it may stop another task. Off by default.</td></tr><tr><td><code>#autosleep status</code></td><td>Show the settings.</td></tr></tbody></table></div>
+</article>
+</section>
+<section class="grp" id="pathfinder-ai-commands-mining-farming-building">
+<h3>Mining, farming &amp; building</h3>
+
+<article class="cmd" id="hash-mine" data-name="#mine" data-aliases="">
+<h4><a class="self" href="#hash-mine"><span class="pfx">#</span>mine</a></h4>
+
+<p class="sum">Find and mine blocks.</p>
+<pre><code>#mine &lt;block…&gt;</code></pre>
+<p>Stone and deepslate ores pair up, so <code>#mine diamond_ore</code> gets both. See <code>#set legitMine</code> for a less obvious style.</p>
+</article>
+<article class="cmd" id="hash-tunnel" data-name="#tunnel" data-aliases="">
+<h4><a class="self" href="#hash-tunnel"><span class="pfx">#</span>tunnel</a></h4>
+
+<p class="sum">Dig straight ahead the way you face.</p>
+<pre><code>#tunnel
+#tunnel &lt;height&gt; &lt;width&gt; &lt;depth&gt;</code></pre>
+<p>With no size it digs 1 wide and 2 high.</p>
+</article>
+<article class="cmd" id="hash-farm" data-name="#farm" data-aliases="">
+<h4><a class="self" href="#hash-farm"><span class="pfx">#</span>farm</a></h4>
+
+<p class="sum">Harvest grown crops and replant them.</p>
+<pre><code>#farm [range] [waypoint]</code></pre>
+<p><code>range</code> limits it to that many blocks from you, or from <code>waypoint</code>.</p>
+</article>
+<article class="cmd" id="hash-pickup" data-name="#pickup" data-aliases="">
+<h4><a class="self" href="#hash-pickup"><span class="pfx">#</span>pickup</a></h4>
+
+<p class="sum">Pick up dropped items, all of them or only the ones you name.</p>
+<pre><code>#pickup [item…]</code></pre>
+</article>
+<article class="cmd" id="hash-build" data-name="#build" data-aliases="">
+<h4><a class="self" href="#hash-build"><span class="pfx">#</span>build</a></h4>
+
+<p class="sum">Build <code>&lt;file&gt;.schematic</code> here or at a position.</p>
+<pre><code>#build &lt;file&gt; [x y z]</code></pre>
+</article>
+<article class="cmd" id="hash-litematica" data-name="#litematica" data-aliases="">
+<h4><a class="self" href="#hash-litematica"><span class="pfx">#</span>litematica</a></h4>
+
+<p class="sum">Build the schematic open in Litematica.</p>
+<pre><code>#litematica [#]</code></pre>
+</article>
+<article class="cmd" id="hash-blacklist" data-name="#blacklist" data-aliases="">
+<h4><a class="self" href="#hash-blacklist"><span class="pfx">#</span>blacklist</a></h4>
+
+<p class="sum">While heading to a block, skip the closest one.</p>
+
+</article>
+</section>
+<section class="grp" id="pathfinder-ai-commands-search-memory">
+<h3>Search &amp; memory</h3>
+<p>These read Baritone's chunk cache, so they send no extra packets.</p>
+<article class="cmd" id="hash-search" data-name="#search" data-aliases="#blocks">
+<h4><a class="self" href="#hash-search"><span class="pfx">#</span>search</a></h4>
+<p class="aka"><span>Also</span> <code>#blocks</code></p>
+<p class="sum">List the nearest matches for a block, with distance and direction, and walk to one.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#search &lt;block&gt;</code></td><td>List the nearest matches.</td></tr><tr><td><code>#search &lt;block&gt; goto</code></td><td>List them and walk to the nearest.</td></tr><tr><td><code>#search &lt;N&gt; goto</code></td><td>Walk to match N from the last search.</td></tr></tbody></table></div>
+<p>It searches loaded chunks plus the cache, so ores you saw before anti-xray hid them still show up.</p>
+</article>
+<article class="cmd" id="hash-find" data-name="#find" data-aliases="">
+<h4><a class="self" href="#hash-find"><span class="pfx">#</span>find</a></h4>
+
+<p class="sum">Look up cached positions of blocks. Tab completion only offers blocks in the cache.</p>
+<pre><code>#find &lt;block…&gt;</code></pre>
+</article>
+<article class="cmd" id="hash-chest" data-name="#chest" data-aliases="#chests #findchest">
+<h4><a class="self" href="#hash-chest"><span class="pfx">#</span>chest</a></h4>
+<p class="aka"><span>Also</span> <code>#chests</code> <code>#findchest</code></p>
+<p class="sum">Search what's inside every container you've opened. DIH records them as you play.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#chest &lt;item&gt;</code></td><td>Containers holding <code>item</code>. Partial names match.</td></tr><tr><td><code>#chest &lt;item&gt; goto</code></td><td>Search and walk to the best match.</td></tr><tr><td><code>#chest &lt;N&gt; goto</code></td><td>Walk to match N from the last search.</td></tr><tr><td><code>#chest list [page]</code></td><td>Browse everything recorded.</td></tr><tr><td><code>#chest stats</code></td><td>Count the recorded containers.</td></tr><tr><td><code>#chest forget &lt;N&gt;</code></td><td>Delete match N from the record.</td></tr><tr><td><code>#chest clear</code></td><td>Delete the whole record.</td></tr></tbody></table></div>
+<p>Saved in <code>baritone/chest_memory.json</code>.</p>
+</article>
+<article class="cmd" id="hash-bases" data-name="#bases" data-aliases="#basefinder">
+<h4><a class="self" href="#hash-bases"><span class="pfx">#</span>bases</a></h4>
+<p class="aka"><span>Also</span> <code>#basefinder</code></p>
+<p class="sum">Find likely player bases from clusters of beacons, ender chests, enchanting tables, anvils, shulkers and similar blocks.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#bases [N]</code></td><td>Top N bases in this dimension (10 by default).</td></tr><tr><td><code>#bases pie</code></td><td>Break the finds down by block type.</td></tr><tr><td><code>#bases &lt;N&gt; goto</code></td><td>Walk to base N.</td></tr></tbody></table></div>
+<p>Run <a class="ref" href="#hash-repack"><code>#repack</code></a> first to include chunks you just loaded. Tune it with <code>#set baseFinderMinScore</code> (30), <code>baseFinderMinIndicators</code> (3) and <code>baseFinderEpsilon</code> (50, the cluster radius in blocks).</p>
+</article>
+<article class="cmd" id="hash-heatmap" data-name="#heatmap" data-aliases="#activity">
+<h4><a class="self" href="#hash-heatmap"><span class="pfx">#</span>heatmap</a></h4>
+<p class="aka"><span>Also</span> <code>#activity</code></p>
+<p class="sum">Rank 512 × 512 block zones by signs of players, including portals, hoppers, observers, player heads and jukeboxes.</p>
+<pre><code>#heatmap [N]
+#heatmap &lt;N&gt; goto</code></pre>
+<p>It also shows as a JourneyMap layer.</p>
+</article>
+<article class="cmd" id="hash-players" data-name="#players" data-aliases="#player #seen">
+<h4><a class="self" href="#hash-players"><span class="pfx">#</span>players</a></h4>
+<p class="aka"><span>Also</span> <code>#player</code> <code>#seen</code></p>
+<p class="sum">Look up every player you've seen and where. Sightings are recorded even with <a class="ref" href="#hash-threats"><code>#threats</code></a> off.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#players</code></td><td>Everyone seen.</td></tr><tr><td><code>#players &lt;name&gt;</code></td><td>Where and when you saw them.</td></tr><tr><td><code>#players goto &lt;name&gt;</code></td><td>Walk to where you last saw them.</td></tr><tr><td><code>#players forget &lt;name&gt;</code></td><td>Delete them from the record.</td></tr><tr><td><code>#players clear</code></td><td>Delete the whole record.</td></tr><tr><td><code>#players stats</code></td><td>Summarise the record.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="hash-menu" data-name="#menu" data-aliases="#gui">
+<h4><a class="self" href="#hash-menu"><span class="pfx">#</span>menu</a></h4>
+<p class="aka"><span>Also</span> <code>#gui</code></p>
+<p class="sum">Read and click server plugin GUIs, such as shops, warp menus and random teleport.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#menu dump</code></td><td>Print every filled slot of the open menu.</td></tr><tr><td><code>#menu click &lt;matcher&gt;</code></td><td>Click a slot in the open menu.</td></tr><tr><td><code>#menu run &lt;command&gt; &lt;matcher&gt;</code></td><td>Run <code>/command</code>, wait for the menu, then click.</td></tr><tr><td><code>#menu stop</code></td><td>Cancel a pending click.</td></tr></tbody></table></div>
+<p>A matcher is <code>item:&lt;id&gt;</code> (most reliable), <code>slot:&lt;n&gt;</code> counting from 0, or text from the item's name or lore. Run <code>#menu dump</code> with the GUI open first to see the real names.</p>
+<pre><code>#menu run warps item:compass
+#menu click slot:18</code></pre>
+</article>
+</section>
+<section class="grp" id="pathfinder-ai-commands-seeds-structures">
+<h3>Seeds &amp; structures</h3>
+
+<article class="cmd" id="hash-seedinput" data-name="#seedinput" data-aliases="#seed">
+<h4><a class="self" href="#hash-seedinput"><span class="pfx">#</span>seedinput</a></h4>
+<p class="aka"><span>Also</span> <code>#seed</code></p>
+<p class="sum">Save this server's world seed so <a class="ref" href="#hash-seedmap"><code>#seedmap</code></a>, <a class="ref" href="#hash-structure"><code>#structure</code></a> and <a class="ref" href="#hash-where"><code>#where</code></a> work in multiplayer. OreSim uses it too.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#seedinput &lt;seed&gt;</code></td><td>Save it. Text converts like on the world creation screen.</td></tr><tr><td><code>#seedinput &lt;seed&gt; force</code></td><td>Save it even if it doesn't match the server.</td></tr><tr><td><code>#seedinput</code></td><td>Show the seed and whether it matches. <code>#seedinput check</code> does the same.</td></tr><tr><td><code>#seedinput clear</code></td><td>Forget it.</td></tr></tbody></table></div>
+<p>The server sends a hash of its real seed when you join, and a seed that doesn't match is refused. Singleplayer needs no seed.</p>
+</article>
+<article class="cmd" id="hash-structure" data-name="#structure" data-aliases="#struct #locate">
+<h4><a class="self" href="#hash-structure"><span class="pfx">#</span>structure</a></h4>
+<p class="aka"><span>Also</span> <code>#struct</code> <code>#locate</code></p>
+<p class="sum">Find the nearest structure and walk there.</p>
+<pre><code>#structure &lt;name&gt;</code></pre>
+<p>Names: <code>village</code>, <code>stronghold</code>, <code>fortress</code> (or <code>nether_fortress</code>), <code>bastion</code>, <code>mansion</code>, <code>monument</code>, <code>ancient_city</code>, <code>end_city</code>, <code>mineshaft</code>, <code>buried_treasure</code>, <code>desert_pyramid</code>, <code>jungle_pyramid</code>, <code>pillager_outpost</code>, <code>shipwreck</code>, <code>igloo</code>, <code>swamp_hut</code>, <code>ocean_ruin</code>, <code>ruined_portal</code>, <code>trial_chambers</code>, <code>trail_ruins</code>.</p>
+</article>
+<article class="cmd" id="hash-where" data-name="#where" data-aliases="">
+<h4><a class="self" href="#hash-where"><span class="pfx">#</span>where</a></h4>
+
+<p class="sum">Show your position, or a structure's coordinates without walking there.</p>
+<pre><code>#where
+#where &lt;structure&gt;</code></pre>
+<p>With a structure it prints coordinates, distance and direction. It takes the same names as <a class="ref" href="#hash-structure"><code>#structure</code></a>.</p>
+</article>
+<article class="cmd" id="hash-seedmap" data-name="#seedmap" data-aliases="#structures #smap">
+<h4><a class="self" href="#hash-seedmap"><span class="pfx">#</span>seedmap</a></h4>
+<p class="aka"><span>Also</span> <code>#structures</code> <code>#smap</code></p>
+<p class="sum">Draw every structure the seed really generates on the JourneyMap fullscreen map. Without JourneyMap it lists them in chat.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#seedmap</code></td><td>Everything within 2000 blocks.</td></tr><tr><td><code>#seedmap &lt;radius&gt;</code></td><td>Up to 8000 blocks.</td></tr><tr><td><code>#seedmap &lt;kinds…&gt;</code></td><td>Only these, such as <code>village monument</code>.</td></tr><tr><td><code>#seedmap &lt;r&gt; at &lt;x&gt; &lt;z&gt;</code></td><td>Centre the search somewhere else.</td></tr><tr><td><code>#seedmap wp</code></td><td>Also add waypoints on landmarks.</td></tr><tr><td><code>#seedmap strongholds</code></td><td>The nearest strongholds, plus all 128.</td></tr><tr><td><code>#seedmap off</code></td><td>Hide the overlay.</td></tr></tbody></table></div>
+</article>
+</section>
+<section class="grp" id="pathfinder-ai-commands-safety-automation">
+<h3>Safety &amp; automation</h3>
+
+<article class="cmd" id="hash-threats" data-name="#threats" data-aliases="#threat">
+<h4><a class="self" href="#hash-threats"><span class="pfx">#</span>threats</a></h4>
+<p class="aka"><span>Also</span> <code>#threat</code></p>
+<p class="sum">Alert you in chat when a player comes within range.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#threats</code></td><td>Toggle alerts. <code>on</code> and <code>off</code> work too.</td></tr><tr><td><code>#threats &lt;N&gt;</code></td><td>Set the range to N blocks (64 by default).</td></tr><tr><td><code>#threats status</code></td><td>Show the state and range.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="hash-flee" data-name="#flee" data-aliases="">
+<h4><a class="self" href="#hash-flee"><span class="pfx">#</span>flee</a></h4>
+
+<p class="sum">Disconnect, or run a command, when something goes wrong. Every trigger starts off, and by default triggers are only checked while Baritone is busy.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#flee</code></td><td>Show the status.</td></tr><tr><td><code>#flee on</code></td><td>Turn Flee on. <code>off</code> turns it off.</td></tr><tr><td><code>#flee players [on|off|N]</code></td><td>Trigger on a player within N blocks.</td></tr><tr><td><code>#flee health &lt;hearts&gt;</code></td><td>Trigger at that many hearts.</td></tr><tr><td><code>#flee hunger &lt;food&gt;</code></td><td>Trigger at that food level.</td></tr><tr><td><code>#flee tool &lt;durability&gt;</code></td><td>Trigger when your tool gets that low.</td></tr><tr><td><code>#flee pickaxe</code></td><td>Trigger when you run out of pickaxes while mining.</td></tr><tr><td><code>#flee full</code></td><td>Trigger when your inventory is full.</td></tr><tr><td><code>#flee action &lt;disconnect|command|stop&gt;</code></td><td>What happens when a trigger fires.</td></tr><tr><td><code>#flee command &lt;command&gt;</code></td><td>The command to run, such as <code>/spawn</code>.</td></tr><tr><td><code>#flee check always</code></td><td>Also check while Baritone is idle.</td></tr><tr><td><code>#flee reconnect on</code></td><td>Let AutoReconnect rejoin afterwards.</td></tr><tr><td><code>#flee gui</code></td><td>Open the settings screen.</td></tr><tr><td><code>#flee test</code></td><td>Fire the action now.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="hash-listentomine" data-name="#listentomine" data-aliases="#ltm">
+<h4><a class="self" href="#hash-listentomine"><span class="pfx">#</span>listentomine</a></h4>
+<p class="aka"><span>Also</span> <code>#ltm</code></p>
+<p class="sum">Watch chat for a word, then warp and mine. By default it waits for <code>legendary</code>, runs <code>/warp mine</code>, drops a stack if your inventory is full, and mines <code>ancient_debris</code>.</p>
+<pre><code>#ltm [on|off|status]</code></pre>
+<p>Change it with <code>#set listenToMineWord</code>, <code>listenToMineWarp</code>, <code>listenToMineTarget</code>, <code>listenToMineWarpDelay</code> (40 ticks) and <code>listenToMineCooldown</code> (200 ticks).</p>
+</article>
+</section>
+<section class="grp" id="pathfinder-ai-commands-ai">
+<h3>AI</h3>
+
+<article class="cmd" id="hash-ai" data-name="#ai" data-aliases="">
+<h4><a class="self" href="#hash-ai"><span class="pfx">#</span>ai</a></h4>
+
+<p class="sum">Let a language model read server chat and play by running <code>#</code> commands. Messages from trusted players are orders; everyone else's are only context.</p>
+<h5>Set up</h5>
+<pre><code>#ai key &lt;api-key&gt;
+#ai url &lt;base-url&gt;
+#ai model &lt;name&gt;
+#ai trust &lt;player&gt;
+#ai on</code></pre>
+<p>The key can also come from the <code>MINECRAFTAI_LLM_KEY</code> environment variable. Any OpenAI-compatible endpoint works, and the default model is <code>qwen-plus</code>.</p>
+<h5>Use</h5>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#ai &lt;anything&gt;</code></td><td>Tell it to do something yourself.</td></tr><tr><td><code>#ai status</code></td><td>Show the setup, token use and last error.</td></tr><tr><td><code>#ai off</code></td><td>Stop listening.</td></tr><tr><td><code>#ai auto [on|off]</code></td><td>Let it think on a timer.</td></tr><tr><td><code>#ai chat [on|off]</code></td><td>Let it talk in server chat.</td></tr><tr><td><code>#ai trigger &lt;word|none&gt;</code></td><td>Make trusted players start orders with a wake word.</td></tr><tr><td><code>#ai goal &lt;text&gt;</code></td><td>Give it a standing objective.</td></tr><tr><td><code>#ai persona [text]</code></td><td>Show or set its personality.</td></tr><tr><td><code>#ai trust [name]</code></td><td>Trust a player, or list trusted players.</td></tr><tr><td><code>#ai untrust &lt;name&gt;</code></td><td>Stop trusting a player.</td></tr><tr><td><code>#ai deny &lt;command&gt;</code></td><td>Forbid a <code>#</code> command.</td></tr><tr><td><code>#ai allow &lt;command&gt;</code></td><td>Allow it again.</td></tr><tr><td><code>#ai extra &lt;json|none&gt;</code></td><td>Add JSON to every API request.</td></tr><tr><td><code>#ai forget [all|text]</code></td><td>See or wipe its long-term memory.</td></tr><tr><td><code>#ai clear</code></td><td>Forget the current conversation.</td></tr></tbody></table></div>
+<p>Saved in <code>baritone/ai.json</code> and <code>baritone/ai_memory.json</code>.</p>
+</article>
+</section>
+<section class="grp" id="pathfinder-ai-commands-waypoints-homes">
+<h3>Waypoints &amp; homes</h3>
+
+<article class="cmd" id="hash-home" data-name="#home" data-aliases="#homes #sethome">
+<h4><a class="self" href="#hash-home"><span class="pfx">#</span>home</a></h4>
+<p class="aka"><span>Also</span> <code>#homes</code> <code>#sethome</code></p>
+<p class="sum">Save named homes and walk back to them.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#home set &lt;name&gt;</code></td><td>Save your position. <code>#sethome &lt;name&gt;</code> does the same.</td></tr><tr><td><code>#home &lt;name&gt;</code></td><td>Walk there.</td></tr><tr><td><code>#home list</code></td><td>List homes with distances.</td></tr><tr><td><code>#home del &lt;name&gt;</code></td><td>Delete one.</td></tr></tbody></table></div>
+<p>Saved in <code>baritone/homes.json</code>.</p>
+</article>
+<article class="cmd" id="hash-waypoints" data-name="#waypoints" data-aliases="#waypoint #wp">
+<h4><a class="self" href="#hash-waypoints"><span class="pfx">#</span>waypoints</a></h4>
+<p class="aka"><span>Also</span> <code>#waypoint</code> <code>#wp</code></p>
+<p class="sum">Manage Baritone's tagged waypoints. DIH's own waypoints are <a class="ref" href="#dot-waypoints"><code>.wp</code></a>.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#wp [list] [tag]</code></td><td>List waypoints, or only one tag. Short form <code>l</code>.</td></tr><tr><td><code>#wp save [tag] [name] [pos]</code></td><td>Save one. With nothing else it saves here, tagged USER. Short form <code>s</code>.</td></tr><tr><td><code>#wp info &lt;tag|name&gt;</code></td><td>Show one. Also <code>show</code> or <code>i</code>.</td></tr><tr><td><code>#wp delete &lt;tag|name&gt;</code></td><td>Delete one. Short form <code>d</code>.</td></tr><tr><td><code>#wp restore &lt;n&gt;</code></td><td>Bring back the last n deleted.</td></tr><tr><td><code>#wp clear &lt;tag&gt;</code></td><td>Delete every waypoint with that tag. Short form <code>c</code>.</td></tr><tr><td><code>#wp goal &lt;tag|name&gt;</code></td><td>Make it the goal. Short form <code>g</code>.</td></tr><tr><td><code>#wp goto &lt;tag|name&gt;</code></td><td>Make it the goal and walk there.</td></tr></tbody></table></div>
+</article>
+</section>
+<section class="grp" id="pathfinder-ai-commands-building-selections">
+<h3>Building selections</h3>
+
+<article class="cmd" id="hash-sel" data-name="#sel" data-aliases="#selection #s">
+<h4><a class="self" href="#hash-sel"><span class="pfx">#</span>sel</a></h4>
+<p class="aka"><span>Also</span> <code>#selection</code> <code>#s</code></p>
+<p class="sum">Select areas like WorldEdit, then fill, clear, copy or paste them. Selections show in the world.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#sel pos1 [x y z]</code></td><td>Set corner 1, here or at a position. Also <code>p1</code> or <code>1</code>.</td></tr><tr><td><code>#sel pos2 [x y z]</code></td><td>Set corner 2. Also <code>p2</code> or <code>2</code>.</td></tr><tr><td><code>#sel clear</code></td><td>Clear the selection. Short form <code>c</code>.</td></tr><tr><td><code>#sel undo</code></td><td>Undo the last change to the selection. Short form <code>u</code>.</td></tr><tr><td><code>#sel set [block]</code></td><td>Fill it. Also <code>fill</code>, <code>s</code> or <code>f</code>.</td></tr><tr><td><code>#sel walls [block]</code></td><td>Fill the walls. Short form <code>w</code>.</td></tr><tr><td><code>#sel shell [block]</code></td><td>Walls, floor and ceiling. Short form <code>shl</code>.</td></tr><tr><td><code>#sel sphere [block]</code></td><td>A sphere inside it. Short form <code>sph</code>. <code>hsphere</code> is hollow.</td></tr><tr><td><code>#sel cylinder [block] [axis]</code></td><td>A cylinder along an axis, <code>y</code> by default. Short form <code>cyl</code>. <code>hcylinder</code> is hollow.</td></tr><tr><td><code>#sel cleararea</code></td><td>Fill it with air. Short form <code>ca</code>.</td></tr><tr><td><code>#sel replace &lt;blocks…&gt; &lt;with&gt;</code></td><td>Swap blocks for another. Short form <code>r</code>.</td></tr><tr><td><code>#sel copy [x y z]</code></td><td>Copy it. Short form <code>cp</code>.</td></tr><tr><td><code>#sel paste [x y z]</code></td><td>Build the copy. Short form <code>p</code>.</td></tr><tr><td><code>#sel expand &lt;target&gt; &lt;direction&gt; &lt;blocks&gt;</code></td><td>Grow selections. Short form <code>ex</code>.</td></tr><tr><td><code>#sel contract &lt;target&gt; &lt;direction&gt; &lt;blocks&gt;</code></td><td>Shrink them. Short form <code>ct</code>.</td></tr><tr><td><code>#sel shift &lt;target&gt; &lt;direction&gt; &lt;blocks&gt;</code></td><td>Move them without resizing. Short form <code>sh</code>.</td></tr></tbody></table></div>
+<p>A target is <code>all</code> (<code>a</code>), <code>newest</code> (<code>n</code>) or <code>oldest</code> (<code>o</code>).</p>
+</article>
+</section>
+<section class="grp" id="pathfinder-ai-commands-settings-upkeep">
+<h3>Settings &amp; upkeep</h3>
+
+<article class="cmd" id="hash-set" data-name="#set" data-aliases="#setting #settings">
+<h4><a class="self" href="#hash-set"><span class="pfx">#</span>set</a></h4>
+<p class="aka"><span>Also</span> <code>#setting</code> <code>#settings</code></p>
+<p class="sum">View or change Baritone settings.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>#set</code></td><td>List settings. <code>#set list [page]</code> does the same.</td></tr><tr><td><code>#set modified [page]</code></td><td>List the ones you changed.</td></tr><tr><td><code>#set &lt;setting&gt;</code></td><td>Show one.</td></tr><tr><td><code>#set &lt;setting&gt; &lt;value&gt;</code></td><td>Change it.</td></tr><tr><td><code>#set toggle &lt;setting&gt;</code></td><td>Flip a true/false setting.</td></tr><tr><td><code>#set reset &lt;setting&gt;</code></td><td>Reset one. <code>#set reset all</code> resets everything.</td></tr><tr><td><code>#set save</code></td><td>Save now. It also saves on its own.</td></tr><tr><td><code>#set load [file]</code></td><td>Load settings from a file in <code>minecraft/baritone</code>.</td></tr></tbody></table></div>
+<p>Settings mentioned on this page: <code>prefix</code>, <code>renderPath</code>, <code>renderGoal</code>, <code>enterPortal</code>, <code>legitMine</code>, <code>colorCurrentPath</code>, <code>pathRenderLineWidthPixels</code>.</p>
+</article>
+<article class="cmd" id="hash-modified" data-name="#modified" data-aliases="#mod #baritone #modifiedsettings">
+<h4><a class="self" href="#hash-modified"><span class="pfx">#</span>modified</a></h4>
+<p class="aka"><span>Also</span> <code>#mod</code> <code>#baritone</code> <code>#modifiedsettings</code></p>
+<p class="sum">Shortcut for <code>#set modified</code>.</p>
+
+</article>
+<article class="cmd" id="hash-reset" data-name="#reset" data-aliases="">
+<h4><a class="self" href="#hash-reset"><span class="pfx">#</span>reset</a></h4>
+
+<p class="sum">Shortcut for <code>#set reset</code>.</p>
+
+</article>
+<article class="cmd" id="hash-repack" data-name="#repack" data-aliases="#rescan">
+<h4><a class="self" href="#hash-repack"><span class="pfx">#</span>repack</a></h4>
+<p class="aka"><span>Also</span> <code>#rescan</code></p>
+<p class="sum">Re-cache the chunks around you.</p>
+
+</article>
+<article class="cmd" id="hash-reloadall" data-name="#reloadall" data-aliases="">
+<h4><a class="self" href="#hash-reloadall"><span class="pfx">#</span>reloadall</a></h4>
+
+<p class="sum">Reload the world cache from disk.</p>
+
+</article>
+<article class="cmd" id="hash-saveall" data-name="#saveall" data-aliases="">
+<h4><a class="self" href="#hash-saveall"><span class="pfx">#</span>saveall</a></h4>
+
+<p class="sum">Save the world cache to disk.</p>
+
+</article>
+<article class="cmd" id="hash-render" data-name="#render" data-aliases="">
+<h4><a class="self" href="#hash-render"><span class="pfx">#</span>render</a></h4>
+
+<p class="sum">Fix chunks that render wrong.</p>
+
+</article>
+<article class="cmd" id="hash-click" data-name="#click" data-aliases="">
+<h4><a class="self" href="#hash-click"><span class="pfx">#</span>click</a></h4>
+
+<p class="sum">Open Baritone's click-to-go screen.</p>
+
+</article>
+<article class="cmd" id="hash-gc" data-name="#gc" data-aliases="">
+<h4><a class="self" href="#hash-gc"><span class="pfx">#</span>gc</a></h4>
+
+<p class="sum">Run Java garbage collection.</p>
+
+</article>
+<article class="cmd" id="hash-version" data-name="#version" data-aliases="">
+<h4><a class="self" href="#hash-version"><span class="pfx">#</span>version</a></h4>
+
+<p class="sum">Show the Baritone version.</p>
+
+</article>
+<article class="cmd" id="hash-help" data-name="#help" data-aliases="#?">
+<h4><a class="self" href="#hash-help"><span class="pfx">#</span>help</a></h4>
+<p class="aka"><span>Also</span> <code>#?</code></p>
+<p class="sum">List <code>#</code> commands, or show one command's full help.</p>
+<pre><code>#help [command]</code></pre>
+</article>
+</section>
+</section>
+<!-- docs:end -->
+</main>
+</div>
+
+<footer class="foot">
+  <div class="foot-row">
+    <a class="brand" href="/" aria-label="DIH Client home">
+      <svg class="brand-icon" viewBox="0 0 16 16" aria-hidden="true" shape-rendering="crispEdges"><use href="#pixel-d"/></svg>
+      <span>DIH</span>
+    </a>
+    <p>© 2026 ahigherdesire · <a href="https://www.gnu.org/licenses/gpl-3.0.html" rel="noopener">GPL-3.0-or-later</a>, no warranty · <a href="https://github.com/ahigherdesire/dih-client/blob/main/COMMANDS.md" rel="noopener">Edit this page</a> · <a href="https://discord.gg/C5JkKsxapC" rel="noopener">Discord</a></p>
+  </div>
+  <p class="legal mono">Not an official Minecraft product. Not approved by or associated with Mojang or Microsoft.</p>
+</footer>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="pixel-d" viewBox="0 0 16 16">
+    <path fill="#1F54EC" d="M1 1h14v14H1z"/>
+    <path fill="#fff" d="M3 3h7v1h2v1h1v6h-1v1h-2v1H3zm2 2v6h5v-1h1V6h-1V5z"/>
+    <path fill="#EC1F27" d="M12 12h2v2h-2z"/>
+  </symbol>
+</svg>
+</body>
+</html>

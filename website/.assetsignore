@@ -4,5 +4,6 @@
 .wrangler
 node_modules
 serve.py
+build_docs.py
 wrangler.jsonc
 worker
