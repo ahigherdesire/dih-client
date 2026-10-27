@@ -127,6 +127,9 @@ public class SchematicCommand extends Command {
             })));
         root.then(literal("materials")
             .executes(ctx -> withPlacement(null, SchematicCommand::materials))
+            .then(literal("csv")
+                .executes(ctx -> withPlacement(null, SchematicCommand::exportMaterials))
+                .then(placementArgument().executes(ctx -> withPlacement(ctx, SchematicCommand::exportMaterials))))
             .then(placementArgument().executes(ctx -> withPlacement(ctx, SchematicCommand::materials))));
         root.then(literal("verify")
             .executes(ctx -> withPlacement(null, SchematicCommand::verify))
@@ -175,6 +178,7 @@ public class SchematicCommand extends Command {
         say("§7" + p + "move <x y z> / here / nudge <dx dy dz> / adjust §8- §7move the selected one");
         say("§7" + p + "rotate [quarters] / mirror [none|x|z] §8- §7turn it");
         say("§7" + p + "materials / verify / build §8- §7what it needs, what is wrong, build it with Baritone");
+        say("§7" + p + "materials csv §8- §7save the material list as a spreadsheet in schematics/materials");
         say("§7" + p + "show / hide / remove [n|all] / reload / layer <all|single|below|above> [y] / menu");
         if (baritone.utils.schematic.litematica.LitematicaHelper.isLitematicaPresent()) {
             say("§7Litematica is installed too: its placements stay separate, and #litematica builds those.");
@@ -215,9 +219,10 @@ public class SchematicCommand extends Command {
         try {
             SchematicPlacement p = SchematicActions.place(Minecraft.getInstance(), file, at);
             enableModule();
+            dihclient.schematic.SchematicPlacing.start(p);
             BlockPos o = p.origin();
             say("§aPlaced §f" + file + "§a at §f" + o.getX() + " " + o.getY() + " " + o.getZ()
-                + "§7. Loading; " + DihCommands.effectivePrefix() + "schem adjust moves it with the mouse.");
+                + "§7. Arrows and PgUp/PgDn move it, R/M/G turn, mirror and ground it, Enter keeps it.");
         } catch (IllegalArgumentException e) {
             say("§c" + e.getMessage());
         }
@@ -298,6 +303,18 @@ public class SchematicCommand extends Command {
         say("§e" + lines.getFirst());
         for (int i = 1; i < lines.size(); i++) {
             say("§7  " + lines.get(i));
+        }
+        if (lines.size() > 1) {
+            say("§8Full list: " + DihCommands.effectivePrefix() + "schem menu, then Materials. Save it with "
+                + DihCommands.effectivePrefix() + "schem materials csv");
+        }
+    }
+
+    private static void exportMaterials(SchematicPlacement p) {
+        try {
+            say("§a" + SchematicActions.exportMaterials(Minecraft.getInstance(), p));
+        } catch (IllegalArgumentException e) {
+            say("§c" + e.getMessage());
         }
     }
 

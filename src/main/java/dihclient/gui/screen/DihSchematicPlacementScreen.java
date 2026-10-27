@@ -27,7 +27,6 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.border.WorldBorder;
-import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
@@ -288,10 +287,7 @@ public final class DihSchematicPlacementScreen extends DihScreen {
      * Drops the placement onto the ground at its column, if that column is loaded.
      */
     private void ground() {
-        ClientLevel level = level();
-        BlockPos o = this.placement.origin();
-        if (level != null && level.isLoaded(o)) {
-            this.placement.moveTo(new BlockPos(o.getX(), level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, o.getX(), o.getZ()), o.getZ()));
+        if (this.minecraft != null && SchematicActions.ground(this.minecraft, this.placement)) {
             this.direction = null;
         }
     }

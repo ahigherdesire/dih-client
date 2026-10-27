@@ -1,7 +1,6 @@
 package dihclient.schematic;
 
 import baritone.utils.schematic.format.SchematicLoader;
-import dihclient.gui.screen.DihSchematicPlacementScreen;
 import dihclient.gui.screen.DihSchematicsScreen;
 import dihclient.modules.Module;
 import dihclient.modules.ModuleRegistry;
@@ -62,7 +61,8 @@ public final class SchematicDrop {
             if (module != null && !module.isEnabled()) {
                 module.setEnabled(true);
             }
-            mc.gui.setScreen(new DihSchematicPlacementScreen(placement, current));
+            SchematicPlacing.start(placement);
+            mc.gui.setScreen(null);
         } catch (IllegalArgumentException e) {
             toast(mc, "Couldn't place " + imported.getFirst(), e.getMessage());
         }

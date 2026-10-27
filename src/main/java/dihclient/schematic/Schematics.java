@@ -6,7 +6,9 @@ import baritone.utils.schematic.format.SchematicLoader;
 import dihclient.DihClientAddon;
 import dihclient.util.DihWaypoints;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.server.IntegratedServer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.level.storage.LevelResource;
 
 import java.io.File;
 import java.io.IOException;
@@ -137,16 +139,49 @@ public final class Schematics {
         if (mc.level == null || mc.player == null) {
             return;
         }
-        String key = DihWaypoints.scopeKey(mc);
+        String key = scopeKey(mc);
         if (!key.equals(this.scope)) {
-            enter(key);
+            enter(key, DihWaypoints.scopeKey(mc));
         }
     }
 
-    private void enter(String key) {
+    /**
+     * @return the server address, or {@code world:<save folder>} in singleplayer. Placements used to be kept by the
+     * world's display name, so two worlds both called "New World" shared one list; the save folder is unique.
+     */
+    static String scopeKey(Minecraft mc) {
+        IntegratedServer server = mc.getSingleplayerServer();
+        if (mc.getCurrentServer() == null && server != null) {
+            Path folder = server.getWorldPath(LevelResource.ROOT).toAbsolutePath().normalize().getFileName();
+            if (folder != null) {
+                return "world:" + folder;
+            }
+        }
+        return DihWaypoints.scopeKey(mc);
+    }
+
+    /**
+     * @return where the current placements are saved, for the Schematics screen: a server address or a world folder
+     */
+    public String scopeLabel() {
+        if (this.scope == null) {
+            return "";
+        }
+        return this.scope.startsWith("world:") ? "world " + this.scope.substring(6) : this.scope;
+    }
+
+    /**
+     * @param legacy the key this world's placements were saved under before world folders were used; they move to
+     *               {@code key} the first time the world is entered
+     */
+    private void enter(String key, String legacy) {
         leave();
         ensureStored();
         this.scope = key;
+        if (!key.equals(legacy) && !this.stored.containsKey(key) && this.stored.containsKey(legacy)) {
+            // saved with the rest when the world is left; changed() here would store the still-empty list over it
+            this.stored.put(key, this.stored.remove(legacy));
+        }
         SchematicPlacementStore.Scope saved = this.stored.get(key);
         if (saved != null) {
             this.placements.addAll(saved.placements());

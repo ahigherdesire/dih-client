@@ -8,10 +8,16 @@ import baritone.utils.schematic.LoadedSchematic;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
+import net.minecraft.world.level.levelgen.Heightmap;
 
+import java.io.IOException;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -83,6 +89,14 @@ public final class SchematicActions {
     }
 
     /**
+     * @return what the placement still needs, against the loaded world and the player's inventory
+     */
+    public static SchematicMaterials.Report materialsReport(Minecraft mc, SchematicPlacement p) {
+        Map<String, Integer> held = held(mc.player);
+        return SchematicMaterials.report(p, mc.level, id -> held.getOrDefault(id, 0));
+    }
+
+    /**
      * @return the material list against the world and the player's inventory, for chat or a screen
      */
     public static List<String> materials(Minecraft mc, SchematicPlacement p, int maxLines) {
@@ -91,8 +105,7 @@ public final class SchematicActions {
             out.add(p.error().isEmpty() ? "Still loading " + p.name() : "Not loaded: " + p.error());
             return out;
         }
-        Map<String, Integer> held = held(mc.player);
-        SchematicMaterials.Report report = SchematicMaterials.report(p, mc.level, id -> held.getOrDefault(id, 0));
+        SchematicMaterials.Report report = materialsReport(mc, p);
         if (report.remaining() == 0) {
             out.add(p.name() + " is complete.");
             return out;
@@ -114,6 +127,60 @@ public final class SchematicActions {
         }
         report.unplaceable().forEach((block, count) -> out.add(block + ": " + count + " (no item places it)"));
         return out;
+    }
+
+    /**
+     * Saves the material list as a CSV in {@code <schematics folder>/materials}, with the same numbers as
+     * {@link #materials}.
+     *
+     * @return what to tell the player
+     * @throws IllegalArgumentException with a message for the player when there is nothing to save
+     */
+    public static String exportMaterials(Minecraft mc, SchematicPlacement p) {
+        if (!p.isLoaded()) {
+            throw new IllegalArgumentException(p.error().isEmpty() ? p.name() + " is still loading" : p.name() + " is not loaded: " + p.error());
+        }
+        SchematicMaterials.Report report = materialsReport(mc, p);
+        if (report.remaining() == 0) {
+            throw new IllegalArgumentException(p.name() + " is complete, so there is nothing left to list");
+        }
+        try {
+            Path file = SchematicMaterialsCsv.write(Schematics.folder().toPath().resolve("materials"), p.name(),
+                SchematicMaterialsCsv.csv(report, SchematicActions::displayName));
+            int rows = report.lines().size() + report.unplaceable().size();
+            return "Saved " + rows + " items to schematics/materials/" + file.getFileName();
+        } catch (IOException e) {
+            throw new IllegalArgumentException("Could not save the CSV: " + e.getMessage());
+        }
+    }
+
+    /**
+     * @return the in-game name of an item id, or of a block id when no item has it, or the id itself
+     */
+    public static String displayName(String id) {
+        Identifier key = Identifier.tryParse(id);
+        if (key == null) {
+            return id;
+        }
+        Item item = BuiltInRegistries.ITEM.getOptional(key).orElse(null);
+        if (item != null && item != Items.AIR) {
+            return new ItemStack(item).getHoverName().getString();
+        }
+        return BuiltInRegistries.BLOCK.getOptional(key).map(block -> block.getName().getString()).orElse(id);
+    }
+
+    /**
+     * Drops the placement onto the ground at its column, if that column is loaded.
+     *
+     * @return whether it moved
+     */
+    public static boolean ground(Minecraft mc, SchematicPlacement p) {
+        BlockPos o = p.origin();
+        if (mc.level == null || !mc.level.isLoaded(o)) {
+            return false;
+        }
+        p.moveTo(new BlockPos(o.getX(), mc.level.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, o.getX(), o.getZ()), o.getZ()));
+        return true;
     }
 
     /**

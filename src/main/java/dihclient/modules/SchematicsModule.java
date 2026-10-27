@@ -6,9 +6,14 @@ import dihclient.api.module.ColorSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.api.module.KeybindSetting;
 import dihclient.schematic.SchematicPlacement;
+import dihclient.schematic.SchematicPlacing;
 import dihclient.schematic.Schematics;
 import dihclient.util.DihBindUtil;
 import dihclient.util.DihClientMessaging;
+import dihclient.util.DihUiScale;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+
+import java.util.List;
 
 /**
  * Shows schematic placements in the world and holds their keybinds. The placements themselves live in
@@ -112,6 +117,7 @@ public final class SchematicsModule extends Module {
             return;
         }
         Schematics.get().tick(MC);
+        SchematicPlacing.tick(MC);
         key(0, "menu-key", () -> MC.gui.setScreen(new dihclient.gui.screen.DihSchematicsScreen(null)));
         key(1, "adjust-key", () -> {
             SchematicPlacement selected = selectedOrSay();
@@ -134,6 +140,35 @@ public final class SchematicsModule extends Module {
                 Schematics.get().changed();
             }
         });
+    }
+
+    static boolean hasHudWork() {
+        Module module = ModuleRegistry.get("schematics");
+        return module != null && module.isEnabled() && SchematicPlacing.active() != null;
+    }
+
+    /**
+     * The placing panel: what is being placed and its keys, top centre while a new placement is moved.
+     */
+    static void renderHud(GuiGraphicsExtractor context) {
+        if (!hasHudWork() || MC.gui.screen() != null) {
+            return;
+        }
+        List<String> lines = SchematicPlacing.hudLines();
+        if (lines.isEmpty()) {
+            return;
+        }
+        int lineH = MC.font.lineHeight + 2;
+        int width = 0;
+        for (String line : lines) {
+            width = Math.max(width, MC.font.width(line));
+        }
+        int x = (DihUiScale.getVirtualScreenWidth() - width) / 2;
+        int y = 10;
+        context.fill(x - 6, y - 5, x + width + 6, y + lines.size() * lineH + 3, 0xB0101014);
+        for (int i = 0; i < lines.size(); i++) {
+            context.text(MC.font, lines.get(i), x, y + i * lineH, i == 0 ? 0xFFFFFFFF : 0xFFB8B8C2, false);
+        }
     }
 
     private void key(int index, String setting, Runnable action) {

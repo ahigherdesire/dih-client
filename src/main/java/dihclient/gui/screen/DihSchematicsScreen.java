@@ -67,15 +67,18 @@ public final class DihSchematicsScreen extends DihScreen {
         int gap = 4;
         int bottom = screenHeight() - 28;
         String[] row1 = {"Move", "Rotate", "Mirror", "Show / Hide", "Remove"};
-        String[] row2 = {"Materials", "Verify", "Build", "Folder", "Close"};
+        String[] row2 = {"Materials", "Save CSV", "Verify", "Build", "Folder", "Close"};
         addButton(x + w - OPEN_W, 17, OPEN_W, "Open File...", Button.Tone.SUCCESS, b -> SchematicDrop.pick(this.minecraft));
-        int cell = (w - gap * 4) / 5;
-        for (int i = 0; i < 5; i++) {
+        int cell = (w - gap * (row1.length - 1)) / row1.length;
+        for (int i = 0; i < row1.length; i++) {
             String label = row1[i];
             addButton(x + i * (cell + gap), bottom - BUTTON_H - gap, cell, label,
                 label.equals("Remove") ? Button.Tone.DANGER : Button.Tone.NORMAL, b -> act(label));
+        }
+        int cell2 = (w - gap * (row2.length - 1)) / row2.length;
+        for (int i = 0; i < row2.length; i++) {
             String label2 = row2[i];
-            addButton(x + i * (cell + gap), bottom, cell, label2,
+            addButton(x + i * (cell2 + gap), bottom, cell2, label2,
                 label2.equals("Build") ? Button.Tone.SUCCESS : Button.Tone.SECONDARY, b -> act(label2));
         }
     }
@@ -139,7 +142,15 @@ public final class DihSchematicsScreen extends DihScreen {
                 Schematics.get().remove(p);
                 show(List.of("Removed " + p.name()), DihScreenPalette.MUTED);
             }
-            case "Materials" -> show(SchematicActions.materials(this.minecraft, p, 8), DihScreenPalette.TEXT);
+            case "Materials" -> this.minecraft.gui.setScreen(new DihSchematicMaterialsScreen(p, this));
+            case "Save CSV" -> {
+                try {
+                    show(List.of(SchematicActions.exportMaterials(this.minecraft, p), "Folder opens the schematics folder."),
+                        DihScreenPalette.SUCCESS);
+                } catch (IllegalArgumentException e) {
+                    show(List.of(e.getMessage()), DihScreenPalette.ERROR);
+                }
+            }
             case "Verify" -> {
                 if (p.isLoaded()) {
                     SchematicVerifier.Counts c = SchematicActions.verify(this.minecraft, p);
@@ -168,7 +179,8 @@ public final class DihSchematicsScreen extends DihScreen {
             if (module != null && !module.isEnabled()) {
                 module.setEnabled(true);
             }
-            this.minecraft.gui.setScreen(new DihSchematicPlacementScreen(p, this));
+            dihclient.schematic.SchematicPlacing.start(p);
+            this.minecraft.gui.setScreen(null);
         } catch (IllegalArgumentException e) {
             show(List.of(e.getMessage()), DihScreenPalette.ERROR);
         }
@@ -236,7 +248,9 @@ public final class DihSchematicsScreen extends DihScreen {
             int listBottom = screenHeight() - 28 - BUTTON_H * 2 - 8 - 4 * 11 - 6;
             UiText.drawEllipsized(graphics, this.font, "Click to place, or drop a file on the window", font, muted,
                 x, TOP - 12, colW, false);
-            UiText.draw(graphics, this.font, "Placements here", font, muted, x + colW + colGap, TOP - 12, false);
+            String scope = Schematics.get().scopeLabel();
+            UiText.drawEllipsized(graphics, this.font, scope.isEmpty() ? "Placements here" : "Placements for " + scope,
+                font, muted, x + colW + colGap, TOP - 12, colW, false);
 
             this.fileRows.clear();
             int visible = Math.max(1, (listBottom - TOP) / ROW_H);
@@ -276,7 +290,7 @@ public final class DihSchematicsScreen extends DihScreen {
                 if (sel) {
                     UiRenderer.rect(graphics, UiBounds.of(px, y, 2, ROW_H - 1), accent);
                 }
-                String label = (i + 1) + ". " + p.name() + (p.visible() ? "" : " (hidden)")
+                String label = (i + 1) + ". " + p.name() + otherDimension(p) + (p.visible() ? "" : " (hidden)")
                     + (p.error().isEmpty() ? (p.isLoaded() ? "" : " (loading)") : " (failed)");
                 UiText.drawEllipsized(graphics, this.font, label, font, sel ? accent : text, px + 6, y + 2, colW - 10, false);
                 this.placementRows.add(new int[]{px, y, colW, ROW_H - 1, i});
@@ -293,6 +307,22 @@ public final class DihSchematicsScreen extends DihScreen {
         } finally {
             DihUiScale.popOverlayScale(graphics);
         }
+    }
+
+    /**
+     * @return " (Nether)" and the like for a placement in another dimension than the player's, else ""
+     */
+    private String otherDimension(SchematicPlacement p) {
+        String here = this.minecraft == null ? "" : SchematicActions.dimension(this.minecraft);
+        if (p.dimension().isEmpty() || p.dimension().equals(here)) {
+            return "";
+        }
+        return switch (p.dimension()) {
+            case "minecraft:overworld" -> " (Overworld)";
+            case "minecraft:the_nether" -> " (Nether)";
+            case "minecraft:the_end" -> " (End)";
+            default -> " (" + p.dimension().substring(p.dimension().indexOf(':') + 1) + ")";
+        };
     }
 
     @Override
