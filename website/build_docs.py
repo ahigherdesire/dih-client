@@ -1,4 +1,7 @@
-"""Build website/docs.html from COMMANDS.md:  python website/build_docs.py
+"""Build docs.html from COMMANDS.md:  python website/build_docs.py [path/to/docs.html]
+
+With no path it updates website/docs.html here. The live site is the ahigherdesire/dih-client-site repo,
+so pass that checkout's docs.html to update it (its assets/docs.css and docs.js are copies of the ones here).
 
 COMMANDS.md is the source. Its shape is fixed: `##` is a system (Basics, Client commands, Pathfinder & AI
 commands), `###` a group, `####` one command named in plain text, an optional `Aliases:` line under it, then
@@ -7,10 +10,11 @@ and commit both files."""
 import html
 import os
 import re
+import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SOURCE = os.path.join(ROOT, "..", "COMMANDS.md")
-TARGET = os.path.join(ROOT, "docs.html")
+TARGET = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "docs.html")
 TEMPLATE_START = "<!-- docs:start -->"
 TEMPLATE_END = "<!-- docs:end -->"
 
