@@ -672,7 +672,7 @@ Enchant the item in your hand with any enchantment, at any level up to 255. Need
 | `.enchant all [level]` | Add every enchantment. |
 | `.enchant remove <enchantment>` | Take one off. |
 | `.enchant clear` | Take them all off. |
-| `.enchant plan <enchantments>` | Works in survival: from the villager trades you've opened in this world, find who sells those books and plan the trip. |
+| `.enchant plan <enchantments>` | Works in survival: from the villager trades you've opened in this world, find who sells those books and plan the trip. AutoTrade records those trades. |
 
 ```
 .enchant sharpness 10
@@ -1579,3 +1579,88 @@ List `#` commands, or show one command's full help.
 ```
 #help [command]
 ```
+
+## Module guides
+
+Some modules do enough to need a guide. Turn a module on or off with `.toggle <module>` or the module menu (Right
+Shift), and change its settings there or with `.setting <module> <key> <value>`.
+
+### Trading
+
+#### AutoTrade
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Buy villager trades that match a rule, or reroll a villager until it sells what you want.
+
+```
+.toggle auto-trade
+.setting auto-trade mode Reroll
+.setting auto-trade rule mending
+```
+
+It's in the module menu under Misc. **Mode** picks what it does when you turn it on: **Trade** (the default) or
+**Reroll**.
+
+##### Trade mode: buy matching offers
+
+It buys every offer that matches **Match**, one purchase at a time, and waits for the server to confirm each one before
+the next click.
+
+1. If a villager's trades are open, it buys from that villager.
+2. Otherwise, with **Walk To Villagers** on, Baritone walks to the nearest villager within 48 blocks and opens its
+   trades. It skips villagers with the wrong **Profession**, ones whose remembered offers have nothing matching, and
+   ones it visited within the **Restock Wait**.
+3. When a villager has nothing more to sell, it closes the trades, says in chat what it bought and how many emeralds it
+   has spent, and goes to the next one.
+
+With **Walk To Villagers** off, it waits for you to open a villager's trades. With every villager visited, it shows
+"waiting for villagers to restock" until the wait passes.
+
+##### Reroll mode: get a specific trade
+
+Look at a villager, usually a librarian at a lectern, and turn AutoTrade on. If you're not looking at one, it takes the
+nearest villager with a job within 6 blocks. It then repeats:
+
+1. Open the trades. If an offer matches, buy it once to lock the trades in, and stop.
+2. Otherwise close them, break the villager's workstation and wait until the villager loses its job.
+3. Pick the block up, put it back, and wait until the villager takes the job again.
+
+Every step waits for the game to confirm it, with a timeout and a message saying what failed. Two limits come from
+the game:
+
+- Only a villager **nobody has traded with** can be rerolled. One trade fixes its offers.
+- Villagers only take jobs during the day, so it waits for daytime before breaking the workstation.
+
+It turns itself off once the trades are locked, and says how many rerolls it took.
+
+##### Settings
+
+| Setting | What it does |
+|---|---|
+| Mode | **Trade** buys matching offers. **Reroll** rerolls the villager you look at until one matches. |
+| Match | What to buy. `mending`, `unbreaking3` or `sharpness 4-5`: an enchanted book with that enchantment, at least or between those levels. `book`: any enchanted book. `slot 2`: the third trade, counting from 0. `item:bread`: offers that give that item. `any`: every offer. |
+| Profession | Only villagers with this job, such as `librarian`. Empty: any. |
+| Max Price | The most emeralds to pay per purchase. 0: no limit. |
+| Emerald Budget | The most emeralds to spend while it's on. 0: no limit. |
+| Emerald Reserve | Never spend below this many emeralds. |
+| Per-Visit Cap | Purchases per villager visit. 0: no limit. |
+| Restock Wait (s) | Trade mode: seconds before it visits the same villager again (300 by default). |
+| Walk To Villagers | Trade mode: walk to nearby villagers and open their trades itself. On by default. |
+| Offer Labels | Show each villager's best remembered offer above its head, such as "mending 1 – 14e". Works with the module off. |
+
+It turns itself off when the budget is spent, when the next purchase would take you below the reserve, when you run
+out of emeralds, and when you leave the world.
+
+##### What it remembers
+
+Whenever you open a villager's trades, even with AutoTrade off, it remembers that villager's offers for this world.
+Those records feed **Offer Labels**, the villagers Trade mode skips, and `.enchant plan`, which finds which villagers
+you've seen selling the books you name.
+
+##### From macros and the AI
+
+- A macro **Trade** step buys up to a set number of matching offers from trades an earlier step opened. Later steps can
+  read `trade_count` (purchases), `trade_spent` (emeralds) and `trade_status` (`ok`, `none`, or `failed: <reason>`).
+- The AI's `trade` tool starts AutoTrade in either mode. Run it yourself with `.tools trade`; `.tools help trade` lists
+  its arguments.

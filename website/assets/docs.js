@@ -10,6 +10,9 @@
   var toggle = document.getElementById('toc-toggle');
   var narrow = window.matchMedia('(max-width: 900px)');
 
+  // ".macro" and "#goto" lose their prefix; a module guide like "AutoTrade" has none
+  function unprefix(name) { return name[0] === '.' || name[0] === '#' ? name.slice(1) : name; }
+
   // ------------------------------------------------------------ index
   var entries = Array.prototype.map.call(document.querySelectorAll('.cmd'), function (el) {
     var name = el.getAttribute('data-name');
@@ -18,9 +21,9 @@
     return {
       id: el.id,
       name: name,
-      bare: name.slice(1).toLowerCase(),
+      bare: unprefix(name).toLowerCase(),
       aliases: aliases,
-      bareAliases: aliases.map(function (a) { return a.slice(1).toLowerCase(); }),
+      bareAliases: aliases.map(function (a) { return unprefix(a).toLowerCase(); }),
       beta: el.hasAttribute('data-beta'),
       summary: sum ? sum.textContent : '',
       summaryLow: sum ? sum.textContent.toLowerCase() : '',
@@ -65,7 +68,10 @@
   }
 
   // highlight in the part after the prefix so `.` and `#` never split the match
-  function markName(name, bare) { return esc(name[0]) + mark(name.slice(1), bare); }
+  function markName(name, bare) {
+    var p = name.length - unprefix(name).length;
+    return esc(name.slice(0, p)) + mark(name.slice(p), bare);
+  }
 
   // ------------------------------------------------------------ results
   var results = [], active = -1;

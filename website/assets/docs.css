@@ -91,6 +91,9 @@
 
 .doc p { margin: 10px 0; max-width: 70ch; text-wrap: pretty; }
 .doc strong { color: var(--fg); font-weight: 500; }
+.doc ul, .doc ol { margin: 10px 0; padding-left: 22px; max-width: 70ch; }
+.doc li { margin: 5px 0; padding-left: 2px; }
+.doc li::marker { color: var(--mute); }
 .doc a:not(.self) { color: var(--blue-hi); text-decoration: underline; text-decoration-color: rgba(139, 166, 255, .35); text-underline-offset: 3px; }
 .doc a:not(.self):hover { text-decoration-color: currentColor; }
 .doc a.ref { text-decoration: none; }

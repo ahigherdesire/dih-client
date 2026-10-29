@@ -81,8 +81,22 @@ def parse(lines):
         if not line.strip():
             i += 1
             continue
+        item = re.match(r"^(- |\d+\. )", line)
+        if item:
+            # a "- " or "1. " list; an indented line continues the item above it
+            ordered = item.group(1)[0].isdigit()
+            items = []
+            while i < len(lines) and (re.match(r"^(- |\d+\. )", lines[i]) or (lines[i].startswith("  ") and items)):
+                m = re.match(r"^(- |\d+\. )(.*)$", lines[i])
+                if m:
+                    items.append(m.group(2).strip())
+                else:
+                    items[-1] += " " + lines[i].strip()
+                i += 1
+            blocks.append(("ol" if ordered else "ul", items))
+            continue
         para = []
-        while i < len(lines) and lines[i].strip() and not re.match(r"^(#{1,5} |```|\|)", lines[i]):
+        while i < len(lines) and lines[i].strip() and not re.match(r"^(#{1,5} |```|\||- |\d+\. )", lines[i]):
             para.append(lines[i].strip())
             i += 1
         text = " ".join(para)
@@ -156,6 +170,9 @@ class Renderer:
                 out.append(f"<h5>{self.inline(block[1])}</h5>")
             elif kind == "pre":
                 out.append(f'<pre><code>{html.escape(block[1])}</code></pre>')
+            elif kind in ("ul", "ol"):
+                items = "".join(f"<li>{self.inline(text)}</li>" for text in block[1])
+                out.append(f"<{kind}>{items}</{kind}>")
             elif kind == "table":
                 head = "".join(f"<th scope=\"col\">{self.inline(c)}</th>" for c in block[1])
                 rows = "".join(
@@ -205,15 +222,17 @@ class Renderer:
                     for entry in group["entries"]:
                         body.append(self.entry(entry))
                         n = entry["name"]
-                        nav.append(f'<li><a href="#{entry["id"]}" class="mono{" beta-tag" if entry["beta"] else ""}"><span class="pfx">{html.escape(n[0])}</span>'
-                                   f'{html.escape(n[1:])}</a></li>')
+                        pfx, rest = (n[0], n[1:]) if n[0] in ".#" else ("", n)
+                        nav.append(f'<li><a href="#{entry["id"]}" class="mono{" beta-tag" if entry["beta"] else ""}"><span class="pfx">{html.escape(pfx)}</span>'
+                                   f'{html.escape(rest)}</a></li>')
                     nav.append("</ul>")
                 else:
                     nav.append(f'<a class="toc-topic" href="#{group["id"]}">{html.escape(group["title"])}</a>')
                 body.append("</section>")
             nav.append("</div>")
             body.append("</section>")
-        count = sum(len(g["entries"]) for s in systems for g in s["groups"])
+        # module guides (AutoTrade) aren't commands, so only . and # entries count
+        count = sum(1 for s in systems for g in s["groups"] for e in g["entries"] if e["name"][0] in ".#")
         return "\n".join(body), "\n".join(nav), count
 
 

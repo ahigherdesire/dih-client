@@ -19,8 +19,8 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500&family=Kanit:ital,wght@1,800;1,900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/style.css?v=a8b7e675">
-<link rel="stylesheet" href="assets/docs.css?v=a482cf15">
-<script defer src="assets/docs.js?v=dfdcf4dc"></script>
+<link rel="stylesheet" href="assets/docs.css?v=24bafbd2">
+<script defer src="assets/docs.js?v=1f2c252b"></script>
 </head>
 <body class="docs-page">
 <a class="skip" href="#doc">Skip to content</a>
@@ -236,6 +236,11 @@
 <li><a href="#hash-gc" class="mono"><span class="pfx">#</span>gc</a></li>
 <li><a href="#hash-version" class="mono"><span class="pfx">#</span>version</a></li>
 <li><a href="#hash-help" class="mono"><span class="pfx">#</span>help</a></li>
+</ul>
+</div>
+<div class="toc-sys"><a class="toc-head" href="#module-guides">Module guides</a>
+<p class="toc-grp">Trading</p><ul>
+<li><a href="#autotrade" class="mono beta-tag"><span class="pfx"></span>AutoTrade</a></li>
 </ul>
 </div>
 <!-- toc:end -->
@@ -623,7 +628,7 @@
 <p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
 
 <p class="sum">Enchant the item in your hand with any enchantment, at any level up to 255. Needs creative mode.</p>
-<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.enchant &lt;enchantment&gt; [level]</code></td><td>Add one, at its normal maximum level unless you give one. Tab completes the names.</td></tr><tr><td><code>.enchant all [level]</code></td><td>Add every enchantment.</td></tr><tr><td><code>.enchant remove &lt;enchantment&gt;</code></td><td>Take one off.</td></tr><tr><td><code>.enchant clear</code></td><td>Take them all off.</td></tr><tr><td><code>.enchant plan &lt;enchantments&gt;</code></td><td>Works in survival: from the villager trades you've opened in this world, find who sells those books and plan the trip.</td></tr></tbody></table></div>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.enchant &lt;enchantment&gt; [level]</code></td><td>Add one, at its normal maximum level unless you give one. Tab completes the names.</td></tr><tr><td><code>.enchant all [level]</code></td><td>Add every enchantment.</td></tr><tr><td><code>.enchant remove &lt;enchantment&gt;</code></td><td>Take one off.</td></tr><tr><td><code>.enchant clear</code></td><td>Take them all off.</td></tr><tr><td><code>.enchant plan &lt;enchantments&gt;</code></td><td>Works in survival: from the villager trades you've opened in this world, find who sells those books and plan the trip. AutoTrade records those trades.</td></tr></tbody></table></div>
 <pre><code>.enchant sharpness 10
 .enchant all
 .enchant plan mending unbreaking</code></pre>
@@ -1223,6 +1228,41 @@
 <p class="aka"><span>Also</span> <code>#?</code></p>
 <p class="sum">List <code>#</code> commands, or show one command's full help.</p>
 <pre><code>#help [command]</code></pre>
+</article>
+</section>
+</section>
+<section class="sys" id="module-guides" aria-labelledby="module-guides-h">
+<h2 id="module-guides-h">Module guides</h2>
+<p>Some modules do enough to need a guide. Turn a module on or off with <code>.toggle &lt;module&gt;</code> or the module menu (Right Shift), and change its settings there or with <code>.setting &lt;module&gt; &lt;key&gt; &lt;value&gt;</code>.</p>
+<section class="grp" id="module-guides-trading">
+<h3>Trading</h3>
+
+<article class="cmd" id="autotrade" data-name="AutoTrade" data-aliases="" data-beta="1">
+<h4><a class="self" href="#autotrade"><span class="pfx"></span>AutoTrade</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+
+<p class="sum">Buy villager trades that match a rule, or reroll a villager until it sells what you want.</p>
+<pre><code>.toggle auto-trade
+.setting auto-trade mode Reroll
+.setting auto-trade rule mending</code></pre>
+<p>It's in the module menu under Misc. <strong>Mode</strong> picks what it does when you turn it on: <strong>Trade</strong> (the default) or <strong>Reroll</strong>.</p>
+<h5>Trade mode: buy matching offers</h5>
+<p>It buys every offer that matches <strong>Match</strong>, one purchase at a time, and waits for the server to confirm each one before the next click.</p>
+<ol><li>If a villager's trades are open, it buys from that villager.</li><li>Otherwise, with <strong>Walk To Villagers</strong> on, Baritone walks to the nearest villager within 48 blocks and opens its trades. It skips villagers with the wrong <strong>Profession</strong>, ones whose remembered offers have nothing matching, and ones it visited within the <strong>Restock Wait</strong>.</li><li>When a villager has nothing more to sell, it closes the trades, says in chat what it bought and how many emeralds it has spent, and goes to the next one.</li></ol>
+<p>With <strong>Walk To Villagers</strong> off, it waits for you to open a villager's trades. With every villager visited, it shows "waiting for villagers to restock" until the wait passes.</p>
+<h5>Reroll mode: get a specific trade</h5>
+<p>Look at a villager, usually a librarian at a lectern, and turn AutoTrade on. If you're not looking at one, it takes the nearest villager with a job within 6 blocks. It then repeats:</p>
+<ol><li>Open the trades. If an offer matches, buy it once to lock the trades in, and stop.</li><li>Otherwise close them, break the villager's workstation and wait until the villager loses its job.</li><li>Pick the block up, put it back, and wait until the villager takes the job again.</li></ol>
+<p>Every step waits for the game to confirm it, with a timeout and a message saying what failed. Two limits come from the game:</p>
+<ul><li>Only a villager <strong>nobody has traded with</strong> can be rerolled. One trade fixes its offers.</li><li>Villagers only take jobs during the day, so it waits for daytime before breaking the workstation.</li></ul>
+<p>It turns itself off once the trades are locked, and says how many rerolls it took.</p>
+<h5>Settings</h5>
+<div class="table"><table><thead><tr><th scope="col">Setting</th><th scope="col">What it does</th></tr></thead><tbody><tr><td>Mode</td><td><strong>Trade</strong> buys matching offers. <strong>Reroll</strong> rerolls the villager you look at until one matches.</td></tr><tr><td>Match</td><td>What to buy. <code>mending</code>, <code>unbreaking3</code> or <code>sharpness 4-5</code>: an enchanted book with that enchantment, at least or between those levels. <code>book</code>: any enchanted book. <code>slot 2</code>: the third trade, counting from 0. <code>item:bread</code>: offers that give that item. <code>any</code>: every offer.</td></tr><tr><td>Profession</td><td>Only villagers with this job, such as <code>librarian</code>. Empty: any.</td></tr><tr><td>Max Price</td><td>The most emeralds to pay per purchase. 0: no limit.</td></tr><tr><td>Emerald Budget</td><td>The most emeralds to spend while it's on. 0: no limit.</td></tr><tr><td>Emerald Reserve</td><td>Never spend below this many emeralds.</td></tr><tr><td>Per-Visit Cap</td><td>Purchases per villager visit. 0: no limit.</td></tr><tr><td>Restock Wait (s)</td><td>Trade mode: seconds before it visits the same villager again (300 by default).</td></tr><tr><td>Walk To Villagers</td><td>Trade mode: walk to nearby villagers and open their trades itself. On by default.</td></tr><tr><td>Offer Labels</td><td>Show each villager's best remembered offer above its head, such as "mending 1 – 14e". Works with the module off.</td></tr></tbody></table></div>
+<p>It turns itself off when the budget is spent, when the next purchase would take you below the reserve, when you run out of emeralds, and when you leave the world.</p>
+<h5>What it remembers</h5>
+<p>Whenever you open a villager's trades, even with AutoTrade off, it remembers that villager's offers for this world. Those records feed <strong>Offer Labels</strong>, the villagers Trade mode skips, and <code>.enchant plan</code>, which finds which villagers you've seen selling the books you name.</p>
+<h5>From macros and the AI</h5>
+<ul><li>A macro <strong>Trade</strong> step buys up to a set number of matching offers from trades an earlier step opened. Later steps can read <code>trade_count</code> (purchases), <code>trade_spent</code> (emeralds) and <code>trade_status</code> (<code>ok</code>, <code>none</code>, or <code>failed: &lt;reason&gt;</code>).</li><li>The AI's <code>trade</code> tool starts AutoTrade in either mode. Run it yourself with <code>.tools trade</code>; <code>.tools help trade</code> lists its arguments.</li></ul>
 </article>
 </section>
 </section>
