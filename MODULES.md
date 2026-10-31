@@ -1,6 +1,6 @@
 # DIH Client modules
 
-Every module in 5.1 beta 7g.3 and every setting it has. Generated from the source by `website/build_module_docs.py`.
+Every module in 5.1 beta 7h and every setting it has. Generated from the source by `website/build_module_docs.py`.
 
 ## Module reference
 
@@ -249,7 +249,7 @@ Swaps to your mace and smashes what you are falling onto.
 
 `.toggle auto-mace`
 
-##### Settings (17)
+##### Settings (18)
 
 **General**
 
@@ -267,7 +267,7 @@ Swaps to your mace and smashes what you are falling onto.
 | Targets `targets` | Players | What to smash. Choices: Players, Players + Hostile, All Living. |
 | Ignore Invisible `ignore-invisible` | off | Skip invisible entities. |
 | Ignore Naked `ignore-naked` | off | Skip players wearing no armor. |
-| Skip Blocking `skip-blocking` | off | Save the smash when the target raises a shield, which stops it. |
+| Skip Blocking `skip-blocking` | off | Save the smash when the target raises a shield, unless Stun Slam can break it. |
 | Skip Hurt Targets `skip-hurt` | off | Save the smash while the target still flashes from a hit and takes reduced damage. |
 
 **Swap**
@@ -276,6 +276,7 @@ Swaps to your mace and smashes what you are falling onto.
 |---|---|---|
 | Swap To Mace `auto-swap` | on | Switch to a mace on your hotbar for the hit; off only smashes with a mace already in hand. |
 | Prefer `prefer` | Density | Which mace to use when your hotbar holds more than one. Choices: Density, Breach, Wind Burst. |
+| Stun Slam `stun-slam` | on | Hit a raised shield with a hotbar axe, then smash through it in the same tick. |
 | Swap Back `swap-back` | on | Go back to the item you held after the hit. |
 | Swap Back Delay `swap-back-delay` | 2 ticks | Ticks to keep the mace out after the hit. 0 to 20 ticks. |
 
@@ -1172,18 +1173,16 @@ Jumps at block edges.
 
 Beta: 5.1 beta only, not in 5.0.1 stable.
 
-Throws an ender pearl and a wind charge together to launch you. Bind a key to it.
+Pops a wind charge at your feet and throws a pearl into the burst. Bind a key to it.
 
 Throws an ender pearl and pops a wind charge together to launch you, straight up or toward where you look. Bind a key and tap to fire. It needs an ender pearl and a wind charge on your hotbar.
 
 `.toggle pearl-charge`
 
-##### Settings (5)
+##### Settings (3)
 
 | Setting | Default | What it does |
 |---|---|---|
-| Order `order` | - | Throw the pearl first, or pop the wind charge first. |
-| Delay `delay` | 1 ticks | Ticks between the two throws; 0 fires them on the same tick. 0 to 10 ticks. |
 | Launch Pitch `launch-pitch` | 90 ° | How far down the wind charge is aimed; 90 pops it at your feet for a straight-up launch. 0 to 90 °. |
 | Pearl Where Looking `pearl-where-looking` | on | Throw the pearl where you are looking; off throws it straight up for height. |
 | Switch Back `switch-back` | on | Return to the slot you were holding after launching. |

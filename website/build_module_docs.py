@@ -271,7 +271,7 @@ def cell(text):
 
 def module_markdown(mods, dynamic, stable):
     out = ["# DIH Client modules", "",
-           "Every module in 5.1 beta 7g.3 and every setting it has. Generated from the source by "
+           "Every module in 5.1 beta 7h and every setting it has. Generated from the source by "
            "`website/build_module_docs.py`.", "", "## Module reference", "",
            f"All {len(mods)} modules, with their settings. Open the menu with Right Shift, or use `.toggle <module>` and "
            "`.setting <module> <key> <value>` with the ids below. Search finds settings too.", ""]
@@ -321,7 +321,7 @@ def module_markdown(mods, dynamic, stable):
 
 def changes_markdown(src):
     notes = os.path.join(src, ".github", "release-notes")
-    order = ["7g.3", "7g.2", "7g.1", "7g", "7f", "7e", "7d", "7c", "7a", "5b", "5a", "3", "2"]
+    order = ["7h", "7g.3", "7g.2", "7g.1", "7g", "7f", "7e", "7d", "7c", "7a", "5b", "5a", "3", "2"]
     out = ["# DIH Client beta changes", "", "## What's new in the beta", "",
            "The 5.1 betas with release notes, newest first. Recent betas are Fabric only, on Minecraft 26.2 and 26.3; "
            "NeoForge and Forge stay on beta 3.", ""]
