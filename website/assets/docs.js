@@ -31,6 +31,25 @@
     };
   });
 
+  // sections of plain prose (the module menu, Ctrl+K, each beta's changes) are searchable too
+  Array.prototype.forEach.call(document.querySelectorAll('.grp'), function (el) {
+    if (el.querySelector('.cmd')) return;
+    var title = el.querySelector('h3').textContent;
+    var first = el.querySelector('p, li');
+    var summary = first ? first.textContent : '';
+    entries.push({
+      id: el.id,
+      name: title,
+      bare: unprefix(title).toLowerCase(),
+      aliases: [],
+      bareAliases: [],
+      beta: false,
+      summary: summary,
+      summaryLow: summary.toLowerCase(),
+      body: el.textContent.toLowerCase()
+    });
+  });
+
   function score(e, q, bare) {
     var hasPrefix = q[0] === '.' || q[0] === '#';
     if (hasPrefix && q[0] !== e.name[0]) return 0;

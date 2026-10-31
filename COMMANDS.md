@@ -1,7 +1,8 @@
 # DIH Client commands
 
-Every chat command in DIH Client and how to type it. Minecraft 26.2, Fabric Loader 0.19.3+, Java 25. The website
-shows the same manual at `/docs`.
+Every chat command in DIH Client and how to type it, the client's menus, and guides. Written for 5.1 beta 7g.3, on
+Minecraft 26.2 and 26.3, Fabric Loader 0.19.3+, Java 25. [MODULES.md](MODULES.md) lists every module and setting, and
+[BETA-CHANGES.md](BETA-CHANGES.md) what changed in each beta. The website shows all three together at `/docs`.
 
 ## Basics
 
@@ -66,6 +67,50 @@ The two systems are separate, so these pairs do different things.
 
 Two `#` aliases also point somewhere other than their help text says. `#flee` opens the Flee trigger system, so
 use `#runaway` or `#escape` to run away. `#s` opens `#sel`, so use `#search` or `#blocks` to search.
+
+## Using the client
+
+### Install the beta
+
+Install Fabric Loader 0.19.3+ and Fabric API, with Java 25. Put the DIH jar for your Minecraft version in
+`.minecraft/mods`, plus JourneyMap if you want the seed map and heatmap on a map. The jar is on the website and on
+[GitHub releases](https://github.com/ahigherdesire/dih-client/releases). Betas are Fabric only; try each one in a
+singleplayer world first.
+
+### The module menu
+
+Press Right Shift to open it. Click a module to turn it on, and right-click it for its settings. It's one window: a
+category rail on the left (All, Enabled, Combat, Movement, Player, Misc, Render), the module list, and the selected
+module's settings side by side. Search finds modules across every category, and the arrow keys and Enter work in the
+list. Settings come in groups, and a setting that only matters when another one is on stays hidden until you turn that
+one on. The old floating category windows are still a setting away. Macros and Settings are in the Main Menu window.
+
+### Find anything with Ctrl+K
+
+Ctrl+K opens a search box over modules, settings, `.` and `#` commands, macros and store addons. Type a few letters,
+move with the arrow keys and press Enter: it toggles, opens or runs what you picked. Esc goes back to where you were.
+The shortcut can be changed in Mod Menu, under Command Palette.
+
+### Windows and text size
+
+DIH windows remember where you left them, and you can pin one to keep it on screen in game. Text Size goes from 80 to
+150%. A short tour runs the first time you start the client, and the **Replay tour** button in Settings shows it again.
+
+### The addon store
+
+The store lists community addons. Every listing is reviewed before it goes live, its source is public, and DIH checks
+each download's SHA-256 before installing it. A listing means a maintainer read it, not that it's risk-free: addons run
+with the same access as the client. Open the store any of these ways:
+
+- Ctrl+K, then type `addons`. Store addons can be found by name too.
+- `.addons` in chat.
+- The **Addons** button in the module menu.
+- **ADDON STORE** on the title screen.
+- DIH's settings in Mod Menu.
+
+Click a card, click **Install** twice, and restart Minecraft. **Uninstall** works the same way. **My Addons** lists what
+you have. Three addons are built into the jar and off by default, and need no internet: Coords HUD, Death Point and
+Session Stats. Turn them on in Addons.
 
 ## Client commands
 
@@ -236,6 +281,21 @@ Run macros, loop them, or build them from chat. Macros are saved in `config/dih/
 ```
 
 While you pilot a Multi bot, `.macro` runs, loops and stops on that bot instead of you.
+
+##### Share macros
+
+Beta only. Macros can sit in folders in the editor, and a share code carries a macro or a whole folder.
+
+| Usage | Effect |
+|---|---|
+| `.macro export <macro or folder>` | Copy a `DIHM1:` share code to the clipboard. |
+| `.macro import [code]` | Add the macros in a code, or the one on your clipboard. Macros whose name is taken get a new one. |
+
+##### Beta macro steps
+
+- **Trade** buys matching offers from trades an earlier step opened; see `AutoTrade`. Later steps can read `trade_count`,
+  `trade_spent` and `trade_status`.
+- **AI Tool** runs any of the tools `.tools` lists.
 
 ### Schematics
 
@@ -802,6 +862,10 @@ Give the AI an objective in plain words and let it work through it with its tool
 | `.ai setup` | Pick the model and key. |
 | `.ai panel` | Show or hide the progress panel. |
 
+`.ai setup` has presets for OpenRouter, OpenAI, Claude, Gemini, Groq, DeepSeek, Qwen, Ollama and LM Studio, and a Test
+button that says what's wrong in plain words. The model plans once and is asked again only when a step fails. Without a
+key it runs in a simpler basic mode. The panel is a live checklist with Pause, Stop and Why?.
+
 This is a different thing from `#ai`, the chat AI that plays through Baritone commands.
 
 #### .tools
@@ -817,6 +881,21 @@ Run one of the AI's tools yourself, without the AI.
 | `.tools` | List every tool by category. |
 | `.tools help <tool>` | Its arguments and what it does. |
 | `.tools <tool> [args]` | Run it. Tab completes tools and arguments. Tools that could cost you something ask you to click **[confirm]** first. |
+
+The list has about 155 tools, in categories such as job, movement, mining, building, combat and world. Macros can run
+them too, with an **AI Tool** step.
+
+#### .coords
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Show or copy your coordinates. Comes with the built-in Coords HUD addon, so turn that on in Addons first.
+
+#### .deathpoint
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Show where you last died. Comes with the built-in Death Point addon, so turn that on in Addons first.
 
 ### Updates
 
@@ -1130,8 +1209,26 @@ Get an item from whatever you have now: it plans the whole chain (trees, planks,
 
 Items can be typed loosely: `iron pick`, `Iron Pickaxe` and `iron_pickaxe` all work. It counts what you already carry,
 uses a crafting table or furnace nearby or places its own, eats when you're hurt or hungry, and re-plans from your real
-inventory when a step falls short or a tool breaks. It never runs server commands or teleports. Tune it with the
-`acquire` settings in `#set`, such as `acquireDropJunk` to let it throw junk away when full.
+inventory when a step falls short or a tool breaks. It never runs server commands or teleports. While it runs the
+`Guardian` steps in on danger. Big smelts are split across up to 4 furnaces, and its crafting table and furnace are
+picked back up.
+
+##### Settings
+
+Change these with `#set <setting> <value>`.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `acquirePlaceStations` | true | Place a crafting table or furnace when none is near. Off: only use ones that exist. |
+| `acquireStationRadius` | 32 | How far to look for a crafting table or furnace first, in blocks. |
+| `acquireKillMobs` | true | Kill mobs for their drops. Only the mob the step names, never players, babies, named mobs or tamed pets. |
+| `acquireGearUp` | true | Plan a stone sword before ore trips, and affordable iron armour and a shield after getting iron. |
+| `acquireMaxReplans` | 8 | How many times one `#acquire` can re-plan before it gives up. |
+| `acquireStepTimeoutSeconds` | 300 | Seconds a step can take before it counts as stuck. |
+| `acquireDropJunk` | false | When full, drop a stack of filler the plan doesn't need. Off: it stops and says the inventory is full. |
+| `acquireHeal` | true | Eat when hurt and below 18 food or at 6 food, and fetch food when there is none. |
+| `acquireHealHealth` | 12 | Health in half-hearts at which it gets food before carrying on, when you hold nothing safe to eat. |
+| `acquireEmergencyHealth` | 6 | Health in half-hearts at which it eats a golden apple, and backs off from a fight to eat. |
 
 #### #eat
 
@@ -1181,7 +1278,12 @@ Run parkour with each jump solved exactly, using only normal key presses and tur
 | `#parkour status` | What it's doing. |
 | `#parkour stop` | Stop. `#stop` and `#cancel` work too. |
 
-It handles neos, strafes, head-hitters, ladders and momentum jumps.
+It handles neos, strafes, head-hitters, slabs, fences, ladders and momentum jumps, and lands still on one-block pillars.
+It can't do triple neos or slime and ice momentum jumps yet, and neo jumps leave little room for lag.
+
+With `allowParkour` and `#set allowHardParkour true` on, Baritone also paths through jumps its own parkour can't make
+(diagonal, round a wall, onto fences and slabs) and hands them to the solver. `parkourPreview` (on by default) draws the
+line a jump will follow and outlines where it lands.
 
 ### Search & memory
 
@@ -1414,14 +1516,17 @@ orders; everyone else's are only context.
 
 ```
 #ai key <api-key>
+#ai provider [name]
 #ai url <base-url>
 #ai model <name>
 #ai trust <player>
 #ai on
 ```
 
-The key can also come from the `MINECRAFTAI_LLM_KEY` environment variable. Any OpenAI-compatible endpoint
-works, and the default model is `qwen-plus`.
+The key can also come from the `MINECRAFTAI_LLM_KEY` environment variable. In the beta, `.ai setup` is the easiest
+way in: Groq, OpenAI, OpenRouter, Claude and Gemini keys pick their provider by themselves, and `#ai provider` lists the
+providers or switches to one, setting the URL and a model. Any OpenAI-compatible endpoint works, and the default model
+is `qwen-plus`.
 
 ##### Use
 
@@ -1431,6 +1536,7 @@ works, and the default model is `qwen-plus`.
 | `#ai status` | Show the setup, token use and last error. |
 | `#ai off` | Stop listening. |
 | `#ai auto [on\|off]` | Let it think on a timer. |
+| `#ai followups [on\|off\|n]` | Beta: carry on after an `#acquire` it started ends, up to `n` times in a row. |
 | `#ai chat [on\|off]` | Let it talk in server chat. |
 | `#ai trigger <word\|none>` | Make trusted players start orders with a wake word. |
 | `#ai goal <text>` | Give it a standing objective. |
@@ -1580,10 +1686,27 @@ List `#` commands, or show one command's full help.
 #help [command]
 ```
 
-## Module guides
+## Guides
 
-Some modules do enough to need a guide. Turn a module on or off with `.toggle <module>` or the module menu (Right
-Shift), and change its settings there or with `.setting <module> <key> <value>`.
+### Staying alive
+
+#### Guardian
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Protects you while any Baritone job runs, such as `#acquire`, `#mine` or a goal, then lets the job carry on.
+
+It steps in on lava, long falls (with a water bucket), creepers, mobs attacking or shooting you, drowning and low
+health. Hurt or outnumbered at night, it digs in and seals a pit until healed. It never acts while no job runs, and a
+player who isn't on your friends list coming within 12 blocks stops the job and hands you control.
+
+| Setting | Default | What it does |
+|---|---|---|
+| `guardianEnabled` | true | Turn the Guardian on. |
+| `guardianFleeHealth` | 10 | Health in half-hearts at which it stops fighting and retreats. |
+| `guardianStopForPlayers` | true | Stop the job when a stranger comes within 12 blocks. |
+
+Change these with `#set <setting> <value>`. To stop or disconnect on your own rules, see `#flee`.
 
 ### Trading
 

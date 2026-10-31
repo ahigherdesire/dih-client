@@ -13,7 +13,8 @@ import re
 import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
-SOURCE = os.path.join(ROOT, "..", "COMMANDS.md")
+# COMMANDS.md is written by hand; the other two come from build_module_docs.py
+SOURCES = [os.path.join(ROOT, "..", name) for name in ("COMMANDS.md", "MODULES.md", "BETA-CHANGES.md")]
 TARGET = sys.argv[1] if len(sys.argv) > 1 else os.path.join(ROOT, "docs.html")
 TEMPLATE_START = "<!-- docs:start -->"
 TEMPLATE_END = "<!-- docs:end -->"
@@ -55,7 +56,9 @@ def parse(lines):
                 entry = None
                 blocks = group["intro"]
             elif level == 4:
-                entry = {"name": text, "id": command_id(text), "aliases": [], "beta": "", "blocks": []}
+                # a module can have a guide and a reference entry, so reference ids get their own prefix
+                ident = "mod-" + slug(text) if system["id"] == "module-reference" else command_id(text)
+                entry = {"name": text, "id": ident, "aliases": [], "beta": "", "blocks": []}
                 group["entries"].append(entry)
                 blocks = entry["blocks"]
             else:
@@ -162,8 +165,13 @@ class Renderer:
 
     def blocks(self, blocks):
         out = []
-        for block in blocks:
+        for index, block in enumerate(blocks):
             kind = block[0]
+            if kind == "h5" and block[1].startswith("Settings ("):
+                # a module's settings fold away: everything after this heading goes inside
+                out.append(f'<details class="opts"><summary>{self.inline(block[1])}</summary>'
+                           f"{self.blocks(blocks[index + 1:])}</details>")
+                break
             if kind == "p":
                 out.append(f"<p>{self.inline(block[1])}</p>")
             elif kind == "h5":
@@ -233,21 +241,25 @@ class Renderer:
             body.append("</section>")
         # module guides (AutoTrade) aren't commands, so only . and # entries count
         count = sum(1 for s in systems for g in s["groups"] for e in g["entries"] if e["name"][0] in ".#")
-        return "\n".join(body), "\n".join(nav), count
+        modules = sum(len(g["entries"]) for s in systems if s["id"] == "module-reference" for g in s["groups"])
+        return "\n".join(body), "\n".join(nav), count, modules
 
 
 def main():
-    lines = open(SOURCE, encoding="utf-8").read().splitlines()
+    lines = []
+    for source in SOURCES:
+        lines += open(source, encoding="utf-8").read().splitlines() + [""]
     systems = parse(lines)
-    body, nav, count = Renderer(systems).page(systems)
+    body, nav, count, modules = Renderer(systems).page(systems)
     page = open(TARGET, encoding="utf-8").read()
     start, end = page.index(TEMPLATE_START), page.index(TEMPLATE_END)
     page = page[:start + len(TEMPLATE_START)] + "\n" + body + "\n" + page[end:]
     nstart, nend = page.index("<!-- toc:start -->"), page.index("<!-- toc:end -->")
     page = page[:nstart + len("<!-- toc:start -->")] + "\n" + nav + "\n" + page[nend:]
     page = re.sub(r'<b id="cmd-count">\d*</b>', f'<b id="cmd-count">{count}</b>', page)
+    page = re.sub(r'<b id="mod-count">\d*</b>', f'<b id="mod-count">{modules}</b>', page)
     open(TARGET, "w", encoding="utf-8", newline="\n").write(page)
-    print(f"docs.html: {count} commands")
+    print(f"docs.html: {count} commands, {modules} modules")
 
 
 if __name__ == "__main__":

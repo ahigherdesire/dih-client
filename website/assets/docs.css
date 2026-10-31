@@ -148,6 +148,15 @@
 .cmd.arrive::before { animation: arrive 1.6s cubic-bezier(.16, 1, .3, 1) both; }
 @keyframes arrive { 0% { opacity: 1; } 35% { opacity: 1; } 100% { opacity: 0; } }
 
+/* a module's settings */
+.opts { margin: 12px 0; }
+.opts summary { cursor: pointer; width: max-content; max-width: 100%; font-size: 13.5px; font-weight: 600; color: var(--blue-hi); }
+.opts summary:hover { color: var(--fg); }
+.opts[open] summary { margin-bottom: 8px; }
+.opts td:first-child { width: 34%; }
+.opts td:first-child code { display: block; margin-top: 2px; padding: 0; background: none; border: 0; font-size: 11.5px; color: var(--mute); }
+.opts td:nth-child(2) { width: 14%; white-space: nowrap; color: #c8c8d0; }
+
 /* code blocks */
 .doc pre {
   position: relative; margin: 12px 0; padding: 12px 44px 12px 14px;
