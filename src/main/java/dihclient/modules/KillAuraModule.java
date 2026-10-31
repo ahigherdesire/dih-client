@@ -1490,12 +1490,12 @@ public final class KillAuraModule extends Module implements DihSilentAim.Owner {
         return (float) (random.nextDouble() < 0.2D ? -magnitude : magnitude);
     }
 
-    private boolean wouldBlockHit(LivingEntity target) {
+    static boolean wouldBlockHit(LivingEntity target) {
         DamageSource source = target.level().damageSources().playerAttack(MC.player);
         return getBlockedDamage(target, source, 1.0F) > 0.0F;
     }
 
-    private float getBlockedDamage(LivingEntity target, DamageSource source, float amount) {
+    private static float getBlockedDamage(LivingEntity target, DamageSource source, float amount) {
         if (amount <= 0.0F) return 0.0F;
         ItemStack blockingStack = target.getItemBlockingWith();
         if (blockingStack == null) return 0.0F;

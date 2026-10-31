@@ -6,10 +6,15 @@ import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.mixin.accessor.DihMinecraftAccessor;
 import dihclient.util.DihCombatClicker;
+import dihclient.util.DihEntities;
+import dihclient.util.DihHandArbiter;
 import dihclient.util.DihInputClicker;
 import dihclient.util.DihInventoryClickHelper;
+import dihclient.util.DihInventoryHelper;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.tags.ItemTags;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
@@ -36,7 +41,9 @@ import java.util.Optional;
  * the hit go out in that same tick. Each drop is measured from its own top ({@link MaceFall}), so a Wind Burst smash
  * that throws you back up arms the next one. With Elytra Swap it also trades your elytra for a chestplate mid-flight
  * once a target is in your sights below you, so the dive turns into a smash, and can put the elytra back on
- * afterwards for the next run.
+ * afterwards for the next run. With Stun Slam, a target whose shield would stop the smash takes an axe hit and the
+ * mace in the same tick: the axe disables the shield on the server before the mace hit is read, and a blocked hit deals
+ * no damage, so the mace hit still counts in full.
  */
 public final class AutoMaceModule extends Module {
     /** Inventory menu slot of the chest armour. */
@@ -78,7 +85,7 @@ public final class AutoMaceModule extends Module {
             .description("Skip players wearing no armor."));
         add(new BoolSetting("skip-blocking", "Skip Blocking", false)
             .group("Targets")
-            .description("Save the smash when the target raises a shield, which stops it."));
+            .description("Save the smash when the target raises a shield, unless Stun Slam can break it."));
         add(new BoolSetting("skip-hurt", "Skip Hurt Targets", false)
             .group("Targets")
             .description("Save the smash while the target still flashes from a hit and takes reduced damage."));
@@ -89,6 +96,10 @@ public final class AutoMaceModule extends Module {
         add(new ChoiceSetting("prefer", "Prefer", "Density", "Density", "Breach", "Wind Burst")
             .group("Swap")
             .description("Which mace to use when your hotbar holds more than one.")
+            .visibleWhen(() -> bool("auto-swap")));
+        add(new BoolSetting("stun-slam", "Stun Slam", true)
+            .group("Swap")
+            .description("Hit a raised shield with a hotbar axe, then smash through it in the same tick.")
             .visibleWhen(() -> bool("auto-swap")));
         add(new BoolSetting("swap-back", "Swap Back", true)
             .group("Swap")
@@ -167,17 +178,63 @@ public final class AutoMaceModule extends Module {
         int mace = bool("auto-swap") ? bestMace(inventory)
             : player.getMainHandItem().getItem() instanceof MaceItem ? inventory.getSelectedSlot() : -1;
         if (mace < 0) return;
-        if (!DihCombatClicker.queueAttack(hit)) return; // another module owns the attack key this tick
+        boolean stun = wantsStunSlam(player, hit);
+        if (stun && !inServerReach(player, hit.getEntity())) return;
+        if (!stun || !stunSlam(player, (LivingEntity) hit.getEntity(), mace)) {
+            if (!DihCombatClicker.queueAttack(hit)) return; // another module owns the attack key this tick
 
-        int selected = inventory.getSelectedSlot();
-        if (mace != selected) {
-            if (previousSlot < 0) previousSlot = selected;
-            DihInputClicker.queueHotbarSlot(mace);
+            int selected = inventory.getSelectedSlot();
+            if (mace != selected) {
+                if (previousSlot < 0) previousSlot = selected;
+                DihInputClicker.queueHotbarSlot(mace);
+            }
         }
         struckThisFall = true;
         if (previousSlot >= 0 && bool("swap-back")) swapBackIn = Math.max(1, integer("swap-back-delay") + 1);
         // Put the elytra back once the hit has gone out, not before it.
         if (elytraOff && "After Hit".equals(choice("elytra-reequip"))) reequipNextTick = true;
+    }
+
+    /** Whether this hit should be a stun slam: the shield would block it and there's an axe to break it with. */
+    private boolean wantsStunSlam(LocalPlayer player, EntityHitResult hit) {
+        return bool("auto-swap") && bool("stun-slam") && !PackHideState.isHardLocked()
+            && hit.getEntity() instanceof Player target && KillAuraModule.wouldBlockHit(target)
+            && axeSlot(player.getInventory()) >= 0;
+    }
+
+    /**
+     * The server measures reach from where it last had you, a tick behind on the way down. A plain swing can afford to
+     * miss for that; a stun slam is the one swing of this drop, so it waits until the target is in reach from there.
+     */
+    private static boolean inServerReach(LocalPlayer player, Entity target) {
+        Vec3 eyes = player.getEyePosition().subtract(player.getDeltaMovement());
+        double range = player.entityInteractionRange();
+        return target.getBoundingBox().distanceToSqr(eyes) <= range * range;
+    }
+
+    /** Axe, then mace, on one target in one tick. False if another module holds the hand. */
+    private boolean stunSlam(LocalPlayer player, LivingEntity target, int mace) {
+        Inventory inventory = player.getInventory();
+        if (!DihHandArbiter.beginHandPacketGroup(id())) return false;
+        try {
+            if (previousSlot < 0) previousSlot = inventory.getSelectedSlot();
+            DihInventoryHelper.selectHotbarSlot(MC, axeSlot(inventory));
+            MC.gameMode.attack(player, target);
+            DihEntities.swing(player, InteractionHand.MAIN_HAND);
+            DihInventoryHelper.selectHotbarSlot(MC, mace);
+            MC.gameMode.attack(player, target);
+            DihEntities.swing(player, InteractionHand.MAIN_HAND);
+            return true;
+        } finally {
+            DihHandArbiter.endHandPacketGroup(id());
+        }
+    }
+
+    private static int axeSlot(Inventory inventory) {
+        for (int slot = 0; slot < 9; slot++) {
+            if (inventory.getItem(slot).is(ItemTags.AXES)) return slot;
+        }
+        return -1;
     }
 
     private static boolean isFree(LocalPlayer player) {
@@ -228,7 +285,10 @@ public final class AutoMaceModule extends Module {
         if (DihAntiBot.suppress(living) || TeamsModule.isFriendOrTeam(living)) return false;
         if (bool("ignore-invisible") && living.isInvisible()) return false;
         if (bool("ignore-naked") && living instanceof Player && CombatFilters.wearsNoArmor(living)) return false;
-        if (bool("skip-blocking") && living.isBlocking()) return false;
+        if (bool("skip-blocking") && living.isBlocking()
+            && !(bool("auto-swap") && bool("stun-slam") && axeSlot(MC.player.getInventory()) >= 0)) {
+            return false;
+        }
         if (bool("skip-hurt") && living.hurtTime > 0) return false;
         return switch (choice("targets")) {
             case "All Living" -> true;

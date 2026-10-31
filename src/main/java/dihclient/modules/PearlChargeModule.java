@@ -1,7 +1,6 @@
 package dihclient.modules;
 
 import dihclient.api.module.BoolSetting;
-import dihclient.api.module.ChoiceSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.util.DihClientMessaging;
 import dihclient.util.DihHandArbiter;
@@ -9,36 +8,39 @@ import dihclient.util.DihInventoryHelper;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.projectile.hurtingprojectile.windcharge.WindCharge;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 
 /**
- * Throws an ender pearl and pops a wind charge together to launch you high up (or toward where you look).
- * Bind a key to it: pressing the key arms one launch, the two throws go out over the next ticks, and the
- * module turns itself back off. Needs an ender pearl and a wind charge on the hotbar.
+ * Pops a wind charge at your feet and throws an ender pearl into the burst, so you hop about 6 blocks and the pearl
+ * flies a third faster: about 50 blocks up instead of 30, or 65 blocks out at 45 degrees instead of 50. The burst only
+ * catches the pearl if it reaches the server in the tick after the charge, from the ground; any other tick leaves a
+ * plain throw. Client ticks don't line up with server ticks, so the pearl goes on the frame the server's copy of the
+ * charge shows up, which is sent at the end of the tick it spawned. On a high ping that news comes too late, so the
+ * pearl follows one server tick behind the charge by the clock instead. A pearl lands you where it lands, so aimed
+ * straight up into open sky it falls back to where you were.
+ * Bind a key to it: one press does one launch and the module turns itself back off.
  */
 public final class PearlChargeModule extends Module {
-    private static final String ORDER_PEARL = "Pearl First";
-    private static final String ORDER_CHARGE = "Charge First";
+    /** Gives up if another module keeps the hand for this many ticks. */
+    private static final int MAX_WAIT_TICKS = 5;
+    /** At or above this ping the server's copy of the charge arrives after the pearl has to leave. */
+    private static final int HIGH_PING_MS = 40;
+    private static final long SERVER_TICK_NANOS = 50_000_000L;
 
-    private PearlChargePlan plan;
+    private boolean armed;
     private int armTick;
-    private boolean threwPearl;
     private boolean usedCharge;
+    private long chargeSentNanos;
     private boolean checkedItems;
     private int originalSlot = -1;
 
     PearlChargeModule() {
         super("pearl-charge", "PearlCharge", ModuleCategory.MOVEMENT,
-            "Throws an ender pearl and a wind charge together to launch you. Bind a key to it.");
+            "Pops a wind charge at your feet and throws a pearl into the burst. Bind a key to it.");
 
-        add(new ChoiceSetting("order", "Order", ORDER_PEARL, ORDER_PEARL, ORDER_CHARGE)
-            .group("General")
-            .description("Throw the pearl first, or pop the wind charge first.").build());
-        add(new IntSetting("delay", "Delay", 1, 0, 10, 1).unit("ticks")
-            .group("General")
-            .description("Ticks between the two throws; 0 fires them on the same tick.").build());
         add(new IntSetting("launch-pitch", "Launch Pitch", 90, 0, 90, 1).unit("°")
             .group("General")
             .description("How far down the wind charge is aimed; 90 pops it at your feet for a straight-up launch.").build());
@@ -57,9 +59,8 @@ public final class PearlChargeModule extends Module {
 
     @Override
     public void onEnable() {
-        plan = new PearlChargePlan(ORDER_PEARL.equals(choice("order")), integer("delay"));
+        armed = true;
         armTick = 0;
-        threwPearl = false;
         usedCharge = false;
         checkedItems = false;
         originalSlot = MC.player == null ? -1 : MC.player.getInventory().getSelectedSlot();
@@ -68,61 +69,86 @@ public final class PearlChargeModule extends Module {
     @Override
     public void onDisable() {
         switchBack();
-        plan = null;
+        armed = false;
     }
 
     @Override
     public void onGameLeft() {
         originalSlot = -1;
-        plan = null;
+        armed = false;
     }
 
     @Override
     public void tick() {
         LocalPlayer player = MC.player;
-        if (plan == null || player == null || MC.gameMode == null || MC.getConnection() == null) return;
+        if (!armed || player == null || MC.gameMode == null || MC.getConnection() == null) return;
 
         Inventory inventory = player.getInventory();
         if (!checkedItems) {
             checkedItems = true;
-            if (slotOf(inventory, Items.ENDER_PEARL) < 0 || slotOf(inventory, Items.WIND_CHARGE) < 0) {
-                DihClientMessaging.sendPrefixed("PearlCharge: put an ender pearl and a wind charge on your hotbar");
+            String problem = launchProblem(player, inventory);
+            if (problem != null) {
+                DihClientMessaging.sendPrefixed("PearlCharge: " + problem);
                 finish();
                 return;
             }
         }
 
-        boolean pearlFirst = ORDER_PEARL.equals(choice("order"));
-        if (pearlFirst) {
-            firePearl(inventory, player);
-            fireCharge(inventory, player);
-        } else {
-            fireCharge(inventory, player);
-            firePearl(inventory, player);
+        if (usedCharge) {
+            if (++armTick > MAX_WAIT_TICKS) throwPearl(player); // the charge never showed up
+        } else if (throwItem(slotOf(inventory, Items.WIND_CHARGE), player.getYRot(), integer("launch-pitch"))) {
+            usedCharge = true;
+            chargeSentNanos = System.nanoTime();
+            armTick = 0;
+        } else if (++armTick > MAX_WAIT_TICKS) {
+            finish();
         }
-
-        armTick++;
-        if ((threwPearl && usedCharge) || armTick > plan.finalTick() + 2) finish();
     }
 
-    private void firePearl(Inventory inventory, LocalPlayer player) {
-        if (threwPearl || !plan.fires(PearlChargePlan.Action.PEARL, armTick)) return;
+    @Override
+    public void onPacketProcessFrame() {
+        LocalPlayer player = MC.player;
+        if (!armed || !usedCharge || player == null || MC.level == null) return;
+        boolean due = highPing(player)
+            ? System.nanoTime() - chargeSentNanos >= SERVER_TICK_NANOS
+            : chargeSpawned(player);
+        if (due) throwPearl(player);
+    }
+
+    private void throwPearl(LocalPlayer player) {
         float pitch = bool("pearl-where-looking") ? player.getXRot() : -90.0f;
-        throwItem(slotOf(inventory, Items.ENDER_PEARL), player.getYRot(), pitch);
-        threwPearl = true;
+        throwItem(slotOf(player.getInventory(), Items.ENDER_PEARL), player.getYRot(), pitch);
+        finish();
     }
 
-    private void fireCharge(Inventory inventory, LocalPlayer player) {
-        if (usedCharge || !plan.fires(PearlChargePlan.Action.CHARGE, armTick)) return;
-        throwItem(slotOf(inventory, Items.WIND_CHARGE), player.getYRot(), integer("launch-pitch"));
-        usedCharge = true;
+    private static boolean highPing(LocalPlayer player) {
+        var info = MC.getConnection() == null ? null : MC.getConnection().getPlayerInfo(player.getUUID());
+        return info != null && info.getLatency() >= HIGH_PING_MS;
+    }
+
+    private static boolean chargeSpawned(LocalPlayer player) {
+        return !MC.level.getEntitiesOfClass(WindCharge.class, player.getBoundingBox().inflate(4.0D),
+            charge -> charge.getOwner() == player).isEmpty();
+    }
+
+    /** Why a launch can't work right now, or null if it can. */
+    private static String launchProblem(LocalPlayer player, Inventory inventory) {
+        int pearl = slotOf(inventory, Items.ENDER_PEARL);
+        int charge = slotOf(inventory, Items.WIND_CHARGE);
+        if (pearl < 0 || charge < 0) return "put an ender pearl and a wind charge on your hotbar";
+        if (!player.onGround()) return "stand on the ground, the wind charge needs it to burst";
+        if (player.getCooldowns().isOnCooldown(inventory.getItem(pearl))
+            || player.getCooldowns().isOnCooldown(inventory.getItem(charge))) {
+            return "still on cooldown";
+        }
+        return null;
     }
 
     /** Selects the slot, faces the throw direction for the server, uses the item, then restores the look. */
-    private void throwItem(int slot, float yaw, float pitch) {
+    private boolean throwItem(int slot, float yaw, float pitch) {
         LocalPlayer player = MC.player;
-        if (slot < 0 || player == null || MC.gameMode == null || MC.getConnection() == null) return;
-        if (!DihHandArbiter.beginHandPacketGroup(id())) return;
+        if (slot < 0 || player == null || MC.gameMode == null || MC.getConnection() == null) return false;
+        if (!DihHandArbiter.beginHandPacketGroup(id())) return false;
         try {
             int selected = player.getInventory().getSelectedSlot();
             if (slot != selected) {
@@ -141,6 +167,7 @@ public final class PearlChargeModule extends Module {
                 player.setYRot(oldYaw);
                 player.setXRot(oldPitch);
             }
+            return true;
         } finally {
             DihHandArbiter.endHandPacketGroup(id());
         }
@@ -171,7 +198,7 @@ public final class PearlChargeModule extends Module {
 
     private void finish() {
         switchBack();
-        plan = null;
+        armed = false;
         setEnabledSilently(false);
     }
 }
