@@ -10,6 +10,7 @@ public final class UiAssets {
     public static final Identifier ICON_KEYBINDS = icon("keybinds");
     public static final Identifier ICON_LANSYNC = icon("lansync");
     public static final Identifier ICON_MACROS = icon("macros");
+    public static final Identifier ICON_SCRIPTS = icon("scripts");
     public static final Identifier ICON_FABRICATOR = icon("fabricator");
     public static final Identifier ICON_FILTER = icon("filter");
     public static final Identifier ICON_PACKET_LOGGER = icon("packetlogger");

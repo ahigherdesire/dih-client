@@ -142,6 +142,11 @@ public final class DihClientMod implements ClientModInitializer {
                 logTickError("joinMacro", t);
             }
             try {
+                dihclient.script.ScriptManager.onClientTick();
+            } catch (Throwable t) {
+                logTickError("scripts", t);
+            }
+            try {
                 dihclient.util.DihLagWatchdog.onClientTick(client);
             } catch (Throwable t) {
                 logTickError("lagWatchdog", t);

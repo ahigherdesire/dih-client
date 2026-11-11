@@ -503,6 +503,10 @@ public class DihModuleScreen extends DihScreen {
             toggleOverlay(utilityKeybindOverlay);
             return;
         }
+        if ("scripts".equals(id)) {
+            toggleOverlay(dihclient.script.DihScriptsOverlay.shared());
+            return;
+        }
         if (isTitleSetup()) {
             switch (id) {
                 case "lan" -> toggleOverlay(utilityLanSyncOverlay);

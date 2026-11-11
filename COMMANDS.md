@@ -297,6 +297,31 @@ Beta only. Macros can sit in folders in the editor, and a share code carries a m
   `trade_spent` and `trade_status`.
 - **AI Tool** runs any of the tools `.tools` lists.
 
+#### .scripts
+
+Write automation in DihScript, a small C-style language, and run it by name. Scripts are plain text files in
+`config/dih/scripts/<name>.dscript`; open the editor from the module menu's **Scripts** button (also in the Main
+Menu panel of container GUIs) or with `.scripts edit`. [SCRIPTING.md](SCRIPTING.md) is the language guide.
+Alias: `.script`.
+
+| Usage | Effect |
+|---|---|
+| `.scripts run <name>` | Check, then start a script. Several scripts can run at once. |
+| `.scripts stop <name>` | Stop one script. Its `onStop()` runs; stop it again to kill it outright. |
+| `.scripts stop` | Stop every running script (`.scripts stop all` does the same). |
+| `.scripts list` | Every script, with the running ones, their uptime and current line. |
+| `.scripts check <name>` | Report syntax errors and unknown functions without running anything. |
+| `.scripts edit [name]` | Open the Scripts editor, optionally on one script. |
+| `.scripts new <name>` | Create a script from the starter template. |
+| `.scripts delete <name>` | Delete a script (stopping it first). |
+| `.scripts functions [category]` | List the built-in functions, by category. |
+| `.scripts folder` | Print where the script files live. |
+
+```
+.scripts run gold_miner
+.scripts stop gold_miner
+```
+
 ### Schematics
 
 #### .schem
