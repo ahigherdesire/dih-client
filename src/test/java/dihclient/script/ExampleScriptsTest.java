@@ -25,6 +25,13 @@ class ExampleScriptsTest {
     }
 
     @Test
+    void slotGoldMinerChecksClean() throws Exception {
+        try (var in = ExampleScriptsTest.class.getResourceAsStream("/scripts/gold_miner_slots.dscript")) {
+            assertClean(new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
     void helloChecksClean() {
         assertClean(ExampleScripts.HELLO);
     }
