@@ -37,6 +37,7 @@ public final class DihCommands {
         initialized = true;
         register(new dihclient.commands.impl.MacroCommand());
         register(new dihclient.commands.impl.EnchantCommand());
+        register(new dihclient.commands.impl.ScriptsCommand());
         register(new dihclient.commands.impl.SyncCommand());
         register(new dihclient.commands.impl.DelayCommand());
         register(new dihclient.commands.impl.SendCommand());

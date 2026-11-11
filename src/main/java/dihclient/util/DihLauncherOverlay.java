@@ -206,15 +206,15 @@ public class DihLauncherOverlay extends DihOverlayBase {
                 toggleRegisteredUtilityOverlay(macroListOverlay);
             }
         }).setGrowX(true);
+        DirectUiButton scriptsButton = actionButton("Scripts", UiAssets.ICON_SCRIPTS, DirectUiButton.Variant.SECONDARY,
+            () -> toggleRegisteredUtilityOverlay(dihclient.script.DihScriptsOverlay.shared())).setGrowX(true);
+        addPairRow(mainMenuSection.content(), macrosButton, scriptsButton);
         if (includeFabricatorButton) {
-            addPairRow(mainMenuSection.content(),
-                macrosButton,
+            mainMenuSection.content().add(
                 actionButton("Fabricator", UiAssets.ICON_FABRICATOR, DirectUiButton.Variant.SECONDARY, () -> {
                     if (fabricatorOverlay != null) toggleRegisteredUtilityOverlay(fabricatorOverlay);
                 }).setGrowX(true)
             );
-        } else {
-            mainMenuSection.content().add(macrosButton);
         }
         addPairRow(mainMenuSection.content(),
             actionButton("LAN Sync", UiAssets.ICON_LANSYNC, DirectUiButton.Variant.SECONDARY, () -> {
@@ -686,6 +686,7 @@ public class DihLauncherOverlay extends DihOverlayBase {
     private int computePanelWidthUncached() {
         int pairWidth = minPairWidth();
         pairWidth = Math.max(pairWidth, requiredButtonWidth("Macros", UiAssets.ICON_MACROS));
+        pairWidth = Math.max(pairWidth, requiredButtonWidth("Scripts", UiAssets.ICON_SCRIPTS));
         if (includeFabricatorButton) pairWidth = Math.max(pairWidth, requiredButtonWidth("Fabricator", UiAssets.ICON_FABRICATOR));
         pairWidth = Math.max(pairWidth, requiredButtonWidth("LAN Sync", UiAssets.ICON_LANSYNC));
         pairWidth = Math.max(pairWidth, requiredButtonWidth("Queue", UiAssets.ICON_PACKET_Q_EDITOR));

@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 500 500">
+  <defs>
+    <style>
+      .st0 {
+        fill: none;
+        stroke: #ec2027;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 48px;
+      }
+    </style>
+  </defs>
+  <polyline class="st0" points="160 120 40 250 160 380"/>
+  <polyline class="st0" points="340 120 460 250 340 380"/>
+  <line class="st0" x1="290" y1="80" x2="210" y2="420"/>
+</svg>

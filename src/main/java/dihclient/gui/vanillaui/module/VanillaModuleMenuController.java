@@ -125,6 +125,7 @@ public final class VanillaModuleMenuController {
     private static final List<UtilityAction> UTILITY_ACTIONS = List.of(
         UtilityAction.button("ai_setup", "AI Setup", UiAssets.ICON_CHAT_CATEGORY, Button.Tone.NORMAL),
         UtilityAction.button("macros", "Macros", UiAssets.ICON_MACROS, Button.Tone.NORMAL),
+        UtilityAction.button("scripts", "Scripts", UiAssets.ICON_SCRIPTS, Button.Tone.NORMAL),
         UtilityAction.button("addons", "Addons", UiAssets.ICON_ADDONS, Button.Tone.NORMAL),
         UtilityAction.button("admin", "Admin Tools", UiAssets.ICON_FABRICATOR, Button.Tone.NORMAL),
         UtilityAction.button("lan", "LAN Sync", UiAssets.ICON_LANSYNC, Button.Tone.NORMAL),
@@ -144,6 +145,7 @@ public final class VanillaModuleMenuController {
     private static final List<UtilityAction> OFFLINE_UTILITY_ACTIONS = List.of(
         UtilityAction.button("ai_setup", "AI Setup", UiAssets.ICON_CHAT_CATEGORY, Button.Tone.NORMAL),
         UtilityAction.button("macros", "Macros", UiAssets.ICON_MACROS, Button.Tone.NORMAL),
+        UtilityAction.button("scripts", "Scripts", UiAssets.ICON_SCRIPTS, Button.Tone.NORMAL),
         UtilityAction.button("addons", "Addons", UiAssets.ICON_ADDONS, Button.Tone.NORMAL),
         UtilityAction.button("lan", "LAN Sync", UiAssets.ICON_LANSYNC, Button.Tone.NORMAL),
         UtilityAction.button("queue", "Packet Q", UiAssets.ICON_PACKET_Q_EDITOR, Button.Tone.NORMAL),
