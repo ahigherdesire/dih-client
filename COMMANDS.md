@@ -1,6 +1,6 @@
 # DIH Client commands
 
-Every chat command in DIH Client and how to type it, the client's menus, and guides. Written for 5.1 beta 8, on
+Every chat command in DIH Client and how to type it, the client's menus, and guides. Written for 5.1 beta 8.1, on
 Minecraft 26.2 and 26.3, Fabric Loader 0.19.3+, Java 25. [MODULES.md](MODULES.md) lists every module and setting, and
 [BETA-CHANGES.md](BETA-CHANGES.md) what changed in each beta. The website shows all three together at `/docs`.
 
@@ -2024,6 +2024,10 @@ left off from the right where the description gives a default.
 | `freeSlots()` | Number of empty main-inventory slots (0-36). |
 | `inventoryFull()` | True when there is no empty slot left. |
 | `heldItem()` | Id of the item in your main hand, e.g. "diamond_pickaxe" ("air" if empty). |
+| `heldDurability()` | Uses left on the item in your main hand before it breaks, or -1 if it can't break. |
+| `durability(slot)` | Uses left on the item in inventory slot 1-36 (1-9 = hotbar), or -1 if it can't break or the slot is empty. |
+| `pickaxeCount(minDurability)` | How many pickaxes you carry with at least minDurability uses left (default 1). |
+| `equipPickaxe(minDurability)` | Hold your best pickaxe that has at least minDurability uses left (default 1), moving it into the hotbar if needed. Returns false if you have none. |
 | `selectSlot(slot)` | Select hotbar slot 1-9. |
 | `selectItem(item)` | Select the hotbar slot holding item. Returns false if it isn't in the hotbar. |
 
@@ -2100,82 +2104,119 @@ left off from the right where the description gives a default.
 
 #### Gold miner script
 
-Beta: 5.1 beta only, not in 5.0.1 stable.
+Beta: 5.1 beta only, not in 5.0.1 stable. Needs beta 8.1 or later.
 
-A complete bot: mine gold with Baritone, go `/home` when hurt, when a player comes near or when the inventory is full,
-store the raw gold, take 27 back one per slot, eat, then `/rtpmenu` to the Badlands and start again.
+A complete bot. When you run it, it teleports with `/rtpmenu` → Overworld → Badlands, then mines gold with Baritone.
+It goes home when health is low, a player comes near, the inventory is full or every pickaxe is worn out, and swaps
+to another pickaxe when the one in use is about to break. At home it stores the raw gold, takes 27 back one per slot,
+eats until full health and teleports out again.
 
-DIH writes this script as `gold_miner` the first time the scripts folder is created. To add it later, run
-`.scripts new gold_miner`, open it with `.scripts edit gold_miner` and paste it over the template.
+Make a script for it, paste this in, set the two slot numbers at the top, then run it:
 
 ```
+.scripts new gold_miner
+.scripts edit gold_miner
 .scripts run gold_miner
 .scripts stop gold_miner
 ```
 
 ```js
 // gold_miner.dscript
-// Mines gold. Goes /home when health is low or a player comes near.
-// At home: store raw gold in the chest, take 27 back (1 per slot), eat, then
-// /rtpmenu -> Overworld -> Badlands and mine again.
+// When you run it: /rtpmenu -> Overworld (slot X) -> Badlands (slot Y), then mines gold.
+// Goes home when health is low, a player comes near, the inventory is full, or every
+// pickaxe is worn out. Swaps to another pickaxe when the one in use is about to break.
+// At home: store raw gold in the chest, take 27 back (1 per slot), eat until full health,
+// then teleports out again.
 //
 // Run:  .scripts run gold_miner      Stop: .scripts stop gold_miner
 
-const ORE          = "gold_ore";
-const LOW_HEALTH   = 5;       // 20 = full health, 2 per heart
-const SAFE_RADIUS  = 48;      // how close a player can get (blocks)
-const KEEP_GOLD    = 27;      // raw gold to spread back into the inventory, 1 per slot
+// ---- set these two -------------------------------------------------------
+const OVERWORLD_SLOT = -1;    // X: slot number of the Overworld button in /rtpmenu
+const BADLANDS_SLOT  = -1;    // Y: slot number of the Badlands button
+// ---------------------------------------------------------------------------
+
+const HOME_COMMAND   = "/home";
+const ORE            = "gold_ore";
+const LOW_HEALTH     = 5;     // 20 = full health, 2 per heart
+const SAFE_RADIUS    = 48;    // how close a player can get (blocks)
+const KEEP_GOLD      = 27;    // raw gold to put back in the inventory, 1 per slot
+const MIN_DURABILITY = 20;    // a pickaxe with fewer uses left than this counts as worn out
+const MENU_TIMEOUT   = 100;   // ticks to wait for a menu (100 = 5 seconds)
 
 function main() {
+    if (OVERWORLD_SLOT < 0 || BADLANDS_SLOT < 0) {
+        error("Set OVERWORLD_SLOT and BADLANDS_SLOT at the top of the script first");
+    }
+    // Baritone skips tools with fewer than MIN_DURABILITY uses left
+    baritone("set itemSaver true");
+    baritone("set itemSaverThreshold " + MIN_DURABILITY);
+
+    if (!equipPickaxe(MIN_DURABILITY)) {
+        error("You have no pickaxe with at least " + MIN_DURABILITY + " durability");
+    }
+
+    travelToBadlands();                         // teleport first
     while (true) {
-        goldMining();
+        let reason = goldMining();
+        print("Going home: " + reason);
+        goHome();
+        if (pickaxeCount(MIN_DURABILITY) == 0) {
+            print("No usable pickaxe left - staying home.");
+            stop();
+        }
         atHome();
+        travelToBadlands();
     }
 }
 
 // ---------------------------------------------------------------- mining
 
+// Mines until something makes it go home, then returns why.
 function goldMining() {
-    baritone("mine " + ORE);                    // command #mine gold_ore
+    baritone("mine " + ORE);                    // #mine gold_ore
     while (true) {
-        if (health() <= LOW_HEALTH) {
-            print("Low health (" + health() + ") - going home");
-            goHome();
-            eatUntilHealthFull();               // eat until health = 20
-            return;
-        }
-        if (playerNearby(SAFE_RADIUS)) {
-            print("Player nearby: " + nearestPlayer(SAFE_RADIUS) + " - going home");
-            goHome();
-            return;
-        }
-        if (inventoryFull()) {
-            print("Inventory full - going home");
-            goHome();
-            return;
-        }
+        if (health() <= LOW_HEALTH) { return "low health (" + health() + ")"; }
+        if (playerNearby(SAFE_RADIUS)) { return "player nearby (" + nearestPlayer(SAFE_RADIUS) + ")"; }
+        if (inventoryFull()) { return "inventory full"; }
+        if (!checkPickaxe()) { return "no pickaxe left"; }
         wait(5);                                // check 4 times a second
     }
 }
 
+// Swaps away from a worn-out pickaxe. Returns false when there is no other pickaxe.
+function checkPickaxe() {
+    if (pickaxeCount(MIN_DURABILITY) == 0) {
+        return false;
+    }
+    if (contains(heldItem(), "pickaxe") && heldDurability() < MIN_DURABILITY) {
+        print("Pickaxe worn out (" + heldDurability() + " left) - switching");
+        stopBaritone();
+        if (!equipPickaxe(MIN_DURABILITY)) {
+            return false;
+        }
+        baritone("mine " + ORE);                // carry on with the new pickaxe
+    }
+    return true;
+}
+
 function goHome() {
-    stopBaritone();                             // stop command #mine gold_ore
-    command("/home");
+    stopBaritone();                             // stop #mine
+    command(HOME_COMMAND);
     waitSeconds(5);                             // teleport warm-up
 }
 
 // ---------------------------------------------------------------- at home
 
 function atHome() {
-    // go to chest
+    // go to the chest
     if (findBlock("chest", 5) == null) {
         goto("chest");
     }
     if (!openNearest("chest")) {
-        error("No chest found near /home");
+        error("No chest found near home");
     }
 
-    // fill the chest with raw gold
+    // put all raw gold in the chest
     let stored = deposit("raw_gold");
     print("Stored " + stored + " raw gold");
 
@@ -2186,15 +2227,29 @@ function atHome() {
 
     // eat until health is full
     eatUntilHealthFull();
+    equipPickaxe(MIN_DURABILITY);
+}
 
-    // /rtpmenu -> Overworld -> Badlands
+// ---------------------------------------------------------------- teleport
+
+function travelToBadlands() {
     command("/rtpmenu");
-    if (!waitForItem("Overworld", 100)) { error("/rtpmenu did not open"); }
-    clickItem("Overworld");
-    if (!waitForItem("Badlands", 100)) { error("No Badlands option in the RTP menu"); }
-    clickItem("Badlands");
-    waitSeconds(8);                             // let the teleport land
-    // main() loops back to goldMining()
+    if (!waitForGui(MENU_TIMEOUT)) {
+        error("/rtpmenu did not open");
+    }
+    wait(5);                                    // let the menu fill in
+    print("Clicking Overworld: slot " + OVERWORLD_SLOT + " (" + slotName(OVERWORLD_SLOT) + ")");
+    clickSlot(OVERWORLD_SLOT);
+
+    wait(10);                                   // the Badlands menu opens or replaces this one
+    if (!waitForGui(MENU_TIMEOUT)) {
+        error("The biome menu did not open after clicking Overworld");
+    }
+    wait(5);
+    print("Clicking Badlands: slot " + BADLANDS_SLOT + " (" + slotName(BADLANDS_SLOT) + ")");
+    clickSlot(BADLANDS_SLOT);
+
+    waitSeconds(8);                             // let the teleport land and chunks load
 }
 
 function eatUntilHealthFull() {
@@ -2216,12 +2271,29 @@ function onStop() {
 }
 ```
 
+##### Finding the two slot numbers
+
+The script clicks the RTP menu's buttons by slot number: 0 is the top-left slot, counting left to right and row by
+row (row 2 starts at 9, row 3 at 18). To find them, make a script called `slots`:
+
+```js
+function main() {
+    for (let i in range(guiSize())) {
+        if (slotName(i) != null) { print(i + ": " + slotName(i)); }
+    }
+}
+```
+
+Type `/rtpmenu`, then `.scripts run slots`: it prints every button with its number. The number next to Overworld goes
+in `OVERWORLD_SLOT`. Click Overworld, run it again, and the number next to Badlands goes in `BADLANDS_SLOT`. Until
+both are set, the gold miner stops with a message instead of clicking.
+
 ##### Before you run it
 
-- Set your `/home` within 5 blocks of a chest, or Baritone walks to the nearest chest it can see.
+- Set your home within 5 blocks of a chest, or Baritone walks to the nearest chest it can see. If your server's home
+  command isn't `/home`, change `HOME_COMMAND`.
+- Carry at least one pickaxe with 20 or more uses left (`MIN_DURABILITY`), and spares if you like: worn ones are
+  swapped out, and with none left the script goes home and stops.
 - Keep food in your hotbar: `eat()` only eats from the hotbar.
-- If your server's `/rtpmenu` buttons aren't named exactly **Overworld** and **Badlands**, change the names in the
-  `clickItem` and `waitForItem` lines. Names ignore capitals and colour codes.
-- Change the constants at the top to tune it: the ore, the health that sends you home, how close a player can get and
-  how much raw gold to take back.
 - `fillSlots("raw_gold", 27)` fills empty slots only; with fewer than 27 free it fills what it can and says how many.
+- `.scripts check gold_miner` finds typos before you run it.

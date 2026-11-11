@@ -4,6 +4,18 @@
 
 The 5.1 betas with release notes, newest first. Recent betas are Fabric only, on Minecraft 26.2 and 26.3; NeoForge and Forge stay on beta 3.
 
+### 5.1 beta 8.1: Scripts can swap worn pickaxes
+
+**Scripts**
+- New functions for tool durability:
+- `heldDurability()`: uses left on the item in your hand.
+- `durability(slot)`: uses left on the item in inventory slot 1-36 (1-9 is the hotbar).
+- `pickaxeCount(min)`: how many pickaxes you carry with at least `min` uses left.
+- `equipPickaxe(min)`: hold your best pickaxe with at least `min` uses left, moving it into the hotbar from your
+    inventory if needed.
+- With Baritone's `itemSaver` setting on, a script can now swap off a pickaxe that's about to break and head home
+  when none is left. The full gold miner in the manual (Guides → Scripting) does this.
+
 ### 5.1 beta 8: Scripts — write your own bots
 
 **Scripts (new)**

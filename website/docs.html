@@ -380,6 +380,7 @@
 </ul>
 </div>
 <div class="toc-sys"><a class="toc-head" href="#what-s-new-in-the-beta">What&#x27;s new in the beta</a>
+<a class="toc-topic" href="#what-s-new-in-the-beta-5-1-beta-8-1-scripts-can-swap-worn-pickaxes">5.1 beta 8.1: Scripts can swap worn pickaxes</a>
 <a class="toc-topic" href="#what-s-new-in-the-beta-5-1-beta-8-scripts-write-your-own-bots">5.1 beta 8: Scripts — write your own bots</a>
 <a class="toc-topic" href="#what-s-new-in-the-beta-5-1-beta-7h-pearlcharge-really-boosts-the-pearl-automace-gets-stun-slam">5.1 beta 7h: PearlCharge really boosts the pearl, AutoMace gets Stun Slam</a>
 <a class="toc-topic" href="#what-s-new-in-the-beta-5-1-beta-7g-3-place-schematics-like-litematica-full-material-list-csv-export">5.1 beta 7g.3: place schematics like Litematica, full material list, CSV export</a>
@@ -1578,7 +1579,7 @@ for (let i in range(guiSize())) {
 <h5>Baritone</h5>
 <div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>baritone(command)</code></td><td>Run a Baritone command without the #, e.g. baritone("mine gold_ore").</td></tr><tr><td><code>stopBaritone()</code></td><td>Cancel whatever Baritone is doing.</td></tr><tr><td><code>baritoneBusy()</code></td><td>True while Baritone is mining, pathing, farming...</td></tr><tr><td><code>waitForBaritone(timeoutTicks)</code></td><td>Wait until Baritone is idle. Returns false if it timed out (default: no timeout).</td></tr><tr><td><code>goto(target, ...)</code></td><td>Walk with Baritone and wait until it arrives: goto("chest") or goto(x, y, z).</td></tr></tbody></table></div>
 <h5>Inventory</h5>
-<div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>count(item)</code></td><td>How many of an item you carry, e.g. count("raw_gold").</td></tr><tr><td><code>hasItem(item)</code></td><td>True if you carry at least one of the item.</td></tr><tr><td><code>freeSlots()</code></td><td>Number of empty main-inventory slots (0-36).</td></tr><tr><td><code>inventoryFull()</code></td><td>True when there is no empty slot left.</td></tr><tr><td><code>heldItem()</code></td><td>Id of the item in your main hand, e.g. "diamond_pickaxe" ("air" if empty).</td></tr><tr><td><code>selectSlot(slot)</code></td><td>Select hotbar slot 1-9.</td></tr><tr><td><code>selectItem(item)</code></td><td>Select the hotbar slot holding item. Returns false if it isn't in the hotbar.</td></tr></tbody></table></div>
+<div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>count(item)</code></td><td>How many of an item you carry, e.g. count("raw_gold").</td></tr><tr><td><code>hasItem(item)</code></td><td>True if you carry at least one of the item.</td></tr><tr><td><code>freeSlots()</code></td><td>Number of empty main-inventory slots (0-36).</td></tr><tr><td><code>inventoryFull()</code></td><td>True when there is no empty slot left.</td></tr><tr><td><code>heldItem()</code></td><td>Id of the item in your main hand, e.g. "diamond_pickaxe" ("air" if empty).</td></tr><tr><td><code>heldDurability()</code></td><td>Uses left on the item in your main hand before it breaks, or -1 if it can't break.</td></tr><tr><td><code>durability(slot)</code></td><td>Uses left on the item in inventory slot 1-36 (1-9 = hotbar), or -1 if it can't break or the slot is empty.</td></tr><tr><td><code>pickaxeCount(minDurability)</code></td><td>How many pickaxes you carry with at least minDurability uses left (default 1).</td></tr><tr><td><code>equipPickaxe(minDurability)</code></td><td>Hold your best pickaxe that has at least minDurability uses left (default 1), moving it into the hotbar if needed. Returns false if you have none.</td></tr><tr><td><code>selectSlot(slot)</code></td><td>Select hotbar slot 1-9.</td></tr><tr><td><code>selectItem(item)</code></td><td>Select the hotbar slot holding item. Returns false if it isn't in the hotbar.</td></tr></tbody></table></div>
 <h5>GUI</h5>
 <div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>guiOpen()</code></td><td>True while a chest or other container GUI is open.</td></tr><tr><td><code>guiTitle()</code></td><td>Title of the open screen, or "" if none.</td></tr><tr><td><code>waitForGui(timeoutTicks, title)</code></td><td>Wait for a container GUI to open (optionally with a title containing text). Returns false on timeout (default 100 ticks).</td></tr><tr><td><code>waitForItem(name, timeoutTicks)</code></td><td>Wait until an item with this name shows up in the open GUI. Returns false on timeout (default 100 ticks).</td></tr><tr><td><code>clickItem(name, button)</code></td><td>Click the item in the open GUI whose name (or id) matches, e.g. clickItem("Badlands"). button: 0 left (default), 1 right. Returns false if not found.</td></tr><tr><td><code>clickSlot(slot, button, shift)</code></td><td>Click a GUI slot by number: 0 is the top-left slot of the menu (0-26 in a 27-slot menu), your inventory comes after guiSize(). button 0 left, 1 right; shift=true shift-clicks.</td></tr><tr><td><code>guiSize()</code></td><td>Number of the open GUI's own slots (27 for a chest or most server menus, 54 for a double chest; 0 if none). Your inventory comes after these.</td></tr><tr><td><code>slotItem(slot)</code></td><td>Item id in a GUI slot, e.g. "raw_gold", or null if empty.</td></tr><tr><td><code>slotName(slot)</code></td><td>Name shown on the item in a GUI slot, or null if empty.</td></tr><tr><td><code>slotCount(slot)</code></td><td>How many items are in a GUI slot (0 if empty).</td></tr><tr><td><code>findSlot(item)</code></td><td>First of the GUI's own slots holding item (by id or name), or -1.</td></tr><tr><td><code>inventorySlot(n)</code></td><td>GUI slot number of your own inventory slot n (1-9 hotbar, 10-36 the rows above), for clickSlot(). -1 if not shown.</td></tr><tr><td><code>clickInventory(n, button, shift)</code></td><td>Click your own inventory slot n (1-9 hotbar, 10-36 the rows above). Works with a chest open too.</td></tr><tr><td><code>fillSlots(item, count)</code></td><td>Take item from the open container and put exactly 1 in each of count empty inventory slots. Returns how many slots were filled.</td></tr><tr><td><code>deposit(item)</code></td><td>Shift-click every stack of item from your inventory into the open container. "*" moves everything. Returns the number of items moved.</td></tr><tr><td><code>withdraw(item, amount)</code></td><td>Shift-click stacks of item from the open container into your inventory until you have taken at least amount (default: all). Returns the number moved.</td></tr><tr><td><code>closeGui()</code></td><td>Close the open screen.</td></tr></tbody></table></div>
 <h5>World</h5>
@@ -1592,74 +1593,110 @@ for (let i in range(guiSize())) {
 </article>
 <article class="cmd" id="gold-miner-script" data-name="Gold miner script" data-aliases="" data-beta="1">
 <h4><a class="self" href="#gold-miner-script"><span class="pfx"></span>Gold miner script</a></h4>
-<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable. Needs beta 8.1 or later.</p>
 
-<p class="sum">A complete bot: mine gold with Baritone, go <code>/home</code> when hurt, when a player comes near or when the inventory is full, store the raw gold, take 27 back one per slot, eat, then <code>/rtpmenu</code> to the Badlands and start again.</p>
-<p>DIH writes this script as <code>gold_miner</code> the first time the scripts folder is created. To add it later, run <code>.scripts new gold_miner</code>, open it with <code>.scripts edit gold_miner</code> and paste it over the template.</p>
-<pre><code>.scripts run gold_miner
+<p class="sum">A complete bot. When you run it, it teleports with <code>/rtpmenu</code> → Overworld → Badlands, then mines gold with Baritone. It goes home when health is low, a player comes near, the inventory is full or every pickaxe is worn out, and swaps to another pickaxe when the one in use is about to break. At home it stores the raw gold, takes 27 back one per slot, eats until full health and teleports out again.</p>
+<p>Make a script for it, paste this in, set the two slot numbers at the top, then run it:</p>
+<pre><code>.scripts new gold_miner
+.scripts edit gold_miner
+.scripts run gold_miner
 .scripts stop gold_miner</code></pre>
 <pre><code>// gold_miner.dscript
-// Mines gold. Goes /home when health is low or a player comes near.
-// At home: store raw gold in the chest, take 27 back (1 per slot), eat, then
-// /rtpmenu -&gt; Overworld -&gt; Badlands and mine again.
+// When you run it: /rtpmenu -&gt; Overworld (slot X) -&gt; Badlands (slot Y), then mines gold.
+// Goes home when health is low, a player comes near, the inventory is full, or every
+// pickaxe is worn out. Swaps to another pickaxe when the one in use is about to break.
+// At home: store raw gold in the chest, take 27 back (1 per slot), eat until full health,
+// then teleports out again.
 //
 // Run:  .scripts run gold_miner      Stop: .scripts stop gold_miner
 
-const ORE          = &quot;gold_ore&quot;;
-const LOW_HEALTH   = 5;       // 20 = full health, 2 per heart
-const SAFE_RADIUS  = 48;      // how close a player can get (blocks)
-const KEEP_GOLD    = 27;      // raw gold to spread back into the inventory, 1 per slot
+// ---- set these two -------------------------------------------------------
+const OVERWORLD_SLOT = -1;    // X: slot number of the Overworld button in /rtpmenu
+const BADLANDS_SLOT  = -1;    // Y: slot number of the Badlands button
+// ---------------------------------------------------------------------------
+
+const HOME_COMMAND   = &quot;/home&quot;;
+const ORE            = &quot;gold_ore&quot;;
+const LOW_HEALTH     = 5;     // 20 = full health, 2 per heart
+const SAFE_RADIUS    = 48;    // how close a player can get (blocks)
+const KEEP_GOLD      = 27;    // raw gold to put back in the inventory, 1 per slot
+const MIN_DURABILITY = 20;    // a pickaxe with fewer uses left than this counts as worn out
+const MENU_TIMEOUT   = 100;   // ticks to wait for a menu (100 = 5 seconds)
 
 function main() {
+    if (OVERWORLD_SLOT &lt; 0 || BADLANDS_SLOT &lt; 0) {
+        error(&quot;Set OVERWORLD_SLOT and BADLANDS_SLOT at the top of the script first&quot;);
+    }
+    // Baritone skips tools with fewer than MIN_DURABILITY uses left
+    baritone(&quot;set itemSaver true&quot;);
+    baritone(&quot;set itemSaverThreshold &quot; + MIN_DURABILITY);
+
+    if (!equipPickaxe(MIN_DURABILITY)) {
+        error(&quot;You have no pickaxe with at least &quot; + MIN_DURABILITY + &quot; durability&quot;);
+    }
+
+    travelToBadlands();                         // teleport first
     while (true) {
-        goldMining();
+        let reason = goldMining();
+        print(&quot;Going home: &quot; + reason);
+        goHome();
+        if (pickaxeCount(MIN_DURABILITY) == 0) {
+            print(&quot;No usable pickaxe left - staying home.&quot;);
+            stop();
+        }
         atHome();
+        travelToBadlands();
     }
 }
 
 // ---------------------------------------------------------------- mining
 
+// Mines until something makes it go home, then returns why.
 function goldMining() {
-    baritone(&quot;mine &quot; + ORE);                    // command #mine gold_ore
+    baritone(&quot;mine &quot; + ORE);                    // #mine gold_ore
     while (true) {
-        if (health() &lt;= LOW_HEALTH) {
-            print(&quot;Low health (&quot; + health() + &quot;) - going home&quot;);
-            goHome();
-            eatUntilHealthFull();               // eat until health = 20
-            return;
-        }
-        if (playerNearby(SAFE_RADIUS)) {
-            print(&quot;Player nearby: &quot; + nearestPlayer(SAFE_RADIUS) + &quot; - going home&quot;);
-            goHome();
-            return;
-        }
-        if (inventoryFull()) {
-            print(&quot;Inventory full - going home&quot;);
-            goHome();
-            return;
-        }
+        if (health() &lt;= LOW_HEALTH) { return &quot;low health (&quot; + health() + &quot;)&quot;; }
+        if (playerNearby(SAFE_RADIUS)) { return &quot;player nearby (&quot; + nearestPlayer(SAFE_RADIUS) + &quot;)&quot;; }
+        if (inventoryFull()) { return &quot;inventory full&quot;; }
+        if (!checkPickaxe()) { return &quot;no pickaxe left&quot;; }
         wait(5);                                // check 4 times a second
     }
 }
 
+// Swaps away from a worn-out pickaxe. Returns false when there is no other pickaxe.
+function checkPickaxe() {
+    if (pickaxeCount(MIN_DURABILITY) == 0) {
+        return false;
+    }
+    if (contains(heldItem(), &quot;pickaxe&quot;) &amp;&amp; heldDurability() &lt; MIN_DURABILITY) {
+        print(&quot;Pickaxe worn out (&quot; + heldDurability() + &quot; left) - switching&quot;);
+        stopBaritone();
+        if (!equipPickaxe(MIN_DURABILITY)) {
+            return false;
+        }
+        baritone(&quot;mine &quot; + ORE);                // carry on with the new pickaxe
+    }
+    return true;
+}
+
 function goHome() {
-    stopBaritone();                             // stop command #mine gold_ore
-    command(&quot;/home&quot;);
+    stopBaritone();                             // stop #mine
+    command(HOME_COMMAND);
     waitSeconds(5);                             // teleport warm-up
 }
 
 // ---------------------------------------------------------------- at home
 
 function atHome() {
-    // go to chest
+    // go to the chest
     if (findBlock(&quot;chest&quot;, 5) == null) {
         goto(&quot;chest&quot;);
     }
     if (!openNearest(&quot;chest&quot;)) {
-        error(&quot;No chest found near /home&quot;);
+        error(&quot;No chest found near home&quot;);
     }
 
-    // fill the chest with raw gold
+    // put all raw gold in the chest
     let stored = deposit(&quot;raw_gold&quot;);
     print(&quot;Stored &quot; + stored + &quot; raw gold&quot;);
 
@@ -1670,15 +1707,29 @@ function atHome() {
 
     // eat until health is full
     eatUntilHealthFull();
+    equipPickaxe(MIN_DURABILITY);
+}
 
-    // /rtpmenu -&gt; Overworld -&gt; Badlands
+// ---------------------------------------------------------------- teleport
+
+function travelToBadlands() {
     command(&quot;/rtpmenu&quot;);
-    if (!waitForItem(&quot;Overworld&quot;, 100)) { error(&quot;/rtpmenu did not open&quot;); }
-    clickItem(&quot;Overworld&quot;);
-    if (!waitForItem(&quot;Badlands&quot;, 100)) { error(&quot;No Badlands option in the RTP menu&quot;); }
-    clickItem(&quot;Badlands&quot;);
-    waitSeconds(8);                             // let the teleport land
-    // main() loops back to goldMining()
+    if (!waitForGui(MENU_TIMEOUT)) {
+        error(&quot;/rtpmenu did not open&quot;);
+    }
+    wait(5);                                    // let the menu fill in
+    print(&quot;Clicking Overworld: slot &quot; + OVERWORLD_SLOT + &quot; (&quot; + slotName(OVERWORLD_SLOT) + &quot;)&quot;);
+    clickSlot(OVERWORLD_SLOT);
+
+    wait(10);                                   // the Badlands menu opens or replaces this one
+    if (!waitForGui(MENU_TIMEOUT)) {
+        error(&quot;The biome menu did not open after clicking Overworld&quot;);
+    }
+    wait(5);
+    print(&quot;Clicking Badlands: slot &quot; + BADLANDS_SLOT + &quot; (&quot; + slotName(BADLANDS_SLOT) + &quot;)&quot;);
+    clickSlot(BADLANDS_SLOT);
+
+    waitSeconds(8);                             // let the teleport land and chunks load
 }
 
 function eatUntilHealthFull() {
@@ -1698,8 +1749,16 @@ function eatUntilHealthFull() {
 function onStop() {
     stopBaritone();
 }</code></pre>
+<h5>Finding the two slot numbers</h5>
+<p>The script clicks the RTP menu's buttons by slot number: 0 is the top-left slot, counting left to right and row by row (row 2 starts at 9, row 3 at 18). To find them, make a script called <code>slots</code>:</p>
+<pre><code>function main() {
+    for (let i in range(guiSize())) {
+        if (slotName(i) != null) { print(i + &quot;: &quot; + slotName(i)); }
+    }
+}</code></pre>
+<p>Type <code>/rtpmenu</code>, then <code>.scripts run slots</code>: it prints every button with its number. The number next to Overworld goes in <code>OVERWORLD_SLOT</code>. Click Overworld, run it again, and the number next to Badlands goes in <code>BADLANDS_SLOT</code>. Until both are set, the gold miner stops with a message instead of clicking.</p>
 <h5>Before you run it</h5>
-<ul><li>Set your <code>/home</code> within 5 blocks of a chest, or Baritone walks to the nearest chest it can see.</li><li>Keep food in your hotbar: <code>eat()</code> only eats from the hotbar.</li><li>If your server's <code>/rtpmenu</code> buttons aren't named exactly <strong>Overworld</strong> and <strong>Badlands</strong>, change the names in the <code>clickItem</code> and <code>waitForItem</code> lines. Names ignore capitals and colour codes.</li><li>Change the constants at the top to tune it: the ore, the health that sends you home, how close a player can get and how much raw gold to take back.</li><li><code>fillSlots(&quot;raw_gold&quot;, 27)</code> fills empty slots only; with fewer than 27 free it fills what it can and says how many.</li></ul>
+<ul><li>Set your home within 5 blocks of a chest, or Baritone walks to the nearest chest it can see. If your server's home command isn't <code>/home</code>, change <code>HOME_COMMAND</code>.</li><li>Carry at least one pickaxe with 20 or more uses left (<code>MIN_DURABILITY</code>), and spares if you like: worn ones are swapped out, and with none left the script goes home and stops.</li><li>Keep food in your hotbar: <code>eat()</code> only eats from the hotbar.</li><li><code>fillSlots(&quot;raw_gold&quot;, 27)</code> fills empty slots only; with fewer than 27 free it fills what it can and says how many.</li><li><code>.scripts check gold_miner</code> finds typos before you run it.</li></ul>
 </article>
 </section>
 </section>
@@ -3070,6 +3129,11 @@ function onStop() {
 <section class="sys" id="what-s-new-in-the-beta" aria-labelledby="what-s-new-in-the-beta-h">
 <h2 id="what-s-new-in-the-beta-h">What&#x27;s new in the beta</h2>
 <p>The 5.1 betas with release notes, newest first. Recent betas are Fabric only, on Minecraft 26.2 and 26.3; NeoForge and Forge stay on beta 3.</p>
+<section class="grp" id="what-s-new-in-the-beta-5-1-beta-8-1-scripts-can-swap-worn-pickaxes">
+<h3>5.1 beta 8.1: Scripts can swap worn pickaxes</h3>
+<p><strong>Scripts</strong></p>
+<ul><li>New functions for tool durability:</li><li><code>heldDurability()</code>: uses left on the item in your hand.</li><li><code>durability(slot)</code>: uses left on the item in inventory slot 1-36 (1-9 is the hotbar).</li><li><code>pickaxeCount(min)</code>: how many pickaxes you carry with at least <code>min</code> uses left.</li><li><code>equipPickaxe(min)</code>: hold your best pickaxe with at least <code>min</code> uses left, moving it into the hotbar from your inventory if needed.</li><li>With Baritone's <code>itemSaver</code> setting on, a script can now swap off a pickaxe that's about to break and head home when none is left. The full gold miner in the manual (Guides → Scripting) does this.</li></ul>
+</section>
 <section class="grp" id="what-s-new-in-the-beta-5-1-beta-8-scripts-write-your-own-bots">
 <h3>5.1 beta 8: Scripts — write your own bots</h3>
 <p><strong>Scripts (new)</strong></p>
