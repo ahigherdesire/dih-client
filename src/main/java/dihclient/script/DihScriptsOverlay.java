@@ -14,7 +14,8 @@ import dihclient.util.DihWindowLayout;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
+import dihclient.util.DihKeys;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -555,9 +556,7 @@ public final class DihScriptsOverlay extends DihOverlayBase {
     }
 
     private static boolean shiftHeld() {
-        long window = Minecraft.getInstance().getWindow().handle();
-        return GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
-            || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
+        return DihKeys.isKeyDown(InputConstants.KEY_LSHIFT) || DihKeys.isKeyDown(InputConstants.KEY_RSHIFT);
     }
 
     @Override
@@ -643,51 +642,51 @@ public final class DihScriptsOverlay extends DihOverlayBase {
         if (naming) return nameKey(key);
         if (!editorFocused) return false;
 
-        boolean ctrl = (mods & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_SUPER)) != 0;
-        boolean shift = (mods & GLFW.GLFW_MOD_SHIFT) != 0;
-        boolean alt = (mods & GLFW.GLFW_MOD_ALT) != 0;
+        boolean ctrl = (mods & (InputConstants.MOD_CONTROL | InputConstants.MOD_SUPER)) != 0;
+        boolean shift = (mods & InputConstants.MOD_SHIFT) != 0;
+        boolean alt = (mods & InputConstants.MOD_ALT) != 0;
         Minecraft mc = Minecraft.getInstance();
         ensureCursorVisible = true;
 
         if (ctrl) {
             switch (key) {
-                case GLFW.GLFW_KEY_S -> save(true);
-                case GLFW.GLFW_KEY_A -> editor.selectAll();
-                case GLFW.GLFW_KEY_C -> mc.keyboardHandler.setClipboard(editor.copy());
-                case GLFW.GLFW_KEY_X -> mc.keyboardHandler.setClipboard(editor.cut());
-                case GLFW.GLFW_KEY_V -> editor.insert(mc.keyboardHandler.getClipboard());
-                case GLFW.GLFW_KEY_Z -> { if (shift) editor.redo(); else editor.undo(); }
-                case GLFW.GLFW_KEY_Y -> editor.redo();
-                case GLFW.GLFW_KEY_SLASH -> editor.toggleComment();
-                case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> runClicked();
-                case GLFW.GLFW_KEY_LEFT -> editor.left(shift, true);
-                case GLFW.GLFW_KEY_RIGHT -> editor.right(shift, true);
-                case GLFW.GLFW_KEY_HOME -> editor.documentStart(shift);
-                case GLFW.GLFW_KEY_END -> editor.documentEnd(shift);
-                case GLFW.GLFW_KEY_BACKSPACE -> editor.backspace(true);
-                case GLFW.GLFW_KEY_DELETE -> editor.delete(true);
+                case InputConstants.KEY_S -> save(true);
+                case InputConstants.KEY_A -> editor.selectAll();
+                case InputConstants.KEY_C -> mc.keyboardHandler.setClipboard(editor.copy());
+                case InputConstants.KEY_X -> mc.keyboardHandler.setClipboard(editor.cut());
+                case InputConstants.KEY_V -> editor.insert(mc.keyboardHandler.getClipboard());
+                case InputConstants.KEY_Z -> { if (shift) editor.redo(); else editor.undo(); }
+                case InputConstants.KEY_Y -> editor.redo();
+                case InputConstants.KEY_SLASH -> editor.toggleComment();
+                case InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> runClicked();
+                case InputConstants.KEY_LEFT -> editor.left(shift, true);
+                case InputConstants.KEY_RIGHT -> editor.right(shift, true);
+                case InputConstants.KEY_HOME -> editor.documentStart(shift);
+                case InputConstants.KEY_END -> editor.documentEnd(shift);
+                case InputConstants.KEY_BACKSPACE -> editor.backspace(true);
+                case InputConstants.KEY_DELETE -> editor.delete(true);
                 default -> { }
             }
             noteEdit();
             return true;
         }
         switch (key) {
-            case GLFW.GLFW_KEY_ESCAPE -> {
+            case InputConstants.KEY_ESCAPE -> {
                 editorFocused = false;
                 return true;
             }
-            case GLFW.GLFW_KEY_LEFT -> editor.left(shift, alt);
-            case GLFW.GLFW_KEY_RIGHT -> editor.right(shift, alt);
-            case GLFW.GLFW_KEY_UP -> editor.up(shift);
-            case GLFW.GLFW_KEY_DOWN -> editor.down(shift);
-            case GLFW.GLFW_KEY_HOME -> editor.home(shift);
-            case GLFW.GLFW_KEY_END -> editor.end(shift);
-            case GLFW.GLFW_KEY_PAGE_UP -> editor.verticalBy(-pageLines(), shift);
-            case GLFW.GLFW_KEY_PAGE_DOWN -> editor.verticalBy(pageLines(), shift);
-            case GLFW.GLFW_KEY_BACKSPACE -> editor.backspace(false);
-            case GLFW.GLFW_KEY_DELETE -> editor.delete(false);
-            case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> editor.newline();
-            case GLFW.GLFW_KEY_TAB -> { if (shift) editor.outdent(); else editor.indent(); }
+            case InputConstants.KEY_LEFT -> editor.left(shift, alt);
+            case InputConstants.KEY_RIGHT -> editor.right(shift, alt);
+            case InputConstants.KEY_UP -> editor.up(shift);
+            case InputConstants.KEY_DOWN -> editor.down(shift);
+            case InputConstants.KEY_HOME -> editor.home(shift);
+            case InputConstants.KEY_END -> editor.end(shift);
+            case InputConstants.KEY_PAGEUP -> editor.verticalBy(-pageLines(), shift);
+            case InputConstants.KEY_PAGEDOWN -> editor.verticalBy(pageLines(), shift);
+            case InputConstants.KEY_BACKSPACE -> editor.backspace(false);
+            case InputConstants.KEY_DELETE -> editor.delete(false);
+            case InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> editor.newline();
+            case InputConstants.KEY_TAB -> { if (shift) editor.outdent(); else editor.indent(); }
             default -> { }
         }
         noteEdit();
@@ -703,7 +702,7 @@ public final class DihScriptsOverlay extends DihOverlayBase {
             return true;
         }
         if (!editorFocused) return false;
-        if ((mods & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_SUPER)) != 0) return true;
+        if ((mods & (InputConstants.MOD_CONTROL | InputConstants.MOD_SUPER)) != 0) return true;
         if (chr >= 32 && chr != 127) {
             editor.type(chr);
             ensureCursorVisible = true;
@@ -714,9 +713,9 @@ public final class DihScriptsOverlay extends DihOverlayBase {
 
     private boolean nameKey(int key) {
         switch (key) {
-            case GLFW.GLFW_KEY_ESCAPE -> naming = false;
-            case GLFW.GLFW_KEY_BACKSPACE -> { if (!newName.isEmpty()) newName.setLength(newName.length() - 1); }
-            case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> createScript();
+            case InputConstants.KEY_ESCAPE -> naming = false;
+            case InputConstants.KEY_BACKSPACE -> { if (!newName.isEmpty()) newName.setLength(newName.length() - 1); }
+            case InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> createScript();
             default -> { }
         }
         return true;

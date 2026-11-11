@@ -605,7 +605,7 @@ public final class GameLibrary {
                 if (p.getEyePosition().distanceTo(center) > REACH + 0.5) return false;
                 face(p, center);
                 mc().gameMode.useItemOn(p, InteractionHand.MAIN_HAND, new BlockHitResult(center, Direction.UP, pos, false));
-                p.swing(InteractionHand.MAIN_HAND);
+                dihclient.util.DihEntities.swing(p, InteractionHand.MAIN_HAND);
                 return true;
             });
             if (!used) return false;
