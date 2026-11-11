@@ -95,6 +95,7 @@
 </ul>
 <p class="toc-grp">Macros</p><ul>
 <li><a href="#dot-macro" class="mono"><span class="pfx">.</span>macro</a></li>
+<li><a href="#dot-scripts" class="mono"><span class="pfx">.</span>scripts</a></li>
 </ul>
 <p class="toc-grp">Schematics</p><ul>
 <li><a href="#dot-schem" class="mono beta-tag"><span class="pfx">.</span>schem</a></li>
@@ -254,6 +255,12 @@
 <p class="toc-grp">Trading</p><ul>
 <li><a href="#autotrade" class="mono beta-tag"><span class="pfx"></span>AutoTrade</a></li>
 </ul>
+<p class="toc-grp">Scripting</p><ul>
+<li><a href="#writing-scripts" class="mono beta-tag"><span class="pfx"></span>Writing scripts</a></li>
+<li><a href="#script-language" class="mono beta-tag"><span class="pfx"></span>Script language</a></li>
+<li><a href="#script-functions" class="mono beta-tag"><span class="pfx"></span>Script functions</a></li>
+<li><a href="#gold-miner-script" class="mono beta-tag"><span class="pfx"></span>Gold miner script</a></li>
+</ul>
 </div>
 <div class="toc-sys"><a class="toc-head" href="#module-reference">Module reference</a>
 <p class="toc-grp">Combat</p><ul>
@@ -396,7 +403,7 @@
   <header class="doc-head">
     <h1>Manual</h1>
     <p class="doc-lede">Everything in DIH Client up to 5.1 beta 7g.3: every chat command, every module and setting, guides, and what changed in each beta.</p>
-    <p class="doc-meta mono"><b id="cmd-count">118</b> commands · <b id="mod-count">105</b> modules · Minecraft 26.2 and 26.3<span class="key-hint"> · press <kbd>/</kbd> to search</span></p>
+    <p class="doc-meta mono"><b id="cmd-count">119</b> commands · <b id="mod-count">105</b> modules · Minecraft 26.2 and 26.3<span class="key-hint"> · press <kbd>/</kbd> to search</span></p>
   </header>
 <!-- docs:start -->
 <section class="sys" id="basics" aria-labelledby="basics-h">
@@ -578,6 +585,14 @@
 <div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.macro export &lt;macro or folder&gt;</code></td><td>Copy a <code>DIHM1:</code> share code to the clipboard.</td></tr><tr><td><code>.macro import [code]</code></td><td>Add the macros in a code, or the one on your clipboard. Macros whose name is taken get a new one.</td></tr></tbody></table></div>
 <h5>Beta macro steps</h5>
 <ul><li><strong>Trade</strong> buys matching offers from trades an earlier step opened; see <a class="ref" href="#autotrade"><code>AutoTrade</code></a>. Later steps can read <code>trade_count</code>, <code>trade_spent</code> and <code>trade_status</code>.</li><li><strong>AI Tool</strong> runs any of the tools <a class="ref" href="#dot-tools"><code>.tools</code></a> lists.</li></ul>
+</article>
+<article class="cmd" id="dot-scripts" data-name=".scripts" data-aliases="">
+<h4><a class="self" href="#dot-scripts"><span class="pfx">.</span>scripts</a></h4>
+
+<p class="sum">Write automation in DihScript, a small C-style language, and run it by name. Scripts are plain text files in <code>config/dih/scripts/&lt;name&gt;.dscript</code>; open the editor from the module menu's <strong>Scripts</strong> button (also in the Main Menu panel of container GUIs) or with <code>.scripts edit</code>. The <a href="#writing-scripts">Scripting guides</a> cover the language, every function and a full gold miner. Alias: <code>.script</code>.</p>
+<div class="table"><table><thead><tr><th scope="col">Usage</th><th scope="col">Effect</th></tr></thead><tbody><tr><td><code>.scripts run &lt;name&gt;</code></td><td>Check, then start a script. Several scripts can run at once.</td></tr><tr><td><code>.scripts stop &lt;name&gt;</code></td><td>Stop one script. Its <code>onStop()</code> runs; stop it again to kill it outright.</td></tr><tr><td><code>.scripts stop</code></td><td>Stop every running script (<code>.scripts stop all</code> does the same).</td></tr><tr><td><code>.scripts list</code></td><td>Every script, with the running ones, their uptime and current line.</td></tr><tr><td><code>.scripts check &lt;name&gt;</code></td><td>Report syntax errors and unknown functions without running anything.</td></tr><tr><td><code>.scripts edit [name]</code></td><td>Open the Scripts editor, optionally on one script.</td></tr><tr><td><code>.scripts new &lt;name&gt;</code></td><td>Create a script from the starter template.</td></tr><tr><td><code>.scripts delete &lt;name&gt;</code></td><td>Delete a script (stopping it first).</td></tr><tr><td><code>.scripts functions [category]</code></td><td>List the built-in functions, by category.</td></tr><tr><td><code>.scripts folder</code></td><td>Print where the script files live.</td></tr></tbody></table></div>
+<pre><code>.scripts run gold_miner
+.scripts stop gold_miner</code></pre>
 </article>
 </section>
 <section class="grp" id="client-commands-schematics">
@@ -1473,6 +1488,217 @@
 <p>Whenever you open a villager's trades, even with AutoTrade off, it remembers that villager's offers for this world. Those records feed <strong>Offer Labels</strong>, the villagers Trade mode skips, and <code>.enchant plan</code>, which finds which villagers you've seen selling the books you name.</p>
 <h5>From macros and the AI</h5>
 <ul><li>A macro <strong>Trade</strong> step buys up to a set number of matching offers from trades an earlier step opened. Later steps can read <code>trade_count</code> (purchases), <code>trade_spent</code> (emeralds) and <code>trade_status</code> (<code>ok</code>, <code>none</code>, or <code>failed: &lt;reason&gt;</code>).</li><li>The AI's <code>trade</code> tool starts AutoTrade in either mode. Run it yourself with <code>.tools trade</code>; <code>.tools help trade</code> lists its arguments.</li></ul>
+</article>
+</section>
+<section class="grp" id="guides-scripting">
+<h3>Scripting</h3>
+
+<article class="cmd" id="writing-scripts" data-name="Writing scripts" data-aliases="" data-beta="1">
+<h4><a class="self" href="#writing-scripts"><span class="pfx"></span>Writing scripts</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+
+<p class="sum">Write your own automation in DihScript, a small language that looks like C or JavaScript, and run it by name.</p>
+<p>A script is a text file in <code>config/dih/scripts/&lt;name&gt;.dscript</code>. Write it in the <strong>Scripts</strong> window or in any text editor, then start and stop it from chat:</p>
+<pre><code>.scripts new my_bot
+.scripts edit my_bot
+.scripts run my_bot
+.scripts stop my_bot</code></pre>
+<p>Open the Scripts window from the module menu's <strong>Scripts</strong> button, the Main Menu panel in container GUIs, or <code>.scripts edit</code>. The list on the left shows every script, with a green dot on the ones running. The editor colours the code, checks it as you type and marks problem lines in red; the status bar names the problem. <strong>Run</strong> saves and starts the script, <strong>Save</strong> (Ctrl+S) saves, and <strong>?</strong> lists every built-in function: click one to insert it. <a class="ref" href="#dot-scripts"><code>.scripts</code></a> lists the chat subcommands.</p>
+<p>The smallest script:</p>
+<pre><code>function main() {
+    print(&quot;Hello, &quot; + playerName() + &quot;! You have &quot; + health() + &quot; health.&quot;);
+}</code></pre>
+<p><code>main()</code> runs when the script starts, and the script ends when it returns. An optional <code>onStop()</code> runs whenever the script ends, whether it finished, you stopped it or it hit an error, so put clean-up such as <code>stopBaritone();</code> there.</p>
+<p>Scripts run on their own thread, so a script that waits never freezes the game, and several can run at once. Before one starts, DIH checks it for syntax errors, unknown functions and wrong argument counts; <code>.scripts check &lt;name&gt;</code> runs the same check without starting it. An error while running stops the script and prints the line in chat. <code>.scripts stop</code> runs <code>onStop()</code>; stopping a second time ends the script at once.</p>
+<div class="table"><table><thead><tr><th scope="col">Editor key</th><th scope="col">What it does</th></tr></thead><tbody><tr><td>Ctrl+S</td><td>Save. Switching scripts, running and closing the window also save.</td></tr><tr><td>Ctrl+Enter</td><td>Run, or stop if running.</td></tr><tr><td>Ctrl+Z, Ctrl+Y</td><td>Undo, redo.</td></tr><tr><td>Ctrl+/</td><td>Comment or uncomment the line or selection.</td></tr><tr><td>Tab, Shift+Tab</td><td>Indent, outdent.</td></tr><tr><td>Ctrl+A, Ctrl+C, Ctrl+X, Ctrl+V</td><td>Select all, copy, cut, paste. With nothing selected, copy and cut take the whole line.</td></tr><tr><td>Double-click</td><td>Select a word.</td></tr><tr><td>Esc</td><td>Leave the editor so game keys work again.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="script-language" data-name="Script language" data-aliases="" data-beta="1">
+<h4><a class="self" href="#script-language"><span class="pfx"></span>Script language</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+
+<p class="sum">Statements end with <code>;</code>, blocks use <code>{ }</code>, and comments are <code>// to the end of the line</code> or <code>/* across lines */</code>.</p>
+<h5>Values</h5>
+<div class="table"><table><thead><tr><th scope="col">Type</th><th scope="col">Examples</th></tr></thead><tbody><tr><td>number</td><td><code>20</code>, <code>0.5</code>, <code>-3</code></td></tr><tr><td>text</td><td><code>&quot;gold_ore&quot;</code>, <code>&#x27;Badlands&#x27;</code>, <code>&quot;two\nlines&quot;</code></td></tr><tr><td>true or false</td><td><code>true</code>, <code>false</code></td></tr><tr><td>list</td><td><code>[1, 2, &quot;three&quot;]</code>, <code>items[0]</code>, <code>items[-1]</code> for the last item</td></tr><tr><td>nothing</td><td><code>null</code></td></tr></tbody></table></div>
+<p><code>false</code>, <code>null</code>, <code>0</code>, empty text and an empty list count as false in an <code>if</code>; everything else counts as true. <code>+</code> joins text when either side is text: <code>&quot;Health: &quot; + health()</code>.</p>
+<h5>Variables</h5>
+<pre><code>const ORE = &quot;gold_ore&quot;;   // fixed value
+let count = 0;            // value you can change
+count += 1;               // also -=, *= and /=</code></pre>
+<p>Declare a variable with <code>let</code> or <code>const</code> before using it. One declared outside every function can be used in all of them; one declared inside <code>{ }</code> only exists inside those braces.</p>
+<h5>Operators</h5>
+<div class="table"><table><thead><tr><th scope="col">Kind</th><th scope="col">Operators</th></tr></thead><tbody><tr><td>Arithmetic</td><td><code>+ - * / %</code></td></tr><tr><td>Comparison</td><td><code>== != &lt; &lt;= &gt; &gt;=</code></td></tr><tr><td>Logic</td><td><code>&amp;&amp;</code> (and), <code>||</code> (or), <code>!</code> (not)</td></tr></tbody></table></div>
+<h5>Control flow</h5>
+<p>The braces are always required.</p>
+<pre><code>if (food() &lt; 10) {
+    eat();
+} else if (health() &lt; 10) {
+    waitSeconds(5);
+} else {
+    print(&quot;fine&quot;);
+}
+
+while (!inventoryFull()) { wait(10); }        // repeat while true
+repeat (3) { clickItem(&quot;Confirm&quot;); }          // repeat a set number of times
+for (let name in playersNearby(64)) { print(name); }
+for (let i in range(5)) { print(i); }         // 0 1 2 3 4
+
+break;      // leave the loop
+continue;   // skip to the next round</code></pre>
+<h5>Functions</h5>
+<pre><code>function distanceTo(x2, z2) {
+    let dx = x() - x2;
+    let dz = z() - z2;
+    return sqrt(dx * dx + dz * dz);
+}</code></pre>
+<p>Declare functions outside every other function. They can be called before the line that defines them, and missing arguments are <code>null</code>.</p>
+<h5>Timing</h5>
+<p>The game runs 20 ticks a second. <code>wait(ticks)</code> and <code>waitSeconds(seconds)</code> pause the script without pausing the game. Put a <code>wait</code> in every loop that runs for a long time; a loop without one is paused for a tick every 20 000 steps so it can't lock up the client.</p>
+<h5>Slot numbers</h5>
+<p><code>clickSlot</code> and the other slot functions number the open GUI's slots from 0 at the top-left, left to right, row by row: a 27-slot server menu is 0-26 (row 2 starts at 9, row 3 at 18) and a double chest 0-53. Your own inventory comes right after <code>guiSize()</code>. Functions that take one of your inventory slots number them 1-36 instead: 1-9 is the hotbar, the same as the number keys, and 10-36 the three rows above it from the top-left.</p>
+<pre><code>command(&quot;/menu&quot;);
+waitForGui(100);
+clickSlot(13);                                   // middle of a 27-slot menu
+if (slotName(22) == &quot;Confirm&quot;) { clickSlot(22); }
+for (let i in range(guiSize())) {
+    if (slotItem(i) == &quot;diamond&quot;) { clickSlot(i, 0, true); }   // shift-click every diamond out
+}</code></pre>
+</article>
+<article class="cmd" id="script-functions" data-name="Script functions" data-aliases="" data-beta="1">
+<h4><a class="self" href="#script-functions"><span class="pfx"></span>Script functions</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+
+<p class="sum">Every built-in function, by category. <code>.scripts functions &lt;category&gt;</code> lists them in game. Item and block names take an id (<code>raw_gold</code>, <code>minecraft:raw_gold</code>) or the name shown in game (<code>Raw Gold</code>). Arguments shown in a signature can be left off from the right where the description gives a default.</p>
+<h5>Control</h5>
+<div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>print(value, ...)</code></td><td>Show a message in chat (values are joined with spaces).</td></tr><tr><td><code>wait(ticks)</code></td><td>Pause for a number of game ticks (20 ticks = 1 second).</td></tr><tr><td><code>waitSeconds(seconds)</code></td><td>Pause for a number of seconds (decimals allowed).</td></tr><tr><td><code>stop()</code></td><td>End the script right now (onStop() still runs).</td></tr><tr><td><code>error(message)</code></td><td>Stop the script with an error message.</td></tr><tr><td><code>time()</code></td><td>Milliseconds since 1970 — use it to measure how long things take.</td></tr></tbody></table></div>
+<h5>Player</h5>
+<div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>inWorld()</code></td><td>True while you are in a world/server.</td></tr><tr><td><code>health()</code></td><td>Your health (20 = full, 2 per heart).</td></tr><tr><td><code>maxHealth()</code></td><td>Your maximum health.</td></tr><tr><td><code>food()</code></td><td>Your hunger bar (20 = full).</td></tr><tr><td><code>x()</code></td><td>Your X coordinate.</td></tr><tr><td><code>y()</code></td><td>Your Y coordinate.</td></tr><tr><td><code>z()</code></td><td>Your Z coordinate.</td></tr><tr><td><code>dimension()</code></td><td>"overworld", "the_nether" or "the_end".</td></tr><tr><td><code>playerName()</code></td><td>Your username.</td></tr><tr><td><code>playerNearby(radius)</code></td><td>True if another player is within radius blocks (default 32). Friends, teammates and bots don't count.</td></tr><tr><td><code>nearestPlayer(radius)</code></td><td>Name of the closest other player within radius (default 32), or null.</td></tr><tr><td><code>playersNearby(radius)</code></td><td>List of other players' names within radius (default 32), closest first.</td></tr><tr><td><code>eat()</code></td><td>Eat one food item from your hotbar. Returns false if there is nothing to eat.</td></tr><tr><td><code>eatUntilFull()</code></td><td>Keep eating until the hunger bar is full or you run out of food. Returns true if full.</td></tr></tbody></table></div>
+<h5>Chat</h5>
+<div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>command(text)</code></td><td>Run a command as if typed in chat: "/home" (server), "#mine gold_ore" (Baritone) or ".toggle flee" (DIH).</td></tr><tr><td><code>say(text)</code></td><td>Send a plain chat message.</td></tr></tbody></table></div>
+<h5>Baritone</h5>
+<div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>baritone(command)</code></td><td>Run a Baritone command without the #, e.g. baritone("mine gold_ore").</td></tr><tr><td><code>stopBaritone()</code></td><td>Cancel whatever Baritone is doing.</td></tr><tr><td><code>baritoneBusy()</code></td><td>True while Baritone is mining, pathing, farming...</td></tr><tr><td><code>waitForBaritone(timeoutTicks)</code></td><td>Wait until Baritone is idle. Returns false if it timed out (default: no timeout).</td></tr><tr><td><code>goto(target, ...)</code></td><td>Walk with Baritone and wait until it arrives: goto("chest") or goto(x, y, z).</td></tr></tbody></table></div>
+<h5>Inventory</h5>
+<div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>count(item)</code></td><td>How many of an item you carry, e.g. count("raw_gold").</td></tr><tr><td><code>hasItem(item)</code></td><td>True if you carry at least one of the item.</td></tr><tr><td><code>freeSlots()</code></td><td>Number of empty main-inventory slots (0-36).</td></tr><tr><td><code>inventoryFull()</code></td><td>True when there is no empty slot left.</td></tr><tr><td><code>heldItem()</code></td><td>Id of the item in your main hand, e.g. "diamond_pickaxe" ("air" if empty).</td></tr><tr><td><code>selectSlot(slot)</code></td><td>Select hotbar slot 1-9.</td></tr><tr><td><code>selectItem(item)</code></td><td>Select the hotbar slot holding item. Returns false if it isn't in the hotbar.</td></tr></tbody></table></div>
+<h5>GUI</h5>
+<div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>guiOpen()</code></td><td>True while a chest or other container GUI is open.</td></tr><tr><td><code>guiTitle()</code></td><td>Title of the open screen, or "" if none.</td></tr><tr><td><code>waitForGui(timeoutTicks, title)</code></td><td>Wait for a container GUI to open (optionally with a title containing text). Returns false on timeout (default 100 ticks).</td></tr><tr><td><code>waitForItem(name, timeoutTicks)</code></td><td>Wait until an item with this name shows up in the open GUI. Returns false on timeout (default 100 ticks).</td></tr><tr><td><code>clickItem(name, button)</code></td><td>Click the item in the open GUI whose name (or id) matches, e.g. clickItem("Badlands"). button: 0 left (default), 1 right. Returns false if not found.</td></tr><tr><td><code>clickSlot(slot, button, shift)</code></td><td>Click a GUI slot by number: 0 is the top-left slot of the menu (0-26 in a 27-slot menu), your inventory comes after guiSize(). button 0 left, 1 right; shift=true shift-clicks.</td></tr><tr><td><code>guiSize()</code></td><td>Number of the open GUI's own slots (27 for a chest or most server menus, 54 for a double chest; 0 if none). Your inventory comes after these.</td></tr><tr><td><code>slotItem(slot)</code></td><td>Item id in a GUI slot, e.g. "raw_gold", or null if empty.</td></tr><tr><td><code>slotName(slot)</code></td><td>Name shown on the item in a GUI slot, or null if empty.</td></tr><tr><td><code>slotCount(slot)</code></td><td>How many items are in a GUI slot (0 if empty).</td></tr><tr><td><code>findSlot(item)</code></td><td>First of the GUI's own slots holding item (by id or name), or -1.</td></tr><tr><td><code>inventorySlot(n)</code></td><td>GUI slot number of your own inventory slot n (1-9 hotbar, 10-36 the rows above), for clickSlot(). -1 if not shown.</td></tr><tr><td><code>clickInventory(n, button, shift)</code></td><td>Click your own inventory slot n (1-9 hotbar, 10-36 the rows above). Works with a chest open too.</td></tr><tr><td><code>fillSlots(item, count)</code></td><td>Take item from the open container and put exactly 1 in each of count empty inventory slots. Returns how many slots were filled.</td></tr><tr><td><code>deposit(item)</code></td><td>Shift-click every stack of item from your inventory into the open container. "*" moves everything. Returns the number of items moved.</td></tr><tr><td><code>withdraw(item, amount)</code></td><td>Shift-click stacks of item from the open container into your inventory until you have taken at least amount (default: all). Returns the number moved.</td></tr><tr><td><code>closeGui()</code></td><td>Close the open screen.</td></tr></tbody></table></div>
+<h5>World</h5>
+<div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>findBlock(block, radius)</code></td><td>Closest block of this type within radius (default 16, max 32) as [x, y, z], or null.</td></tr><tr><td><code>lookAt(x, y, z)</code></td><td>Turn to face a position.</td></tr><tr><td><code>openNearest(block, radius)</code></td><td>Look at and right-click the closest block of this type within reach (radius default 5), then wait for its GUI. Returns true if a GUI opened.</td></tr><tr><td><code>macro(name)</code></td><td>Run one of your saved DIH macros and wait for it to finish. Returns false if it doesn't exist.</td></tr></tbody></table></div>
+<h5>Math</h5>
+<div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>abs(x)</code></td><td>Absolute value.</td></tr><tr><td><code>floor(x)</code></td><td>Round down.</td></tr><tr><td><code>ceil(x)</code></td><td>Round up.</td></tr><tr><td><code>round(x)</code></td><td>Round to the nearest whole number.</td></tr><tr><td><code>sqrt(x)</code></td><td>Square root.</td></tr><tr><td><code>min(a, b, ...)</code></td><td>Smallest of the numbers.</td></tr><tr><td><code>max(a, b, ...)</code></td><td>Largest of the numbers.</td></tr><tr><td><code>random(min, max)</code></td><td>Random whole number from min to max (both included).</td></tr></tbody></table></div>
+<h5>Text</h5>
+<div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>str(value)</code></td><td>Turn any value into text.</td></tr><tr><td><code>num(text)</code></td><td>Turn text into a number (null if it isn't one).</td></tr><tr><td><code>type(value)</code></td><td>Type name: number, string, boolean, list or null.</td></tr><tr><td><code>lower(text)</code></td><td>Lower-case copy of the text.</td></tr><tr><td><code>upper(text)</code></td><td>Upper-case copy of the text.</td></tr><tr><td><code>trim(text)</code></td><td>Text without leading/trailing spaces.</td></tr><tr><td><code>startsWith(text, prefix)</code></td><td>True if the text begins with prefix.</td></tr><tr><td><code>endsWith(text, suffix)</code></td><td>True if the text ends with suffix.</td></tr><tr><td><code>replace(text, find, with)</code></td><td>Replace every occurrence of find.</td></tr><tr><td><code>split(text, separator)</code></td><td>Split text into a list.</td></tr><tr><td><code>join(list, separator)</code></td><td>Join list items into text.</td></tr></tbody></table></div>
+<h5>Lists</h5>
+<div class="table"><table><thead><tr><th scope="col">Function</th><th scope="col">What it does</th></tr></thead><tbody><tr><td><code>len(value)</code></td><td>Length of a list or string.</td></tr><tr><td><code>contains(listOrText, value)</code></td><td>True if the list holds value (or the text contains it).</td></tr><tr><td><code>push(list, value)</code></td><td>Add value to the end of the list.</td></tr><tr><td><code>pop(list)</code></td><td>Remove and return the last item (null if empty).</td></tr><tr><td><code>removeAt(list, index)</code></td><td>Remove and return the item at index.</td></tr><tr><td><code>range(start, end)</code></td><td>List of whole numbers from start up to (not including) end.</td></tr></tbody></table></div>
+</article>
+<article class="cmd" id="gold-miner-script" data-name="Gold miner script" data-aliases="" data-beta="1">
+<h4><a class="self" href="#gold-miner-script"><span class="pfx"></span>Gold miner script</a></h4>
+<p class="aka"><span class="beta-tag">Beta</span> 5.1 beta only, not in 5.0.1 stable.</p>
+
+<p class="sum">A complete bot: mine gold with Baritone, go <code>/home</code> when hurt, when a player comes near or when the inventory is full, store the raw gold, take 27 back one per slot, eat, then <code>/rtpmenu</code> to the Badlands and start again.</p>
+<p>DIH writes this script as <code>gold_miner</code> the first time the scripts folder is created. To add it later, run <code>.scripts new gold_miner</code>, open it with <code>.scripts edit gold_miner</code> and paste it over the template.</p>
+<pre><code>.scripts run gold_miner
+.scripts stop gold_miner</code></pre>
+<pre><code>// gold_miner.dscript
+// Mines gold. Goes /home when health is low or a player comes near.
+// At home: store raw gold in the chest, take 27 back (1 per slot), eat, then
+// /rtpmenu -&gt; Overworld -&gt; Badlands and mine again.
+//
+// Run:  .scripts run gold_miner      Stop: .scripts stop gold_miner
+
+const ORE          = &quot;gold_ore&quot;;
+const LOW_HEALTH   = 5;       // 20 = full health, 2 per heart
+const SAFE_RADIUS  = 48;      // how close a player can get (blocks)
+const KEEP_GOLD    = 27;      // raw gold to spread back into the inventory, 1 per slot
+
+function main() {
+    while (true) {
+        goldMining();
+        atHome();
+    }
+}
+
+// ---------------------------------------------------------------- mining
+
+function goldMining() {
+    baritone(&quot;mine &quot; + ORE);                    // command #mine gold_ore
+    while (true) {
+        if (health() &lt;= LOW_HEALTH) {
+            print(&quot;Low health (&quot; + health() + &quot;) - going home&quot;);
+            goHome();
+            eatUntilHealthFull();               // eat until health = 20
+            return;
+        }
+        if (playerNearby(SAFE_RADIUS)) {
+            print(&quot;Player nearby: &quot; + nearestPlayer(SAFE_RADIUS) + &quot; - going home&quot;);
+            goHome();
+            return;
+        }
+        if (inventoryFull()) {
+            print(&quot;Inventory full - going home&quot;);
+            goHome();
+            return;
+        }
+        wait(5);                                // check 4 times a second
+    }
+}
+
+function goHome() {
+    stopBaritone();                             // stop command #mine gold_ore
+    command(&quot;/home&quot;);
+    waitSeconds(5);                             // teleport warm-up
+}
+
+// ---------------------------------------------------------------- at home
+
+function atHome() {
+    // go to chest
+    if (findBlock(&quot;chest&quot;, 5) == null) {
+        goto(&quot;chest&quot;);
+    }
+    if (!openNearest(&quot;chest&quot;)) {
+        error(&quot;No chest found near /home&quot;);
+    }
+
+    // fill the chest with raw gold
+    let stored = deposit(&quot;raw_gold&quot;);
+    print(&quot;Stored &quot; + stored + &quot; raw gold&quot;);
+
+    // take 27 raw gold back, 1 in each empty slot
+    let filled = fillSlots(&quot;raw_gold&quot;, KEEP_GOLD);
+    print(&quot;Filled &quot; + filled + &quot; slots with raw gold&quot;);
+    closeGui();
+
+    // eat until health is full
+    eatUntilHealthFull();
+
+    // /rtpmenu -&gt; Overworld -&gt; Badlands
+    command(&quot;/rtpmenu&quot;);
+    if (!waitForItem(&quot;Overworld&quot;, 100)) { error(&quot;/rtpmenu did not open&quot;); }
+    clickItem(&quot;Overworld&quot;);
+    if (!waitForItem(&quot;Badlands&quot;, 100)) { error(&quot;No Badlands option in the RTP menu&quot;); }
+    clickItem(&quot;Badlands&quot;);
+    waitSeconds(8);                             // let the teleport land
+    // main() loops back to goldMining()
+}
+
+function eatUntilHealthFull() {
+    while (health() &lt; maxHealth()) {
+        if (food() &lt; 20) {
+            if (!eat()) {
+                print(&quot;Out of food - waiting for health to regenerate&quot;);
+                waitSeconds(2);
+            }
+        } else {
+            waitSeconds(1);                     // full hunger -&gt; health regenerates
+        }
+    }
+}
+
+// runs whenever the script stops
+function onStop() {
+    stopBaritone();
+}</code></pre>
+<h5>Before you run it</h5>
+<ul><li>Set your <code>/home</code> within 5 blocks of a chest, or Baritone walks to the nearest chest it can see.</li><li>Keep food in your hotbar: <code>eat()</code> only eats from the hotbar.</li><li>If your server's <code>/rtpmenu</code> buttons aren't named exactly <strong>Overworld</strong> and <strong>Badlands</strong>, change the names in the <code>clickItem</code> and <code>waitForItem</code> lines. Names ignore capitals and colour codes.</li><li>Change the constants at the top to tune it: the ore, the health that sends you home, how close a player can get and how much raw gold to take back.</li><li><code>fillSlots(&quot;raw_gold&quot;, 27)</code> fills empty slots only; with fewer than 27 free it fills what it can and says how many.</li></ul>
 </article>
 </section>
 </section>

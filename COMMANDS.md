@@ -301,7 +301,7 @@ Beta only. Macros can sit in folders in the editor, and a share code carries a m
 
 Write automation in DihScript, a small C-style language, and run it by name. Scripts are plain text files in
 `config/dih/scripts/<name>.dscript`; open the editor from the module menu's **Scripts** button (also in the Main
-Menu panel of container GUIs) or with `.scripts edit`. [SCRIPTING.md](SCRIPTING.md) is the language guide.
+Menu panel of container GUIs) or with `.scripts edit`. The [Scripting guides](#writing-scripts) cover the language, every function and a full gold miner.
 Alias: `.script`.
 
 | Usage | Effect |
@@ -1812,3 +1812,416 @@ you've seen selling the books you name.
   read `trade_count` (purchases), `trade_spent` (emeralds) and `trade_status` (`ok`, `none`, or `failed: <reason>`).
 - The AI's `trade` tool starts AutoTrade in either mode. Run it yourself with `.tools trade`; `.tools help trade` lists
   its arguments.
+
+### Scripting
+
+#### Writing scripts
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Write your own automation in DihScript, a small language that looks like C or JavaScript, and run it by name.
+
+A script is a text file in `config/dih/scripts/<name>.dscript`. Write it in the **Scripts** window or in any text
+editor, then start and stop it from chat:
+
+```
+.scripts new my_bot
+.scripts edit my_bot
+.scripts run my_bot
+.scripts stop my_bot
+```
+
+Open the Scripts window from the module menu's **Scripts** button, the Main Menu panel in container GUIs, or
+`.scripts edit`. The list on the left shows every script, with a green dot on the ones running. The editor colours the
+code, checks it as you type and marks problem lines in red; the status bar names the problem. **Run** saves and starts
+the script, **Save** (Ctrl+S) saves, and **?** lists every built-in function: click one to insert it. `.scripts` lists
+the chat subcommands.
+
+The smallest script:
+
+```js
+function main() {
+    print("Hello, " + playerName() + "! You have " + health() + " health.");
+}
+```
+
+`main()` runs when the script starts, and the script ends when it returns. An optional `onStop()` runs whenever the
+script ends, whether it finished, you stopped it or it hit an error, so put clean-up such as `stopBaritone();` there.
+
+Scripts run on their own thread, so a script that waits never freezes the game, and several can run at once. Before
+one starts, DIH checks it for syntax errors, unknown functions and wrong argument counts; `.scripts check <name>` runs
+the same check without starting it. An error while running stops the script and prints the line in chat. `.scripts
+stop` runs `onStop()`; stopping a second time ends the script at once.
+
+| Editor key | What it does |
+|---|---|
+| Ctrl+S | Save. Switching scripts, running and closing the window also save. |
+| Ctrl+Enter | Run, or stop if running. |
+| Ctrl+Z, Ctrl+Y | Undo, redo. |
+| Ctrl+/ | Comment or uncomment the line or selection. |
+| Tab, Shift+Tab | Indent, outdent. |
+| Ctrl+A, Ctrl+C, Ctrl+X, Ctrl+V | Select all, copy, cut, paste. With nothing selected, copy and cut take the whole line. |
+| Double-click | Select a word. |
+| Esc | Leave the editor so game keys work again. |
+
+#### Script language
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Statements end with `;`, blocks use `{ }`, and comments are `// to the end of the line` or `/* across lines */`.
+
+##### Values
+
+| Type | Examples |
+|---|---|
+| number | `20`, `0.5`, `-3` |
+| text | `"gold_ore"`, `'Badlands'`, `"two\nlines"` |
+| true or false | `true`, `false` |
+| list | `[1, 2, "three"]`, `items[0]`, `items[-1]` for the last item |
+| nothing | `null` |
+
+`false`, `null`, `0`, empty text and an empty list count as false in an `if`; everything else counts as true. `+`
+joins text when either side is text: `"Health: " + health()`.
+
+##### Variables
+
+```js
+const ORE = "gold_ore";   // fixed value
+let count = 0;            // value you can change
+count += 1;               // also -=, *= and /=
+```
+
+Declare a variable with `let` or `const` before using it. One declared outside every function can be used in all of
+them; one declared inside `{ }` only exists inside those braces.
+
+##### Operators
+
+| Kind | Operators |
+|---|---|
+| Arithmetic | `+ - * / %` |
+| Comparison | `== != < <= > >=` |
+| Logic | `&&` (and), `\|\|` (or), `!` (not) |
+
+##### Control flow
+
+The braces are always required.
+
+```js
+if (food() < 10) {
+    eat();
+} else if (health() < 10) {
+    waitSeconds(5);
+} else {
+    print("fine");
+}
+
+while (!inventoryFull()) { wait(10); }        // repeat while true
+repeat (3) { clickItem("Confirm"); }          // repeat a set number of times
+for (let name in playersNearby(64)) { print(name); }
+for (let i in range(5)) { print(i); }         // 0 1 2 3 4
+
+break;      // leave the loop
+continue;   // skip to the next round
+```
+
+##### Functions
+
+```js
+function distanceTo(x2, z2) {
+    let dx = x() - x2;
+    let dz = z() - z2;
+    return sqrt(dx * dx + dz * dz);
+}
+```
+
+Declare functions outside every other function. They can be called before the line that defines them, and missing
+arguments are `null`.
+
+##### Timing
+
+The game runs 20 ticks a second. `wait(ticks)` and `waitSeconds(seconds)` pause the script without pausing the game.
+Put a `wait` in every loop that runs for a long time; a loop without one is paused for a tick every 20 000 steps so it
+can't lock up the client.
+
+##### Slot numbers
+
+`clickSlot` and the other slot functions number the open GUI's slots from 0 at the top-left, left to right, row by
+row: a 27-slot server menu is 0-26 (row 2 starts at 9, row 3 at 18) and a double chest 0-53. Your own inventory comes
+right after `guiSize()`. Functions that take one of your inventory slots number them 1-36 instead: 1-9 is the hotbar,
+the same as the number keys, and 10-36 the three rows above it from the top-left.
+
+```js
+command("/menu");
+waitForGui(100);
+clickSlot(13);                                   // middle of a 27-slot menu
+if (slotName(22) == "Confirm") { clickSlot(22); }
+for (let i in range(guiSize())) {
+    if (slotItem(i) == "diamond") { clickSlot(i, 0, true); }   // shift-click every diamond out
+}
+```
+
+#### Script functions
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Every built-in function, by category. `.scripts functions <category>` lists them in game. Item and block names take an
+id (`raw_gold`, `minecraft:raw_gold`) or the name shown in game (`Raw Gold`). Arguments shown in a signature can be
+left off from the right where the description gives a default.
+
+##### Control
+
+| Function | What it does |
+|---|---|
+| `print(value, ...)` | Show a message in chat (values are joined with spaces). |
+| `wait(ticks)` | Pause for a number of game ticks (20 ticks = 1 second). |
+| `waitSeconds(seconds)` | Pause for a number of seconds (decimals allowed). |
+| `stop()` | End the script right now (onStop() still runs). |
+| `error(message)` | Stop the script with an error message. |
+| `time()` | Milliseconds since 1970 — use it to measure how long things take. |
+
+##### Player
+
+| Function | What it does |
+|---|---|
+| `inWorld()` | True while you are in a world/server. |
+| `health()` | Your health (20 = full, 2 per heart). |
+| `maxHealth()` | Your maximum health. |
+| `food()` | Your hunger bar (20 = full). |
+| `x()` | Your X coordinate. |
+| `y()` | Your Y coordinate. |
+| `z()` | Your Z coordinate. |
+| `dimension()` | "overworld", "the_nether" or "the_end". |
+| `playerName()` | Your username. |
+| `playerNearby(radius)` | True if another player is within radius blocks (default 32). Friends, teammates and bots don't count. |
+| `nearestPlayer(radius)` | Name of the closest other player within radius (default 32), or null. |
+| `playersNearby(radius)` | List of other players' names within radius (default 32), closest first. |
+| `eat()` | Eat one food item from your hotbar. Returns false if there is nothing to eat. |
+| `eatUntilFull()` | Keep eating until the hunger bar is full or you run out of food. Returns true if full. |
+
+##### Chat
+
+| Function | What it does |
+|---|---|
+| `command(text)` | Run a command as if typed in chat: "/home" (server), "#mine gold_ore" (Baritone) or ".toggle flee" (DIH). |
+| `say(text)` | Send a plain chat message. |
+
+##### Baritone
+
+| Function | What it does |
+|---|---|
+| `baritone(command)` | Run a Baritone command without the #, e.g. baritone("mine gold_ore"). |
+| `stopBaritone()` | Cancel whatever Baritone is doing. |
+| `baritoneBusy()` | True while Baritone is mining, pathing, farming... |
+| `waitForBaritone(timeoutTicks)` | Wait until Baritone is idle. Returns false if it timed out (default: no timeout). |
+| `goto(target, ...)` | Walk with Baritone and wait until it arrives: goto("chest") or goto(x, y, z). |
+
+##### Inventory
+
+| Function | What it does |
+|---|---|
+| `count(item)` | How many of an item you carry, e.g. count("raw_gold"). |
+| `hasItem(item)` | True if you carry at least one of the item. |
+| `freeSlots()` | Number of empty main-inventory slots (0-36). |
+| `inventoryFull()` | True when there is no empty slot left. |
+| `heldItem()` | Id of the item in your main hand, e.g. "diamond_pickaxe" ("air" if empty). |
+| `selectSlot(slot)` | Select hotbar slot 1-9. |
+| `selectItem(item)` | Select the hotbar slot holding item. Returns false if it isn't in the hotbar. |
+
+##### GUI
+
+| Function | What it does |
+|---|---|
+| `guiOpen()` | True while a chest or other container GUI is open. |
+| `guiTitle()` | Title of the open screen, or "" if none. |
+| `waitForGui(timeoutTicks, title)` | Wait for a container GUI to open (optionally with a title containing text). Returns false on timeout (default 100 ticks). |
+| `waitForItem(name, timeoutTicks)` | Wait until an item with this name shows up in the open GUI. Returns false on timeout (default 100 ticks). |
+| `clickItem(name, button)` | Click the item in the open GUI whose name (or id) matches, e.g. clickItem("Badlands"). button: 0 left (default), 1 right. Returns false if not found. |
+| `clickSlot(slot, button, shift)` | Click a GUI slot by number: 0 is the top-left slot of the menu (0-26 in a 27-slot menu), your inventory comes after guiSize(). button 0 left, 1 right; shift=true shift-clicks. |
+| `guiSize()` | Number of the open GUI's own slots (27 for a chest or most server menus, 54 for a double chest; 0 if none). Your inventory comes after these. |
+| `slotItem(slot)` | Item id in a GUI slot, e.g. "raw_gold", or null if empty. |
+| `slotName(slot)` | Name shown on the item in a GUI slot, or null if empty. |
+| `slotCount(slot)` | How many items are in a GUI slot (0 if empty). |
+| `findSlot(item)` | First of the GUI's own slots holding item (by id or name), or -1. |
+| `inventorySlot(n)` | GUI slot number of your own inventory slot n (1-9 hotbar, 10-36 the rows above), for clickSlot(). -1 if not shown. |
+| `clickInventory(n, button, shift)` | Click your own inventory slot n (1-9 hotbar, 10-36 the rows above). Works with a chest open too. |
+| `fillSlots(item, count)` | Take item from the open container and put exactly 1 in each of count empty inventory slots. Returns how many slots were filled. |
+| `deposit(item)` | Shift-click every stack of item from your inventory into the open container. "*" moves everything. Returns the number of items moved. |
+| `withdraw(item, amount)` | Shift-click stacks of item from the open container into your inventory until you have taken at least amount (default: all). Returns the number moved. |
+| `closeGui()` | Close the open screen. |
+
+##### World
+
+| Function | What it does |
+|---|---|
+| `findBlock(block, radius)` | Closest block of this type within radius (default 16, max 32) as [x, y, z], or null. |
+| `lookAt(x, y, z)` | Turn to face a position. |
+| `openNearest(block, radius)` | Look at and right-click the closest block of this type within reach (radius default 5), then wait for its GUI. Returns true if a GUI opened. |
+| `macro(name)` | Run one of your saved DIH macros and wait for it to finish. Returns false if it doesn't exist. |
+
+##### Math
+
+| Function | What it does |
+|---|---|
+| `abs(x)` | Absolute value. |
+| `floor(x)` | Round down. |
+| `ceil(x)` | Round up. |
+| `round(x)` | Round to the nearest whole number. |
+| `sqrt(x)` | Square root. |
+| `min(a, b, ...)` | Smallest of the numbers. |
+| `max(a, b, ...)` | Largest of the numbers. |
+| `random(min, max)` | Random whole number from min to max (both included). |
+
+##### Text
+
+| Function | What it does |
+|---|---|
+| `str(value)` | Turn any value into text. |
+| `num(text)` | Turn text into a number (null if it isn't one). |
+| `type(value)` | Type name: number, string, boolean, list or null. |
+| `lower(text)` | Lower-case copy of the text. |
+| `upper(text)` | Upper-case copy of the text. |
+| `trim(text)` | Text without leading/trailing spaces. |
+| `startsWith(text, prefix)` | True if the text begins with prefix. |
+| `endsWith(text, suffix)` | True if the text ends with suffix. |
+| `replace(text, find, with)` | Replace every occurrence of find. |
+| `split(text, separator)` | Split text into a list. |
+| `join(list, separator)` | Join list items into text. |
+
+##### Lists
+
+| Function | What it does |
+|---|---|
+| `len(value)` | Length of a list or string. |
+| `contains(listOrText, value)` | True if the list holds value (or the text contains it). |
+| `push(list, value)` | Add value to the end of the list. |
+| `pop(list)` | Remove and return the last item (null if empty). |
+| `removeAt(list, index)` | Remove and return the item at index. |
+| `range(start, end)` | List of whole numbers from start up to (not including) end. |
+
+#### Gold miner script
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+A complete bot: mine gold with Baritone, go `/home` when hurt, when a player comes near or when the inventory is full,
+store the raw gold, take 27 back one per slot, eat, then `/rtpmenu` to the Badlands and start again.
+
+DIH writes this script as `gold_miner` the first time the scripts folder is created. To add it later, run
+`.scripts new gold_miner`, open it with `.scripts edit gold_miner` and paste it over the template.
+
+```
+.scripts run gold_miner
+.scripts stop gold_miner
+```
+
+```js
+// gold_miner.dscript
+// Mines gold. Goes /home when health is low or a player comes near.
+// At home: store raw gold in the chest, take 27 back (1 per slot), eat, then
+// /rtpmenu -> Overworld -> Badlands and mine again.
+//
+// Run:  .scripts run gold_miner      Stop: .scripts stop gold_miner
+
+const ORE          = "gold_ore";
+const LOW_HEALTH   = 5;       // 20 = full health, 2 per heart
+const SAFE_RADIUS  = 48;      // how close a player can get (blocks)
+const KEEP_GOLD    = 27;      // raw gold to spread back into the inventory, 1 per slot
+
+function main() {
+    while (true) {
+        goldMining();
+        atHome();
+    }
+}
+
+// ---------------------------------------------------------------- mining
+
+function goldMining() {
+    baritone("mine " + ORE);                    // command #mine gold_ore
+    while (true) {
+        if (health() <= LOW_HEALTH) {
+            print("Low health (" + health() + ") - going home");
+            goHome();
+            eatUntilHealthFull();               // eat until health = 20
+            return;
+        }
+        if (playerNearby(SAFE_RADIUS)) {
+            print("Player nearby: " + nearestPlayer(SAFE_RADIUS) + " - going home");
+            goHome();
+            return;
+        }
+        if (inventoryFull()) {
+            print("Inventory full - going home");
+            goHome();
+            return;
+        }
+        wait(5);                                // check 4 times a second
+    }
+}
+
+function goHome() {
+    stopBaritone();                             // stop command #mine gold_ore
+    command("/home");
+    waitSeconds(5);                             // teleport warm-up
+}
+
+// ---------------------------------------------------------------- at home
+
+function atHome() {
+    // go to chest
+    if (findBlock("chest", 5) == null) {
+        goto("chest");
+    }
+    if (!openNearest("chest")) {
+        error("No chest found near /home");
+    }
+
+    // fill the chest with raw gold
+    let stored = deposit("raw_gold");
+    print("Stored " + stored + " raw gold");
+
+    // take 27 raw gold back, 1 in each empty slot
+    let filled = fillSlots("raw_gold", KEEP_GOLD);
+    print("Filled " + filled + " slots with raw gold");
+    closeGui();
+
+    // eat until health is full
+    eatUntilHealthFull();
+
+    // /rtpmenu -> Overworld -> Badlands
+    command("/rtpmenu");
+    if (!waitForItem("Overworld", 100)) { error("/rtpmenu did not open"); }
+    clickItem("Overworld");
+    if (!waitForItem("Badlands", 100)) { error("No Badlands option in the RTP menu"); }
+    clickItem("Badlands");
+    waitSeconds(8);                             // let the teleport land
+    // main() loops back to goldMining()
+}
+
+function eatUntilHealthFull() {
+    while (health() < maxHealth()) {
+        if (food() < 20) {
+            if (!eat()) {
+                print("Out of food - waiting for health to regenerate");
+                waitSeconds(2);
+            }
+        } else {
+            waitSeconds(1);                     // full hunger -> health regenerates
+        }
+    }
+}
+
+// runs whenever the script stops
+function onStop() {
+    stopBaritone();
+}
+```
+
+##### Before you run it
+
+- Set your `/home` within 5 blocks of a chest, or Baritone walks to the nearest chest it can see.
+- Keep food in your hotbar: `eat()` only eats from the hotbar.
+- If your server's `/rtpmenu` buttons aren't named exactly **Overworld** and **Badlands**, change the names in the
+  `clickItem` and `waitForItem` lines. Names ignore capitals and colour codes.
+- Change the constants at the top to tune it: the ore, the health that sends you home, how close a player can get and
+  how much raw gold to take back.
+- `fillSlots("raw_gold", 27)` fills empty slots only; with fewer than 27 free it fills what it can and says how many.
