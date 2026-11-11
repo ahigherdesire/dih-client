@@ -1,6 +1,6 @@
 # DIH Client commands
 
-Every chat command in DIH Client and how to type it, the client's menus, and guides. Written for 5.1 beta 7g.3, on
+Every chat command in DIH Client and how to type it, the client's menus, and guides. Written for 5.1 beta 8, on
 Minecraft 26.2 and 26.3, Fabric Loader 0.19.3+, Java 25. [MODULES.md](MODULES.md) lists every module and setting, and
 [BETA-CHANGES.md](BETA-CHANGES.md) what changed in each beta. The website shows all three together at `/docs`.
 

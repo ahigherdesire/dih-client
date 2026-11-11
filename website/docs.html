@@ -380,6 +380,7 @@
 </ul>
 </div>
 <div class="toc-sys"><a class="toc-head" href="#what-s-new-in-the-beta">What&#x27;s new in the beta</a>
+<a class="toc-topic" href="#what-s-new-in-the-beta-5-1-beta-8-scripts-write-your-own-bots">5.1 beta 8: Scripts — write your own bots</a>
 <a class="toc-topic" href="#what-s-new-in-the-beta-5-1-beta-7h-pearlcharge-really-boosts-the-pearl-automace-gets-stun-slam">5.1 beta 7h: PearlCharge really boosts the pearl, AutoMace gets Stun Slam</a>
 <a class="toc-topic" href="#what-s-new-in-the-beta-5-1-beta-7g-3-place-schematics-like-litematica-full-material-list-csv-export">5.1 beta 7g.3: place schematics like Litematica, full material list, CSV export</a>
 <a class="toc-topic" href="#what-s-new-in-the-beta-5-1-beta-7g-2-schematic-builds-use-your-whole-inventory">5.1 beta 7g.2: schematic builds use your whole inventory</a>
@@ -3069,6 +3070,11 @@ function onStop() {
 <section class="sys" id="what-s-new-in-the-beta" aria-labelledby="what-s-new-in-the-beta-h">
 <h2 id="what-s-new-in-the-beta-h">What&#x27;s new in the beta</h2>
 <p>The 5.1 betas with release notes, newest first. Recent betas are Fabric only, on Minecraft 26.2 and 26.3; NeoForge and Forge stay on beta 3.</p>
+<section class="grp" id="what-s-new-in-the-beta-5-1-beta-8-scripts-write-your-own-bots">
+<h3>5.1 beta 8: Scripts — write your own bots</h3>
+<p><strong>Scripts (new)</strong></p>
+<ul><li>Write your own automation in DihScript, a small language that looks like C or JavaScript, and run it by name: <code>.scripts run &lt;name&gt;</code>, <code>.scripts stop &lt;name&gt;</code>.</li><li>New <strong>Scripts</strong> window in the module menu (and in the Main Menu panel of container GUIs): a list of your scripts, a code editor with colours and line numbers, Run/Stop and Save buttons, and a <strong>?</strong> list of every built-in function. It checks your script as you type and marks problem lines in red.</li><li>80 built-in functions: health, hunger, position and nearby players; chat and <code>/</code>, <code>#</code> and <code>.</code> commands; Baritone (mine, goto, wait until done); inventory; chests and server menus (click by item name or slot number, deposit, withdraw, put 1 item per slot); eating; running your saved macros.</li><li>Scripts run in the background without freezing the game, and several can run at once.</li><li>Ships with two examples: <code>hello</code> and <code>gold_miner</code>, a bot that mines gold, goes <code>/home</code> when hurt or when a player comes near, stores the gold, eats, and <code>/rtpmenu</code>s back out.</li><li>Scripts are files in <code>config/dih/scripts/</code>. <a class="ref" href="#dot-scripts"><code>.scripts</code></a> lists the other subcommands: <code>list</code>, <code>check</code>, <code>edit</code>, <code>new</code>, <code>delete</code>, <code>functions</code>, <code>folder</code>. The guide is in the manual under Guides → Scripting.</li></ul>
+</section>
 <section class="grp" id="what-s-new-in-the-beta-5-1-beta-7h-pearlcharge-really-boosts-the-pearl-automace-gets-stun-slam">
 <h3>5.1 beta 7h: PearlCharge really boosts the pearl, AutoMace gets Stun Slam</h3>
 <p><strong>PearlCharge</strong></p>

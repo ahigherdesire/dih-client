@@ -4,6 +4,23 @@
 
 The 5.1 betas with release notes, newest first. Recent betas are Fabric only, on Minecraft 26.2 and 26.3; NeoForge and Forge stay on beta 3.
 
+### 5.1 beta 8: Scripts — write your own bots
+
+**Scripts (new)**
+- Write your own automation in DihScript, a small language that looks like C or JavaScript, and run it by name:
+  `.scripts run <name>`, `.scripts stop <name>`.
+- New **Scripts** window in the module menu (and in the Main Menu panel of container GUIs): a list of your scripts,
+  a code editor with colours and line numbers, Run/Stop and Save buttons, and a **?** list of every built-in function.
+  It checks your script as you type and marks problem lines in red.
+- 80 built-in functions: health, hunger, position and nearby players; chat and `/`, `#` and `.` commands; Baritone
+  (mine, goto, wait until done); inventory; chests and server menus (click by item name or slot number, deposit,
+  withdraw, put 1 item per slot); eating; running your saved macros.
+- Scripts run in the background without freezing the game, and several can run at once.
+- Ships with two examples: `hello` and `gold_miner`, a bot that mines gold, goes `/home` when hurt or when a player
+  comes near, stores the gold, eats, and `/rtpmenu`s back out.
+- Scripts are files in `config/dih/scripts/`. `.scripts` lists the other subcommands: `list`, `check`, `edit`, `new`,
+  `delete`, `functions`, `folder`. The guide is in the manual under Guides → Scripting.
+
 ### 5.1 beta 7h: PearlCharge really boosts the pearl, AutoMace gets Stun Slam
 
 **PearlCharge**
