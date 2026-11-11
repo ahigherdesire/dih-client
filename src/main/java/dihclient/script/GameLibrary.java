@@ -335,7 +335,7 @@ public final class GameLibrary {
             if (clicked) a.interpreter().waitTicks(2);
             return clicked;
         });
-        lib.define("GUI", "clickSlot(slot, button, shift)", "Click a raw GUI slot number. shift=true shift-clicks.", 1, 3, a -> {
+        lib.define("GUI", "clickSlot(slot, button, shift)", "Click a GUI slot by number: 0 is the top-left slot of the menu (0-26 in a 27-slot menu), your inventory comes after guiSize(). button 0 left, 1 right; shift=true shift-clicks.", 1, 3, a -> {
             int slot = a.integer(0);
             int button = a.integer(1, 0);
             boolean shift = a.has(2) && dihclient.script.lang.Values.truthy(a.get(2));
@@ -347,6 +347,58 @@ public final class GameLibrary {
             if (clicked) a.interpreter().waitTicks(1);
             return clicked;
         });
+        lib.define("GUI", "guiSize()", "Number of the open GUI's own slots (27 for a chest or most server menus, 54 for a double chest; 0 if none). Your inventory comes after these.", 0, 0,
+            a -> onClient(() -> (double) containerSlotCount()));
+        lib.define("GUI", "slotItem(slot)", "Item id in a GUI slot, e.g. \"raw_gold\", or null if empty.", 1, 1, a -> {
+            int slot = a.integer(0);
+            return onClient(() -> {
+                ItemStack stack = stackAt(slot);
+                return stack.isEmpty() ? null : BuiltInRegistries.ITEM.getKey(stack.getItem()).getPath();
+            });
+        });
+        lib.define("GUI", "slotName(slot)", "Name shown on the item in a GUI slot, or null if empty.", 1, 1, a -> {
+            int slot = a.integer(0);
+            return onClient(() -> {
+                ItemStack stack = stackAt(slot);
+                return stack.isEmpty() ? null : stack.getHoverName().getString();
+            });
+        });
+        lib.define("GUI", "slotCount(slot)", "How many items are in a GUI slot (0 if empty).", 1, 1, a -> {
+            int slot = a.integer(0);
+            return onClient(() -> (double) stackAt(slot).getCount());
+        });
+        lib.define("GUI", "findSlot(item)", "First of the GUI's own slots holding item (by id or name), or -1.", 1, 1, a -> {
+            String item = a.string(0);
+            return onClient(() -> {
+                AbstractContainerMenu menu = menu();
+                if (menu == null) return -1.0;
+                for (int i = 0; i < menu.slots.size(); i++) {
+                    Slot s = menu.slots.get(i);
+                    if (containerOpen() && s.container instanceof Inventory) continue;
+                    if (matches(s.getItem(), item)) return (double) i;
+                }
+                return -1.0;
+            });
+        });
+        lib.define("GUI", "inventorySlot(n)", "GUI slot number of your own inventory slot n (1-9 hotbar, 10-36 the rows above), for clickSlot(). -1 if not shown.", 1, 1, a -> {
+            int n = a.integer(0);
+            if (n < 1 || n > 36) throw a.error("inventory slots are 1-36 (1-9 = hotbar)");
+            return onClient(() -> (double) inventoryMenuSlot(n - 1));
+        });
+        lib.define("GUI", "clickInventory(n, button, shift)", "Click your own inventory slot n (1-9 hotbar, 10-36 the rows above). Works with a chest open too.", 1, 3, a -> {
+            int n = a.integer(0);
+            if (n < 1 || n > 36) throw a.error("inventory slots are 1-36 (1-9 = hotbar)");
+            int button = a.integer(1, 0);
+            boolean shift = a.has(2) && dihclient.script.lang.Values.truthy(a.get(2));
+            boolean clicked = onClient(() -> {
+                int slot = inventoryMenuSlot(n - 1);
+                return slot >= 0 && DihInventoryClickHelper.click(mc(), slot, button, shift ? ContainerInput.QUICK_MOVE : ContainerInput.PICKUP);
+            });
+            if (clicked) a.interpreter().waitTicks(1);
+            return clicked;
+        });
+        lib.define("GUI", "fillSlots(item, count)", "Take item from the open container and put exactly 1 in each of count empty inventory slots. Returns how many slots were filled.", 2, 2,
+            a -> fillSlots(a, a.string(0), a.integer(1)));
         lib.define("GUI", "deposit(item)", "Shift-click every stack of item from your inventory into the open container. \"*\" moves everything. Returns the number of items moved.", 1, 1,
             a -> transfer(a, a.string(0), true, Integer.MAX_VALUE));
         lib.define("GUI", "withdraw(item, amount)", "Shift-click stacks of item from the open container into your inventory until you have taken at least amount (default: all). Returns the number moved.", 1, 2,
@@ -387,6 +439,107 @@ public final class GameLibrary {
             a.interpreter().waitTicks(1);
         }
         return moved;
+    }
+
+    /**
+     * One item per empty inventory slot: pick up a stack from the container, right-click it into empty
+     * slots one at a time, refill from the container when the cursor runs out, then put the rest back.
+     */
+    private static double fillSlots(Library.Args a, String item, int count) {
+        if (count <= 0) return 0;
+        if (!onClient(GameLibrary::containerOpen)) throw a.error("no container is open — use openNearest(\"chest\") or waitForGui() first");
+        int filled = 0;
+        int source = -1;
+        try {
+            while (filled < count) {
+                // 0 = placed one, 1 = picked up a stack, -1 = nothing left to do
+                int[] step = onClient(() -> {
+                    AbstractContainerMenu menu = menu();
+                    if (menu == null || !containerOpen()) return new int[] {-1, -1};
+                    ItemStack carried = menu.getCarried();
+                    if (carried.isEmpty() || !matches(carried, item)) {
+                        if (!carried.isEmpty()) return new int[] {-1, -1};
+                        for (int i = 0; i < menu.slots.size(); i++) {
+                            Slot s = menu.slots.get(i);
+                            if (s.container instanceof Inventory || !matches(s.getItem(), item)) continue;
+                            if (!DihInventoryClickHelper.click(mc(), i, 0, ContainerInput.PICKUP)) return new int[] {-1, -1};
+                            return new int[] {1, i};
+                        }
+                        return new int[] {-1, -1};
+                    }
+                    int empty = emptyInventoryMenuSlot(menu);
+                    if (empty < 0) return new int[] {-1, -1};
+                    if (!DihInventoryClickHelper.click(mc(), empty, 1, ContainerInput.PICKUP)) return new int[] {-1, -1};
+                    return new int[] {0, -1};
+                });
+                if (step[0] < 0) break;
+                if (step[0] == 1) source = step[1];
+                else filled++;
+                a.interpreter().waitTicks(1);
+            }
+        } finally {
+            int back = source;
+            onClient(() -> {
+                putCarriedBack(back);
+                return null;
+            });
+        }
+        return filled;
+    }
+
+    /** Drops whatever is on the cursor into the slot it came from, or any container slot that takes it. */
+    private static void putCarriedBack(int preferred) {
+        AbstractContainerMenu menu = menu();
+        if (menu == null || menu.getCarried().isEmpty()) return;
+        List<Integer> order = new ArrayList<>();
+        if (preferred >= 0) order.add(preferred);
+        for (int i = 0; i < menu.slots.size(); i++) if (i != preferred) order.add(i);
+        for (int i : order) {
+            if (menu.getCarried().isEmpty()) return;
+            if (i >= menu.slots.size()) continue;
+            Slot s = menu.slots.get(i);
+            ItemStack here = s.getItem();
+            if (here.isEmpty() || (ItemStack.isSameItemSameComponents(here, menu.getCarried()) && here.getCount() < here.getMaxStackSize())) {
+                DihInventoryClickHelper.click(mc(), i, 0, ContainerInput.PICKUP);
+            }
+        }
+    }
+
+    /** Menu index of an empty main-inventory/hotbar slot, main inventory first. */
+    private static int emptyInventoryMenuSlot(AbstractContainerMenu menu) {
+        int hotbar = -1;
+        for (int i = 0; i < menu.slots.size(); i++) {
+            Slot s = menu.slots.get(i);
+            if (!(s.container instanceof Inventory) || !s.getItem().isEmpty()) continue;
+            int idx = s.getContainerSlot();
+            if (idx >= 9 && idx < 36) return i;
+            if (idx < 9 && hotbar < 0) hotbar = i;
+        }
+        return hotbar;
+    }
+
+    /** Menu index of player inventory slot {@code index} (0-8 hotbar, 9-35 main), or -1. */
+    private static int inventoryMenuSlot(int index) {
+        AbstractContainerMenu menu = menu();
+        if (menu == null) return -1;
+        for (int i = 0; i < menu.slots.size(); i++) {
+            Slot s = menu.slots.get(i);
+            if (s.container instanceof Inventory && s.getContainerSlot() == index) return i;
+        }
+        return -1;
+    }
+
+    private static int containerSlotCount() {
+        if (!containerOpen()) return 0;
+        int n = 0;
+        for (Slot s : menu().slots) if (!(s.container instanceof Inventory)) n++;
+        return n;
+    }
+
+    private static ItemStack stackAt(int slot) {
+        AbstractContainerMenu menu = menu();
+        if (menu == null || slot < 0 || slot >= menu.slots.size()) return ItemStack.EMPTY;
+        return menu.slots.get(slot).getItem();
     }
 
     private static boolean containerOpen() {
