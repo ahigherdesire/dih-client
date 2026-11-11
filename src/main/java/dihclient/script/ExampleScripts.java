@@ -21,75 +21,102 @@ final class ExampleScripts {
 
     static final String GOLD_MINER = """
         // gold_miner.dscript
-        // Mines gold with Baritone. Goes /home when health is low, a player shows up or the
-        // inventory is full; at home it stores the raw gold in the nearest chest, eats, then
-        // takes /rtpmenu -> Overworld -> Badlands back out and starts again.
+        // Mines gold. Goes /home when health is low or a player comes near.
+        // At home: store raw gold in the chest, take 27 back (1 per slot), eat, then
+        // /rtpmenu -> Overworld -> Badlands and mine again.
         //
-        // Run:  .scripts run gold_miner        Stop: .scripts stop gold_miner
+        // Run:  .scripts run gold_miner      Stop: .scripts stop gold_miner
 
-        const ORE           = "gold_ore";
-        const LOW_HEALTH    = 5;      // 20 = full, 2 per heart
-        const SAFE_RADIUS   = 48;     // blocks
-        const HOME_COMMAND  = "/home";
-        const KEEP_RAW_GOLD = 27;     // raw gold to take back out of the chest
+        const ORE          = "gold_ore";
+        const LOW_HEALTH   = 5;       // 20 = full health, 2 per heart
+        const SAFE_RADIUS  = 48;      // how close a player can get (blocks)
+        const KEEP_GOLD    = 27;      // raw gold to spread back into the inventory, 1 per slot
 
         function main() {
             while (true) {
-                let reason = mineUntilDanger();
-                print("Heading home: " + reason);
-                goHome();
-                restock();
-                travelToBadlands();
+                goldMining();
+                atHome();
             }
         }
 
-        // Mines until something makes it unsafe, then returns why it stopped.
-        function mineUntilDanger() {
-            baritone("mine " + ORE);
+        // ---------------------------------------------------------------- mining
+
+        function goldMining() {
+            baritone("mine " + ORE);                    // command #mine gold_ore
             while (true) {
-                if (health() <= LOW_HEALTH) { return "low health"; }
-                if (playerNearby(SAFE_RADIUS)) { return "player nearby (" + nearestPlayer(SAFE_RADIUS) + ")"; }
-                if (inventoryFull()) { return "inventory full"; }
-                wait(5);
+                if (health() <= LOW_HEALTH) {
+                    print("Low health (" + health() + ") - going home");
+                    goHome();
+                    eatUntilHealthFull();               // eat until health = 20
+                    return;
+                }
+                if (playerNearby(SAFE_RADIUS)) {
+                    print("Player nearby: " + nearestPlayer(SAFE_RADIUS) + " - going home");
+                    goHome();
+                    return;
+                }
+                if (inventoryFull()) {
+                    print("Inventory full - going home");
+                    goHome();
+                    return;
+                }
+                wait(5);                                // check 4 times a second
             }
         }
 
         function goHome() {
-            stopBaritone();
-            command(HOME_COMMAND);
-            waitSeconds(5);   // teleport warm-up
+            stopBaritone();                             // stop command #mine gold_ore
+            command("/home");
+            waitSeconds(5);                             // teleport warm-up
         }
 
-        function restock() {
-            // walk to the chest if it is not already within reach
+        // ---------------------------------------------------------------- at home
+
+        function atHome() {
+            // go to chest
             if (findBlock("chest", 5) == null) {
                 goto("chest");
             }
-            if (openNearest("chest")) {
-                let stored = deposit("raw_gold");
-                print("Stored " + stored + " raw gold.");
-                withdraw("raw_gold", KEEP_RAW_GOLD);
-                closeGui();
-            } else {
-                print("Could not open a chest — skipping storage.");
+            if (!openNearest("chest")) {
+                error("No chest found near /home");
             }
-            eatUntilFull();
-            // wait for health to regenerate before going back out
-            while (health() < maxHealth() && food() >= 18) {
-                waitSeconds(1);
-            }
-        }
 
-        function travelToBadlands() {
+            // fill the chest with raw gold
+            let stored = deposit("raw_gold");
+            print("Stored " + stored + " raw gold");
+
+            // take 27 raw gold back, 1 in each empty slot
+            let filled = fillSlots("raw_gold", KEEP_GOLD);
+            print("Filled " + filled + " slots with raw gold");
+            closeGui();
+
+            // eat until health is full
+            eatUntilHealthFull();
+
+            // /rtpmenu -> Overworld -> Badlands
             command("/rtpmenu");
-            if (!waitForItem("Overworld", 100)) { error("The /rtpmenu GUI did not open"); }
+            if (!waitForItem("Overworld", 100)) { error("/rtpmenu did not open"); }
             clickItem("Overworld");
             if (!waitForItem("Badlands", 100)) { error("No Badlands option in the RTP menu"); }
             clickItem("Badlands");
-            waitSeconds(8);   // let the teleport land and chunks load
+            waitSeconds(8);                             // let the teleport land
+            // main() loops back to goldMining()
         }
 
-        // Runs whenever the script ends (stopped, finished or crashed).
+        function eatUntilHealthFull() {
+            while (health() < maxHealth()) {
+                if (food() < 20) {
+                    if (!eat()) {
+                        print("Out of food - waiting for health to regenerate");
+                        waitSeconds(2);
+                    }
+                } else {
+                    waitSeconds(1);                     // full hunger -> health regenerates
+                }
+            }
+        }
+
+        // runs whenever the script stops
         function onStop() {
             stopBaritone();
         }

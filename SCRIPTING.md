@@ -196,9 +196,30 @@ name shown in game (`Raw Gold`).
 | `waitForGui(timeoutTicks, title)` | Wait for a container GUI (optionally one whose title contains `title`). False on timeout (default 100). |
 | `waitForItem(name, timeoutTicks)` | Wait until an item with this name shows in the open GUI. False on timeout (default 100). |
 | `clickItem(name, button)` | Click the GUI item with this name or id. `button` 0 = left (default), 1 = right. |
-| `clickSlot(slot, button, shift)` | Click a raw slot number; `shift` true shift-clicks. |
+| `clickSlot(slot, button, shift)` | Click a GUI slot by number (see below). `button` 0 = left, 1 = right; `shift` true shift-clicks. |
+| `guiSize()` | Number of the GUI's own slots: 27 for a chest or most server menus, 54 for a double chest, 0 if none. |
+| `slotItem(slot)`, `slotName(slot)`, `slotCount(slot)` | What's in a GUI slot: item id, shown name, count (`null`/`0` when empty). |
+| `findSlot(item)` | First of the GUI's own slots holding `item`, or -1. |
+| `inventorySlot(n)` | GUI slot number of your inventory slot `n`, for `clickSlot`. |
+| `clickInventory(n, button, shift)` | Click your inventory slot `n` directly. |
 | `deposit(item)` | Shift-click every stack of `item` into the open container. `"*"` moves everything. Returns items moved. |
 | `withdraw(item, amount)` | Shift-click stacks of `item` out of the container until at least `amount` (default all). Returns items moved. |
+| `fillSlots(item, count)` | Take `item` from the open container and put exactly 1 in each of `count` empty inventory slots. Returns slots filled. |
+
+**Slot numbers.** GUI slots count from 0 at the top-left of the menu, left to right, row by row: a 27-slot server
+menu is 0-26 (row 2 starts at 9, row 3 at 18), a double chest 0-53. Your own inventory follows right after
+`guiSize()`. For your inventory there's a simpler numbering: 1-9 is the hotbar (same as the number keys) and 10-36
+the three rows above it, top-left first.
+
+```js
+command("/menu");
+waitForGui(100);
+clickSlot(13);                 // middle of a 27-slot menu
+if (slotName(22) == "Confirm") { clickSlot(22); }
+for (let i in range(guiSize())) {
+    if (slotItem(i) == "diamond") { clickSlot(i, 0, true); }   // shift-click every diamond out
+}
+```
 | `closeGui()` | Close the open screen. |
 
 ### World

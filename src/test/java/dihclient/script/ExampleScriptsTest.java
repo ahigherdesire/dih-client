@@ -30,6 +30,24 @@ class ExampleScriptsTest {
     }
 
     @Test
+    void slotFunctionsCheckClean() {
+        assertClean("""
+            function main() {
+                command("/menu");
+                waitForGui(100);
+                clickSlot(13);
+                if (slotName(22) == "Confirm") { clickSlot(22); }
+                for (let i in range(guiSize())) {
+                    if (slotItem(i) == "diamond" && slotCount(i) > 0) { clickSlot(i, 0, true); }
+                }
+                clickInventory(1);
+                clickSlot(inventorySlot(10), 1);
+                print(findSlot("raw_gold"), fillSlots("raw_gold", 27));
+            }
+            """);
+    }
+
+    @Test
     void checkerCatchesUnknownFunctionsAndArity() {
         List<ScriptException> problems = Checker.check("""
             function main() {
