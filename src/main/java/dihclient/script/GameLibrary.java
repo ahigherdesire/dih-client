@@ -19,6 +19,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -286,6 +287,27 @@ public final class GameLibrary {
         }));
         lib.define("Inventory", "heldItem()", "Id of the item in your main hand, e.g. \"diamond_pickaxe\" (\"air\" if empty).", 0, 0,
             a -> onPlayer(p -> BuiltInRegistries.ITEM.getKey(p.getMainHandItem().getItem()).getPath()));
+        lib.define("Inventory", "heldDurability()", "Uses left on the item in your main hand before it breaks, or -1 if it can't break.", 0, 0,
+            a -> onPlayer(p -> (double) durabilityLeft(p.getMainHandItem())));
+        lib.define("Inventory", "durability(slot)", "Uses left on the item in inventory slot 1-36 (1-9 = hotbar), or -1 if it can't break or the slot is empty.", 1, 1, a -> {
+            int n = a.integer(0);
+            if (n < 1 || n > 36) throw a.error("inventory slots are 1-36 (1-9 = hotbar)");
+            return onPlayer(p -> (double) durabilityLeft(p.getInventory().getItem(n - 1)));
+        });
+        lib.define("Inventory", "pickaxeCount(minDurability)", "How many pickaxes you carry with at least minDurability uses left (default 1).", 0, 1, a -> {
+            int min = Math.max(1, a.integer(0, 1));
+            return onPlayer(p -> {
+                int n = 0;
+                for (int i = 0; i < 36; i++) if (goodPickaxe(p.getInventory().getItem(i), min)) n++;
+                return (double) n;
+            });
+        });
+        lib.define("Inventory", "equipPickaxe(minDurability)", "Hold your best pickaxe that has at least minDurability uses left (default 1), moving it into the hotbar if needed. Returns false if you have none.", 0, 1, a -> {
+            int min = Math.max(1, a.integer(0, 1));
+            boolean ok = onPlayer(p -> equipPickaxe(p, min));
+            a.interpreter().waitTicks(2);
+            return ok;
+        });
         lib.define("Inventory", "selectSlot(slot)", "Select hotbar slot 1-9.", 1, 1, a -> {
             int slot = a.integer(0);
             if (slot < 1 || slot > 9) throw a.error("slot must be 1-9");
@@ -307,6 +329,50 @@ public final class GameLibrary {
                 return false;
             });
         });
+    }
+
+    /** Uses left before {@code stack} breaks, or -1 when it can't break (or is empty). */
+    private static int durabilityLeft(ItemStack stack) {
+        if (stack == null || stack.isEmpty() || !stack.isDamageableItem()) return -1;
+        return stack.getMaxDamage() - stack.getDamageValue();
+    }
+
+    private static boolean goodPickaxe(ItemStack stack, int minDurability) {
+        if (stack == null || stack.isEmpty() || !stack.is(ItemTags.PICKAXES)) return false;
+        int left = durabilityLeft(stack);
+        return left < 0 || left >= minDurability;
+    }
+
+    /**
+     * Picks the best pickaxe with enough durability (highest max durability ≈ best material, then most
+     * uses left) and holds it. One in the main inventory is swapped into the selected hotbar slot.
+     */
+    private static boolean equipPickaxe(LocalPlayer p, int minDurability) {
+        Inventory inv = p.getInventory();
+        int best = -1;
+        for (int i = 0; i < 36; i++) {
+            ItemStack s = inv.getItem(i);
+            if (!goodPickaxe(s, minDurability)) continue;
+            if (best < 0) {
+                best = i;
+                continue;
+            }
+            ItemStack b = inv.getItem(best);
+            int cmp = Integer.compare(s.getMaxDamage(), b.getMaxDamage());
+            if (cmp == 0) cmp = Integer.compare(durabilityLeft(s), durabilityLeft(b));
+            if (cmp == 0) cmp = (i < 9 ? 1 : 0) - (best < 9 ? 1 : 0); // prefer one already in the hotbar
+            if (cmp > 0) best = i;
+        }
+        if (best < 0) return false;
+        if (best < 9) {
+            DihInventoryHelper.selectHotbarSlot(mc(), best);
+            return true;
+        }
+        int hotbar = inv.getSelectedSlot();
+        int menuSlot = inventoryMenuSlot(best);
+        if (menuSlot < 0) return false;
+        // SWAP with button = hotbar index exchanges the two slots, like pressing a number key over it
+        return DihInventoryClickHelper.click(mc(), menuSlot, hotbar, ContainerInput.SWAP);
     }
 
     // ---------------------------------------------------------------- GUIs / containers
