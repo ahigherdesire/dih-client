@@ -480,7 +480,7 @@ public final class SchematicPrinter {
         mc.getConnection().send(new ServerboundMovePlayerPacket.Rot(plan.yaw, plan.pitch, player.onGround(), player.horizontalCollision));
         InteractionResult result = mc.gameMode.useItemOn(player, InteractionHand.MAIN_HAND, plan.hit);
         if (result.consumesAction()) {
-            player.swing(InteractionHand.MAIN_HAND);
+            dihclient.util.DihEntities.swing(player, InteractionHand.MAIN_HAND);
         }
         return Boolean.TRUE;
     }
