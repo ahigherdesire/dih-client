@@ -33,6 +33,7 @@ import net.minecraft.world.level.block.state.properties.DoubleBlockHalf;
 import net.minecraft.world.level.block.state.properties.Property;
 import net.minecraft.world.level.block.state.properties.SlabType;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 
@@ -75,6 +76,12 @@ public final class SchematicPrinter {
     private static final int MAX_ATTEMPTS = 4;
     private static final int RESCAN_TICKS = 20;
     private static final int STUCK_TICKS = 60;
+    /** How long a position that could not be placed right is left alone before it is tried again. */
+    private static final int WAIT_TICKS = 20;
+    /** Tries without a click that places it the right way before creative places it the closest way, or gives up. */
+    private static final int MAX_FAILURES = 6;
+    /** Path nodes ahead of Baritone that fast mode keeps clear, so it does not wall Baritone in. */
+    private static final int PATH_AHEAD = 8;
 
     private static SchematicPrinter active;
 
@@ -83,6 +90,9 @@ public final class SchematicPrinter {
     private final Options options;
     private final Map<BlockPos, Integer> attempts = new HashMap<>();
     private final Set<BlockPos> skipped = new HashSet<>();
+    private final Map<BlockPos, Integer> failures = new HashMap<>();
+    private final Map<BlockPos, Integer> waitUntil = new HashMap<>();
+    private int ticks;
 
     private List<String> commands;
     private int commandIndex;
@@ -246,6 +256,8 @@ public final class SchematicPrinter {
         if (box == null) {
             return;
         }
+        this.ticks++;
+        Set<BlockPos> keepClear = this.kind == Kind.ASSIST ? baritonePathAhead() : Set.of();
         int r = (int) Math.ceil(this.options.reach());
         BlockPos center = BlockPos.containing(eye);
         int minX = Math.max(box.minX(), center.getX() - r), maxX = Math.min(box.maxX(), center.getX() + r);
@@ -257,7 +269,8 @@ public final class SchematicPrinter {
             for (int z = minZ; z <= maxZ; z++) {
                 for (int x = minX; x <= maxX; x++) {
                     BlockPos pos = new BlockPos(x, y, z);
-                    if (this.skipped.contains(pos) || eye.distanceToSqr(Vec3.atCenterOf(pos)) > (this.options.reach() + 0.5) * (this.options.reach() + 0.5)) {
+                    if (this.skipped.contains(pos) || waiting(pos) || keepClear.contains(pos) || occupied(player, pos)
+                        || eye.distanceToSqr(Vec3.atCenterOf(pos)) > (this.options.reach() + 0.5) * (this.options.reach() + 0.5)) {
                         continue;
                     }
                     BlockState want = this.placement.expected(x, y, z);
@@ -291,21 +304,26 @@ public final class SchematicPrinter {
                 have = level.getBlockState(pos);
                 work = work(want, have);
             }
-            if (work == Work.PLACE) {
-                Boolean done = place(mc, pos, want, have);
-                if (done != null) {
-                    turned |= done;
-                    attempt(pos);
-                    this.placed++;
-                    actions++;
+            if (work == Work.PLACE && place(mc, pos, want, have)) {
+                turned = true;
+                attempt(pos);
+                this.placed++;
+                actions++;
+                // what leaned on this block may have a face to be clicked now
+                for (Direction d : Direction.values()) {
+                    this.waitUntil.remove(pos.relative(d));
                 }
             }
         }
         if (turned) {
-            // the server keeps the last look it was sent; give it the real one back
+            // the server keeps the last look it was sent; give it the real one back, and tell the client that is
+            // what the server has, or it skips sending its next look when that matches its own stale copy and
+            // Baritone's next click lands with the printer's look
             player.setYRot(yaw);
             player.setXRot(pitch);
             mc.getConnection().send(new ServerboundMovePlayerPacket.Rot(yaw, pitch, player.onGround(), player.horizontalCollision));
+            ((dihclient.mixin.accessor.DihLocalPlayerAccessor) player).dih$setYRotLast(yaw);
+            ((dihclient.mixin.accessor.DihLocalPlayerAccessor) player).dih$setXRotLast(pitch);
         }
         if (this.kind == Kind.ASSIST && player.getInventory().getSelectedSlot() != originalSlot) {
             player.getInventory().setSelectedSlot(originalSlot);
@@ -329,19 +347,41 @@ public final class SchematicPrinter {
             this.sinceScan = 0;
         }
         BlockPos target = null;
-        double best = Double.MAX_VALUE;
-        for (BlockPos pos : this.todo) {
-            if (this.skipped.contains(pos)) {
-                continue;
+        boolean anyWaiting = false;
+        for (int tries = 0; tries < 32 && target == null; tries++) {
+            double best = Double.MAX_VALUE;
+            for (BlockPos pos : this.todo) {
+                if (this.skipped.contains(pos)) {
+                    continue;
+                }
+                if (waiting(pos)) {
+                    anyWaiting = true;
+                    continue;
+                }
+                double d = player.position().distanceToSqr(Vec3.atCenterOf(pos));
+                if (d < best) {
+                    best = d;
+                    target = pos;
+                }
             }
-            double d = player.position().distanceToSqr(Vec3.atCenterOf(pos));
-            if (d < best) {
-                best = d;
-                target = pos;
+            // the list is up to a second old: drop what has been placed since instead of flying to it
+            if (target != null && work(this.placement.expected(target), level.getBlockState(target)) == Work.NONE) {
+                this.todo = new ArrayList<>(this.todo);
+                this.todo.remove(target);
+                target = null;
+            } else {
+                break;
             }
         }
+        boolean unloaded = false;
         if (target == null && this.nearestUnloaded != null) {
             target = this.nearestUnloaded;
+            unloaded = true;
+        }
+        if (target == null && anyWaiting) {
+            // what is left waits on its neighbours; hold still until one of them can be tried again
+            player.setDeltaMovement(Vec3.ZERO);
+            return;
         }
         if (target == null) {
             stop(mc, "§aFinished §f" + this.placement.name() + "§a: " + this.placed + " placed, " + this.broken + " broken"
@@ -359,13 +399,24 @@ public final class SchematicPrinter {
         Vec3 goal = new Vec3(target.getX() + 0.5, target.getY() + 2.0, target.getZ() + 0.5);
         Vec3 delta = goal.subtract(player.position());
         double length = delta.length();
-        if (length < 0.25) {
+        double reach = this.options.reach() - 0.5;
+        boolean inReach = !unloaded && !occupied(player, target)
+            && player.getEyePosition().distanceToSqr(Vec3.atCenterOf(target)) <= reach * reach;
+        if (inReach) {
+            // close enough to click it; the next tick places it, or puts it on hold and picks another
+            player.setDeltaMovement(Vec3.ZERO);
+        } else if (length < 0.25) {
             player.setDeltaMovement(Vec3.ZERO);
         } else {
-            player.setDeltaMovement(delta.scale(Math.min(this.options.flySpeed(), length * 0.6) / length));
+            Vec3 move = delta.scale(Math.min(this.options.flySpeed(), length * 0.6) / length);
+            if (player.horizontalCollision) {
+                // a wall of the build is in the way: go up over it rather than push into it
+                move = new Vec3(move.x * 0.3, Math.max(move.y, Math.min(this.options.flySpeed(), 0.6)), move.z * 0.3);
+            }
+            player.setDeltaMovement(move);
         }
         Vec3 now = player.position();
-        if (this.lastPos != null && now.distanceToSqr(this.lastPos) < 0.0025 && length > 1.0) {
+        if (this.lastPos != null && now.distanceToSqr(this.lastPos) < 0.0025 && length > 1.0 && !inReach) {
             if (++this.stuckTicks > STUCK_TICKS) {
                 this.skipped.add(target);
                 this.todo = new ArrayList<>(this.todo);
@@ -460,19 +511,30 @@ public final class SchematicPrinter {
     }
 
     /**
-     * @return null when nothing was sent; otherwise whether the look sent to the server was changed
+     * Places {@code want} only when a click turns it the schematic's way. When none does yet (the face it hangs on,
+     * or the one that sets its axis, is not built), the position waits for its neighbours. Fast mode never places it
+     * the wrong way: Baritone would break it and the printer would put it back wrong, over and over. Creative places
+     * the closest way after {@link #MAX_FAILURES} tries, and its replace setting fixes it later.
+     *
+     * @return whether a click was sent (and the look sent to the server changed)
      */
-    private Boolean place(Minecraft mc, BlockPos pos, BlockState want, BlockState have) {
+    private boolean place(Minecraft mc, BlockPos pos, BlockState want, BlockState have) {
         LocalPlayer player = mc.player;
         Item item = want.getBlock().asItem();
         int slot = handFor(mc, item);
         if (slot < 0) {
-            return null;
+            return false;
         }
         ItemStack stack = player.getInventory().getItem(slot);
         Plan plan = solve(mc, pos, want, have, stack);
-        if (plan == null) {
-            return null;
+        if (plan == null || !plan.exact) {
+            int n = fail(pos);
+            if (plan == null || this.kind != Kind.CREATIVE || n < MAX_FAILURES) {
+                if (plan == null && n >= MAX_FAILURES) {
+                    this.skipped.add(pos.immutable()); // nothing to click from anywhere it has been tried
+                }
+                return false;
+            }
         }
         player.getInventory().setSelectedSlot(slot);
         player.setYRot(plan.yaw);
@@ -482,7 +544,57 @@ public final class SchematicPrinter {
         if (result.consumesAction()) {
             dihclient.util.DihEntities.swing(player, InteractionHand.MAIN_HAND);
         }
-        return Boolean.TRUE;
+        return true;
+    }
+
+    /**
+     * Puts {@code pos} on hold for {@link #WAIT_TICKS}.
+     *
+     * @return how many times it has been put on hold
+     */
+    private int fail(BlockPos pos) {
+        BlockPos key = pos.immutable();
+        this.waitUntil.put(key, this.ticks + WAIT_TICKS);
+        return this.failures.merge(key, 1, Integer::sum);
+    }
+
+    private boolean waiting(BlockPos pos) {
+        Integer until = this.waitUntil.get(pos);
+        return until != null && until > this.ticks;
+    }
+
+    /**
+     * @return whether a block at {@code pos} would sit in the player, or in the space just over their head that a
+     *         jump or a pillar needs
+     */
+    private static boolean occupied(LocalPlayer player, BlockPos pos) {
+        AABB body = player.getBoundingBox().expandTowards(0, 1, 0).deflate(1.0E-4);
+        return body.intersects(pos.getX(), pos.getY(), pos.getZ(), pos.getX() + 1, pos.getY() + 1, pos.getZ() + 1);
+    }
+
+    /**
+     * @return the feet and head positions of Baritone's next few path nodes, which fast mode leaves empty
+     */
+    private static Set<BlockPos> baritonePathAhead() {
+        Set<BlockPos> clear = new HashSet<>();
+        try {
+            baritone.api.pathing.path.IPathExecutor current = baritone.api.BaritoneAPI.getProvider()
+                .getPrimaryBaritone().getPathingBehavior().getCurrent();
+            if (current == null) {
+                return clear;
+            }
+            List<baritone.api.utils.BetterBlockPos> nodes = current.getPath().positions();
+            int from = Math.max(0, current.getPosition());
+            for (int i = from; i < Math.min(nodes.size(), from + PATH_AHEAD); i++) {
+                // plain BlockPos: BetterBlockPos hashes its own way
+                BlockPos node = new BlockPos(nodes.get(i).getX(), nodes.get(i).getY(), nodes.get(i).getZ());
+                clear.add(node);
+                clear.add(node.above());
+            }
+        } catch (RuntimeException ignored) {
+            // the path changed under us; keep nothing clear this tick
+        }
+        return clear;
     }
 
     /**
@@ -519,7 +631,8 @@ public final class SchematicPrinter {
         mc.player.getInventory().setSelectedSlot(this.handSlot);
     }
 
-    private record Plan(BlockHitResult hit, float yaw, float pitch) {}
+    /** @param exact whether every orientation property comes out as the schematic has it */
+    private record Plan(BlockHitResult hit, float yaw, float pitch, boolean exact) {}
 
     /**
      * Finds a click and a look that place {@code want} at {@code pos}: every face it could click, each way it could
@@ -530,6 +643,9 @@ public final class SchematicPrinter {
         ClientLevel level = mc.level;
         Vec3 eye = player.getEyePosition();
         double reachSq = this.options.reach() * this.options.reach();
+        if (want.getBlock() instanceof SlabBlock && want.getValue(SlabBlock.TYPE) == SlabType.DOUBLE && !mergesSlab(want, have)) {
+            want = want.setValue(SlabBlock.TYPE, SlabType.BOTTOM); // one half now, the other merges into it next
+        }
 
         List<BlockHitResult> hits = new ArrayList<>();
         if (mergesSlab(want, have)) {
@@ -584,11 +700,7 @@ public final class SchematicPrinter {
                 Vec3 look = hit.getLocation().subtract(eye);
                 float lookYaw = (float) (Math.toDegrees(Math.atan2(look.z, look.x)) - 90.0);
                 float lookPitch = (float) -Math.toDegrees(Math.atan2(look.y, Math.sqrt(look.x * look.x + look.z * look.z)));
-                float[][] looks = wanted == 0
-                    ? new float[][]{{lookYaw, lookPitch}}
-                    : new float[][]{{lookYaw, lookPitch}, {0, 0}, {90, 0}, {180, 0}, {-90, 0},
-                        {0, 80}, {0, -80}, {90, 80}, {180, 80}, {-90, 80}, {90, -80}, {180, -80}, {-90, -80}};
-                for (float[] l : looks) {
+                for (float[] l : looks(want, wanted, lookYaw, lookPitch)) {
                     player.setYRot(l[0]);
                     player.setXRot(l[1]);
                     BlockState result;
@@ -603,7 +715,7 @@ public final class SchematicPrinter {
                     int score = score(want, result);
                     if (score > bestScore) {
                         bestScore = score;
-                        best = new Plan(hit, l[0], l[1]);
+                        best = new Plan(hit, l[0], l[1], score == wanted);
                         if (score == wanted) {
                             return best;
                         }
@@ -615,6 +727,29 @@ public final class SchematicPrinter {
             player.setXRot(realPitch);
         }
         return best;
+    }
+
+    /**
+     * The looks to try for one click: straight at the click first, then every way the block can face. Signs,
+     * banners and heads keep 16 turns, so they get all 16; the rest get the four sides, level, up and down.
+     */
+    private static List<float[]> looks(BlockState want, int wanted, float lookYaw, float lookPitch) {
+        List<float[]> looks = new ArrayList<>();
+        looks.add(new float[]{lookYaw, lookPitch});
+        if (wanted == 0) {
+            return looks;
+        }
+        boolean sixteen = false;
+        for (Property<?> property : want.getProperties()) {
+            sixteen |= property.getName().equals("rotation");
+        }
+        int steps = sixteen ? 16 : 4;
+        for (float pitch : new float[]{0, 80, -80}) {
+            for (int i = 0; i < steps; i++) {
+                looks.add(new float[]{net.minecraft.util.Mth.wrapDegrees(i * 360f / steps), pitch});
+            }
+        }
+        return looks;
     }
 
     private static int score(BlockState want, BlockState got) {
