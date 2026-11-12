@@ -427,6 +427,12 @@ public final class Settings {
     public final Setting<Double> randomLooking = new Setting<>(0.01d);
 
     /**
+     * The most degrees yaw and pitch may each turn in one tick. 0 turns at once. A cap makes the turns look like a
+     * mouse, which anticheats such as Grim expect; actions that need a rotation wait until it is reached.
+     */
+    public final Setting<Float> maxRotationPerTick = new Setting<>(0f);
+
+    /**
      * This is the big A* setting.
      * As long as your cost heuristic is an *underestimate*, it's guaranteed to find you the best path.
      * 3.5 is always an underestimate, even if you are sprinting.

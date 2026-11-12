@@ -66,8 +66,10 @@ public final class DihSchematicsScreen extends DihScreen {
         int x = (screenWidth() - w) / 2;
         int gap = 4;
         int bottom = screenHeight() - 28;
-        String[] row1 = {"Move", "Rotate", "Mirror", "Show / Hide", "Remove"};
-        String[] row2 = {"Materials", "Save CSV", "Verify", "Build", "Folder", "Close"};
+        dihclient.modules.SchematicsModule schematics = dihclient.modules.SchematicsModule.get();
+        String modeLabel = "Mode: " + (schematics == null ? "Legit" : schematics.buildMode().label());
+        String[] row1 = {"Move", "Rotate", "Mirror", "Show / Hide", "Remove", "Folder", modeLabel};
+        String[] row2 = {"Materials", "Save CSV", "Verify", "Build", "Stop", "Close"};
         addButton(x + w - OPEN_W, 17, OPEN_W, "Open File...", Button.Tone.SUCCESS, b -> SchematicDrop.pick(this.minecraft));
         int cell = (w - gap * (row1.length - 1)) / row1.length;
         for (int i = 0; i < row1.length; i++) {
@@ -111,6 +113,26 @@ public final class DihSchematicsScreen extends DihScreen {
     private void act(String action) {
         if (action.equals("Close")) {
             onClose();
+            return;
+        }
+        if (action.startsWith("Mode: ")) {
+            dihclient.modules.SchematicsModule schematics = dihclient.modules.SchematicsModule.get();
+            if (schematics != null) {
+                dihclient.schematic.SchematicBuildMode[] modes = dihclient.schematic.SchematicBuildMode.values();
+                dihclient.schematic.SchematicBuildMode next = modes[(schematics.buildMode().ordinal() + 1) % modes.length];
+                schematics.setValue("build-mode", next.label());
+                show(List.of(switch (next) {
+                    case LEGIT -> "Legit: Baritone builds with Grim-safe reach, turn speed and click delay.";
+                    case FAST -> "Fast: blatant. Baritone walks, and every block in reach is placed each tick.";
+                    case CREATIVE -> "Creative: blocks from the creative inventory, flies the build; op pastes with commands.";
+                }), DihScreenPalette.MUTED);
+                init();
+            }
+            return;
+        }
+        if (action.equals("Stop")) {
+            boolean running = SchematicActions.stopBuild(this.minecraft, null);
+            show(List.of(running ? "Stopped the build." : "Nothing is building."), DihScreenPalette.MUTED);
             return;
         }
         if (action.equals("Folder")) {

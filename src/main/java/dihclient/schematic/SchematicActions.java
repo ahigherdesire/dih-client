@@ -196,9 +196,95 @@ public final class SchematicActions {
      * @return what to tell the player
      */
     public static String build(SchematicPlacement p) {
+        dihclient.modules.SchematicsModule module = dihclient.modules.SchematicsModule.get();
+        return build(p, module == null ? SchematicBuildMode.LEGIT : module.buildMode());
+    }
+
+    /**
+     * Builds the placement the way {@code mode} says: legit and fast through Baritone's builder with that mode's
+     * settings (fast with the printer placing beside it), creative with the printer alone.
+     *
+     * @return what to tell the player
+     */
+    public static String build(SchematicPlacement p, SchematicBuildMode mode) {
         if (!p.isLoaded()) {
             return p.error().isEmpty() ? p.name() + " is still loading" : p.name() + " is not loaded: " + p.error();
         }
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player == null || mc.level == null) {
+            return "Join a world first";
+        }
+        if (!p.dimension().isEmpty() && !p.dimension().equals(dimension(mc))) {
+            return p.name() + " is in " + p.dimension();
+        }
+        dihclient.modules.SchematicsModule module = dihclient.modules.SchematicsModule.get();
+        if (module == null) {
+            return "The Schematics module is not available";
+        }
+        if (!module.isEnabled()) {
+            module.setEnabled(true);
+        }
+        stopBuild(mc, null);
+        SchematicPrinter.Options options = module.printerOptions(mode);
+        if (mode == SchematicBuildMode.CREATIVE) {
+            if (!mc.player.getAbilities().instabuild) {
+                return "Creative mode needs you in creative (or use " + dihclient.commands.DihCommands.effectivePrefix()
+                    + "schem build fast)";
+            }
+            SchematicBuildProfile.apply(mode);
+            return "[Creative] " + SchematicPrinter.start(mc, p, SchematicPrinter.Kind.CREATIVE, options)
+                + " (" + dihclient.commands.DihCommands.effectivePrefix() + "schem stop to stop)";
+        }
+        // start first: it may save Baritone's settings, and the profile's values must not be saved with them
+        String started = startBaritone(p);
+        SchematicBuildProfile.apply(mode);
+        if (mode == SchematicBuildMode.FAST) {
+            SchematicPrinter.start(mc, p, SchematicPrinter.Kind.ASSIST, options);
+            return "[Fast] " + started + "; placing up to " + options.perTick() + " blocks a tick from "
+                + options.reach() + " blocks";
+        }
+        return "[Legit] " + started + "; Grim-safe: " + "4.0 reach, 4-tick clicks, turns capped at 32°/tick";
+    }
+
+    /**
+     * Keeps a build going: runs the printer, and puts Baritone's settings back once its builder is done.
+     */
+    public static void tickBuild(Minecraft mc) {
+        SchematicPrinter.tick(mc);
+        SchematicBuildMode applied = SchematicBuildProfile.applied();
+        if (applied == SchematicBuildMode.LEGIT || applied == SchematicBuildMode.FAST) {
+            IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
+            if (!baritone.getBuilderProcess().isActive()) {
+                SchematicBuildProfile.restore();
+                SchematicPrinter active = SchematicPrinter.active();
+                if (active != null && active.kind() == SchematicPrinter.Kind.ASSIST) {
+                    SchematicPrinter.stop(mc, null);
+                }
+            }
+        } else if (applied == SchematicBuildMode.CREATIVE && SchematicPrinter.active() == null) {
+            SchematicBuildProfile.restore();
+        }
+    }
+
+    /**
+     * Stops whatever {@link #build} started.
+     *
+     * @return whether anything was running
+     */
+    public static boolean stopBuild(Minecraft mc, String reason) {
+        boolean running = SchematicPrinter.active() != null || SchematicBuildProfile.applied() != null;
+        SchematicPrinter.stop(mc, reason);
+        if (SchematicBuildProfile.applied() == SchematicBuildMode.LEGIT || SchematicBuildProfile.applied() == SchematicBuildMode.FAST) {
+            IBaritone baritone = BaritoneAPI.getProvider().getPrimaryBaritone();
+            if (baritone.getBuilderProcess().isActive()) {
+                baritone.getPathingBehavior().cancelEverything();
+            }
+        }
+        SchematicBuildProfile.restore();
+        return running;
+    }
+
+    private static String startBaritone(SchematicPlacement p) {
         // Without allowInventory Baritone only places what is already on the hotbar.
         Settings settings = BaritoneAPI.getSettings();
         String inventory = "";
@@ -211,7 +297,8 @@ public final class SchematicActions {
         PlacementBuildSchematic schematic = new PlacementBuildSchematic(p);
         baritone.getBuilderProcess().build(p.name(), schematic, schematic.origin());
         BlockPos o = schematic.origin();
-        return "Building " + p.name() + " from " + o.getX() + " " + o.getY() + " " + o.getZ() + " (#stop to stop" + inventory
+        return "Building " + p.name() + " from " + o.getX() + " " + o.getY() + " " + o.getZ() + " ("
+            + dihclient.commands.DihCommands.effectivePrefix() + "schem stop or #stop to stop" + inventory
             + "; if Baritone pauses on stairs or other turned blocks, #buildIgnoreDirection true lets it place them)";
     }
 }

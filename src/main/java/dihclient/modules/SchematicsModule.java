@@ -3,6 +3,7 @@ package dihclient.modules;
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ChoiceSetting;
 import dihclient.api.module.ColorSetting;
+import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.api.module.KeybindSetting;
 import dihclient.schematic.SchematicPlacement;
@@ -69,6 +70,32 @@ public final class SchematicsModule extends Module {
         add(new ColorSetting("color-wrong-block", "Wrong Block", WRONG_BLOCK)
             .group("Colors").description("Another block than the schematic's.").build());
 
+        add(new ChoiceSetting("build-mode", "Build Mode", "Legit", "Legit", "Fast", "Creative")
+            .group("Build").description("Legit: Baritone held to Grim-safe reach, turn speed and click delay. "
+                + "Fast: blatant, places every block in reach each tick. Creative: takes blocks from the creative "
+                + "inventory and flies the build, or pastes it with commands when you are op.").build());
+        add(new IntSetting("print-per-tick", "Blocks Per Tick", 4, 1, 64, 1)
+            .group("Build").description("Most blocks Fast and Creative place in one tick.")
+            .visibleWhen(() -> !"Legit".equals(choice("build-mode"))).build());
+        add(new DoubleSetting("fast-reach", "Fast Reach", 5.0, 3.0, 6.0, 0.1)
+            .group("Build").description("How far Fast places from. The server allows about 5.5 in survival.")
+            .visibleWhen(() -> "Fast".equals(choice("build-mode"))).build());
+        add(new BoolSetting("air-place", "Air Place", true)
+            .group("Build").description("Place blocks with nothing next to them. Flags Grim's AirPlace.")
+            .visibleWhen(() -> !"Legit".equals(choice("build-mode"))).build());
+        add(new BoolSetting("creative-replace", "Replace", true)
+            .group("Build").description("Creative: break blocks that are not the schematic's, so the build matches it.")
+            .visibleWhen(() -> "Creative".equals(choice("build-mode"))).build());
+        add(new BoolSetting("creative-commands", "Use Commands", true)
+            .group("Build").description("Creative: when you are op, paste with /fill and /setblock at once instead of placing.")
+            .visibleWhen(() -> "Creative".equals(choice("build-mode"))).build());
+        add(new IntSetting("commands-per-tick", "Commands Per Tick", 20, 1, 200, 1)
+            .group("Build").description("Creative paste: commands sent each tick.")
+            .visibleWhen(() -> "Creative".equals(choice("build-mode")) && bool("creative-commands")).build());
+        add(new DoubleSetting("fly-speed", "Fly Speed", 1.0, 0.2, 3.0, 0.1)
+            .group("Build").description("Creative: blocks per tick when flying to what is left.")
+            .visibleWhen(() -> "Creative".equals(choice("build-mode"))).build());
+
         add(new KeybindSetting("menu-key", "Menu Key", -1)
             .group("Keys").description("Opens the Schematics screen.").build());
         add(new KeybindSetting("open-key", "Open File Key", -1)
@@ -103,6 +130,32 @@ public final class SchematicsModule extends Module {
     @Override
     public void onDisable() {
         SchematicOverlayRenderer.invalidate();
+        dihclient.schematic.SchematicActions.stopBuild(MC, null);
+    }
+
+    /**
+     * @return the build mode the Build Mode setting picks
+     */
+    public dihclient.schematic.SchematicBuildMode buildMode() {
+        dihclient.schematic.SchematicBuildMode mode = dihclient.schematic.SchematicBuildMode.parse(choice("build-mode"));
+        return mode == null ? dihclient.schematic.SchematicBuildMode.LEGIT : mode;
+    }
+
+    /**
+     * @return the printer settings for {@code mode}
+     */
+    public dihclient.schematic.SchematicPrinter.Options printerOptions(dihclient.schematic.SchematicBuildMode mode) {
+        boolean creative = mode == dihclient.schematic.SchematicBuildMode.CREATIVE;
+        return new dihclient.schematic.SchematicPrinter.Options(integer("print-per-tick"),
+            creative ? 5.5 : decimal("fast-reach"), bool("air-place"), bool("creative-replace"),
+            bool("creative-commands"), integer("commands-per-tick"), decimal("fly-speed"));
+    }
+
+    /**
+     * @return the module, or null when it is not registered
+     */
+    public static SchematicsModule get() {
+        return instance();
     }
 
     @Override
@@ -118,6 +171,7 @@ public final class SchematicsModule extends Module {
         }
         Schematics.get().tick(MC);
         SchematicPlacing.tick(MC);
+        dihclient.schematic.SchematicActions.tickBuild(MC);
         key(0, "menu-key", () -> MC.gui.setScreen(new dihclient.gui.screen.DihSchematicsScreen(null)));
         key(1, "adjust-key", () -> {
             SchematicPlacement selected = selectedOrSay();

@@ -18,6 +18,7 @@ import dihclient.modules.Module;
 import dihclient.modules.ModuleRegistry;
 import dihclient.modules.SchematicsModule;
 import dihclient.schematic.SchematicActions;
+import dihclient.schematic.SchematicBuildMode;
 import dihclient.schematic.SchematicPlacement;
 import dihclient.schematic.SchematicTransform;
 import dihclient.schematic.SchematicVerifier;
@@ -134,9 +135,44 @@ public class SchematicCommand extends Command {
         root.then(literal("verify")
             .executes(ctx -> withPlacement(null, SchematicCommand::verify))
             .then(placementArgument().executes(ctx -> withPlacement(ctx, SchematicCommand::verify))));
-        root.then(literal("build")
+        LiteralArgumentBuilder<DihCommandSource> build = literal("build")
             .executes(ctx -> withPlacement(null, p -> say("§a" + SchematicActions.build(p))))
-            .then(placementArgument().executes(ctx -> withPlacement(ctx, p -> say("§a" + SchematicActions.build(p))))));
+            .then(placementArgument().executes(ctx -> withPlacement(ctx, p -> say("§a" + SchematicActions.build(p)))));
+        for (SchematicBuildMode mode : SchematicBuildMode.values()) {
+            String word = mode.name().toLowerCase(Locale.ROOT);
+            build.then(literal(word)
+                .executes(ctx -> withPlacement(null, p -> say("§a" + SchematicActions.build(p, mode))))
+                .then(placementArgument().executes(ctx -> withPlacement(ctx, p -> say("§a" + SchematicActions.build(p, mode))))));
+        }
+        build.then(literal("paste")
+            .executes(ctx -> withPlacement(null, p -> say("§a" + SchematicActions.build(p, SchematicBuildMode.CREATIVE)))));
+        root.then(build);
+        root.then(literal("stop").executes(ctx -> {
+            boolean running = SchematicActions.stopBuild(Minecraft.getInstance(), null);
+            say(running ? "§7Stopped the build" : "§7Nothing is building");
+            return SUCCESS;
+        }));
+        root.then(literal("mode")
+            .executes(ctx -> {
+                SchematicsModule module = module();
+                if (module != null) {
+                    say("§7Build mode: §f" + module.buildMode().label() + " §8(legit | fast | creative)");
+                }
+                return SUCCESS;
+            })
+            .then(RequiredArgumentBuilder.<DihCommandSource, String>argument("mode", StringArgumentType.word())
+                .suggests((ctx, builder) -> CommandSuggest.literals(builder, "legit", "fast", "creative"))
+                .executes(ctx -> {
+                    SchematicBuildMode mode = SchematicBuildMode.parse(StringArgumentType.getString(ctx, "mode"));
+                    SchematicsModule module = module();
+                    if (mode == null) {
+                        say("§cUnknown mode. §7legit, fast or creative");
+                    } else if (module != null) {
+                        module.setValue("build-mode", mode.label());
+                        say("§aBuild mode: §f" + mode.label());
+                    }
+                    return SUCCESS;
+                })));
         root.then(literal("layer")
             .then(RequiredArgumentBuilder.<DihCommandSource, String>argument("mode", StringArgumentType.word())
                 .suggests((ctx, builder) -> CommandSuggest.literals(builder, "all", "single", "below", "above"))
@@ -177,7 +213,9 @@ public class SchematicCommand extends Command {
         say("§7" + p + "placements / select <n> / info §8- §7your placements here");
         say("§7" + p + "move <x y z> / here / nudge <dx dy dz> / adjust §8- §7move the selected one");
         say("§7" + p + "rotate [quarters] / mirror [none|x|z] §8- §7turn it");
-        say("§7" + p + "materials / verify / build §8- §7what it needs, what is wrong, build it with Baritone");
+        say("§7" + p + "materials / verify §8- §7what it needs, what is wrong");
+        say("§7" + p + "build [legit|fast|creative] / stop §8- §7build it: Grim-safe, blatant, or creative paste");
+        say("§7" + p + "mode [legit|fast|creative] §8- §7the mode a plain build uses");
         say("§7" + p + "materials csv §8- §7save the material list as a spreadsheet in schematics/materials");
         say("§7" + p + "show / hide / remove [n|all] / reload / layer <all|single|below|above> [y] / menu");
         if (baritone.utils.schematic.litematica.LitematicaHelper.isLitematicaPresent()) {
