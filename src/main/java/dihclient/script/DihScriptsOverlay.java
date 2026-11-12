@@ -32,7 +32,7 @@ public final class DihScriptsOverlay extends DihOverlayBase {
         // Press ? in the editor toolbar for the list of built-in functions.
 
         function main() {
-            print("Hello from " + playerName());
+            print("Hello! Choose Blocks to build your own script.");
         }
 
         // Optional: runs when the script ends for any reason.
@@ -66,6 +66,8 @@ public final class DihScriptsOverlay extends DihOverlayBase {
 
     private final Font font;
     private final ScriptEditorModel editor = new ScriptEditorModel();
+    private final ScriptBlocksPanel blocks;
+    private boolean blocksMode;
     private final List<Hit> hits = new ArrayList<>();
 
     private String selected;
@@ -103,13 +105,19 @@ public final class DihScriptsOverlay extends DihOverlayBase {
     private long listRevision = -1;
     private List<String> names = List.of();
 
-    private enum HitType { SCRIPT, NEW, DELETE, RUN, SAVE, HELP, HELP_ENTRY, NAME_FIELD }
+    private enum HitType { SCRIPT, NEW, DELETE, RUN, SAVE, HELP, HELP_ENTRY, NAME_FIELD, MODE }
 
     private record Hit(HitType type, UiBounds bounds, String value) { }
 
     private DihScriptsOverlay(Font font) {
-        super(OVERLAY_ID, 460, 270);
+        super(OVERLAY_ID, 520, 310);
         this.font = font;
+        this.blocks = new ScriptBlocksPanel(font, source -> {
+            if (source.equals(editor.text())) return;
+            editor.selectAll();
+            editor.insert(source);
+            noteEdit();
+        });
         this.panelX = 60;
         this.panelY = 30;
         restoreLayout();
@@ -126,11 +134,12 @@ public final class DihScriptsOverlay extends DihOverlayBase {
     /** Opens {@code name} in the editor (saving the current script first). */
     public void select(String name) {
         if (name == null || name.equals(selected)) return;
-        saveIfDirty();
+        if (!commitBlocks() || (isDirty() && !save(false))) return;
         try {
             String text = ScriptManager.read(name);
             selected = ScriptManager.resolve(name);
             editor.setText(text);
+            loadBlocksIfSupported();
             savedText = editor.text();
             topLine = 0;
             scrollX = 0;
@@ -143,11 +152,11 @@ public final class DihScriptsOverlay extends DihOverlayBase {
 
     // ---------------------------------------------------------------- IDihOverlay basics
 
-    @Override public int getMinWidth() { return 320; }
+    @Override public int getMinWidth() { return 360; }
 
-    @Override public int getMinHeight() { return 170; }
+    @Override public int getMinHeight() { return 230; }
 
-    @Override public boolean hasTextFieldFocused() { return visible && (editorFocused || naming); }
+    @Override public boolean hasTextFieldFocused() { return visible && (editorFocused || naming || (blocksMode && blocks.focused())); }
 
     @Override public boolean wantsKeyboardCapture() { return hasTextFieldFocused(); }
 
@@ -155,11 +164,12 @@ public final class DihScriptsOverlay extends DihOverlayBase {
     public void clearTextFieldFocus() {
         editorFocused = false;
         naming = false;
+        blocks.blur();
     }
 
     @Override
     public void setVisible(boolean v) {
-        if (!v) saveIfDirty();
+        if (!v && (!commitBlocks() || (isDirty() && !save(false)))) return;
         super.setVisible(v);
     }
 
@@ -294,7 +304,15 @@ public final class DihScriptsOverlay extends DihOverlayBase {
         renderStatus(g, c, status);
 
         UiBounds body = UiBounds.of(area.x(), ty + TOOLBAR_H + 2, area.width(), area.height() - TOOLBAR_H - 2 - STATUS_H - 1);
+        if (selected != null) {
+            UiBounds mode = UiBounds.of(body.x(), body.y(), 94, BUTTON_H);
+            Button.render(ctx, mode, blocksMode ? "Blocks | Code" : "Code | Blocks", Button.Tone.NORMAL, mode.contains(mx, my), blocksMode);
+            hits.add(new Hit(HitType.MODE, mode, null));
+            g.text(font, trim(blocksMode ? "Build with steps" : "Edit DihScript", body.width() - 102), body.x() + 100, body.y() + 3, c.muted, false);
+            body = UiBounds.of(body.x(), body.y() + 17, body.width(), body.height() - 17);
+        }
         if (helpOpen) renderHelp(ctx, body, mx, my);
+        else if (blocksMode && selected != null) blocks.render(ctx, body, mx, my);
         else renderEditor(ctx, body, mx, my);
     }
 
@@ -314,7 +332,8 @@ public final class DihScriptsOverlay extends DihOverlayBase {
             color = c.success;
         } else if (selected != null) {
             int line = editor.lineOf(editor.cursor()) + 1;
-            text = "✔ No problems   ·   Ln " + line + ", Col " + (editor.columnOf(editor.cursor()) + 1) + "   ·   .scripts run " + selected;
+            text = blocksMode ? "Steps run from top to bottom. Save, then Run when ready."
+                : "✔ No problems   ·   Ln " + line + ", Col " + (editor.columnOf(editor.cursor()) + 1) + "   ·   .scripts run " + selected;
             color = c.muted;
         } else {
             text = "Create a script with + New";
@@ -523,8 +542,15 @@ public final class DihScriptsOverlay extends DihOverlayBase {
                 case DELETE -> deleteClicked();
                 case RUN -> runClicked();
                 case SAVE -> save(true);
-                case HELP -> helpOpen = !helpOpen;
+                case MODE -> toggleMode();
+                case HELP -> {
+                    if (commitBlocks()) { helpOpen = !helpOpen; blocks.blur(); }
+                }
                 case HELP_ENTRY -> {
+                    if (blocksMode) {
+                        flash("Choose Code above to insert functions, or use + Step in Blocks.", 0xFFFFCB6B);
+                        break;
+                    }
                     helpOpen = false;
                     editorFocused = true;
                     editor.insert(hit.value() + "()");
@@ -536,6 +562,13 @@ public final class DihScriptsOverlay extends DihOverlayBase {
             return true;
         }
         naming = false;
+
+        if (blocksMode && !helpOpen) {
+            editorFocused = false;
+            if (blocks.click(mxd, myd, button)) return true;
+            blocks.blur();
+            return true;
+        }
 
         if (!helpOpen && selected != null && editorBounds.contains(mx, my)) {
             editorFocused = true;
@@ -608,7 +641,8 @@ public final class DihScriptsOverlay extends DihOverlayBase {
         int steps = (int) Math.signum(amount) * Math.max(1, (int) Math.round(Math.abs(amount)));
         if (listBounds.contains(x, y)) listScroll -= steps * ROW_H;
         else if (helpOpen && helpBounds.contains(x, y)) helpScroll -= steps * ROW_H * 2;
-        else if (editorBounds.contains(x, y)) {
+        else if (blocksMode && !helpOpen && blocks.scroll(mx, my, amount)) { }
+        else if (!blocksMode && editorBounds.contains(x, y)) {
             if (shiftHeld()) scrollX = Math.max(0, scrollX - steps * 18);
             else topLine = Math.max(0, topLine - steps * 3);
         }
@@ -640,6 +674,19 @@ public final class DihScriptsOverlay extends DihOverlayBase {
     public boolean keyPressed(int key, int scanCode, int mods) {
         if (!visible || collapsed) return false;
         if (naming) return nameKey(key);
+        if (blocksMode && !helpOpen && blocks.focused()) {
+            boolean control = (mods & (InputConstants.MOD_CONTROL | InputConstants.MOD_SUPER)) != 0;
+            if (control && key == InputConstants.KEY_S) { save(true); return true; }
+            if (control && (key == InputConstants.KEY_RETURN || key == InputConstants.KEY_NUMPADENTER)) { runClicked(); return true; }
+            if (control && !blocks.editingField() && (key == InputConstants.KEY_Z || key == InputConstants.KEY_Y)) {
+                boolean redo = key == InputConstants.KEY_Y || (mods & InputConstants.MOD_SHIFT) != 0;
+                if (redo) editor.redo(); else editor.undo();
+                loadBlocksIfSupported();
+                noteEdit();
+                return true;
+            }
+            return blocks.key(key, mods);
+        }
         if (!editorFocused) return false;
 
         boolean ctrl = (mods & (InputConstants.MOD_CONTROL | InputConstants.MOD_SUPER)) != 0;
@@ -701,6 +748,7 @@ public final class DihScriptsOverlay extends DihOverlayBase {
             if ((Character.isLetterOrDigit(chr) || chr == '_' || chr == '-') && newName.length() < 32) newName.append(chr);
             return true;
         }
+        if (blocksMode && !helpOpen) return blocks.typing(chr, mods);
         if (!editorFocused) return false;
         if ((mods & (InputConstants.MOD_CONTROL | InputConstants.MOD_SUPER)) != 0) return true;
         if (chr >= 32 && chr != 127) {
@@ -738,10 +786,11 @@ public final class DihScriptsOverlay extends DihOverlayBase {
             return;
         }
         try {
-            ScriptManager.write(name, TEMPLATE);
+            if (!commitBlocks() || (isDirty() && !save(false))) return;
+            ScriptManager.write(name, new ScriptBlocksModel().source());
             naming = false;
             select(name);
-            editorFocused = true;
+            editorFocused = false;
             flash("Created " + name + ScriptManager.EXTENSION, 0xFF3FE87E);
         } catch (IOException e) {
             flash("Could not create: " + e.getMessage(), 0xFFFF5555);
@@ -760,6 +809,8 @@ public final class DihScriptsOverlay extends DihOverlayBase {
         try {
             ScriptManager.delete(name);
             selected = null;
+            blocksMode = false;
+            blocks.blur();
             editor.setText("");
             savedText = "";
             problems = List.of();
@@ -786,6 +837,7 @@ public final class DihScriptsOverlay extends DihOverlayBase {
 
     private boolean save(boolean announce) {
         if (selected == null) return false;
+        if (!commitBlocks()) return false;
         try {
             ScriptManager.write(selected, editor.text());
             savedText = editor.text();
@@ -798,7 +850,45 @@ public final class DihScriptsOverlay extends DihOverlayBase {
     }
 
     private void saveIfDirty() {
+        if (!commitBlocks()) return;
         if (selected != null && isDirty()) save(false);
+    }
+
+    private boolean commitBlocks() {
+        if (selected == null || !blocksMode || blocks.commit()) return true;
+        flash(blocks.error(), 0xFFFF5555);
+        return false;
+    }
+
+    private void loadBlocksIfSupported() {
+        try {
+            blocks.load(editor.text());
+            blocksMode = true;
+        } catch (IllegalArgumentException e) {
+            blocksMode = false;
+        }
+        editorFocused = false;
+        draggingSelection = false;
+    }
+
+    private void toggleMode() {
+        if (!commitBlocks()) return;
+        if (blocksMode) {
+            blocksMode = false;
+            blocks.blur();
+            editorFocused = true;
+        } else {
+            try {
+                blocks.load(editor.text());
+                blocksMode = true;
+                editorFocused = false;
+            } catch (IllegalArgumentException e) {
+                flash(e.getMessage(), 0xFFFFCB6B);
+                return;
+            }
+        }
+        helpOpen = false;
+        draggingSelection = false;
     }
 
     private boolean isDirty() {

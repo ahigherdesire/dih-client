@@ -200,6 +200,8 @@ public final class Interpreter {
 
     /** Runs one loop iteration; returns true when the loop should end ({@code break}). */
     private boolean runLoopBody(Block body, Env env) {
+        // Empty bodies still need to yield and observe cancellation.
+        checkpoint(body.line());
         try {
             executeBlock(body, new Env(env));
             return false;

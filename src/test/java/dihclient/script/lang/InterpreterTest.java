@@ -120,6 +120,25 @@ class InterpreterTest {
     }
 
     @Test
+    void emptyLoopsYieldAndCanBeCancelled() {
+        for (String loop : List.of(
+            "let n = 0; while ((n += 1) < 50000) {}",
+            "repeat (50000) {}",
+            "for (let n in range(50000)) {}"
+        )) {
+            FakeHost host = new FakeHost();
+            host.cancelAfterTicks = 2;
+            Interpreter it = new Interpreter(Parser.parse("function main() { " + loop
+                + " print(\"finished\"); } function onStop() { print(\"cleaned up\"); }"),
+                CoreLibrary.create(), host);
+            it.run();
+            it.runStopHandler();
+            assertEquals(2, host.ticks, loop);
+            assertEquals(List.of("cleaned up"), host.out, loop);
+        }
+    }
+
+    @Test
     void stopBuiltinEndsQuietly() {
         FakeHost h = run("function main() { print(1); stop(); print(2); }");
         assertEquals(List.of("1"), h.out);

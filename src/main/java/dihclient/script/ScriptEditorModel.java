@@ -23,6 +23,12 @@ public final class ScriptEditorModel {
     private final Deque<Snapshot> redo = new ArrayDeque<>();
     private boolean coalesceTyping;
     private long revision;
+    private final boolean normalizeWhitespace;
+
+    public ScriptEditorModel() { this(true); }
+
+    /** Code editors normalize indentation; block value fields preserve literal whitespace. */
+    public ScriptEditorModel(boolean normalizeWhitespace) { this.normalizeWhitespace = normalizeWhitespace; }
 
     public String text() { return text; }
 
@@ -42,8 +48,9 @@ public final class ScriptEditorModel {
         revision++;
     }
 
-    private static String normalize(String s) {
+    private String normalize(String s) {
         if (s == null) return "";
+        if (!normalizeWhitespace) return s;
         return s.replace("\r\n", "\n").replace('\r', '\n').replace("\t", INDENT);
     }
 

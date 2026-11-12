@@ -487,24 +487,33 @@ public final class GameLibrary {
             int count = onClient(() -> {
                 AbstractContainerMenu menu = menu();
                 if (menu == null) return -1;
-                for (int i = 0; i < menu.slots.size(); i++) {
-                    Slot slot = menu.slots.get(i);
-                    boolean playerSide = slot.container instanceof Inventory;
-                    if (playerSide != toContainer) continue;
-                    ItemStack stack = slot.getItem();
-                    if (stack.isEmpty() || !matches(stack, item)) continue;
-                    int n = stack.getCount();
-                    if (!DihInventoryClickHelper.click(mc(), i, 0, ContainerInput.QUICK_MOVE)) return -1;
-                    // nothing moved (destination full): stop instead of spinning
-                    return slot.getItem().getCount() == n && ItemStack.isSameItem(slot.getItem(), stack) ? 0 : n;
-                }
-                return -1;
+                return transferNext(menu, item, toContainer,
+                    slot -> DihInventoryClickHelper.click(mc(), slot, 0, ContainerInput.QUICK_MOVE));
             });
             if (count <= 0) break;
             moved += count;
             a.interpreter().waitTicks(1);
         }
         return moved;
+    }
+
+    /** Tries source stacks in menu order, returning the count moved by the first successful transfer. */
+    static int transferNext(AbstractContainerMenu menu, String item, boolean toContainer,
+                            java.util.function.IntPredicate quickMove) {
+        for (int i = 0; i < menu.slots.size(); i++) {
+            Slot slot = menu.slots.get(i);
+            boolean playerSide = slot.container instanceof Inventory;
+            if (playerSide != toContainer) continue;
+            ItemStack stack = slot.getItem().copy();
+            if (stack.isEmpty() || !matches(stack, item)) continue;
+            if (!quickMove.test(i)) return -1;
+            ItemStack remaining = slot.getItem();
+            int left = ItemStack.isSameItemSameComponents(stack, remaining) ? remaining.getCount() : 0;
+            int moved = Math.max(0, stack.getCount() - left);
+            if (moved > 0) return moved;
+            // A blocked stack does not mean later item types have no room.
+        }
+        return 0;
     }
 
     /**

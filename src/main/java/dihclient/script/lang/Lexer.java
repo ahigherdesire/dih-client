@@ -121,6 +121,7 @@ public final class Lexer {
                 char e = advance();
                 switch (e) {
                     case 'n' -> out.append('\n');
+                    case 'r' -> out.append('\r');
                     case 't' -> out.append('\t');
                     case '\\' -> out.append('\\');
                     case '"' -> out.append('"');
