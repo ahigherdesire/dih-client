@@ -54,7 +54,7 @@ function goldMining() {
     while (true) {
         if (health() <= LOW_HEALTH) { return "low health (" + health() + ")"; }
         if (playerNearby(SAFE_RADIUS)) { return "player nearby (" + nearestPlayer(SAFE_RADIUS) + ")"; }
-        if (inventoryFull()) { return "inventory full"; }
+        if (inventoryFull("raw_gold")) { return "inventory full"; }
         if (!checkPickaxe()) { return "no pickaxe left"; }
         wait(5);                                // check 4 times a second
     }

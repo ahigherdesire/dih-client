@@ -55,7 +55,7 @@ final class ExampleScripts {
                     goHome();
                     return;
                 }
-                if (inventoryFull()) {
+                if (inventoryFull("raw_gold")) {
                     print("Inventory full - going home");
                     goHome();
                     return;

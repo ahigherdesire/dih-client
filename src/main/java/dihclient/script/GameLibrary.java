@@ -281,10 +281,14 @@ public final class GameLibrary {
             for (ItemStack s : p.getInventory().getNonEquipmentItems()) if (s.isEmpty()) n++;
             return (double) n;
         }));
-        lib.define("Inventory", "inventoryFull()", "True when there is no empty slot left.", 0, 0, a -> onPlayer(p -> {
-            for (ItemStack s : p.getInventory().getNonEquipmentItems()) if (s.isEmpty()) return false;
-            return true;
-        }));
+        lib.define("Inventory", "inventoryFull(item)", "True when there is no empty slot left. With an item, e.g. inventoryFull(\"raw_gold\"), only true once no slot is empty AND every stack of that item is full (64), so stacks with room don't count as full.", 0, 1, a -> {
+            String item = a.has(0) ? a.string(0) : null;
+            return onPlayer(p -> roomFor(p, item) == 0);
+        });
+        lib.define("Inventory", "roomFor(item)", "How many more of item fit in your main inventory: empty slots plus the space left on stacks of it.", 1, 1, a -> {
+            String item = a.string(0);
+            return onPlayer(p -> (double) roomFor(p, item));
+        });
         lib.define("Inventory", "heldItem()", "Id of the item in your main hand, e.g. \"diamond_pickaxe\" (\"air\" if empty).", 0, 0,
             a -> onPlayer(p -> BuiltInRegistries.ITEM.getKey(p.getMainHandItem().getItem()).getPath()));
         lib.define("Inventory", "heldDurability()", "Uses left on the item in your main hand before it breaks, or -1 if it can't break.", 0, 0,
@@ -329,6 +333,26 @@ public final class GameLibrary {
                 return false;
             });
         });
+    }
+
+    /**
+     * Free space in the 36 main slots: with no item, the number of empty slots; with an item, how many more
+     * of it fit (a full stack's worth per empty slot plus the room left on its partial stacks).
+     */
+    static int roomFor(LocalPlayer p, String item) {
+        Inventory inv = p.getInventory();
+        int room = 0;
+        for (int i = 0; i < 36; i++) {
+            ItemStack s = inv.getItem(i);
+            if (item == null) {
+                if (s.isEmpty()) room++;
+            } else if (s.isEmpty()) {
+                room += 64;
+            } else if (matches(s, item)) {
+                room += Math.max(0, s.getMaxStackSize() - s.getCount());
+            }
+        }
+        return room;
     }
 
     /** Uses left before {@code stack} breaks, or -1 when it can't break (or is empty). */

@@ -208,7 +208,8 @@ name shown in game (`Raw Gold`).
 | `count(item)` | How many you carry. |
 | `hasItem(item)` | True if you carry at least one. |
 | `freeSlots()` | Empty main-inventory slots (0-36). |
-| `inventoryFull()` | True when no slot is empty. |
+| `inventoryFull(item)` | True when no slot is empty. With an item, e.g. `inventoryFull("raw_gold")`, only once every stack of it is also full, so slots holding a few raw gold still count as room. |
+| `roomFor(item)` | How many more of `item` fit: empty slots plus the space left on its stacks. |
 | `heldItem()` | Id of the main-hand item (`"air"` if empty). |
 | `selectSlot(slot)` | Select hotbar slot 1-9. |
 | `selectItem(item)` | Select the hotbar slot holding `item`. False if it isn't in the hotbar. |
