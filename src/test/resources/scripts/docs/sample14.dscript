@@ -1,0 +1,11 @@
+const MENU_SLOT = 13;     // button on the first page
+const CONFIRM_SLOT = 22;  // button on the second page
+
+function main() {
+    command("/shop");
+    if (!waitForGui(100)) { error("/shop did not open"); }
+    clickSlot(MENU_SLOT);
+    if (!waitForItem("Confirm", 100)) { error("No Confirm button"); }
+    clickSlot(CONFIRM_SLOT);
+    closeGui();
+}

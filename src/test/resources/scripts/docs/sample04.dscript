@@ -1,0 +1,9 @@
+const LIMIT = 5;          // can never change
+let count = 0;            // can change
+let nothing;              // starts as null
+
+function main() {
+    count = count + 1;
+    count += 2;           // also -=, *=, /=
+    print(count);         // 3
+}

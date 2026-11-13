@@ -1,0 +1,20 @@
+// 1. constants and variables shared by every function
+const ORE = "gold_ore";
+let trips = 0;
+
+// 2. main(): required, runs when the script starts
+function main() {
+    trips += 1;
+    print("Trip " + trips + ": mining " + ORE);
+    helper();
+}
+
+// 3. your own functions, called from main() or each other
+function helper() {
+    print("helping");
+}
+
+// optional: onStop() runs once whenever the script ends
+function onStop() {
+    print("done");
+}

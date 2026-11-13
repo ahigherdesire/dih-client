@@ -1,0 +1,5 @@
+function main() {
+    let start = time();
+    waitSeconds(2);
+    print("waited " + (time() - start) + " ms");
+}

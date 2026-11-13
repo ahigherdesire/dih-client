@@ -1,0 +1,5 @@
+function main() {
+    for (let i in range(guiSize())) {
+        if (slotName(i) != null) { print(i + ": " + slotName(i)); }
+    }
+}

@@ -1,0 +1,11 @@
+// parameters are just names; return gives a value back
+function percent(part, whole) {
+    if (whole == 0) {
+        return 0;
+    }
+    return round(part * 100 / whole);
+}
+
+function main() {
+    print("Health: " + percent(health(), maxHealth()) + "%");
+}

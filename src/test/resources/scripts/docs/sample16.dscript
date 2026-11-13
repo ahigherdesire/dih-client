@@ -1,0 +1,22 @@
+const SAFE_RADIUS = 32;
+
+function main() {
+    baritone("mine iron_ore");
+    while (baritoneBusy()) {
+        if (playerNearby(SAFE_RADIUS) || health() < 10) {
+            stopBaritone();
+            command("/spawn");
+            stop();
+        }
+        if (food() < 10) {
+            baritone("pause");
+            eatUntilFull();
+            baritone("resume");
+        }
+        wait(5);
+    }
+}
+
+function onStop() {
+    stopBaritone();
+}
