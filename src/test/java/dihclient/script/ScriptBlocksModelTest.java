@@ -33,6 +33,24 @@ class ScriptBlocksModelTest {
         assertEquals(List.of("hello", "hello", "hello", "done"), output);
     }
 
+    @Test void waypointAndPlaceBlocksUseTheRightFunctions() {
+        var model = new ScriptBlocksModel();
+        model.main.add(new ScriptBlocksModel.Block(ScriptBlocksModel.Kind.WAYPOINT, "home"));
+        model.main.add(new ScriptBlocksModel.Block(ScriptBlocksModel.Kind.GOTO, "chest"));
+        String source = model.source();
+        assertTrue(source.contains("gotoWaypoint(\"home\");"), source);
+        assertTrue(source.contains("goto(\"chest\");"), source);
+        var restored = ScriptBlocksModel.parse(source);
+        assertEquals(ScriptBlocksModel.Kind.WAYPOINT, restored.main.get(0).kind);
+        assertEquals(ScriptBlocksModel.Kind.GOTO, restored.main.get(1).kind);
+        // every block's function exists in the real library, so block scripts always pass the checker
+        var library = new Library().include(CoreLibrary.create()).include(GameLibrary.create());
+        for (var kind : ScriptBlocksModel.Kind.values()) {
+            if (kind == ScriptBlocksModel.Kind.REPEAT || kind == ScriptBlocksModel.Kind.FOREVER) continue;
+            assertNotNull(library.get(kind.function), kind + " -> " + kind.function);
+        }
+    }
+
     @Test void textCannotEscapeIntoExecutableCode() {
         var model = new ScriptBlocksModel();
         String text = "\"\\\n\t); stop(); //";

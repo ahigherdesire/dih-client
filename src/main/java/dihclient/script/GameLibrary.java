@@ -218,6 +218,29 @@ public final class GameLibrary {
             onClient(() -> baritoneExecute("goto " + target, a));
             return waitForBaritone(a.interpreter(), -1);
         });
+        lib.define("Baritone", "gotoWaypoint(name)", "Walk to one of your saved Baritone waypoints (#wp goto <name>) and wait until you arrive. Returns false if the waypoint doesn't exist.", 1, 1, a -> {
+            String name = a.string(0).trim();
+            if (name.isEmpty()) throw a.error("give a waypoint name, e.g. gotoWaypoint(\"home\")");
+            boolean known = onClient(() -> waypointExists(name));
+            if (!known) return false;
+            onClient(() -> baritoneExecute("wp goto " + name, a));
+            return waitForBaritone(a.interpreter(), -1);
+        });
+    }
+
+    /** True if a saved Baritone waypoint (any tag) has this name, ignoring capitals. */
+    private static boolean waypointExists(String name) {
+        baritone.api.IBaritone b = primaryBaritone();
+        if (b == null) return false;
+        try {
+            for (baritone.api.cache.IWaypoint w : b.getWorldProvider().getCurrentWorld().getWaypoints().getAllWaypoints()) {
+                if (w.getName().equalsIgnoreCase(name)) return true;
+            }
+        } catch (Throwable ignored) {
+            // no world loaded, or the waypoint API changed: let #wp goto report it instead
+            return true;
+        }
+        return false;
     }
 
     private static boolean waitForBaritone(Interpreter it, int timeoutTicks) {
