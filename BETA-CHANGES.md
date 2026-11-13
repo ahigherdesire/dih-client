@@ -4,6 +4,32 @@
 
 The 5.1 betas with release notes, newest first. Recent betas are Fabric only, on Minecraft 26.2 and 26.3; NeoForge and Forge stay on beta 3.
 
+### 5.1 beta 8.3: gold miner no longer goes home after one block
+
+**Scripts**
+- Fixed: `inventoryFull()` only looked for empty slots, so after `fillSlots` put one raw gold in every slot, the gold
+  miner went home after mining a single block. `inventoryFull("raw_gold")` is now only true once no slot is empty
+  **and** every raw gold stack is at 64. Plain `inventoryFull()` still means "no empty slot".
+- New `roomFor(item)`: how many more of an item fit, counting empty slots and the room left on its stacks.
+- The bundled `gold_miner` and the gold miner in the manual use `inventoryFull("raw_gold")`. If you pasted the gold
+  miner before, change `inventoryFull()` to `inventoryFull("raw_gold")` in `goldMining()`.
+
+### 5.1 beta 8.2: Build scripts with blocks
+
+**New: no-code script builder**
+- Create a script in Scripts → + New, then choose + Add step. Build routines with plain-language actions and editable fields, without writing code.
+- Stack actions for chat, commands, menus, inventory, Baritone, saved macros and timing. Nest steps inside conditions and repeat blocks.
+- Use When started for the main routine and When finished / stopped for cleanup.
+- Starter recipes cover repeated messages, mining with a low-health retreat, and opening a menu to click Confirm. Change the example commands to suit your server.
+- Reorder, duplicate or remove steps, and undo/redo edits.
+- Switch between Blocks and Code. Advanced scripts stay available in the full code editor; unsupported code is never silently replaced.
+- Scripts remain normal .dscript files using the existing runner and error checks.
+
+**Fixes**
+- Empty script loops yield and respond to Stop.
+- Inventory transfers count partial moves correctly and can skip a stack that has no room.
+- Imported text values preserve tabs and carriage returns when edited as blocks.
+
 ### 5.1 beta 8.1: Scripts can swap worn pickaxes
 
 **Scripts**

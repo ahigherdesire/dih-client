@@ -3695,7 +3695,7 @@ See the full guide under `.schem`.
 
 `.toggle schematics`
 
-##### Settings (17)
+##### Settings (25)
 
 **Render**
 
@@ -3723,6 +3723,19 @@ See the full guide under `.schem`.
 | Extra `color-extra` | colour | A block where the schematic has air. |
 | Wrong State `color-wrong-state` | colour | The right block, turned or set wrong. |
 | Wrong Block `color-wrong-block` | colour | Another block than the schematic's. |
+
+**Build**
+
+| Setting | Default | What it does |
+|---|---|---|
+| Build Mode `build-mode` | Legit | Legit: Baritone held to Grim-safe reach, turn speed and click delay. Fast: blatant, places every block in reach each tick. Creative: takes blocks from the creative inventory and flies the build, or pastes it with commands when you are op. Choices: Legit, Fast, Creative. |
+| Blocks Per Tick `print-per-tick` | 4 | Most blocks Fast and Creative place in one tick. 1 to 64. |
+| Fast Reach `fast-reach` | 5.0 | How far Fast places from. The server allows about 5.5 in survival. 3.0 to 6.0. |
+| Air Place `air-place` | on | Place blocks with nothing next to them. Flags Grim's AirPlace. |
+| Replace `creative-replace` | on | Creative: break blocks that are not the schematic's, so the build matches it. |
+| Use Commands `creative-commands` | on | Creative: when you are op, paste with /fill and /setblock at once instead of placing. |
+| Commands Per Tick `commands-per-tick` | 20 | Creative paste: commands sent each tick. 1 to 200. |
+| Fly Speed `fly-speed` | 1.0 | Creative: blocks per tick when flying to what is left. 0.2 to 3.0. |
 
 **Keys**
 

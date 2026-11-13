@@ -1,6 +1,6 @@
 # DIH Client commands
 
-Every chat command in DIH Client and how to type it, the client's menus, and guides. Written for 5.1 beta 8.1, on
+Every chat command in DIH Client and how to type it, the client's menus, and guides. Written for 5.1 beta 8.3, on
 Minecraft 26.2 and 26.3, Fabric Loader 0.19.3+, Java 25. [MODULES.md](MODULES.md) lists every module and setting, and
 [BETA-CHANGES.md](BETA-CHANGES.md) what changed in each beta. The website shows all three together at `/docs`.
 
@@ -1819,154 +1819,621 @@ you've seen selling the books you name.
 
 Beta: 5.1 beta only, not in 5.0.1 stable.
 
-Write your own automation in DihScript, a small language that looks like C or JavaScript, and run it by name.
+Scripts are your own bots: a mining loop that retreats home when it's hurt, a restock run, a menu-clicking sequence.
+You build one in either of two ways, and both make the same kind of file:
 
-A script is a text file in `config/dih/scripts/<name>.dscript`. Write it in the **Scripts** window or in any text
-editor, then start and stop it from chat:
+- **Blocks**: stack plain-language steps such as *Run a command*, *Wait*, *If health is below*. No code needed. See
+  `Block programming`.
+- **Code**: write DihScript, a small language that looks like C or JavaScript. It can do everything blocks can, plus
+  variables, your own functions, lists and maths. The rest of this guide covers it.
 
-```
-.scripts new my_bot
-.scripts edit my_bot
-.scripts run my_bot
-.scripts stop my_bot
-```
+##### Where scripts live
 
-Open the Scripts window from the module menu's **Scripts** button, the Main Menu panel in container GUIs, or
-`.scripts edit`. The list on the left shows every script, with a green dot on the ones running. The editor colours the
-code, checks it as you type and marks problem lines in red; the status bar names the problem. **Run** saves and starts
-the script, **Save** (Ctrl+S) saves, and **?** lists every built-in function: click one to insert it. `.scripts` lists
-the chat subcommands.
+Every script is one text file: `.minecraft/config/dih/scripts/<name>.dscript`. With a launcher that uses instances
+(Prism, MultiMC, CurseForge, Modrinth) it's inside the instance's own `config/dih/scripts/`. `.scripts folder` prints
+the exact path.
 
-The smallest script:
+You can edit the files in any text editor, copy them to back them up, or drop a `.dscript` file in the folder to add
+a script. DIH reads the file every time you run it, so a saved change counts on the next run. The first time the
+folder is created DIH puts two examples in it: `hello` and `gold_miner`.
 
-```js
-function main() {
-    print("Hello, " + playerName() + "! You have " + health() + " health.");
-}
-```
+Script names use letters, digits, `_` and `-`, up to 32 characters. Names ignore capitals when you type them.
 
-`main()` runs when the script starts, and the script ends when it returns. An optional `onStop()` runs whenever the
-script ends, whether it finished, you stopped it or it hit an error, so put clean-up such as `stopBaritone();` there.
+##### The Scripts window
 
-Scripts run on their own thread, so a script that waits never freezes the game, and several can run at once. Before
-one starts, DIH checks it for syntax errors, unknown functions and wrong argument counts; `.scripts check <name>` runs
-the same check without starting it. An error while running stops the script and prints the line in chat. `.scripts
-stop` runs `onStop()`; stopping a second time ends the script at once.
+Open it from the module menu's **Scripts** button, the Main Menu panel in container GUIs, or `.scripts edit [name]`.
 
-| Editor key | What it does |
+| Part | What it does |
 |---|---|
-| Ctrl+S | Save. Switching scripts, running and closing the window also save. |
-| Ctrl+Enter | Run, or stop if running. |
-| Ctrl+Z, Ctrl+Y | Undo, redo. |
-| Ctrl+/ | Comment or uncomment the line or selection. |
-| Tab, Shift+Tab | Indent, outdent. |
-| Ctrl+A, Ctrl+C, Ctrl+X, Ctrl+V | Select all, copy, cut, paste. With nothing selected, copy and cut take the whole line. |
-| Double-click | Select a word. |
-| Esc | Leave the editor so game keys work again. |
+| Script list (left) | Every script. A green dot means it's running. Click one to open it. |
+| **+ New** | Type a name and press Enter. New scripts open in Blocks. |
+| **Delete** | Click twice within 3 seconds to delete the open script (stopping it first). |
+| **Blocks \| Code** | Switch between the block builder and the code editor for the same script. |
+| **Run** / **Stop** | Saves, checks and starts the script, or stops it while it runs. |
+| **Save** | Saves the file. Switching scripts, running and closing the window also save. |
+| **?** | The function reference. In Code, click a function to insert it at the cursor. |
+| Status line (bottom) | The first problem in the script, the live status of a running one (time and current line), or the cursor position. |
+
+The code editor checks the script about a third of a second after you stop typing and marks problem lines red in the
+line-number gutter.
+
+##### Running and stopping
+
+| Command | What it does |
+|---|---|
+| `.scripts run <name>` | Check the script, then start it. Refused if it's already running or has problems. |
+| `.scripts stop <name>` | Ask the script to stop. Its `onStop()` cleanup runs. |
+| `.scripts stop <name>` again | Stop it at once, even mid-cleanup. |
+| `.scripts stop` | Stop every running script (`.scripts stop all` too). |
+| `.scripts list` | Every script; running ones show their uptime and current line. |
+| `.scripts check <name>` | Report problems without running anything. |
+| `.scripts new <name>` | Create a script from the starter template. |
+| `.scripts edit [name]` | Open the Scripts window. |
+| `.scripts delete <name>` | Delete a script. |
+| `.scripts functions [category]` | List the built-in functions in chat. |
+| `.scripts folder` | Print the scripts folder. |
+
+Chat shows when a script starts, finishes, stops or fails, and every `print()` with the script's name in front.
+Several scripts can run at the same time. Scripts don't run while panic hide has locked the client, and panic stops
+any that are running.
+
+A script keeps running if you open menus, but most game functions fail with "Not in a world" once you leave the
+server, which stops the script with an error.
+
+#### Block programming
+
+Beta: 5.1 beta 8.2 and later.
+
+Build a script from steps without writing code. A block script is an ordinary `.dscript` file: it runs, stops and
+checks exactly like one you typed.
+
+##### Your first block script
+
+1. Open the Scripts window and press **+ New**. Type `hello_blocks` and press Enter. It opens in Blocks.
+2. Under **When started**, press **+ Add step**, type `message` and choose **Show a message**.
+3. Click the step, type `Hello from blocks!` and press **Apply** (or Enter).
+4. Press **+ Step**, choose **Wait**, and set it to `2`.
+5. Press **Run**. Chat shows the message, the script waits 2 seconds and finishes.
+
+##### The two sections
+
+| Section | When it runs |
+|---|---|
+| **When started** | When you run the script. Steps run once, top to bottom, then the script finishes. |
+| **When finished / stopped** | Once at the end, whether the steps finished, you stopped the script, or it hit an error. Put clean-up here, such as **Stop Baritone**. |
+
+Click a section's tab to edit it.
+
+##### Adding and arranging steps
+
+| Control | What it does |
+|---|---|
+| **+ Add step** | Add a step at the end of the list (or inside a group, where it reads **+ Add step inside**). |
+| **+ Step** | Add a step right after the selected one, in the same list. |
+| Search box | Type a few letters of a step or category, then click one. **Back** returns without adding. |
+| Click a step | Select it. If it has a value, an editor opens under it. |
+| **Up** / **Down** | Move the selected step within its list. |
+| **Copy** | Duplicate the selected step, including any steps inside it. |
+| **Remove** | Delete the selected step and everything inside it. |
+| **Recipes** | Insert a ready-made set of steps after the existing ones. Nothing is replaced. |
+
+Editing a value: type it, then press **Apply**, Enter or Tab. Escape cancels. A bad value, such as text where a number
+goes, shows a red message and the step keeps its old value. Ctrl+Z undoes the last block edit.
+
+Group steps, the *Repeat* and *If* steps, hold other steps and are drawn in gold with their contents indented under
+them. Groups can be nested up to 32 levels deep.
+
+##### Every block
+
+| Block | Category | Value | What it does | Code it becomes |
+|---|---|---|---|---|
+| Show a message | Chat | text | Shows the text in your chat (only you see it). | `print("Hello!");` |
+| Run a command | Chat | text | Runs a command as if typed: `/home` goes to the server, `#mine gold_ore` to Baritone, `.toggle flee` to DIH. | `command("/home");` |
+| Send chat message | Chat | text | Sends a normal chat message everyone sees. | `say("Hello!");` |
+| Wait | Timing | seconds | Pauses; decimals like `0.5` work. | `waitSeconds(1);` |
+| Wait for a menu | Menus | ticks | Waits until a chest or server menu is open, up to this many ticks (20 = 1 second). | `waitForGui(100);` |
+| Click a menu item | Menus | item name or id | Left-clicks the item with that name in the open menu. | `clickItem("Confirm");` |
+| Click a menu slot | Menus | slot number | Left-clicks a slot, counting from 0 at the top-left. | `clickSlot(13);` |
+| Close the menu | Menus | - | Closes the open screen. | `closeGui();` |
+| Open a nearby container | Menus | block id | Looks at the closest such block within reach, right-clicks it and waits for its menu. | `openNearest("chest");` |
+| Deposit an item | Inventory | item id, or `*` | Shift-clicks every stack of it into the open container. `*` moves everything. | `deposit("raw_gold");` |
+| Withdraw an item | Inventory | item id | Shift-clicks all of it out of the open container. | `withdraw("bread");` |
+| Hold an item | Inventory | item name or id | Selects the hotbar slot holding it. | `selectItem("bread");` |
+| Select a hotbar slot | Inventory | 1 to 9 | Selects that hotbar slot. | `selectSlot(1);` |
+| Eat until full | Inventory | - | Eats food from the hotbar until the hunger bar is full. | `eatUntilFull();` |
+| Run Baritone | Movement | command without `#` | Starts a Baritone job and carries straight on. | `baritone("mine gold_ore");` |
+| Stop Baritone | Movement | - | Cancels whatever Baritone is doing. | `stopBaritone();` |
+| Walk to a waypoint | Movement | target | Walks there with Baritone and waits until it arrives. The value goes to `#goto`: a block name such as `chest`, a Y level, or `x y z`. Saved waypoint names don't work here yet; for those use *Run a command* with `#wp goto <name>`. | `goto("chest");` |
+| Run a saved macro | Control | macro name | Runs one of your DIH macros and waits for it to finish. | `macro("my_macro");` |
+| Stop this script | Control | - | Ends the script (the finished / stopped section still runs). | `stop();` |
+| Repeat a number of times | Control | times | Runs the steps inside it that many times. | `repeat (3) { ... }` |
+| Repeat forever | Control | - | Runs the steps inside it until the script is stopped. | `while (true) { ... }` |
+| If health is below | Conditions | health points | Runs the steps inside it only when health is under the value (20 = full, 2 per heart). | `if (health() < 6) { ... }` |
+| If hunger is below | Conditions | hunger points | Same for the hunger bar (20 = full). | `if (food() < 10) { ... }` |
+| If another player is nearby | Conditions | radius | Another player within that many blocks. Friends, teammates and bots don't count. | `if (playerNearby(48)) { ... }` |
+| If inventory is full | Conditions | - | No empty main-inventory slot. | `if (inventoryFull()) { ... }` |
+| If a menu is open | Conditions | - | A chest or server menu is open. | `if (guiOpen()) { ... }` |
+| If Baritone is busy | Conditions | - | Baritone is mining, walking or farming. | `if (baritoneBusy()) { ... }` |
+| If carrying an item | Conditions | item name or id | You carry at least one. | `if (hasItem("bread")) { ... }` |
+
+Numbers can't be negative. Values for *Repeat a number of times*, *Wait for a menu* and *Click a menu slot* must be
+whole numbers.
+
+##### Recipes
+
+| Recipe | What it adds |
+|---|---|
+| Say hello three times | Repeat 3: show "Hello!" and wait 1 second. |
+| Mine gold; retreat on low health | Run Baritone `mine gold_ore`, then repeat forever: if health is below 6, stop Baritone, run `/home` and stop; wait 1 second. Its finished section stops Baritone. |
+| Open a menu and click Confirm | Run `/menu`, wait for a menu, click "Confirm". Change `/menu` to your server's command. |
+
+##### Patterns
+
+A *Repeat forever* loop needs a wait inside it, or it checks thousands of times a second. Put the checks at the top
+and one **Wait** at the bottom:
+
+```
+When started
+  Run Baritone: mine gold_ore
+  Repeat forever
+    If another player is nearby: 48
+      Stop Baritone
+      Run a command: /home
+      Stop this script
+    If health is below: 8
+      Eat until full
+    Wait: 0.5
+When finished / stopped
+  Stop Baritone
+```
+
+Navigating a server menu, with a wait after each click so the next page can load:
+
+```
+When started
+  Run a command: /warp
+  Wait for a menu: 100
+  Click a menu item: Mines
+  Wait: 0.5
+  Click a menu slot: 13
+```
+
+##### Switching between Blocks and Code
+
+**Blocks | Code** switches views on the same file. Code shows exactly what the blocks make, so blocks are a good way to
+learn DihScript.
+
+- Switching views never changes the file by itself.
+- A block edit rewrites the whole file from the blocks: formatting is redone and comments are dropped. Ctrl+Z
+  brings the previous text back.
+- A script only opens as blocks when every line is something a block can show. Otherwise it opens in Code, with the
+  message "This script uses advanced code", and nothing is lost.
+
+A script can be shown as blocks when it has only `main()` and `onStop()`, no parameters, no top-level `let` or
+`const`, and its lines are only the calls in the table above with plain text or number values, `repeat (n)`,
+`while (true)` and the *If* conditions above with no `else`. Variables, your own functions, `else`, `&&`, maths and
+other functions keep it in Code. You can always write it in Code and keep running it from there.
 
 #### Script language
 
 Beta: 5.1 beta only, not in 5.0.1 stable.
 
-Statements end with `;`, blocks use `{ }`, and comments are `// to the end of the line` or `/* across lines */`.
+The rules of DihScript. Every example is a complete script you can paste in and run unless it says otherwise.
+
+##### Program structure
+
+A script file holds three kinds of things at the top level, in any order:
+
+```js
+// 1. constants and variables shared by every function
+const ORE = "gold_ore";
+let trips = 0;
+
+// 2. main(): required, runs when the script starts
+function main() {
+    trips += 1;
+    print("Trip " + trips + ": mining " + ORE);
+    helper();
+}
+
+// 3. your own functions, called from main() or each other
+function helper() {
+    print("helping");
+}
+
+// optional: onStop() runs once whenever the script ends
+function onStop() {
+    print("done");
+}
+```
+
+Statements such as `print(...)` can't sit at the top level; they go inside a function. Top-level `let` and `const`
+run once, top to bottom, before `main()`.
+
+When `main()` returns, the script is finished. `onStop()` then runs, whether `main()` returned, you stopped the
+script, `stop()` was called, or an error ended it.
+
+##### Statements and comments
+
+Each statement ends with `;`. Blocks of statements go in `{ }`, and the braces are required after `if`, `else`,
+`while`, `repeat` and `for`, even for one statement. Spaces, tabs and line breaks don't matter.
+
+```js
+// a comment runs to the end of the line
+/* a block comment
+   can span lines */
+function main() {
+    print("one"); print("two");   // two statements on one line is fine
+}
+```
+
+##### Names
+
+Names of variables and functions start with a letter or `_`, then letters, digits or `_`: `gold`, `trip_count`,
+`_tmp2`. Capitals matter: `Gold` and `gold` are different. Write constants in capitals (`LOW_HEALTH`) by convention.
+
+These words are reserved and can't be names: `function let const if else while for in repeat break continue return
+true false null`.
 
 ##### Values
 
-| Type | Examples |
-|---|---|
-| number | `20`, `0.5`, `-3` |
-| text | `"gold_ore"`, `'Badlands'`, `"two\nlines"` |
-| true or false | `true`, `false` |
-| list | `[1, 2, "three"]`, `items[0]`, `items[-1]` for the last item |
-| nothing | `null` |
+| Type | Examples | Notes |
+|---|---|---|
+| number | `20`, `0.5`, `-3` | All numbers are decimals underneath. Whole numbers print without `.0`. There is no `1e3` form. |
+| text | `"gold_ore"`, `'Badlands'` | Single or double quotes. Escapes: `\n` new line, `\t` tab, `\r`, `\"`, `\'`, `\\`. A string can't span lines. |
+| boolean | `true`, `false` | |
+| list | `[1, 2, "three"]`, `[]` | Holds any values, including other lists. See `Lists and text`. |
+| nothing | `null` | What a missing value or a function without `return` gives. |
 
-`false`, `null`, `0`, empty text and an empty list count as false in an `if`; everything else counts as true. `+`
-joins text when either side is text: `"Health: " + health()`.
+`type(value)` gives `"number"`, `"string"`, `"boolean"`, `"list"` or `"null"`.
 
-##### Variables
+##### True and false
+
+`if`, `while`, `&&`, `||` and `!` accept any value. These count as false: `false`, `null`, `0`, `""` (empty text) and
+`[]` (empty list). Everything else counts as true, including `"0"` and `" "`.
 
 ```js
-const ORE = "gold_ore";   // fixed value
-let count = 0;            // value you can change
-count += 1;               // also -=, *= and /=
+function main() {
+    let name = nearestPlayer(48);   // a name, or null
+    if (name) {
+        print("Someone is near: " + name);
+    } else {
+        print("Nobody around");
+    }
+}
 ```
 
-Declare a variable with `let` or `const` before using it. One declared outside every function can be used in all of
-them; one declared inside `{ }` only exists inside those braces.
+##### Variables and constants
+
+```js
+const LIMIT = 5;          // can never change
+let count = 0;            // can change
+let nothing;              // starts as null
+
+function main() {
+    count = count + 1;
+    count += 2;           // also -=, *=, /=
+    print(count);         // 3
+}
+```
+
+- Declare before use. Assigning to a name you never declared is an error that tells you to add `let`.
+- Changing a `const` is an error.
+- A variable lives in the `{ }` it was declared in, and everything nested inside it. Top-level ones are visible in
+  every function.
+- An inner block can declare a name that also exists outside it; inside, the inner one wins. Declaring the same name
+  twice in the same block is an error. A function's parameters count as declared in its body.
+- Top-level variables keep their value for the whole run, so functions can share state through them.
 
 ##### Operators
 
-| Kind | Operators |
-|---|---|
-| Arithmetic | `+ - * / %` |
-| Comparison | `== != < <= > >=` |
-| Logic | `&&` (and), `\|\|` (or), `!` (not) |
+From tightest to loosest:
 
-##### Control flow
+| Operators | Meaning | Notes |
+|---|---|---|
+| `x(...)`, `x[i]` | call, index | |
+| `!x`, `-x` | not, negate | `-` needs a number. |
+| `*` `/` `%` | times, divide, remainder | Dividing by 0 is an error. `%` keeps the sign of the left side. |
+| `+` `-` | plus, minus | `+` joins text if either side is text, and joins two lists. |
+| `<` `<=` `>` `>=` | compare | Numbers with numbers, or text with text (dictionary order). |
+| `==` `!=` | equal, not equal | Works on any values. Lists are equal when their items are. |
+| `&&` | and | Stops at the first false value and gives it. |
+| `\|\|` | or | Stops at the first true value and gives it. |
+| `=` `+=` `-=` `*=` `/=` | assign | Gives the new value. |
 
-The braces are always required.
+Use brackets to group: `(a + b) * 2`. `&&` and `||` skip the right side when the left already decides, so
+`hasItem("bread") && eat()` only eats when you have bread. `||` is handy for defaults:
+`let who = nearestPlayer(64) || "nobody";`.
+
+There's no `++`, no `? :`, and single `&` or `|` are errors.
+
+##### if and else
 
 ```js
-if (food() < 10) {
-    eat();
-} else if (health() < 10) {
-    waitSeconds(5);
-} else {
-    print("fine");
+function main() {
+    let hp = health();
+    if (hp >= 18) {
+        print("Healthy");
+    } else if (hp >= 8) {
+        print("Hurt");
+    } else {
+        print("In danger");
+    }
 }
-
-while (!inventoryFull()) { wait(10); }        // repeat while true
-repeat (3) { clickItem("Confirm"); }          // repeat a set number of times
-for (let name in playersNearby(64)) { print(name); }
-for (let i in range(5)) { print(i); }         // 0 1 2 3 4
-
-break;      // leave the loop
-continue;   // skip to the next round
 ```
+
+##### Loops
+
+```js
+function main() {
+    // while: repeat as long as the condition is true
+    while (food() < 20 && eat()) {
+        print("ate, hunger " + food());
+    }
+
+    // repeat: a set number of times (the number is rounded down; 0 or less runs nothing)
+    repeat (3) {
+        print("tick");
+        wait(20);
+    }
+
+    // for-in: once per item of a list, or per character of text
+    for (let name in playersNearby(64)) {
+        print("nearby: " + name);
+    }
+    for (let i in range(1, 4)) {
+        print(i);                  // 1 2 3
+    }
+}
+```
+
+- `break;` leaves the loop it's in. `continue;` skips to the next round. Using either outside a loop is an error.
+- The loop variable of `for` exists only inside the loop. The loop walks a copy of the list, so changing the list
+  inside the loop doesn't change which items it visits.
+- A loop that runs for a long time must `wait`, or it wastes CPU checking thousands of times a second. See
+  `Timing and the game`.
 
 ##### Functions
 
 ```js
-function distanceTo(x2, z2) {
-    let dx = x() - x2;
-    let dz = z() - z2;
-    return sqrt(dx * dx + dz * dz);
+// parameters are just names; return gives a value back
+function percent(part, whole) {
+    if (whole == 0) {
+        return 0;
+    }
+    return round(part * 100 / whole);
+}
+
+function main() {
+    print("Health: " + percent(health(), maxHealth()) + "%");
 }
 ```
 
-Declare functions outside every other function. They can be called before the line that defines them, and missing
-arguments are `null`.
+- Declare functions at the top level only. Their order doesn't matter.
+- Call with fewer arguments and the missing ones are `null`. Calling with more is an error.
+- `return;` or reaching the end gives `null`.
+- A function can call itself, up to 200 calls deep; deeper is an error ("is it calling itself forever?").
+- Defining two functions with the same name is an error. A function with the same name as a built-in replaces the
+  built-in for the whole script, so pick names the built-ins don't use.
+- Functions aren't values: you can't store one in a variable or pass it to another function.
 
-##### Timing
+##### Lists and text
 
-The game runs 20 ticks a second. `wait(ticks)` and `waitSeconds(seconds)` pause the script without pausing the game.
-Put a `wait` in every loop that runs for a long time; a loop without one is paused for a tick every 20 000 steps so it
-can't lock up the client.
+```js
+function main() {
+    let ores = ["gold_ore", "iron_ore"];
+    push(ores, "coal_ore");        // add to the end
+    print(len(ores), ores[0], ores[-1]);   // 3 gold_ore coal_ore
+    ores[1] = "copper_ore";        // replace an item
+    let last = pop(ores);          // remove and return the last item
+    print(contains(ores, "gold_ore"), last);
+    print(join(ores, " + "));      // gold_ore + copper_ore
+
+    let parts = split("a,b,c", ",");   // ["a", "b", "c"]
+    print(upper(parts[1]), "abc"[0], len("hello"));
+}
+```
+
+- Indexes start at 0. Negative indexes count from the end: `-1` is the last item. An index outside the list, or one
+  that isn't a whole number, is an error.
+- Indexing text gives one character as text. You can't assign into text; build a new string instead.
+- A list is shared, not copied: `let b = a;` makes both names point at the same list, so `push(b, 1)` changes `a`
+  too. `a + []` makes a copy.
+- `+` joins lists: `[1, 2] + [3]` is `[1, 2, 3]`.
+
+##### Numbers and conversion
+
+Whole numbers print without a decimal point (`3`, not `3.0`); others print in full (`3.5`). `str(x)` turns anything
+into text, and `num("12")` turns text into a number, giving `null` when it isn't one. Text joins with `+` convert for
+you: `"Trips: " + 3` is `"Trips: 3"`.
+
+Rounding helpers: `floor`, `ceil`, `round`. `random(1, 6)` is a whole number from 1 to 6.
+
+#### Timing and the game
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+How scripts run alongside Minecraft, and the rules every game function follows.
+
+##### Ticks and waiting
+
+Minecraft runs 20 ticks a second. `wait(ticks)` pauses the script for that many ticks and `waitSeconds(s)` for that
+many seconds (`waitSeconds(0.5)` is 10 ticks). The game keeps running while a script waits.
+
+Each script runs on its own thread, so even a script that never waits can't freeze the game. It does burn CPU, though:
+after 20 000 statements in a row without a wait, DIH makes it pause for one tick. A loop that watches for something
+should wait between checks; `wait(5)` (4 checks a second) is plenty for most bots.
+
+```js
+function main() {
+    let start = time();
+    waitSeconds(2);
+    print("waited " + (time() - start) + " ms");
+}
+```
+
+##### Stopping, and onStop()
+
+A script ends when `main()` returns, when it calls `stop()`, when an error happens, or when you run `.scripts stop`.
+In every case `onStop()` then runs once, if the script has one.
+
+- Inside `onStop()`, a single stop request doesn't interrupt it, and `wait` still works, so cleanup can finish.
+- A second `.scripts stop` ends it at once.
+- `onStop()` can't take parameters.
+
+```js
+function main() {
+    baritone("mine diamond_ore");
+    while (true) { wait(20); }
+}
+
+function onStop() {
+    stopBaritone();          // never leave Baritone running after the script ends
+    print("Stopped mining.");
+}
+```
+
+##### Commands and chat
+
+`command(text)` runs `text` as if you typed it in chat, routed by its first character:
+
+| Starts with | Goes to | Example |
+|---|---|---|
+| `#` | Baritone | `command("#mine gold_ore")` |
+| your DIH prefix (`.`, or `%` with Meteor) | DIH | `command(".toggle flee")` |
+| anything else | the server, as a command (the `/` is optional) | `command("/home")`, `command("spawn")` |
+
+`say(text)` sends a normal chat message instead. `print(...)` only shows text to you.
+
+##### Baritone
+
+`baritone("mine gold_ore")` starts a Baritone job and returns at once; the script keeps running while Baritone works.
+Use `baritoneBusy()` to see whether it's still going, `waitForBaritone(ticks)` to wait until it's idle, and
+`stopBaritone()` to cancel it. `goto(...)` walks and waits until Baritone arrives: `goto("chest")` goes to the nearest
+known chest, `goto(100, 64, -200)` to coordinates. For a saved waypoint, use `command("#wp goto home")`.
+
+Baritone settings work too: `baritone("set itemSaver true")` makes it skip tools close to breaking, and
+`baritone("pause")` / `baritone("resume")` pause the current job, for example while eating.
+
+##### Item and block names
+
+Item functions accept an item id (`raw_gold`, `minecraft:raw_gold`, `Raw Gold` with spaces is read as
+`raw_gold`) or the name shown on the item in game (`"Raw Gold"`, or a custom name such as `"Lucky Pick"`). Names
+ignore capitals and punctuation. `"*"` matches any item in `deposit`, `withdraw`, `count` and similar. Block
+functions (`findBlock`, `openNearest`) take block ids such as `chest` or `ender_chest`.
 
 ##### Slot numbers
 
-`clickSlot` and the other slot functions number the open GUI's slots from 0 at the top-left, left to right, row by
-row: a 27-slot server menu is 0-26 (row 2 starts at 9, row 3 at 18) and a double chest 0-53. Your own inventory comes
-right after `guiSize()`. Functions that take one of your inventory slots number them 1-36 instead: 1-9 is the hotbar,
-the same as the number keys, and 10-36 the three rows above it from the top-left.
+There are two numberings.
+
+**GUI slots**, used by `clickSlot`, `slotItem`, `slotName`, `slotCount` and `findSlot`, count from 0 at the top-left
+of the open menu, left to right and row by row:
+
+```
+row 1:   0  1  2  3  4  5  6  7  8
+row 2:   9 10 11 12 13 14 15 16 17
+row 3:  18 19 20 21 22 23 24 25 26
+```
+
+A double chest goes on to 53. `guiSize()` is the menu's own slot count; your inventory's slots follow right after it.
+
+**Inventory slots**, used by `inventorySlot`, `clickInventory` and `durability`, are 1-36: 1-9 is the hotbar, the
+same as the number keys, and 10-36 the three rows above it from the top-left. `inventorySlot(n)` converts one to the
+GUI number of the open screen, so `clickSlot(inventorySlot(1))` clicks your first hotbar slot in any menu.
+
+To find the numbers of a server menu's buttons, open the menu and run this:
 
 ```js
-command("/menu");
-waitForGui(100);
-clickSlot(13);                                   // middle of a 27-slot menu
-if (slotName(22) == "Confirm") { clickSlot(22); }
-for (let i in range(guiSize())) {
-    if (slotItem(i) == "diamond") { clickSlot(i, 0, true); }   // shift-click every diamond out
+function main() {
+    for (let i in range(guiSize())) {
+        if (slotName(i) != null) { print(i + ": " + slotName(i)); }
+    }
 }
 ```
+
+##### Menus and containers
+
+- `waitForGui(ticks)` waits for a chest or server menu to open; it returns `false` if it timed out. Check the result
+  instead of clicking blind. `waitForGui(100, "Shop")` also requires the title to contain "Shop".
+- `waitForItem("Confirm", 100)` waits for an item to appear in the open menu, which is the safest way to wait for a
+  menu's next page.
+- `clickItem(name)` clicks the menu item with that exact shown name, else one with that item id, else the first whose
+  name contains it. It ignores your own inventory while a menu is open. It returns `false` if nothing matched.
+- Clicks wait a tick or two afterwards so the server can answer before the next click.
+- `deposit`, `withdraw` and `fillSlots` need an open container and shift-click one stack per tick. They return how
+  many items or slots they managed, and stop early when there's no room.
+- `openNearest("chest")` only reaches blocks within about 5 blocks of your eyes. Walk closer first with
+  `goto("chest")`.
+
+##### Eating and tools
+
+- `eat()` eats the first food in your hotbar, left to right, and returns `false` if there's none. It eats anything
+  edible, including golden apples, chorus fruit and rotten flesh, so keep only the food you want it to use in the
+  hotbar.
+- `eatUntilFull()` keeps eating until the hunger bar is full or the food runs out.
+- `heldDurability()`, `durability(slot)`, `pickaxeCount(min)` and `equipPickaxe(min)` let a bot swap off a worn
+  pickaxe. `equipPickaxe` picks the strongest material first, then the most uses left, and swaps it into your
+  selected hotbar slot from your inventory if needed.
+
+##### Players nearby
+
+`playerNearby(r)`, `nearestPlayer(r)` and `playersNearby(r)` ignore you, spectators, your friends and teammates (the
+Teams module) and players the AntiBot module marks as bots.
+
+#### Errors and debugging
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+##### Checked before running
+
+`.scripts run`, `.scripts check` and the editor's live check all catch these before anything runs:
+
+- syntax errors: a missing `;`, `)` or `}`, an unclosed string or comment, a stray character
+- statements at the top level, or a function declared inside another
+- no `main()` function, or an `onStop()` with parameters
+- calls to functions that don't exist, with a "did you mean" hint for near misses
+- the wrong number of arguments to a built-in, or too many to one of your own functions
+- `break` or `continue` outside a loop
+
+Each problem gives its line, and column for syntax errors: `line 12:5: Expected ';' after the statement but found
+'print'`.
+
+##### Errors while running
+
+Some mistakes only show up while running. They stop the script, print the line in chat, and run `onStop()`.
+
+| Message | Cause |
+|---|---|
+| `Unknown variable 'x'` | Used a name you never declared, or misspelt it. |
+| `Unknown variable 'x' — declare it first with: let x = ...;` | Assigned to an undeclared name. |
+| `Cannot change const 'X'` | Assigned to a constant. |
+| `'x' is already declared in this scope` | Two `let`s of the same name in one block, or a `let` with a parameter's name. |
+| `Cannot apply '-' to string and number` | Maths on the wrong types. Use `num(...)` to convert text. |
+| `Cannot compare string with number` | `<` and friends only compare numbers with numbers or text with text. |
+| `Division by zero` | `/` or `%` by 0. |
+| `Index 5 is out of range (size 3)` | List or text index too big or too small. |
+| `Too many nested calls (over 200)` | A function calling itself without end. |
+| `Not in a world` | A game function ran while you weren't in a world. |
+| `no container is open` | `deposit`, `withdraw` or `fillSlots` with no chest open. |
+| `The game did not respond` | The game was busy for 5 seconds; usually a lag spike. |
+| `error("...")` text | Your own `error()` call. |
+
+##### Debugging tips
+
+- `print` what you're unsure about: `print("health", health(), "food", food());`. Values are joined with spaces.
+- `.scripts list` shows the line and function each running script is on.
+- Add a `waitSeconds(1)` after each step while testing, so you can watch it happen.
+- Test new scripts in a singleplayer world first.
+- Use constants for numbers you'll tune (`const LOW_HEALTH = 5;`), and `error(...)` early when a setting is missing,
+  as the gold miner does for its slot numbers.
 
 #### Script functions
 
 Beta: 5.1 beta only, not in 5.0.1 stable.
 
-Every built-in function, by category. `.scripts functions <category>` lists them in game. Item and block names take an
-id (`raw_gold`, `minecraft:raw_gold`) or the name shown in game (`Raw Gold`). Arguments shown in a signature can be
-left off from the right where the description gives a default.
+Every built-in function, by category, as listed in game by `.scripts functions <category>` and the editor's **?**
+button. Arguments can be left off from the right where the description gives a default: `waitForGui()` waits 100
+ticks. Item and block names follow the rules in `Timing and the game`.
 
 ##### Control
 
@@ -2022,7 +2489,8 @@ left off from the right where the description gives a default.
 | `count(item)` | How many of an item you carry, e.g. count("raw_gold"). |
 | `hasItem(item)` | True if you carry at least one of the item. |
 | `freeSlots()` | Number of empty main-inventory slots (0-36). |
-| `inventoryFull()` | True when there is no empty slot left. |
+| `inventoryFull(item)` | True when there is no empty slot left. With an item, e.g. inventoryFull("raw_gold"), only true once no slot is empty AND every stack of that item is full (64), so stacks with room don't count as full. |
+| `roomFor(item)` | How many more of item fit in your main inventory: empty slots plus the space left on stacks of it. |
 | `heldItem()` | Id of the item in your main hand, e.g. "diamond_pickaxe" ("air" if empty). |
 | `heldDurability()` | Uses left on the item in your main hand before it breaks, or -1 if it can't break. |
 | `durability(slot)` | Uses left on the item in inventory slot 1-36 (1-9 = hotbar), or -1 if it can't break or the slot is empty. |
@@ -2102,14 +2570,126 @@ left off from the right where the description gives a default.
 | `removeAt(list, index)` | Remove and return the item at index. |
 | `range(start, end)` | List of whole numbers from start up to (not including) end. |
 
+#### Script examples
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+Short complete scripts showing common jobs. Change the names and numbers to fit your server.
+
+##### Wait for something with a timeout
+
+```js
+// Waits up to 30 seconds for Baritone to finish; gives up instead of hanging forever.
+function main() {
+    baritone("goto 100 64 -200");
+    if (!waitForBaritone(30 * 20)) {
+        stopBaritone();
+        error("Didn't arrive within 30 seconds");
+    }
+    print("Arrived");
+}
+```
+
+##### Retry a flaky step
+
+```js
+// Tries to open the nearest chest up to 3 times.
+function openChestWithRetries() {
+    repeat (3) {
+        if (openNearest("chest")) {
+            return true;
+        }
+        waitSeconds(1);
+    }
+    return false;
+}
+
+function main() {
+    if (!openChestWithRetries()) {
+        error("No chest in reach");
+    }
+    print("Stored " + deposit("*") + " items");
+    closeGui();
+}
+```
+
+##### Click through a server menu by slot
+
+```js
+const MENU_SLOT = 13;     // button on the first page
+const CONFIRM_SLOT = 22;  // button on the second page
+
+function main() {
+    command("/shop");
+    if (!waitForGui(100)) { error("/shop did not open"); }
+    clickSlot(MENU_SLOT);
+    if (!waitForItem("Confirm", 100)) { error("No Confirm button"); }
+    clickSlot(CONFIRM_SLOT);
+    closeGui();
+}
+```
+
+##### Keep a list of what happened
+
+```js
+let log = [];
+
+function note(text) {
+    push(log, text);
+    print(text);
+}
+
+function main() {
+    note("Health " + health());
+    note("Players: " + join(playersNearby(64), ", "));
+    note("Raw gold: " + count("raw_gold"));
+}
+
+function onStop() {
+    print("Summary: " + len(log) + " notes");
+}
+```
+
+##### Watch for danger while a job runs
+
+```js
+const SAFE_RADIUS = 32;
+
+function main() {
+    baritone("mine iron_ore");
+    while (baritoneBusy()) {
+        if (playerNearby(SAFE_RADIUS) || health() < 10) {
+            stopBaritone();
+            command("/spawn");
+            stop();
+        }
+        if (food() < 10) {
+            baritone("pause");
+            eatUntilFull();
+            baritone("resume");
+        }
+        wait(5);
+    }
+}
+
+function onStop() {
+    stopBaritone();
+}
+```
+
 #### Gold miner script
 
-Beta: 5.1 beta only, not in 5.0.1 stable. Needs beta 8.1 or later.
+Beta: 5.1 beta only, not in 5.0.1 stable. Needs beta 8.3 or later.
 
-A complete bot. When you run it, it teleports with `/rtpmenu` → Overworld → Badlands, then mines gold with Baritone.
-It goes home when health is low, a player comes near, the inventory is full or every pickaxe is worn out, and swaps
-to another pickaxe when the one in use is about to break. At home it stores the raw gold, takes 27 back one per slot,
-eats until full health and teleports out again.
+A complete bot, following this plan:
+
+1. Start: `/rtpmenu`, click **Overworld**, then **Badlands**.
+2. `#mine gold_ore`, checking 4 times a second:
+   - hunger at 4 drumsticks or less: pause, eat until full, keep mining
+   - pickaxe worn out: switch to the next pickaxe; with none left, `/home` and end
+   - a player nearby, low health, or no room for more raw gold: `/home`
+3. At home: eat and heal until health and hunger are full, put the raw gold in the chest, take 27 back with 1 in each
+   slot, then back to step 1's `/rtpmenu`.
 
 Make a script for it, paste this in, set the two slot numbers at the top, then run it:
 
@@ -2122,26 +2702,31 @@ Make a script for it, paste this in, set the two slot numbers at the top, then r
 
 ```js
 // gold_miner.dscript
-// When you run it: /rtpmenu -> Overworld (slot X) -> Badlands (slot Y), then mines gold.
-// Goes home when health is low, a player comes near, the inventory is full, or every
-// pickaxe is worn out. Swaps to another pickaxe when the one in use is about to break.
-// At home: store raw gold in the chest, take 27 back (1 per slot), eat until full health,
-// then teleports out again.
+// start -> /rtpmenu -> Overworld -> Badlands -> #mine gold_ore
+// While mining:
+//   - hunger at 4 drumsticks or less  -> pause, eat until full, keep mining
+//   - pickaxe worn out                -> use the next pickaxe; none left -> /home -> end
+//   - player nearby or low health     -> /home -> eat + heal to full
+//                                        -> store gold, leave 27 (1 per slot) -> /rtpmenu again
+//   - inventory full of raw gold      -> same as above
 //
 // Run:  .scripts run gold_miner      Stop: .scripts stop gold_miner
 
 // ---- set these two -------------------------------------------------------
-const OVERWORLD_SLOT = -1;    // X: slot number of the Overworld button in /rtpmenu
-const BADLANDS_SLOT  = -1;    // Y: slot number of the Badlands button
+const OVERWORLD_SLOT = -1;    // slot number of the Overworld button in /rtpmenu
+const BADLANDS_SLOT  = -1;    // slot number of the Badlands button
 // ---------------------------------------------------------------------------
 
 const HOME_COMMAND   = "/home";
 const ORE            = "gold_ore";
 const LOW_HEALTH     = 5;     // 20 = full health, 2 per heart
+const LOW_HUNGER     = 8;     // 20 = full, 2 per drumstick: 8 = 4 drumsticks
 const SAFE_RADIUS    = 48;    // how close a player can get (blocks)
-const KEEP_GOLD      = 27;    // raw gold to put back in the inventory, 1 per slot
-const MIN_DURABILITY = 20;    // a pickaxe with fewer uses left than this counts as worn out
+const KEEP_GOLD      = 27;    // raw gold to leave in the inventory, 1 per slot
+const MIN_DURABILITY = 20;    // a pickaxe with fewer uses left counts as worn out
 const MENU_TIMEOUT   = 100;   // ticks to wait for a menu (100 = 5 seconds)
+
+let warnedNoFood = false;
 
 function main() {
     if (OVERWORLD_SLOT < 0 || BADLANDS_SLOT < 0) {
@@ -2155,35 +2740,54 @@ function main() {
         error("You have no pickaxe with at least " + MIN_DURABILITY + " durability");
     }
 
-    travelToBadlands();                         // teleport first
+    travelToBadlands();                         // start -> /rtpmenu -> Overworld -> Badlands
     while (true) {
         let reason = goldMining();
         print("Going home: " + reason);
         goHome();
-        if (pickaxeCount(MIN_DURABILITY) == 0) {
-            print("No usable pickaxe left - staying home.");
-            stop();
+        if (reason == "no pickaxe left") {
+            print("No usable pickaxe left - ending here.");
+            stop();                             // /home -> end
         }
-        atHome();
-        travelToBadlands();
+        atHome();                               // eat + heal, then chest
+        travelToBadlands();                     // back to /rtpmenu
     }
 }
 
 // ---------------------------------------------------------------- mining
 
-// Mines until something makes it go home, then returns why.
+// Mines until something sends it home, then returns why.
 function goldMining() {
     baritone("mine " + ORE);                    // #mine gold_ore
     while (true) {
-        if (health() <= LOW_HEALTH) { return "low health (" + health() + ")"; }
         if (playerNearby(SAFE_RADIUS)) { return "player nearby (" + nearestPlayer(SAFE_RADIUS) + ")"; }
-        if (inventoryFull()) { return "inventory full"; }
+        if (health() <= LOW_HEALTH) { return "low health (" + health() + ")"; }
+        if (inventoryFull("raw_gold")) { return "inventory full"; }
         if (!checkPickaxe()) { return "no pickaxe left"; }
+        if (food() <= LOW_HUNGER) { eatWhileMining(); }
         wait(5);                                // check 4 times a second
     }
 }
 
-// Swaps away from a worn-out pickaxe. Returns false when there is no other pickaxe.
+// Hunger bar low -> pause mining, eat until the bar is full, carry on.
+function eatWhileMining() {
+    baritone("pause");
+    wait(5);
+    let ate = false;
+    while (food() < 20 && eat()) {
+        ate = true;
+    }
+    baritone("resume");
+    if (ate) {
+        warnedNoFood = false;
+        print("Ate - hunger now " + food() + "/20");
+    } else if (!warnedNoFood) {
+        warnedNoFood = true;
+        print("Hunger is low but there is no food in the hotbar");
+    }
+}
+
+// Pickaxe durability low -> use the next pickaxe. Returns false when none is left.
 function checkPickaxe() {
     if (pickaxeCount(MIN_DURABILITY) == 0) {
         return false;
@@ -2194,7 +2798,7 @@ function checkPickaxe() {
         if (!equipPickaxe(MIN_DURABILITY)) {
             return false;
         }
-        baritone("mine " + ORE);                // carry on with the new pickaxe
+        baritone("mine " + ORE);                // back to #mine gold_ore with the new pickaxe
     }
     return true;
 }
@@ -2208,6 +2812,9 @@ function goHome() {
 // ---------------------------------------------------------------- at home
 
 function atHome() {
+    // eat and heal to full health and a full hunger bar
+    eatAndHeal();
+
     // go to the chest
     if (findBlock("chest", 5) == null) {
         goto("chest");
@@ -2216,18 +2823,28 @@ function atHome() {
         error("No chest found near home");
     }
 
-    // put all raw gold in the chest
+    // deposit the gold, then leave 27, 1 in each inventory slot
     let stored = deposit("raw_gold");
     print("Stored " + stored + " raw gold");
-
-    // take 27 raw gold back, 1 in each empty slot
     let filled = fillSlots("raw_gold", KEEP_GOLD);
     print("Filled " + filled + " slots with raw gold");
     closeGui();
 
-    // eat until health is full
-    eatUntilHealthFull();
     equipPickaxe(MIN_DURABILITY);
+}
+
+function eatAndHeal() {
+    while (health() < maxHealth() || food() < 20) {
+        if (food() < 20) {
+            if (!eat()) {
+                print("Out of food");
+                if (health() >= maxHealth()) { return; }   // can't fill hunger, but health is full
+                waitSeconds(2);                            // wait for health to regenerate
+            }
+        } else {
+            waitSeconds(1);                                // hunger full -> health regenerates
+        }
+    }
 }
 
 // ---------------------------------------------------------------- teleport
@@ -2250,19 +2867,6 @@ function travelToBadlands() {
     clickSlot(BADLANDS_SLOT);
 
     waitSeconds(8);                             // let the teleport land and chunks load
-}
-
-function eatUntilHealthFull() {
-    while (health() < maxHealth()) {
-        if (food() < 20) {
-            if (!eat()) {
-                print("Out of food - waiting for health to regenerate");
-                waitSeconds(2);
-            }
-        } else {
-            waitSeconds(1);                     // full hunger -> health regenerates
-        }
-    }
 }
 
 // runs whenever the script stops
@@ -2293,7 +2897,39 @@ both are set, the gold miner stops with a message instead of clicking.
 - Set your home within 5 blocks of a chest, or Baritone walks to the nearest chest it can see. If your server's home
   command isn't `/home`, change `HOME_COMMAND`.
 - Carry at least one pickaxe with 20 or more uses left (`MIN_DURABILITY`), and spares if you like: worn ones are
-  swapped out, and with none left the script goes home and stops.
-- Keep food in your hotbar: `eat()` only eats from the hotbar.
+  swapped out, and with none left the script goes home and ends.
+- Keep only the food you want eaten in your hotbar: `eat()` takes the first food it finds there, golden apples
+  included.
 - `fillSlots("raw_gold", 27)` fills empty slots only; with fewer than 27 free it fills what it can and says how many.
 - `.scripts check gold_miner` finds typos before you run it.
+
+#### Editor keys
+
+Beta: 5.1 beta only, not in 5.0.1 stable.
+
+##### Code editor
+
+| Keys | What they do |
+|---|---|
+| Ctrl+S | Save. |
+| Ctrl+Enter | Run, or stop if running. |
+| Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z | Undo, redo. |
+| Ctrl+/ | Comment or uncomment the line or the selected lines. |
+| Tab, Shift+Tab | Indent, outdent. With several lines selected, every line moves. |
+| Enter | New line, keeping the indent; after `{` it indents one more level. Typing `}` on an empty line outdents. |
+| Ctrl+A, Ctrl+C, Ctrl+X, Ctrl+V | Select all, copy, cut, paste. With nothing selected, copy and cut take the whole line. |
+| Arrows, Home, End, Page Up, Page Down | Move. Hold Shift to select. Home jumps to the first non-space character, then to column 1. |
+| Ctrl+Left, Ctrl+Right, Ctrl+Backspace | Move or delete by word. |
+| Ctrl+Home, Ctrl+End | Start or end of the script. |
+| Click, drag, double-click, Shift+click | Place the cursor, select, select a word, extend the selection. |
+| Mouse wheel, Shift+wheel | Scroll up and down, left and right. |
+| Esc | Leave the editor so game keys work again. |
+
+##### Block value fields
+
+| Keys | What they do |
+|---|---|
+| Enter, Tab | Apply the value. |
+| Esc | Cancel the edit. |
+| Ctrl+A, Ctrl+C, Ctrl+X, Ctrl+V | Select all, copy, cut, paste (line breaks become spaces). |
+| Ctrl+Z, Ctrl+Y | Undo, redo inside the field. |
