@@ -1841,10 +1841,25 @@ Beta: 5.1 beta only, not in 5.0.1 stable.
 Scripts are your own bots: a mining loop that retreats home when it's hurt, a restock run, a menu-clicking sequence.
 You build one in either of two ways, and both make the same kind of file:
 
-- **Blocks**: stack plain-language steps such as *Run a command*, *Wait*, *If health is below*. No code needed. See
+- **Blocks**: stack plain-language steps such as **Run a command**, **Wait**, **If health is below**. No code needed. See
   `Block programming`.
 - **Code**: write DihScript, a small language that looks like C or JavaScript. It can do everything blocks can, plus
   variables, your own functions, lists and maths. The rest of this guide covers it.
+
+##### Write a script with AI {#write-with-ai}
+
+ChatGPT, Claude and other assistants that can open web pages write working scripts once they've read
+[dih.lxysg.com/agents.md](/agents.md), a guide written for them. Copy this, replace the last line with what you want,
+and send it:
+
+```
+Read https://dih.lxysg.com/agents.md, then write me a DIH Client script.
+My server's home command is /home.
+What I want: mine iron ore; go home if a player comes near.
+```
+
+If the assistant can't open links, save [agents.md](/agents.md) and attach it instead. Run what it gives you with
+`.scripts check <name>` first; if it reports a problem, paste the message back to the assistant.
 
 ##### Where scripts live
 
@@ -1939,7 +1954,7 @@ Click a section's tab to edit it.
 Editing a value: type it, then press **Apply**, Enter or Tab. Escape cancels. A bad value, such as text where a number
 goes, shows a red message and the step keeps its old value. Ctrl+Z undoes the last block edit.
 
-Group steps, the *Repeat* and *If* steps, hold other steps and are drawn in gold with their contents indented under
+Group steps, the **Repeat** and **If** steps, hold other steps and are drawn in gold with their contents indented under
 them. Groups can be nested up to 32 levels deep.
 
 ##### Every block
@@ -1976,7 +1991,7 @@ them. Groups can be nested up to 32 levels deep.
 | If Baritone is busy | Conditions | - | Baritone is mining, walking or farming. | `if (baritoneBusy()) { ... }` |
 | If carrying an item | Conditions | item name or id | You carry at least one. | `if (hasItem("bread")) { ... }` |
 
-Numbers can't be negative. Values for *Repeat a number of times*, *Wait for a menu* and *Click a menu slot* must be
+Numbers can't be negative. Values for **Repeat a number of times**, **Wait for a menu** and **Click a menu slot** must be
 whole numbers.
 
 ##### Recipes
@@ -1989,7 +2004,7 @@ whole numbers.
 
 ##### Patterns
 
-A *Repeat forever* loop needs a wait inside it, or it checks thousands of times a second. Put the checks at the top
+A **Repeat forever** loop needs a wait inside it, or it checks thousands of times a second. Put the checks at the top
 and one **Wait** at the bottom:
 
 ```
@@ -2031,7 +2046,7 @@ learn DihScript.
 
 A script can be shown as blocks when it has only `main()` and `onStop()`, no parameters, no top-level `let` or
 `const`, and its lines are only the calls in the table above with plain text or number values, `repeat (n)`,
-`while (true)` and the *If* conditions above with no `else`. Variables, your own functions, `else`, `&&`, maths and
+`while (true)` and the **If** conditions above with no `else`. Variables, your own functions, `else`, `&&`, maths and
 other functions keep it in Code. You can always write it in Code and keep running it from there.
 
 #### Script language
@@ -2039,6 +2054,9 @@ other functions keep it in Code. You can always write it in Code and keep runnin
 Beta: 5.1 beta only, not in 5.0.1 stable.
 
 The rules of DihScript. Every example is a complete script you can paste in and run unless it says otherwise.
+
+Having an AI write your script? Point it at [agents.md](/agents.md), the same rules written for AI assistants. See
+[Write a script with AI](#write-with-ai).
 
 ##### Program structure
 

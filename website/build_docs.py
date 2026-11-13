@@ -175,7 +175,12 @@ class Renderer:
             if kind == "p":
                 out.append(f"<p>{self.inline(block[1])}</p>")
             elif kind == "h5":
-                out.append(f"<h5>{self.inline(block[1])}</h5>")
+                # "##### Title {#anchor}" gives the heading an id other pages can link to
+                m = re.match(r"^(.*?)\s*\{#([a-z0-9-]+)\}$", block[1])
+                if m:
+                    out.append(f'<h5 id="{m.group(2)}">{self.inline(m.group(1))}</h5>')
+                else:
+                    out.append(f"<h5>{self.inline(block[1])}</h5>")
             elif kind == "pre":
                 out.append(f'<pre><code>{html.escape(block[1])}</code></pre>')
             elif kind in ("ul", "ol"):
