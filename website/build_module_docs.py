@@ -321,7 +321,7 @@ def module_markdown(mods, dynamic, stable):
 
 def changes_markdown(src):
     notes = os.path.join(src, ".github", "release-notes")
-    order = ["8.3", "8.2", "8.1", "8", "7h", "7g.3", "7g.2", "7g.1", "7g", "7f", "7e", "7d", "7c", "7a", "5b", "5a", "3", "2"]
+    order = ["8.6", "8.5", "8.4", "8.3", "8.2", "8.1", "8", "7h", "7g.3", "7g.2", "7g.1", "7g", "7f", "7e", "7d", "7c", "7a", "5b", "5a", "3", "2"]
     out = ["# DIH Client beta changes", "", "## What's new in the beta", "",
            "The 5.1 betas with release notes, newest first. Recent betas are Fabric only, on Minecraft 26.2 and 26.3; "
            "NeoForge and Forge stay on beta 3.", ""]

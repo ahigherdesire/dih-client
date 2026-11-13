@@ -1,6 +1,6 @@
 # DIH Client commands
 
-Every chat command in DIH Client and how to type it, the client's menus, and guides. Written for 5.1 beta 8.3, on
+Every chat command in DIH Client and how to type it, the client's menus, and guides. Written for 5.1 beta 8.6, on
 Minecraft 26.2 and 26.3, Fabric Loader 0.19.3+, Java 25. [MODULES.md](MODULES.md) lists every module and setting, and
 [BETA-CHANGES.md](BETA-CHANGES.md) what changed in each beta. The website shows all three together at `/docs`.
 
@@ -686,6 +686,25 @@ Save and manage DIH waypoints for this server or world. They're separate from Ba
 | `.wp gui` | Open the waypoint manager. `.wp list` does the same. |
 | `.wp del <name>` | Delete a waypoint. |
 | `.wp clear` | Delete every waypoint for this server or world. |
+
+
+#### .showregion
+
+Beta: 5.1 beta 8.6 and later.
+
+Outline a box in the world, through walls, to mark an area you're working on.
+
+| Usage | Effect |
+|---|---|
+| `.showregion <x> <y> <z> <x1> <y1> <z1>` | Outline the box between two corner blocks in cyan. Both corners are included and can be given in any order. |
+| `.showregion clear` | Remove it. |
+
+```
+.showregion -10 64 30 5 80 -20
+.showregion clear
+```
+
+Only one box shows at a time: a new one replaces the old. It disappears by itself when you change world or server.
 
 #### .dismount
 
@@ -1943,7 +1962,8 @@ them. Groups can be nested up to 32 levels deep.
 | Eat until full | Inventory | - | Eats food from the hotbar until the hunger bar is full. | `eatUntilFull();` |
 | Run Baritone | Movement | command without `#` | Starts a Baritone job and carries straight on. | `baritone("mine gold_ore");` |
 | Stop Baritone | Movement | - | Cancels whatever Baritone is doing. | `stopBaritone();` |
-| Walk to a waypoint | Movement | target | Walks there with Baritone and waits until it arrives. The value goes to `#goto`: a block name such as `chest`, a Y level, or `x y z`. Saved waypoint names don't work here yet; for those use *Run a command* with `#wp goto <name>`. | `goto("chest");` |
+| Walk to a place | Movement | target | Walks there with Baritone and waits until it arrives: a block name such as `chest`, a Y level, or `x y z`. | `goto("chest");` |
+| Walk to a waypoint | Movement | waypoint name | Walks to one of your saved Baritone waypoints (`#wp goto <name>`) and waits until it arrives. Skips straight on if there's no waypoint with that name. Beta 8.6 and later. | `gotoWaypoint("home");` |
 | Run a saved macro | Control | macro name | Runs one of your DIH macros and waits for it to finish. | `macro("my_macro");` |
 | Stop this script | Control | - | Ends the script (the finished / stopped section still runs). | `stop();` |
 | Repeat a number of times | Control | times | Runs the steps inside it that many times. | `repeat (3) { ... }` |
@@ -2310,7 +2330,8 @@ function onStop() {
 `baritone("mine gold_ore")` starts a Baritone job and returns at once; the script keeps running while Baritone works.
 Use `baritoneBusy()` to see whether it's still going, `waitForBaritone(ticks)` to wait until it's idle, and
 `stopBaritone()` to cancel it. `goto(...)` walks and waits until Baritone arrives: `goto("chest")` goes to the nearest
-known chest, `goto(100, 64, -200)` to coordinates. For a saved waypoint, use `command("#wp goto home")`.
+known chest, `goto(100, 64, -200)` to coordinates, and `gotoWaypoint("home")` to a saved Baritone waypoint (beta 8.6
+and later; it returns `false` when there is no such waypoint).
 
 Baritone settings work too: `baritone("set itemSaver true")` makes it skip tools close to breaking, and
 `baritone("pause")` / `baritone("resume")` pause the current job, for example while eating.
@@ -2481,6 +2502,7 @@ ticks. Item and block names follow the rules in `Timing and the game`.
 | `baritoneBusy()` | True while Baritone is mining, pathing, farming... |
 | `waitForBaritone(timeoutTicks)` | Wait until Baritone is idle. Returns false if it timed out (default: no timeout). |
 | `goto(target, ...)` | Walk with Baritone and wait until it arrives: goto("chest") or goto(x, y, z). |
+| `gotoWaypoint(name)` | Walk to one of your saved Baritone waypoints (#wp goto <name>) and wait until you arrive. Returns false if the waypoint doesn't exist. |
 
 ##### Inventory
 

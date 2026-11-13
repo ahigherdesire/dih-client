@@ -4,6 +4,46 @@
 
 The 5.1 betas with release notes, newest first. Recent betas are Fabric only, on Minecraft 26.2 and 26.3; NeoForge and Forge stay on beta 3.
 
+### 5.1 beta 8.6: .showregion, and the waypoint block really walks to waypoints
+
+**New: .showregion**
+- `.showregion <x> <y> <z> <x1> <y1> <z1>` outlines the box between two corners in cyan, through walls. Both corner
+  blocks are included, and the corners can be given in any order.
+- `.showregion clear` removes it. It also clears itself when you change world or server.
+
+**Scripts**
+- Fixed: the **Walk to a waypoint** block sent `#goto <name>`, which only takes blocks, Y levels or coordinates, so a
+  waypoint such as `home` never worked. It now uses the new `gotoWaypoint(name)`, which runs `#wp goto <name>` and
+  waits until you arrive, and returns false if there's no waypoint with that name.
+- The old block is now **Walk to a place**: a block name such as `chest`, a Y level, or `x y z`. Block scripts you
+  already made still open.
+
+### 5.1 beta 8.5: Schematic printer fixes
+
+**Fixes for `.schem build fast` and `.schem build creative`**
+- Blocks no longer go down facing the wrong way. In fast mode, Baritone's own blocks sometimes used the printer's last look instead of Baritone's; now the server always gets Baritone's look.
+- The printer only places a block when it comes out turned the schematic's way. If the side it hangs on (or the side that sets a log's direction) isn't built yet, it waits and tries again once a neighbour is placed. Fast mode leaves those blocks to Baritone; creative places the closest way after 6 tries and its replace setting fixes it later.
+- Signs, banners and heads get all 16 turns. Double slabs place one half, then the other.
+- Creative no longer hovers forever next to a block it can't place: it moves on to the next one, and gives up on a block after 6 tries with nothing to click.
+- Creative flight climbs over walls of the build instead of pushing into them, stops once a block is in reach, and no longer flies to blocks that were already placed.
+- The printer no longer places blocks where you are standing or just above your head, so blocks there aren't skipped and you aren't boxed in.
+- Fast mode keeps the next steps of Baritone's path clear, so the printer can't wall Baritone in.
+
+### 5.1 beta 8.4: Schematic build modes
+
+**New: three ways to build a schematic**
+- `.schem build legit`: Baritone builds with Grim-safe settings: 4.0 reach, one place every 4 ticks, no parkour placing, and turns capped at 32° a tick on your mouse's sensitivity steps. Your own Baritone settings come back when the build ends.
+- `.schem build fast`: blatant. Baritone walks and pulls blocks from your inventory, while a printer places every block in reach each tick from your hotbar (up to Blocks Per Tick, 5.0 reach by default, with air placing). Each block is turned to match the schematic's state.
+- `.schem build creative` (or `paste`): creative only. If you are op it pastes the whole thing with `/fill` and `/setblock`: air first, then full blocks, then torches and other blocks that hang on them. Otherwise it takes each block from the creative inventory, breaks blocks that do not belong, and flies to whatever is left.
+- `.schem mode <legit|fast|creative>` sets the mode a plain `.schem build` uses. `.schem stop` stops any build.
+- The Schematics module has a new Build group for these settings, and the Schematics screen has Mode and Stop buttons.
+- New Baritone setting `maxRotationPerTick` caps how far Baritone turns in one tick (0, the default, means no cap).
+
+**Limits**
+- Paste and the printer set blocks only: chest contents, sign text and other block data are not copied.
+- Only chunks you have loaded are pasted. Run it again from closer for the rest.
+- A block the printer fails to place 4 times is skipped. `.schem verify` shows what is missing.
+
 ### 5.1 beta 8.3: gold miner no longer goes home after one block
 
 **Scripts**
