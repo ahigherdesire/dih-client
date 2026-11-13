@@ -19,6 +19,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Inventory;
@@ -170,6 +171,29 @@ public final class GameLibrary {
             });
             return null;
         });
+        lib.define("Chat", "chatSeen(text)", "True if a chat message containing text (capitals ignored) arrived since the script started or since chatSeen last found one for the same text. Use it in a loop: if (chatSeen(\"tpa\")) { ... }", 1, 1, a -> {
+            String text = chatNeedle(a);
+            return ScriptChat.next(a.interpreter(), text) != null;
+        });
+        lib.define("Chat", "waitForChat(text, seconds)", "Wait until a chat message containing text arrives and return the whole message. Gives up after seconds (wait forever if left out) and returns null.", 1, 2, a -> {
+            String text = chatNeedle(a);
+            double seconds = a.number(1, -1);
+            int limit = seconds < 0 ? -1 : (int) Math.ceil(seconds * 20);
+            for (int waited = 0; ; waited++) {
+                String line = ScriptChat.next(a.interpreter(), text);
+                if (line != null) return line;
+                if (limit >= 0 && waited >= limit) return null;
+                a.interpreter().waitTicks(1);
+            }
+        });
+        lib.define("Chat", "lastChat()", "The newest chat message since the script started, or null.", 0, 0,
+            a -> ScriptChat.last(a.interpreter()));
+    }
+
+    private static String chatNeedle(Library.Args a) {
+        String text = a.string(0);
+        if (text.isBlank()) throw a.error("give the text to look for, e.g. chatSeen(\"tpa\")");
+        return text.strip();
     }
 
     private static void runCommand(String raw, Library.Args a) {
@@ -218,29 +242,55 @@ public final class GameLibrary {
             onClient(() -> baritoneExecute("goto " + target, a));
             return waitForBaritone(a.interpreter(), -1);
         });
-        lib.define("Baritone", "gotoWaypoint(name)", "Walk to one of your saved Baritone waypoints (#wp goto <name>) and wait until you arrive. Returns false if the waypoint doesn't exist.", 1, 1, a -> {
+        lib.define("Baritone", "gotoWaypoint(name)", "Walk to one of your saved Baritone waypoints and wait until you arrive. A name like \"home\" or \"death\" that no waypoint has goes to the newest waypoint with that tag. Returns false if there's no such waypoint or you didn't get there.", 1, 1, a -> {
             String name = a.string(0).trim();
             if (name.isEmpty()) throw a.error("give a waypoint name, e.g. gotoWaypoint(\"home\")");
-            boolean known = onClient(() -> waypointExists(name));
-            if (!known) return false;
-            onClient(() -> baritoneExecute("wp goto " + name, a));
-            return waitForBaritone(a.interpreter(), -1);
+            BlockPos target = onClient(() -> {
+                baritone.api.IBaritone b = primaryBaritone();
+                if (b == null) throw a.error("Baritone is not available");
+                BlockPos pos = findWaypoint(b, name);
+                if (pos != null) {
+                    b.getCustomGoalProcess().setGoalAndPath(new baritone.api.pathing.goals.GoalBlock(pos));
+                }
+                return pos;
+            });
+            if (target == null) return false;
+            waitForBaritone(a.interpreter(), -1);
+            return onPlayer(p -> p.blockPosition().distSqr(target) <= 2);
         });
     }
 
-    /** True if a saved Baritone waypoint (any tag) has this name, ignoring capitals. */
-    private static boolean waypointExists(String name) {
-        baritone.api.IBaritone b = primaryBaritone();
-        if (b == null) return false;
+    /**
+     * The waypoint called {@code name} (capitals ignored, newest first), else the newest waypoint
+     * with that tag (home, death, bed, user), else null. {@code #wp goto} checks tags first, so
+     * a waypoint the user named "home" would never be found by it.
+     */
+    static BlockPos findWaypoint(baritone.api.IBaritone b, String name) {
+        java.util.Collection<baritone.api.cache.IWaypoint> all;
         try {
-            for (baritone.api.cache.IWaypoint w : b.getWorldProvider().getCurrentWorld().getWaypoints().getAllWaypoints()) {
-                if (w.getName().equalsIgnoreCase(name)) return true;
-            }
-        } catch (Throwable ignored) {
-            // no world loaded, or the waypoint API changed: let #wp goto report it instead
-            return true;
+            all = b.getWorldProvider().getCurrentWorld().getWaypoints().getAllWaypoints();
+        } catch (RuntimeException e) {
+            return null; // no world loaded
         }
-        return false;
+        return findWaypoint(all, name);
+    }
+
+    static BlockPos findWaypoint(java.util.Collection<baritone.api.cache.IWaypoint> all, String name) {
+        baritone.api.cache.IWaypoint best = null;
+        for (baritone.api.cache.IWaypoint w : all) {
+            if (w.getName().equalsIgnoreCase(name)
+                && (best == null || w.getCreationTimestamp() > best.getCreationTimestamp())) best = w;
+        }
+        if (best == null) {
+            baritone.api.cache.IWaypoint.Tag tag = baritone.api.cache.IWaypoint.Tag.getByName(name.toLowerCase(Locale.ROOT));
+            if (tag != null) {
+                for (baritone.api.cache.IWaypoint w : all) {
+                    if (w.getTag() == tag
+                        && (best == null || w.getCreationTimestamp() > best.getCreationTimestamp())) best = w;
+                }
+            }
+        }
+        return best == null ? null : best.getLocation();
     }
 
     private static boolean waitForBaritone(Interpreter it, int timeoutTicks) {
@@ -304,7 +354,7 @@ public final class GameLibrary {
             for (ItemStack s : p.getInventory().getNonEquipmentItems()) if (s.isEmpty()) n++;
             return (double) n;
         }));
-        lib.define("Inventory", "inventoryFull(item)", "True when there is no empty slot left. With an item, e.g. inventoryFull(\"raw_gold\"), only true once no slot is empty AND every stack of that item is full (64), so stacks with room don't count as full.", 0, 1, a -> {
+        lib.define("Inventory", "inventoryFull(item)", "True when there is no empty slot left. With an item, e.g. inventoryFull(\"raw_gold\"), only true once no slot is empty AND every stack of that item is full, so stacks with room don't count as full.", 0, 1, a -> {
             String item = a.has(0) ? a.string(0) : null;
             return onPlayer(p -> roomFor(p, item) == 0);
         });
@@ -363,17 +413,27 @@ public final class GameLibrary {
      * of it fit (a full stack's worth per empty slot plus the room left on its partial stacks).
      */
     static int roomFor(LocalPlayer p, String item) {
-        Inventory inv = p.getInventory();
+        return roomFor(p.getInventory(), item);
+    }
+
+    static int roomFor(Inventory inv, String item) {
         int room = 0;
+        int emptySlots = 0;
         for (int i = 0; i < 36; i++) {
             ItemStack s = inv.getItem(i);
             if (item == null) {
                 if (s.isEmpty()) room++;
             } else if (s.isEmpty()) {
-                room += 64;
+                emptySlots++;
             } else if (matches(s, item)) {
                 room += Math.max(0, s.getMaxStackSize() - s.getCount());
             }
+        }
+        if (emptySlots > 0) {
+            Identifier id = Identifier.tryParse(item.trim().toLowerCase(Locale.ROOT).replace(' ', '_'));
+            int stackSize = id == null ? 64 : BuiltInRegistries.ITEM.get(id)
+                .map(holder -> holder.value().getDefaultInstance().getMaxStackSize()).orElse(64);
+            room += emptySlots * stackSize;
         }
         return room;
     }

@@ -15,6 +15,7 @@ public final class ScriptBlocksModel {
         MESSAGE("Show a message", "Message", "Hello!", Input.TEXT, "print", "Chat"),
         COMMAND("Run a command", "Command (include /, # or .)", "/home", Input.TEXT, "command", "Chat"),
         SAY("Send chat message", "Chat message", "Hello!", Input.TEXT, "say", "Chat"),
+        WAIT_CHAT("Wait for a chat message", "Text the message contains", "has requested to teleport", Input.TEXT, "waitForChat", "Chat"),
         WAIT("Wait", "Seconds", "1", Input.NUMBER, "waitSeconds", "Timing"),
         WAIT_GUI("Wait for a menu", "Timeout in ticks (20 = 1 second)", "100", Input.INTEGER, "waitForGui", "Menus"),
         CLICK_ITEM("Click a menu item", "Item name or ID", "Confirm", Input.TEXT, "clickItem", "Menus"),
@@ -40,7 +41,8 @@ public final class ScriptBlocksModel {
         IF_FULL("If inventory is full", "", "", Input.NONE, "inventoryFull", "Conditions"),
         IF_GUI("If a menu is open", "", "", Input.NONE, "guiOpen", "Conditions"),
         IF_BUSY("If Baritone is busy", "", "", Input.NONE, "baritoneBusy", "Conditions"),
-        IF_ITEM("If carrying an item", "Item name or ID", "bread", Input.TEXT, "hasItem", "Conditions");
+        IF_ITEM("If carrying an item", "Item name or ID", "bread", Input.TEXT, "hasItem", "Conditions"),
+        IF_CHAT("If chat said", "Text a new message contains", "tpa", Input.TEXT, "chatSeen", "Conditions");
 
         public final String label, field, initial, function, category;
         public final Input input;

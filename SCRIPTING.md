@@ -190,6 +190,28 @@ name shown in game (`Raw Gold`).
 |---|---|
 | `command(text)` | Run a command as if typed: `"/home"` goes to the server, `"#mine gold_ore"` to Baritone, `".toggle flee"` to DIH. |
 | `say(text)` | Send a plain chat message. |
+| `chatSeen(text)` | True if a chat message containing `text` arrived since the script started or since `chatSeen` last found one for that text. Capitals and colours are ignored, and each message counts once. |
+| `waitForChat(text, seconds)` | Wait for a chat message containing `text` and return the whole message. After `seconds` (default: wait forever) it gives up and returns `null`. |
+| `lastChat()` | The newest chat message since the script started, or `null`. |
+
+The chat functions read what the server sends: player chat (as `<Name> message`) and server messages, not the
+action bar or DIH's own messages. A script only sees chat from after it started. Your own chat comes back from the
+server too, so a script that says the word it is looking for will see it.
+
+```js
+function main() {
+    while (true) {
+        if (chatSeen("has requested to teleport")) {
+            command("/tpaccept");
+        }
+        if (chatSeen("stop mining")) {
+            stopBaritone();
+            say("Stopped.");
+        }
+        waitSeconds(1);
+    }
+}
+```
 
 ### Baritone
 
@@ -200,6 +222,7 @@ name shown in game (`Raw Gold`).
 | `baritoneBusy()` | True while Baritone is mining, pathing or farming. |
 | `waitForBaritone(timeoutTicks)` | Wait until Baritone is idle. False on timeout (default: none). |
 | `goto("chest")`, `goto(x, y, z)` | Walk there with Baritone and wait until it arrives. |
+| `gotoWaypoint(name)` | Walk to a saved Baritone waypoint and wait. A waypoint with that name wins; otherwise a tag name (`home`, `death`, `bed`) goes to the newest waypoint with that tag. False if there's none or you didn't arrive. |
 
 ### Inventory
 

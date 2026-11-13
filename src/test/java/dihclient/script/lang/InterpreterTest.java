@@ -199,4 +199,15 @@ class InterpreterTest {
         ScriptException e = assertThrows(ScriptException.class, () -> run("function f() { f(); } function main() { f(); }"));
         assertTrue(e.getMessage().contains("nested calls"));
     }
+
+    @Test
+    void randomIncludesTheLargestInteger() {
+        assertEquals(List.of("2147483647"),
+            run("function main() { print(random(2147483647, 2147483647)); }").out);
+    }
+
+    @Test
+    void randomSupportsTheEntireIntegerRange() {
+        assertDoesNotThrow(() -> run("function main() { random(-2147483648, 2147483647); }"));
+    }
 }

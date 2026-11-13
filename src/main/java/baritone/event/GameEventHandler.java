@@ -81,6 +81,9 @@ public final class GameEventHandler implements IEventBus, Helper {
 
     @Override
     public final void onReceiveChatMessage(ChatReceivedEvent event) {
+        // MixinChatListener only dispatches to the primary Baritone, so each message lands here once.
+        dihclient.script.ScriptChat.record(event.getType() == ChatReceivedEvent.Type.PLAYER
+            ? event.toString() : event.getText());
         listeners.forEach(l -> l.onReceiveChatMessage(event));
     }
 
