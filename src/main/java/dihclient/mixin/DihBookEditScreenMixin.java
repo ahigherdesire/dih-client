@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihKeys;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.gen.Invoker;
@@ -31,7 +32,6 @@ import net.minecraft.client.gui.screens.inventory.BookEditScreen;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 
 @Mixin(BookEditScreen.class)
 public abstract class DihBookEditScreenMixin extends Screen implements DihSpecialGuiActions {
@@ -128,7 +128,7 @@ public abstract class DihBookEditScreenMixin extends Screen implements DihSpecia
         manager.register(launcherOverlay);
 
         Screen screen = (Screen) (Object) this;
-        ScreenEvents.afterExtract(screen).register((scrn, drawContext, mouseX, mouseY, tickDelta) -> {
+        dihclient.platform.DihPlatform.afterScreenExtract(screen, (scrn, drawContext, mouseX, mouseY, tickDelta) -> {
             if (yang$isDihActive()) {
                 DihOverlayManager.get().renderAll(drawContext, mouseX, mouseY, tickDelta);
             }
@@ -188,7 +188,7 @@ public abstract class DihBookEditScreenMixin extends Screen implements DihSpecia
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void yang$keyPressed(KeyEvent input, CallbackInfoReturnable<Boolean> cir) {
         if (!yang$isDihActive()) return;
-        if (DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) {
+        if (DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) {
             cir.setReturnValue(true);
         }
     }

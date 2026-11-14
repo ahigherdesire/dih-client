@@ -9,7 +9,13 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.BowItem;
+import net.minecraft.world.item.CrossbowItem;
+import net.minecraft.world.item.EnderpearlItem;
+import net.minecraft.world.item.FishingRodItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ThrowablePotionItem;
+import net.minecraft.world.item.TridentItem;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
@@ -22,28 +28,52 @@ public final class TrajectoriesModule extends Module {
     public record Marker(AABB box, int color) {
     }
 
-    public record Path(List<Vec3> points, int color, float lineWidth, List<Marker> markers) {
+    /** {@code markerFill} scales the markers' colour alpha for their filled sides; 0 draws outlines only. */
+    public record Path(List<Vec3> points, int color, float lineWidth, List<Marker> markers, float markerFill) {
     }
 
     public TrajectoriesModule() {
         super("trajectories", "Trajectories", ModuleCategory.RENDER, "Shows where throws land.");
 
-        add(new IntSetting("traj-ticks", "Max Ticks", 120, 20, 1000, 10)
+        add(new IntSetting("traj-ticks", "Max Ticks", 120, 20, 1000, 10).group("General")
             .description("Simulation length.").build());
-        add(new BoolSetting("traj-multishot", "Multishot", true)
+        add(new BoolSetting("traj-multishot", "Multishot", true).group("General")
             .description("Show crossbow spread.").build());
-        add(new BoolSetting("traj-always-bow", "Always Show Bow", false)
+        add(new BoolSetting("traj-always-bow", "Always Show Bow", false).group("General")
             .description("Show before drawing.").build());
-        add(new BoolSetting("traj-hit-marker", "Hit Marker", true)
-            .description("Box at impact.").build());
-        add(new DoubleSetting("traj-line-width", "Line Width", 1.0, 1.0, 8.0, 0.5)
+        add(new BoolSetting("traj-both-hands", "Both Hands", false).group("General")
+            .description("Show the off hand's throw as well as the main hand's.").build());
+
+        add(new BoolSetting("traj-bows", "Bows", true).group("Projectiles")
+            .description("Bows and crossbows.").build());
+        add(new BoolSetting("traj-tridents", "Tridents", true).group("Projectiles")
+            .description("Thrown tridents.").build());
+        add(new BoolSetting("traj-pearls", "Ender Pearls", true).group("Projectiles")
+            .description("Thrown ender pearls.").build());
+        add(new BoolSetting("traj-throwables", "Throwables", true).group("Projectiles")
+            .description("Snowballs, eggs, bottles o' enchanting, fire and wind charges.").build());
+        add(new BoolSetting("traj-potions", "Potions", true).group("Projectiles")
+            .description("Splash and lingering potions.").build());
+        add(new BoolSetting("traj-fishing-rods", "Fishing Rods", true).group("Projectiles")
+            .description("Cast fishing bobbers.").build());
+
+        add(new DoubleSetting("traj-line-width", "Line Width", 1.0, 1.0, 8.0, 0.5).group("Render")
             .description("Trajectory line thickness.").build());
-        add(new ColorSetting("traj-color", "Color", 0xFFFF3B3B)
+        add(new ColorSetting("traj-color", "Color", 0xFFFF3B3B).group("Render")
             .description("Trajectory line color.").build());
-        add(new ColorSetting("traj-hit-color", "Hit Color", 0xFFFF3B3B)
-            .description("Block impact color.").build());
-        add(new ColorSetting("traj-entity-color", "Entity Color", 0xFF35D873)
-            .description("Entity hit color.").build());
+
+        add(new BoolSetting("traj-hit-marker", "Hit Marker", true).group("Hit")
+            .description("Box at impact.").build());
+        add(new IntSetting("traj-marker-fill", "Marker Fill", 15, 0, 100, 5).unit("%").group("Hit")
+            .description("How solid the marker box is; 0 draws only its edges.")
+            .visibleWhen(() -> bool("traj-hit-marker")).build());
+        add(new BoolSetting("traj-splash-targets", "Splash Targets", true).group("Hit")
+            .description("Also mark entities a splash potion would reach.")
+            .visibleWhen(() -> bool("traj-hit-marker")).build());
+        add(new ColorSetting("traj-hit-color", "Hit Color", 0xFFFF3B3B).group("Hit")
+            .description("Block impact color.").visibleWhen(() -> bool("traj-hit-marker")).build());
+        add(new ColorSetting("traj-entity-color", "Entity Color", 0xFF35D873).group("Hit")
+            .description("Entity hit color.").visibleWhen(() -> bool("traj-hit-marker")).build());
     }
 
     @Override
@@ -71,6 +101,9 @@ public final class TrajectoriesModule extends Module {
         int blockColor = ModuleRenderUtil.color(this, "traj-hit-color", 0xFFFF3B3B);
         int entityColor = ModuleRenderUtil.color(this, "traj-entity-color", 0xFF35D873);
         float lineWidth = (float) decimal("traj-line-width");
+        float markerFill = Mth.clamp(integer("traj-marker-fill"), 0, 100) / 100.0F;
+        boolean splashTargets = bool("traj-splash-targets");
+        boolean bothHands = bool("traj-both-hands");
 
         float yaw = player.getYRot();
         float pitch = player.getXRot();
@@ -84,6 +117,7 @@ public final class TrajectoriesModule extends Module {
         List<Path> paths = new ArrayList<>(2);
         for (InteractionHand hand : InteractionHand.values()) {
             ItemStack stack = player.getItemInHand(hand);
+            if (!shows(stack)) continue;
             for (TrajectorySim.Shot shot : TrajectorySim.shotsFor(player, stack, alwaysBow, multiShot)) {
                 TrajectorySim.Result result = TrajectorySim.simulate(MC.level, player, shot.info(),
                     yaw + shot.yawOffsetDegrees(), pitch, maxTicks, inherited);
@@ -99,17 +133,29 @@ public final class TrajectoriesModule extends Module {
                         markers.add(new Marker(landingBox(result.hit().getLocation().add(offset),
                             shot.info().hitboxRadius()), blockColor));
                     }
-                    if (shot.info().isSplashPotion()) {
+                    if (splashTargets && shot.info().isSplashPotion()) {
 
                         splashTargets(result.hit().getLocation(), partialTick, entityColor, markers);
                     }
                 }
-                paths.add(new Path(points, color, lineWidth, markers));
+                paths.add(new Path(points, color, lineWidth, markers, markerFill));
             }
 
-            if (!paths.isEmpty()) break;
+            if (!paths.isEmpty() && !bothHands) break;
         }
         return paths;
+    }
+
+    private boolean shows(ItemStack stack) {
+        return switch (stack.getItem()) {
+            case BowItem ignored -> bool("traj-bows");
+            case CrossbowItem ignored -> bool("traj-bows");
+            case TridentItem ignored -> bool("traj-tridents");
+            case EnderpearlItem ignored -> bool("traj-pearls");
+            case ThrowablePotionItem ignored -> bool("traj-potions");
+            case FishingRodItem ignored -> bool("traj-fishing-rods");
+            default -> bool("traj-throwables");
+        };
     }
 
     private static AABB interpolatedBox(net.minecraft.world.entity.Entity entity, float partialTick) {

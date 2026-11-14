@@ -1,6 +1,6 @@
 package dihclient.mixin;
 
-import net.fabricmc.loader.api.FabricLoader;
+import dihclient.platform.DihLoader;
 import org.objectweb.asm.tree.ClassNode;
 import org.spongepowered.asm.mixin.extensibility.IMixinConfigPlugin;
 import org.spongepowered.asm.mixin.extensibility.IMixinInfo;
@@ -16,8 +16,16 @@ public class DihMixinPlugin implements IMixinConfigPlugin {
         "DihSodiumDefaultFluidRendererMixin",
         "DihSodiumFluidRendererImplMixin",
         "DihSodiumRenderSectionManagerMixin",
-        "DihSodiumDefaultChunkRendererMixin"
+        "DihSodiumDefaultChunkRendererMixin",
+        "DihSodiumDefaultChunkRendererOitMixin"
     );
+
+    /** Arguments of Sodium's {@code DefaultChunkRenderer.render} each wrapper of it is written for. */
+    private static final java.util.Map<String, Integer> SODIUM_RENDER_WRAPPERS = java.util.Map.of(
+        "DihSodiumDefaultChunkRendererMixin", 9,
+        "DihSodiumDefaultChunkRendererOitMixin", 11
+    );
+    private int sodiumRenderArgs = -2; // -2: not read yet, -1: unreadable
 
     private boolean sodiumLoaded;
     private boolean indigoLoaded;
@@ -47,17 +55,16 @@ public class DihMixinPlugin implements IMixinConfigPlugin {
 
     @Override
     public void onLoad(String mixinPackage) {
-        FabricLoader loader = FabricLoader.getInstance();
-        sodiumLoaded = loader.isModLoaded("sodium");
-        indigoLoaded = loader.isModLoaded("fabric-renderer-indigo");
-        opsecLoaded = loader.isModLoaded("opsec");
-        exploitPreventerLoaded = loader.isModLoaded("exploitpreventer");
-        replayModLoaded = loader.isModLoaded("replaymod");
-        flashbackLoaded = loader.isModLoaded("flashback");
-        essentialLoaded = loader.isModLoaded("essential")
-            || loader.isModLoaded("essential-container")
-            || loader.isModLoaded("essential-loader");
-        lithiumLoaded = loader.isModLoaded("lithium");
+        sodiumLoaded = DihLoader.isModLoaded("sodium");
+        indigoLoaded = DihLoader.isModLoaded("fabric-renderer-indigo");
+        opsecLoaded = DihLoader.isModLoaded("opsec");
+        exploitPreventerLoaded = DihLoader.isModLoaded("exploitpreventer");
+        replayModLoaded = DihLoader.isModLoaded("replaymod");
+        flashbackLoaded = DihLoader.isModLoaded("flashback");
+        essentialLoaded = DihLoader.isModLoaded("essential")
+            || DihLoader.isModLoaded("essential-container")
+            || DihLoader.isModLoaded("essential-loader");
+        lithiumLoaded = DihLoader.isModLoaded("lithium");
     }
 
     @Override
@@ -68,6 +75,11 @@ public class DihMixinPlugin implements IMixinConfigPlugin {
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         String simpleName = mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1);
+        // Dev bisecting: -Ddih.disableMixins=DihFooMixin,DihBarMixin skips those mixins.
+        String disabled = System.getProperty("dih.disableMixins");
+        if (disabled != null && java.util.Arrays.asList(disabled.split(",")).contains(simpleName)) return false;
+        Integer renderArgs = SODIUM_RENDER_WRAPPERS.get(simpleName);
+        if (renderArgs != null) return sodiumLoaded && sodiumRenderArgs(targetClassName) == renderArgs;
         if (SODIUM_MIXINS.contains(simpleName)) return sodiumLoaded;
         if ("DihFluidRendererMixin".equals(simpleName) && sodiumLoaded) return false;
         if ("DihReplayModGuiHandlerMixin".equals(simpleName) || "DihReplayStudioTeamMixin".equals(simpleName)) return replayModLoaded;
@@ -82,6 +94,29 @@ public class DihMixinPlugin implements IMixinConfigPlugin {
             return !exploitPreventerLoaded || !EXPLOIT_PREVENTER_OVERLAP_SECURITY_MIXINS.contains(simpleName);
         }
         return true;
+    }
+
+    /**
+     * How many arguments the installed Sodium's {@code render} takes, read from its class file without loading it.
+     * A {@code @WrapMethod} must match them exactly, and Sodium changes them between versions (9 before 0.9, 11 in
+     * 0.9 for 26.3); a mismatch fails when a world is joined, so neither wrapper applies to a shape we don't know.
+     */
+    private int sodiumRenderArgs(String targetClassName) {
+        if (sodiumRenderArgs != -2) return sodiumRenderArgs;
+        int args = -1;
+        try {
+            ClassNode node = org.spongepowered.asm.service.MixinService.getService().getBytecodeProvider()
+                .getClassNode(targetClassName.replace('/', '.'));
+            for (org.objectweb.asm.tree.MethodNode method : node.methods) {
+                if ("render".equals(method.name)) {
+                    args = org.objectweb.asm.Type.getArgumentTypes(method.desc).length;
+                    break;
+                }
+            }
+        } catch (Exception | LinkageError e) {
+            args = -1;
+        }
+        return sodiumRenderArgs = args;
     }
 
     @Override

@@ -18,6 +18,12 @@ public final class ChamsModule extends Module {
             .description("Range, 0 unlimited.").group("General").build());
         add(new BoolSetting("draw-armor", "Draw Armor", true)
             .description("Real armor on top.").group("General").build());
+        add(new BoolSetting("self", "Self", false)
+            .description("Also on you in third person.").group("General").build());
+        add(new BoolSetting("ignore-friends", "Ignore Friends", false)
+            .description("Leaves friends and teammates normal.").group("General").build());
+        add(new BoolSetting("ignore-invisible", "Ignore Invisible", false)
+            .description("Leaves invisible entities hidden.").group("General").build());
         add(new ColorSetting("visible-color", "Visible", 0xFF35FF5B)
             .description("Colour when visible.")
             .group("Colors").visibleWhen(() -> "Colored".equals(choice("style"))).build());
@@ -27,10 +33,22 @@ public final class ChamsModule extends Module {
         add(new IntSetting("opacity", "Opacity", 100, 0, 100, 1)
             .description("Solid colour opacity.")
             .group("Colors").visibleWhen(() -> "Colored".equals(choice("style"))).build());
+        add(new BoolSetting("friend-color", "Friend Color", false)
+            .description("Friends in the Teams friend colour.")
+            .group("Colors").visibleWhen(() -> "Colored".equals(choice("style"))).build());
+        add(new BoolSetting("rainbow", "Rainbow", false)
+            .description("Cycle the colours over time.")
+            .group("Colors").visibleWhen(() -> "Colored".equals(choice("style"))).build());
+        add(new DoubleSetting("rainbow-speed", "Rainbow Speed", 4.0, 0.5, 20.0, 0.5).unit("s")
+            .description("Seconds for one full cycle.")
+            .group("Colors").visibleWhen(() -> "Colored".equals(choice("style")) && bool("rainbow")).build());
         add(new BoolSetting("hit-color", "Hit Color", true)
             .description("Flash on hit.").group("Hit Color").build());
         add(new ColorSetting("hit-color-value", "Color", 0xFFFF3B3B)
             .description("Flash colour.")
+            .group("Hit Color").visibleWhen(() -> bool("hit-color")).build());
+        add(new IntSetting("hit-duration", "Duration", 500, 50, 2000, 50).unit("ms")
+            .description("How long the flash lasts.")
             .group("Hit Color").visibleWhen(() -> bool("hit-color")).build());
     }
 

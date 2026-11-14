@@ -205,6 +205,18 @@ public final class BedDefenderModule extends Module implements DihSilentAim.Owne
             .group("Bed")
             .description("Only while holding shift"));
 
+        add(new BoolSetting("only-on-ground", "Only On Ground", false)
+            .group("Bed")
+            .description("Waits to place while you are jumping or falling"));
+
+        add(new BoolSetting("disable-when-done", "Disable When Done", false)
+            .group("Bed")
+            .description("Turns off once a bed is fully walled in"));
+
+        add(RegistryListSetting.blocks("bed-colors", "Beds", "")
+            .group("Bed")
+            .description("Only defends these beds, such as your team color; empty defends any bed"));
+
         add(new IntSetting("rescan-interval", "Rescan Interval", 10, 1, 40, 1)
             .group("Bed")
             .unit("ticks")
@@ -228,6 +240,15 @@ public final class BedDefenderModule extends Module implements DihSilentAim.Owne
         add(new BoolSetting("switch-back", "Switch Back", true)
             .group("Placing")
             .description("Return to your old slot"));
+        add(new IntSetting("switch-back-delay", "Switch Back Delay", SWITCH_BACK_IDLE_TICKS, 0, 40, 1)
+            .group("Placing")
+            .unit("ticks")
+            .visibleWhen(() -> bool("switch-back"))
+            .description("Idle ticks before returning to your old slot"));
+        add(new IntSetting("turn-speed", "Turn Speed", (int) TURN_CAP, 10, 180, 5)
+            .group("Placing")
+            .unit("°/tick")
+            .description("Most degrees it turns per tick toward the next face"));
 
         add(new BoolSetting("trace-faces", "Trace Faces", false)
             .group("Placing")
@@ -404,7 +425,18 @@ public final class BedDefenderModule extends Module implements DihSilentAim.Owne
 
         tickPendingPlacement();
 
-        if (bool("require-sneak") && !MC.player.isShiftKeyDown()) {
+        if (shellDone) {
+            shellDone = false;
+            if (bool("disable-when-done")) {
+                dropTargets();
+                standDown();
+                disableWithToggleMessage("BedDefender disabled: bed walled in.");
+                return;
+            }
+        }
+
+        if (bool("require-sneak") && !MC.player.isShiftKeyDown()
+            || bool("only-on-ground") && !MC.player.onGround()) {
             dropTargets();
             standDown();
             return;
@@ -676,7 +708,10 @@ public final class BedDefenderModule extends Module implements DihSilentAim.Owne
         return false;
     }
 
+    private boolean shellDone;
+
     private void markShellComplete(BlockPos bedPos, BlockPos partner) {
+        shellDone = true;
         dropTargets();
         forgetProgress();
         cachedBed = null;
@@ -725,7 +760,18 @@ public final class BedDefenderModule extends Module implements DihSilentAim.Owne
 
     private boolean isDefendableBed(BlockPos pos, Vec3 eye, double radius) {
         if (pos.distToCenterSqr(eye) > radius * radius) return false;
-        return MC.level.getBlockState(pos).getBlock() instanceof BedBlock;
+        return bedAllowed(MC.level.getBlockState(pos).getBlock());
+    }
+
+    private boolean bedAllowed(Block block) {
+        if (!(block instanceof BedBlock)) return false;
+        List<String> beds = list("bed-colors");
+        if (beds.isEmpty()) return true;
+        String id = BuiltInRegistries.BLOCK.getKey(block).toString();
+        for (String entry : beds) {
+            if (RegistryListCodec.matches(id, entry)) return true;
+        }
+        return false;
     }
 
     private BlockPos nearestBed(Vec3 eye, double radius, boolean skipCompleted) {
@@ -743,7 +789,7 @@ public final class BedDefenderModule extends Module implements DihSilentAim.Owne
             double distSq = pos.distToCenterSqr(eye);
             if (distSq > bestSq) continue;
             if (skipCompleted && completedBeds.contains(pos)) continue;
-            if (!(MC.level.getBlockState(pos).getBlock() instanceof BedBlock)) continue;
+            if (!bedAllowed(MC.level.getBlockState(pos).getBlock())) continue;
 
             best = pos.immutable();
             bestSq = distSq;
@@ -841,7 +887,8 @@ public final class BedDefenderModule extends Module implements DihSilentAim.Owne
         aimTick = DihSharedState.get().getClientTickCounter();
         if (!id().equals(DihKillAuraRotation.currentOwner())) return false;
 
-        DihKillAuraRotation.update(id(), MC.player, TURN_CAP, holdPitch ? 0.0F : TURN_CAP,
+        float turn = Math.max(1, integer("turn-speed"));
+        DihKillAuraRotation.update(id(), MC.player, turn, holdPitch ? 0.0F : turn,
             DihHumanRotation.MotionProfile.BED_SHELL);
         return true;
     }
@@ -1224,7 +1271,7 @@ public final class BedDefenderModule extends Module implements DihSilentAim.Owne
             switchedToSlot = -1;
             return;
         }
-        if (++idleTicks < SWITCH_BACK_IDLE_TICKS) return;
+        if (++idleTicks < integer("switch-back-delay")) return;
         if (!DihHandArbiter.beginHandPacketGroup(id())) return;
         try {
             DihInventoryHelper.selectHotbarSlot(MC, originalSlot);

@@ -43,6 +43,8 @@ public final class DefaultCommands {
                 new VersionCommand(baritone),
                 new RepackCommand(baritone),
                 new BuildCommand(baritone),
+                new ConstructCommand(baritone),
+                new ParkourCommand(baritone),
                 //new SchematicaCommand(baritone),
                 new LitematicaCommand(baritone),
                 new ComeCommand(baritone),
@@ -86,7 +88,10 @@ public final class DefaultCommands {
                 new ListenToMineCommand(baritone),
                 new PlayersCommand(baritone),
                 new MenuCommand(baritone),
-                new FleeCommand(baritone)
+                new FleeCommand(baritone),
+                new AcquireCommand(baritone),
+                new BeatCommand(baritone),
+                new EatCommand(baritone)
         ));
         ExecutionControlCommands prc = new ExecutionControlCommands(baritone);
         commands.add(prc.pauseCommand);

@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.components.OverlayTopBar;
 import dihclient.gui.vanillaui.direct.DirectUiInsets;
@@ -21,7 +22,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.protocol.Packet;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -377,12 +377,12 @@ public class DihPacketSelectorOverlay extends DihOverlayBase {
         float uiMouseX = viewport.toUiX(mouseX);
         float uiMouseY = viewport.toUiY(mouseY);
 
-        if (button == 0 && isOverCloseButton(uiMouseX, uiMouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverCloseButton(uiMouseX, uiMouseY)) {
             close();
             return true;
         }
 
-        if (button == 0 && isOverHeaderUi(uiMouseX, uiMouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverHeaderUi(uiMouseX, uiMouseY)) {
             dragging = true;
             dragMoved = false;
             dragOffsetX = uiMouseX - panelX;
@@ -398,13 +398,13 @@ public class DihPacketSelectorOverlay extends DihOverlayBase {
             return true;
         }
 
-        if (!collapsed && button == 0 && uiContains(listSlot.x(), listSlot.y(), listSlot.width(), listSlot.height(), uiMouseX, uiMouseY)) {
+        if (!collapsed && button == InputConstants.MOUSE_BUTTON_LEFT && uiContains(listSlot.x(), listSlot.y(), listSlot.width(), listSlot.height(), uiMouseX, uiMouseY)) {
             if (listViewport != null && listViewport.mouseClicked(uiMouseX, uiMouseY, button)) {
                 return true;
             }
         }
 
-        if (!collapsed && button == 0 && uiContains(listSlot.x(), listSlot.y(), listSlot.width(), listSlot.height(), uiMouseX, uiMouseY)) {
+        if (!collapsed && button == InputConstants.MOUSE_BUTTON_LEFT && uiContains(listSlot.x(), listSlot.y(), listSlot.width(), listSlot.height(), uiMouseX, uiMouseY)) {
             int index = (int) ((uiMouseY - listSlot.y() + listViewport.getScrollOffset()) / rowHeight());
             if (index >= 0 && index < filteredPackets.size()) {
                 Class<? extends Packet<?>> selectedPacket = filteredPackets.get(index);
@@ -449,7 +449,7 @@ public class DihPacketSelectorOverlay extends DihOverlayBase {
         float uiMouseX = viewport.toUiX(mouseX);
         float uiMouseY = viewport.toUiY(mouseY);
 
-        if (button == 0 && dragging) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && dragging) {
             boolean moved = dragMoved
                 || Math.abs(uiMouseX - pressStartUiX) >= HEADER_CLICK_DRAG_THRESHOLD
                 || Math.abs(uiMouseY - pressStartUiY) >= HEADER_CLICK_DRAG_THRESHOLD
@@ -463,7 +463,7 @@ public class DihPacketSelectorOverlay extends DihOverlayBase {
             return true;
         }
 
-        if (button == 0 && listViewport != null) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && listViewport != null) {
             listViewport.mouseReleased();
         }
 
@@ -480,7 +480,7 @@ public class DihPacketSelectorOverlay extends DihOverlayBase {
         float uiMouseX = viewport.toUiX(mouseX);
         float uiMouseY = viewport.toUiY(mouseY);
 
-        if (dragging && button == 0) {
+        if (dragging && button == InputConstants.MOUSE_BUTTON_LEFT) {
             int nextX = Math.round(uiMouseX - dragOffsetX);
             int nextY = Math.round(uiMouseY - dragOffsetY);
             if (nextX != panelX || nextY != panelY) dragMoved = true;
@@ -505,7 +505,7 @@ public class DihPacketSelectorOverlay extends DihOverlayBase {
 
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!visible) return false;
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if (keyCode == InputConstants.KEY_ESCAPE) {
             if (searchField.isFocused()) {
                 searchField.setFocused(false);
                 return true;

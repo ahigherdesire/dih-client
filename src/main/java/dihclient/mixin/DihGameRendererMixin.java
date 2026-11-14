@@ -23,7 +23,12 @@ public abstract class DihGameRendererMixin {
     }
 
     @Inject(method = "renderLevel", at = @At("HEAD"), cancellable = true)
+    //? if >=26.3 {
+    /*private void dih$onRenderLevel(CallbackInfo ci) {
+        DeltaTracker deltaTracker = Minecraft.getInstance().getDeltaTracker();
+    *///?} else {
     private void dih$onRenderLevel(DeltaTracker deltaTracker, CallbackInfo ci) {
+    //?}
         if (Minecraft.getInstance().player == null) {
             ci.cancel();
             return;

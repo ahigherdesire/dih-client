@@ -18,6 +18,7 @@ public final class DihRuntimeActivity {
     public static final long MULTI = 1L << 9;
     public static final long PACKET_CAPTURE = 1L << 10;
     public static final long HUD_AUX = 1L << 11;
+    public static final long HUD_OVERLAYS = 1L << 12;
 
     public record Snapshot(int moduleRevision, long bits) {
         public boolean has(long mask) {
@@ -69,6 +70,7 @@ public final class DihRuntimeActivity {
         if (hud != null && hud.isEnabled()) bits |= HUD_MODULE;
         Module nametags = ModuleRegistry.get("nametags");
         if (nametags != null && nametags.isEnabled()) bits |= NAMETAGS;
+        if (dihclient.modules.ModuleHudOverlays.anyEnabled()) bits |= HUD_OVERLAYS;
         Snapshot next = new Snapshot(revision, bits);
         published = next;
         return next;

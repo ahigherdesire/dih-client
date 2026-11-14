@@ -6,7 +6,6 @@ import dihclient.modules.ModuleRegistry;
 import dihclient.util.macro.DelayAction;
 import dihclient.util.macro.SendChatAction;
 import dihclient.util.macro.ToggleModuleAction;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 
 import java.lang.reflect.Field;
@@ -23,9 +22,9 @@ public final class DihCompatManager {
     private static final String BARITONE_API_CLASS = "baritone.api.BaritoneAPI";
     private static final String BARITONE_GOAL_CLASS = "baritone.api.pathing.goals.Goal";
     private static final String BARITONE_GOAL_BLOCK_CLASS = "baritone.api.pathing.goals.GoalBlock";
-    private static final boolean METEOR_AVAILABLE = FabricLoader.getInstance().isModLoaded("meteor-client")
+    private static final boolean METEOR_AVAILABLE = dihclient.platform.DihLoader.isModLoaded("meteor-client")
         && classExists(METEOR_MACROS_CLASS);
-    private static final boolean BARITONE_AVAILABLE = FabricLoader.getInstance().isModLoaded("baritone")
+    private static final boolean BARITONE_AVAILABLE = dihclient.platform.DihLoader.isModLoaded("baritone")
         || classExists(BARITONE_API_CLASS);
     private static volatile String cachedEffectiveStored;
     private static volatile String cachedEffectivePrefix;

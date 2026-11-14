@@ -1,0 +1,8 @@
+function main() {
+    let name = nearestPlayer(48);   // a name, or null
+    if (name) {
+        print("Someone is near: " + name);
+    } else {
+        print("Nobody around");
+    }
+}

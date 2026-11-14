@@ -1,0 +1,10 @@
+function main() {
+    let hp = health();
+    if (hp >= 18) {
+        print("Healthy");
+    } else if (hp >= 8) {
+        print("Hurt");
+    } else {
+        print("In danger");
+    }
+}

@@ -1,5 +1,6 @@
 package dihclient.util.multi;
 
+import dihclient.util.DihPackets;
 import dihclient.api.custommenu.CustomMenuAdapterRegistry;
 import dihclient.gui.multi.MultiMenuGeometry;
 import dihclient.api.custommenu.CustomMenuButton;
@@ -183,7 +184,6 @@ import net.minecraft.network.protocol.game.ServerboundMoveVehiclePacket;
 import net.minecraft.network.protocol.game.ServerboundPaddleBoatPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.network.protocol.game.ServerboundSelectBundleItemPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.network.protocol.login.ClientboundCustomQueryPacket;
@@ -1111,7 +1111,7 @@ public final class MultiSession implements MultiMacroHost {
         java.util.concurrent.atomic.AtomicBoolean joinCompleted = new java.util.concurrent.atomic.AtomicBoolean();
         CompletableFuture.runAsync(() -> {
             try {
-                identity.sessionService().joinServer(identity.user().getProfileId(), identity.user().getAccessToken(), digest);
+                identity.services().sessionService().joinServer(identity.user().getProfileId(), identity.user().getAccessToken(), digest);
                 joinCompleted.set(true);
                 if (!closed.get()) enableEncryption.run();
             } catch (AuthenticationException error) {
@@ -1147,7 +1147,7 @@ public final class MultiSession implements MultiMacroHost {
         if (packet instanceof ClientboundRegistryDataPacket registry) {
             registryData.appendContents(registry.registry(), registry.entries());
         } else if (packet instanceof net.minecraft.network.protocol.common.ClientboundUpdateTagsPacket tags) {
-            registryData.appendTags(tags.getTags());
+            registryData.appendTags(DihPackets.tags(tags));
         } else if (packet instanceof ClientboundUpdateEnabledFeaturesPacket features) {
             enabledFeatures = FeatureFlags.REGISTRY.fromNames(features.features());
         } else if (packet instanceof ClientboundSelectKnownPacks) {
@@ -1178,7 +1178,16 @@ public final class MultiSession implements MultiMacroHost {
                 );
                 send(ServerboundFinishConfigurationPacket.INSTANCE, true, false);
                 connection.setupOutboundProtocol(
-                    GameProtocols.SERVERBOUND_TEMPLATE.bind(RegistryFriendlyByteBuf.decorator(collected), () -> true)
+                    GameProtocols.SERVERBOUND_TEMPLATE.bind(RegistryFriendlyByteBuf.decorator(collected), new GameProtocols.Context() {
+                        // No @Override: 26.3 added canUseCommandBlocks, 26.2 only has hasInfiniteMaterials.
+                        public boolean hasInfiniteMaterials() {
+                            return true;
+                        }
+
+                        public boolean canUseCommandBlocks() {
+                            return true;
+                        }
+                    })
                 );
                 setStatus(Status.JOINED, "Joining");
             } catch (Throwable error) {
@@ -1232,8 +1241,8 @@ public final class MultiSession implements MultiMacroHost {
             playerLoadChunkBatchFinished = true;
             updatePlayerLoadReadiness(System.currentTimeMillis());
         } else if (packet instanceof ClientboundOpenSignEditorPacket sign) {
-            signEditorPos = sign.getPos();
-            signEditorFront = sign.isFrontText();
+            signEditorPos = DihPackets.pos(sign);
+            signEditorFront = DihPackets.front(sign);
             signEditorOpen = true;
             if (piloted) {
                 pilotSignSeq++;
@@ -1243,7 +1252,7 @@ public final class MultiSession implements MultiMacroHost {
         } else if (packet instanceof net.minecraft.network.protocol.game.ClientboundOpenBookPacket book) {
 
             if (piloted) {
-                pilotBookHand = book.getHand();
+                pilotBookHand = DihPackets.hand(book);
                 pilotBookSeq++;
             }
         } else if (packet instanceof ClientboundSoundPacket sound) {
@@ -1373,7 +1382,7 @@ public final class MultiSession implements MultiMacroHost {
 
                 moveActiveUntil = Math.max(moveActiveUntil, correctionAt + JOIN_MOVE_ACTIVE_MS);
             }
-            send(new ServerboundAcceptTeleportationPacket(move.id()), true, false);
+            send(DihPackets.acceptTeleport(move.id(), position.position(), position.yRot(), position.xRot()), true, false);
             sendPosition(true);
             playerLoadPositionAccepted = true;
             if (!playerLoadedSent.get() && playerLoadHeadlessFallbackAt == Long.MAX_VALUE) {
@@ -1599,10 +1608,12 @@ public final class MultiSession implements MultiMacroHost {
 
                 if (send(new ServerboundSetCarriedItemPacket(slot), false, false)) lastWireHotbar = slot;
             }
-        } else if (packet instanceof ClientboundAnimatePacket animate) {
-
-            if (animate.getId() == playerEntityId && animate.getAction() == ClientboundAnimatePacket.SWING_MAIN_HAND) {
-                send(new ServerboundSwingPacket(InteractionHand.MAIN_HAND), false, false);
+        } else if (DihPackets.swingAnimationEntity(packet) >= 0) {
+            // The server swung our arm: answer with the swing a use sends (none on 26.3, where it would be a punch).
+            var echo = DihPackets.useSwing(InteractionHand.MAIN_HAND);
+            if (DihPackets.swingAnimationEntity(packet) == playerEntityId
+                && DihPackets.swingAnimationAction(packet) == DihPackets.SWING_MAIN_HAND_ACTION && echo != null) {
+                send(echo, false, false);
             }
         } else if (packet instanceof ClientboundSetEntityMotionPacket motion) {
 
@@ -1663,15 +1674,21 @@ public final class MultiSession implements MultiMacroHost {
                 add.getYRot(), add.getXRot(), add.getYHeadRot(), false, ownerId, position.position());
         } else if (packet instanceof ClientboundMoveEntityPacket move) {
             int id = ((DihMoveEntityPacketAccessor) move).dih$getEntityId();
+            //? if >=26.3 {
+            /*entities.moveDelta(id, move.getPositionDelta(), move.hasPosition(),
+                move.getYRot(), move.getXRot(), move.hasRotation(), move.isOnGround());
+            *///?} else {
             entities.moveRelative(id, move.getXa(), move.getYa(), move.getZa(), move.hasPosition(),
                 move.getYRot(), move.getXRot(), move.hasRotation(), move.isOnGround());
+            //?}
         } else if (packet instanceof ClientboundMoveMinecartPacket minecart && !minecart.lerpSteps().isEmpty()) {
 
             net.minecraft.world.entity.vehicle.minecart.NewMinecartBehavior.MinecartStep step =
                 minecart.lerpSteps().getLast();
             entities.moveAbsolute(minecart.entityId(), step.position(), step.movement(), step.yRot(), step.xRot());
         } else if (packet instanceof ClientboundEntityPositionSyncPacket sync) {
-            entities.sync(sync.id(), sync.values(), sync.onGround());
+            entities.sync(sync.id(), DihPackets.position(sync), DihPackets.movement(sync),
+                DihPackets.yRot(sync), DihPackets.xRot(sync), sync.onGround());
         } else if (packet instanceof ClientboundTeleportEntityPacket teleport) {
             entities.teleport(teleport.id(), teleport.change(), teleport.relatives(), teleport.onGround());
         } else if (packet instanceof ClientboundRotateHeadPacket head) {
@@ -1687,8 +1704,8 @@ public final class MultiSession implements MultiMacroHost {
                 }
             }
         } else if (packet instanceof ClientboundRemoveEntitiesPacket rem) {
-            for (int i = 0; i < rem.getEntityIds().size(); i++) {
-                int id = rem.getEntityIds().getInt(i);
+            for (int i = 0; i < DihPackets.entityIds(rem).size(); i++) {
+                int id = DihPackets.entityIds(rem).getInt(i);
                 entities.remove(id);
                 if (inVehicle && id == vehicleId) dismountVehicle();
             }
@@ -2456,9 +2473,9 @@ public final class MultiSession implements MultiMacroHost {
                 fail("Unrecognized chat signature");
                 return;
             }
-            signatureCache.push(unpacked.get(), packet.signature());
-            acknowledge = packet.signature() != null
-                && lastSeenMessages.addPending(packet.signature(), show)
+            signatureCache.push(unpacked.get(), DihPackets.signature(packet));
+            acknowledge = DihPackets.signature(packet) != null
+                && lastSeenMessages.addPending(DihPackets.signature(packet), show)
                 && lastSeenMessages.offset() > 64;
         }
         if (acknowledge) sendChatAcknowledgement();
@@ -2466,8 +2483,8 @@ public final class MultiSession implements MultiMacroHost {
         if (!show) return;
         String sender = playerNames.getOrDefault(packet.sender(), packet.sender().toString().substring(0, 8));
 
-        Component content = packet.unsignedContent() != null
-            ? packet.unsignedContent()
+        Component content = DihPackets.unsignedContent(packet) != null
+            ? DihPackets.unsignedContent(packet)
             : Component.literal(unpacked.get().content());
         sink.chat(this, Component.literal("<" + sender + "> ").append(content));
     }
@@ -2924,7 +2941,7 @@ public final class MultiSession implements MultiMacroHost {
             LastSeenMessagesTracker.Update update = lastSeenMessages.generateAndApplyUpdate();
 
             MessageSignature signature = signedEncoder.pack(new SignedMessageBody(content, now, salt, update.lastSeen()));
-            packet = new ServerboundChatPacket(content, now, salt, signature, update.update());
+            packet = DihPackets.chat(content, now, salt, signature, update.update());
         }
         return send(packet, false, false)
             ? "Sent" : "Blocked by packet policy";
@@ -3354,7 +3371,7 @@ public final class MultiSession implements MultiMacroHost {
     public String swingArm() {
         String pre = containerPrecheck();
         if (!pre.isBlank()) return pre;
-        return send(new ServerboundSwingPacket(InteractionHand.MAIN_HAND), false, false) ? "Sent" : "Blocked by packet policy";
+        return send(DihPackets.mainHandSwing(), false, false) ? "Sent" : "Blocked by packet policy";
     }
 
     public int findSlotByItem(String query) {
@@ -4465,7 +4482,7 @@ public final class MultiSession implements MultiMacroHost {
             if (!pilotPacketsReady() || entityId < 0) return false;
             if (!ensurePilotCarriedItem()) return false;
             if (!send(new ServerboundAttackPacket(entityId), false, false)) return false;
-            send(new ServerboundSwingPacket(InteractionHand.MAIN_HAND), false, false);
+            send(DihPackets.mainHandSwing(), false, false);
             return true;
         }
     }
@@ -5194,7 +5211,7 @@ public final class MultiSession implements MultiMacroHost {
             default -> { pos = signEditorPos; front = signEditorFront; }
         }
         if (pos == null) return false;
-        boolean sent = send(new ServerboundSignUpdatePacket(pos, front, l1, l2, l3, l4), false, false);
+        boolean sent = send(DihPackets.signUpdate(pos, front, l1, l2, l3, l4), false, false);
         if (sent) signEditorOpen = false;
         SignEditAction.CloseMode mode = a.closeMode == null ? SignEditAction.CloseMode.STAY_OPEN : a.closeMode;
         if (mode == SignEditAction.CloseMode.SEND_CLOSE_PACKET_ONLY) {
@@ -5273,7 +5290,10 @@ public final class MultiSession implements MultiMacroHost {
             case RELEASE_USE ->
                 send(new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.RELEASE_USE_ITEM,
                     BlockPos.ZERO, Direction.DOWN), false, false);
-            case SWING -> send(new ServerboundSwingPacket(hand), false, false);
+            case SWING -> {
+                var swing = DihPackets.swing(hand);
+                if (swing != null) send(swing, false, false);
+            }
         }
     }
 
@@ -5517,7 +5537,7 @@ public final class MultiSession implements MultiMacroHost {
         BlockPos pos = new BlockPos(x, y, z);
 
         send(new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK, pos, dir, ++useSeq), false, false);
-        send(new ServerboundSwingPacket(InteractionHand.MAIN_HAND), false, false);
+        send(DihPackets.mainHandSwing(), false, false);
         send(new ServerboundPlayerActionPacket(ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, pos, dir, ++useSeq), false, false);
         return "Sent";
     }
@@ -5681,7 +5701,7 @@ public final class MultiSession implements MultiMacroHost {
         }
         if (activePolicy.autoSwing() && now - lastSwingAt >= AUTO_AUX_INTERVAL_MS) {
             lastSwingAt = now;
-            send(new ServerboundSwingPacket(InteractionHand.MAIN_HAND), false, false);
+            send(DihPackets.mainHandSwing(), false, false);
         }
     }
 
@@ -5822,7 +5842,7 @@ public final class MultiSession implements MultiMacroHost {
             vz = vehicleZ;
         }
         send(new ServerboundPaddleBoatPacket(false, false), false, false);
-        send(new ServerboundMoveVehiclePacket(new Vec3(vx, vy, vz), yaw, pitch, false), false, true);
+        send(DihPackets.moveVehicle(new Vec3(vx, vy, vz), yaw, pitch, false), false, true);
         send(new ServerboundMovePlayerPacket.Rot(yaw, pitch, false, false), false, true);
         send(ServerboundClientTickEndPacket.INSTANCE, true, false);
     }

@@ -2,7 +2,6 @@ package dihclient.util;
 
 import dihclient.DihClientAddon;
 import net.minecraft.client.Minecraft;
-import org.lwjgl.glfw.GLFW;
 
 import java.awt.GraphicsEnvironment;
 import java.awt.Toolkit;
@@ -40,8 +39,8 @@ public final class DihClipboard {
         }
         String awt = awtGet();
         if (awt != null && !awt.isEmpty()) return awt;
-        String glfw = glfwGet();
-        if (!glfw.isEmpty()) return glfw;
+        String fromSystem = systemGet();
+        if (!fromSystem.isEmpty()) return fromSystem;
         String local = shadow;
         if (local != null) {
             logFallbackOnce("read");
@@ -59,7 +58,7 @@ public final class DihClipboard {
         }
         if (awtSet(text)) return;
         logFallbackOnce("write");
-        glfwSet(text);
+        systemSet(text);
     }
 
     private static String[][] getCommands() {
@@ -212,14 +211,12 @@ public final class DihClipboard {
         thread.start();
     }
 
-    private static String glfwGet() {
+    private static String systemGet() {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null || mc.getWindow() == null) return "";
-        long window = mc.getWindow().handle();
-        if (window == 0L) return "";
-        if (mc.isSameThread()) return glfwGetOnMain(window);
+        if (mc.isSameThread()) return getOnMain(mc);
         CompletableFuture<String> future = new CompletableFuture<>();
-        mc.execute(() -> future.complete(glfwGetOnMain(window)));
+        mc.execute(() -> future.complete(getOnMain(mc)));
         try {
             return future.get(2, TimeUnit.SECONDS);
         } catch (Exception e) {
@@ -227,30 +224,28 @@ public final class DihClipboard {
         }
     }
 
-    private static void glfwSet(String text) {
+    private static void systemSet(String text) {
         Minecraft mc = Minecraft.getInstance();
         if (mc == null || mc.getWindow() == null) return;
-        long window = mc.getWindow().handle();
-        if (window == 0L) return;
         if (mc.isSameThread()) {
-            glfwSetOnMain(window, text);
+            setOnMain(mc, text);
         } else {
-            mc.execute(() -> glfwSetOnMain(window, text));
+            mc.execute(() -> setOnMain(mc, text));
         }
     }
 
-    private static String glfwGetOnMain(long window) {
+    private static String getOnMain(Minecraft mc) {
         try {
-            String value = GLFW.glfwGetClipboardString(window);
+            String value = mc.keyboardHandler.getClipboard();
             return value != null ? value : "";
         } catch (Throwable t) {
             return "";
         }
     }
 
-    private static void glfwSetOnMain(long window, String text) {
+    private static void setOnMain(Minecraft mc, String text) {
         try {
-            GLFW.glfwSetClipboardString(window, text);
+            mc.keyboardHandler.setClipboard(text);
         } catch (Throwable ignored) {
 
         }
@@ -260,6 +255,6 @@ public final class DihClipboard {
         if (loggedFallback) return;
         loggedFallback = true;
         DihClientAddon.LOG.info(
-            "[Dih] Clipboard {}: no native tool (wl-copy/xclip/xsel) or AWT path worked; using GLFW/in-client fallback", operation);
+            "[Dih] Clipboard {}: no native tool (wl-copy/xclip/xsel) or AWT path worked; using the game/in-client fallback", operation);
     }
 }

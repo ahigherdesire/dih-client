@@ -1,9 +1,9 @@
 package dihclient.gui.vanillaui.components;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
 import dihclient.util.DihBindUtil;
-import org.lwjgl.glfw.GLFW;
 
 public final class CompactKeybindButton {
     public static final int WIDTH = 34;
@@ -23,9 +23,9 @@ public final class CompactKeybindButton {
     }
 
     public static int keyOrClear(int keyCode) {
-        return keyCode == GLFW.GLFW_KEY_ESCAPE
-            || keyCode == GLFW.GLFW_KEY_BACKSPACE
-            || keyCode == GLFW.GLFW_KEY_DELETE
+        return keyCode == InputConstants.KEY_ESCAPE
+            || keyCode == InputConstants.KEY_BACKSPACE
+            || keyCode == InputConstants.KEY_DELETE
             ? -1
             : keyCode;
     }
@@ -44,7 +44,7 @@ public final class CompactKeybindButton {
         var colors = context.theme().colors();
         int fill = capturing ? (colors.accent & 0x00FFFFFF) | 0x80000000
             : hovered ? 0x3AFFFFFF : 0x1CFFFFFF;
-        dihclient.gui.vanillaui.UiRenderer.softRect(context.graphics(), bounds, 1, fill);
+        dihclient.gui.vanillaui.UiRenderer.rounded(context.graphics(), bounds, 2, fill);
         String text = capturing ? "..." : unbound ? "+ key" : label(bindCode, false);
         int color = unbound && !hovered ? colors.muted : colors.text;
         context.text().drawCentered(context.graphics(), text, bounds, color);

@@ -42,6 +42,15 @@ public class DihGuiSetScreenMixin {
             return;
         }
 
+        if (screen instanceof DihTitleScreen) {
+            // Startup reaches the DIH menu through DihMinecraftClientMixin's repair, not as a vanilla TitleScreen.
+            Screen shown = dihclient.gui.screen.DihDonateScreen.overTitle(screen);
+            if (shown != screen) {
+                dih$setScreen(shown);
+                ci.cancel();
+            }
+            return;
+        }
         if (!(screen instanceof TitleScreen)) return;
 
         if (PackHideState.isActive()) {
@@ -50,8 +59,12 @@ public class DihGuiSetScreenMixin {
             return;
         }
 
-        if (!dihclient.util.DihLiteVariant.enabled() && DihMenuPrefs.customMainMenuEnabled()) {
-            dih$setScreen(new dihclient.gui.screen.DihTitleScreen());
+        Screen title = !dihclient.util.DihLiteVariant.enabled() && DihMenuPrefs.customMainMenuEnabled()
+            ? new dihclient.gui.screen.DihTitleScreen() : screen;
+        // The first title screen of a launch opens behind the donate card.
+        Screen shown = dihclient.gui.screen.DihDonateScreen.overTitle(title);
+        if (shown != screen) {
+            dih$setScreen(shown);
             ci.cancel();
         }
     }

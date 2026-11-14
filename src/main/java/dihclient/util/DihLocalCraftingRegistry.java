@@ -4,7 +4,6 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -62,7 +61,7 @@ final class DihLocalCraftingRegistry {
         RegistryAccess registryAccess = mc.getConnection() != null ? mc.getConnection().registryAccess() : mc.level.registryAccess();
         FeatureFlagSet enabledFeatures = mc.getConnection() != null ? mc.getConnection().enabledFeatures() : mc.level.enabledFeatures();
         ContextMap slotContext = SlotDisplayContext.fromLevel(mc.level);
-        int modCount = FabricLoader.getInstance().getAllMods().size();
+        int modCount = dihclient.platform.DihLoader.modIds().size();
         return getRecipes(resourceManager, registryAccess, enabledFeatures, slotContext, modCount);
     }
 
@@ -216,7 +215,10 @@ final class DihLocalCraftingRegistry {
             JsonObject root = JsonParser.parseReader(reader).getAsJsonObject();
             Recipe<?> decoded = Recipe.CODEC
                 .parse(registryAccess.createSerializationContext(JsonOps.INSTANCE), root)
-                .getOrThrow(JsonParseException::new);
+                .getOrThrow(JsonParseException::new)
+                //? if >=26.3
+                /*.value()*/
+                ;
             if (!(decoded instanceof CraftingRecipe craftingRecipe)) return List.of();
             return createLocalRecipes(recipeId, craftingRecipe, enabledFeatures, slotContext);
         } catch (IOException | IllegalStateException | JsonParseException ignored) {

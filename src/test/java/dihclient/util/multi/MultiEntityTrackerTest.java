@@ -33,6 +33,19 @@ class MultiEntityTrackerTest {
     }
 
     @Test
+    void syncWithoutPositionOrVelocityKeepsThem() {
+        MultiEntityTracker tracker = new MultiEntityTracker();
+        tracker.put(4, "zombie", 1.0, 2.0, 3.0);
+        tracker.motion(4, new Vec3(0.5, 0.0, 0.0));
+        tracker.sync(4, null, null, 90.0F, 10.0F, false);
+
+        MultiEntityTracker.State state = tracker.state(4);
+        assertEquals(new Vec3(1.0, 2.0, 3.0), state.position());
+        assertEquals(new Vec3(0.5, 0.0, 0.0), state.movement());
+        assertEquals(90.0F, state.yRot());
+    }
+
+    @Test
     void rotationOnlyPacketDoesNotMoveTheEntity() {
         MultiEntityTracker tracker = new MultiEntityTracker();
         Vec3 start = new Vec3(1.25, 70.0, 9.5);
@@ -81,8 +94,7 @@ class MultiEntityTrackerTest {
     void absoluteSyncAndVelocityReplaceThePublishedValues() {
         MultiEntityTracker tracker = new MultiEntityTracker();
         tracker.put(3, "zombie", 0.0, 0.0, 0.0);
-        tracker.sync(3, new PositionMoveRotation(new Vec3(4.0, 5.0, 6.0),
-            new Vec3(0.1, 0.2, 0.3), 30.0F, 12.0F), true);
+        tracker.sync(3, new Vec3(4.0, 5.0, 6.0), new Vec3(0.1, 0.2, 0.3), 30.0F, 12.0F, true);
         tracker.motion(3, new Vec3(-0.5, 0.4, 0.25));
         tracker.headRotation(3, 75.0F);
 

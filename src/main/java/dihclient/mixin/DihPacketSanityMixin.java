@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihPackets;
 import dihclient.security.DihNumericSanity;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundAddEntityPacket;
@@ -43,7 +44,14 @@ public abstract class DihPacketSanityMixin {
 
     @Inject(method = "handleEntityPositionSync", at = @At("HEAD"), cancellable = true, require = 0)
     private void dih$saneEntityPositionSync(ClientboundEntityPositionSyncPacket packet, CallbackInfo ci) {
-        if (DihNumericSanity.positionMoveOutOfRange(packet.values())) ci.cancel();
+        net.minecraft.world.phys.Vec3 position = DihPackets.position(packet);
+        net.minecraft.world.phys.Vec3 movement = DihPackets.movement(packet);
+        if ((position != null && DihNumericSanity.outOfRange(position))
+            || (movement != null && DihNumericSanity.motionOutOfRange(movement))
+            || DihNumericSanity.outOfRange(DihPackets.yRot(packet))
+            || DihNumericSanity.outOfRange(DihPackets.xRot(packet))) {
+            ci.cancel();
+        }
     }
 
     @Inject(method = "handleAddEntity", at = @At("HEAD"), cancellable = true, require = 0)
@@ -58,23 +66,23 @@ public abstract class DihPacketSanityMixin {
 
     @Inject(method = "handleParticleEvent", at = @At("HEAD"), cancellable = true, require = 0)
     private void dih$saneParticles(net.minecraft.network.protocol.game.ClientboundLevelParticlesPacket packet, CallbackInfo ci) {
-        if (DihNumericSanity.outOfRange(packet.getX())
-            || DihNumericSanity.outOfRange(packet.getY())
-            || DihNumericSanity.outOfRange(packet.getZ())
-            || DihNumericSanity.outOfRange(packet.getXDist())
-            || DihNumericSanity.outOfRange(packet.getYDist())
-            || DihNumericSanity.outOfRange(packet.getZDist())
-            || DihNumericSanity.outOfRange(packet.getMaxSpeed())
-            || packet.getCount() > 100_000) {
+        if (DihNumericSanity.outOfRange(DihPackets.x(packet))
+            || DihNumericSanity.outOfRange(DihPackets.y(packet))
+            || DihNumericSanity.outOfRange(DihPackets.z(packet))
+            || DihNumericSanity.outOfRange(DihPackets.xDist(packet))
+            || DihNumericSanity.outOfRange(DihPackets.yDist(packet))
+            || DihNumericSanity.outOfRange(DihPackets.zDist(packet))
+            || DihNumericSanity.outOfRange(DihPackets.maxSpeed(packet))
+            || DihPackets.count(packet) > 100_000) {
             ci.cancel();
         }
     }
 
     @Inject(method = "handleMoveVehicle", at = @At("HEAD"), cancellable = true, require = 0)
     private void dih$saneMoveVehicle(net.minecraft.network.protocol.game.ClientboundMoveVehiclePacket packet, CallbackInfo ci) {
-        if (DihNumericSanity.outOfRange(packet.position())
-            || DihNumericSanity.outOfRange(packet.yRot())
-            || DihNumericSanity.outOfRange(packet.xRot())) {
+        if (DihNumericSanity.outOfRange(DihPackets.position(packet))
+            || DihNumericSanity.outOfRange(DihPackets.yRot(packet))
+            || DihNumericSanity.outOfRange(DihPackets.xRot(packet))) {
             ci.cancel();
         }
     }

@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihRender;
 import dihclient.modules.ViewmodelState;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
@@ -25,8 +26,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(ItemInHandRenderer.class)
 public abstract class DihViewmodelMixin {
+    //? if <26.3 {
     @Shadow
     private ItemStack offHandItem;
+    //?}
 
     @Shadow
     @Final
@@ -35,9 +38,18 @@ public abstract class DihViewmodelMixin {
     @Inject(method = "submitArmWithItem",
         at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V", shift = At.Shift.AFTER),
         require = 0)
+    //? if >=26.3 {
+    /*private void dih$handTransforms(net.minecraft.client.renderer.state.level.PlayerRenderState playerState,
+                                       net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState handsState,
+                                       float frameInterp, float xRot, InteractionHand hand,
+                                       float attack, ItemStack itemStack, float inverseArmHeight, PoseStack poseStack,
+                                       SubmitNodeCollector submitNodeCollector, int lightCoords, CallbackInfo ci) {
+        ItemStack offHandItem = handsState.offHandItem;
+    *///?} else {
     private void dih$handTransforms(AbstractClientPlayer player, float frameInterp, float xRot, InteractionHand hand,
                                        float attack, ItemStack itemStack, float inverseArmHeight, PoseStack poseStack,
                                        SubmitNodeCollector submitNodeCollector, int lightCoords, CallbackInfo ci) {
+    //?}
         if (!ViewmodelState.active()) return;
 
         boolean bothHands = hand == InteractionHand.MAIN_HAND && itemStack.has(DataComponents.MAP_ID) && offHandItem.isEmpty();
@@ -50,38 +62,40 @@ public abstract class DihViewmodelMixin {
                 (ViewmodelState.mainHandScale() + ViewmodelState.offHandScale()) / 2f,
                 (ViewmodelState.mainHandRotX() + ViewmodelState.offHandRotX()) / 2f,
                 (ViewmodelState.mainHandRotY() + ViewmodelState.offHandRotY()) / 2f,
-                (ViewmodelState.mainHandRotZ() + ViewmodelState.offHandRotZ()) / 2f);
+                (ViewmodelState.mainHandRotZ() + ViewmodelState.offHandRotZ()) / 2f,
+                (ViewmodelState.mainHandSize() + ViewmodelState.offHandSize()) / 2f);
         } else if (bothHands && main) {
             poseStack.translate(0f, 0f, ViewmodelState.mainHandScale());
         } else if (hand == InteractionHand.MAIN_HAND && main) {
             dih$applyTransformations(poseStack, ViewmodelState.mainHandX(), ViewmodelState.mainHandY(),
                 ViewmodelState.mainHandScale(), ViewmodelState.mainHandRotX(), ViewmodelState.mainHandRotY(),
-                ViewmodelState.mainHandRotZ());
+                ViewmodelState.mainHandRotZ(), ViewmodelState.mainHandSize());
         } else if (off) {
             dih$applyTransformations(poseStack, ViewmodelState.offHandX(), ViewmodelState.offHandY(),
                 ViewmodelState.offHandScale(), ViewmodelState.offHandRotX(), ViewmodelState.offHandRotY(),
-                ViewmodelState.offHandRotZ());
+                ViewmodelState.offHandRotZ(), ViewmodelState.offHandSize());
         }
     }
 
     @Unique
     private static void dih$applyTransformations(PoseStack matrices, float tx, float ty, float tz,
-                                                    float rx, float ry, float rz) {
+                                                    float rx, float ry, float rz, float size) {
         matrices.translate(tx, ty, tz);
-        matrices.mulPose(Axis.XP.rotationDegrees(rx));
-        matrices.mulPose(Axis.YP.rotationDegrees(ry));
-        matrices.mulPose(Axis.ZP.rotationDegrees(rz));
+        DihRender.rotate(matrices, Axis.XP.rotationDegrees(rx));
+        DihRender.rotate(matrices, Axis.YP.rotationDegrees(ry));
+        DihRender.rotate(matrices, Axis.ZP.rotationDegrees(rz));
+        if (size != 1.0f) matrices.scale(size, size, size);
     }
 
     @Unique
     private static void dih$applySwingOffset(PoseStack m, HumanoidArm arm, float swing) {
         int side = arm == HumanoidArm.RIGHT ? 1 : -1;
         float f = Mth.sin((float) (swing * swing * Math.PI));
-        m.mulPose(Axis.YP.rotationDegrees(side * (45.0f + f * -20.0f)));
+        DihRender.rotate(m, Axis.YP.rotationDegrees(side * (45.0f + f * -20.0f)));
         float g = Mth.sin((float) (Mth.sqrt(swing) * Math.PI));
-        m.mulPose(Axis.ZP.rotationDegrees(side * g * -20.0f));
-        m.mulPose(Axis.XP.rotationDegrees(g * -80.0f));
-        m.mulPose(Axis.YP.rotationDegrees(side * -45.0f));
+        DihRender.rotate(m, Axis.ZP.rotationDegrees(side * g * -20.0f));
+        DihRender.rotate(m, Axis.XP.rotationDegrees(g * -80.0f));
+        DihRender.rotate(m, Axis.YP.rotationDegrees(side * -45.0f));
     }
 
     @Unique
@@ -89,8 +103,8 @@ public abstract class DihViewmodelMixin {
         if (ViewmodelState.blockAnim() == 1) {
             m.translate(arm == HumanoidArm.RIGHT ? -0.1f : 0.1f, 0.1f, 0.0f);
             float g = Mth.sin((float) (Mth.sqrt(swing) * Math.PI));
-            m.mulPose(Axis.ZP.rotationDegrees((arm == HumanoidArm.RIGHT ? 1 : -1) * g * 10.0f));
-            m.mulPose(Axis.XP.rotationDegrees(g * -35.0f));
+            DihRender.rotate(m, Axis.ZP.rotationDegrees((arm == HumanoidArm.RIGHT ? 1 : -1) * g * 10.0f));
+            DihRender.rotate(m, Axis.XP.rotationDegrees(g * -35.0f));
         } else {
             m.translate(arm == HumanoidArm.RIGHT ? -0.1f : 0.1f, ViewmodelState.oneSevenY(), 0.0f);
             dih$applySwingOffset(m, arm, swing * ViewmodelState.oneSevenSwingScale());
@@ -104,11 +118,21 @@ public abstract class DihViewmodelMixin {
             target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;applyItemArmTransform(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/entity/HumanoidArm;F)V",
             ordinal = 0, shift = At.Shift.AFTER),
         require = 0)
+    //? if >=26.3 {
+    /*private void dih$blockAnimation(net.minecraft.client.renderer.state.level.PlayerRenderState playerState,
+                                       net.minecraft.client.renderer.state.level.FirstPersonHandsAndItemsRenderState handsState,
+                                       float frameInterp, float xRot, InteractionHand hand,
+                                       float attack, ItemStack itemStack, float inverseArmHeight, PoseStack poseStack,
+                                       SubmitNodeCollector submitNodeCollector, int lightCoords, CallbackInfo ci) {
+        HumanoidArm mainArm = playerState.avatarRenderState.mainArm;
+    *///?} else {
     private void dih$blockAnimation(AbstractClientPlayer player, float frameInterp, float xRot, InteractionHand hand,
                                        float attack, ItemStack itemStack, float inverseArmHeight, PoseStack poseStack,
                                        SubmitNodeCollector submitNodeCollector, int lightCoords, CallbackInfo ci) {
-        if (!ViewmodelState.active() || !itemStack.is(ItemTags.SWORDS)) return;
-        HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? player.getMainArm() : player.getMainArm().getOpposite();
+        HumanoidArm mainArm = player.getMainArm();
+    //?}
+        if (!ViewmodelState.active() || ViewmodelState.blockAnim() < 0 || !itemStack.is(ItemTags.SWORDS)) return;
+        HumanoidArm arm = hand == InteractionHand.MAIN_HAND ? mainArm : mainArm.getOpposite();
         dih$applyBlockAnimation(poseStack, arm, attack);
     }
 
@@ -118,21 +142,6 @@ public abstract class DihViewmodelMixin {
     private float dih$ignoreBlocking(float equipProgress) {
         if (ViewmodelState.equipOffsetOn() && ViewmodelState.ignoreBlocking()) return 0.0F;
         return equipProgress;
-    }
-
-    @Inject(method = "itemUsed", at = @At("HEAD"), cancellable = true, require = 0)
-    private void dih$ignorePlace(InteractionHand hand, CallbackInfo ci) {
-        if (ViewmodelState.active() && ViewmodelState.ignorePlace()) ci.cancel();
-    }
-
-    @Inject(method = "shouldInstantlyReplaceVisibleItem", at = @At("RETURN"), cancellable = true, require = 0)
-    private void dih$ignoreAmount(ItemStack currentlyVisibleItem, ItemStack expectedItem,
-                                     CallbackInfoReturnable<Boolean> cir) {
-        if (ViewmodelState.active() && !cir.getReturnValueZ()) {
-            cir.setReturnValue(!ViewmodelState.equipOffsetOn()
-                || (currentlyVisibleItem.getCount() == expectedItem.getCount() || ViewmodelState.ignoreAmount())
-                && ItemStack.isSameItemSameComponents(currentlyVisibleItem, expectedItem));
-        }
     }
 
     @ModifyArg(method = "applyItemArmTransform",

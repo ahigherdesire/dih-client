@@ -1,5 +1,8 @@
 package dihclient.mixin.security;
 
+// Fabric only: targets Fabric API internals (left out of the NeoForge mixin config).
+//? if fabric {
+
 import dihclient.security.DihProtectorModResolver;
 import dihclient.security.DihProtectorTracker;
 import net.fabricmc.fabric.api.resource.v1.pack.PackActivationType;
@@ -27,3 +30,4 @@ public class DihProtectorResourceLoaderImplMixin {
         DihProtectorTracker.addDefaultAllowedMods(DihProtectorModResolver.dependenciesFor(mod));
     }
 }
+//?}

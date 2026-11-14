@@ -1,0 +1,172 @@
+// gold_miner.dscript
+// start -> /rtpmenu -> Overworld -> Badlands -> #mine gold_ore
+// While mining:
+//   - hunger at 4 drumsticks or less  -> pause, eat until full, keep mining
+//   - pickaxe worn out                -> use the next pickaxe; none left -> /home -> end
+//   - player nearby or low health     -> /home -> eat + heal to full
+//                                        -> store gold, leave 27 (1 per slot) -> /rtpmenu again
+//   - inventory full of raw gold      -> same as above
+//
+// Run:  .scripts run gold_miner      Stop: .scripts stop gold_miner
+
+// ---- set these two -------------------------------------------------------
+const OVERWORLD_SLOT = -1;    // slot number of the Overworld button in /rtpmenu
+const BADLANDS_SLOT  = -1;    // slot number of the Badlands button
+// ---------------------------------------------------------------------------
+
+const HOME_COMMAND   = "/home";
+const ORE            = "gold_ore";
+const LOW_HEALTH     = 5;     // 20 = full health, 2 per heart
+const LOW_HUNGER     = 8;     // 20 = full, 2 per drumstick: 8 = 4 drumsticks
+const SAFE_RADIUS    = 48;    // how close a player can get (blocks)
+const KEEP_GOLD      = 27;    // raw gold to leave in the inventory, 1 per slot
+const MIN_DURABILITY = 20;    // a pickaxe with fewer uses left counts as worn out
+const MENU_TIMEOUT   = 100;   // ticks to wait for a menu (100 = 5 seconds)
+
+let warnedNoFood = false;
+
+function main() {
+    if (OVERWORLD_SLOT < 0 || BADLANDS_SLOT < 0) {
+        error("Set OVERWORLD_SLOT and BADLANDS_SLOT at the top of the script first");
+    }
+    // Baritone skips tools with fewer than MIN_DURABILITY uses left
+    baritone("set itemSaver true");
+    baritone("set itemSaverThreshold " + MIN_DURABILITY);
+
+    if (!equipPickaxe(MIN_DURABILITY)) {
+        error("You have no pickaxe with at least " + MIN_DURABILITY + " durability");
+    }
+
+    travelToBadlands();                         // start -> /rtpmenu -> Overworld -> Badlands
+    while (true) {
+        let reason = goldMining();
+        print("Going home: " + reason);
+        goHome();
+        if (reason == "no pickaxe left") {
+            print("No usable pickaxe left - ending here.");
+            stop();                             // /home -> end
+        }
+        atHome();                               // eat + heal, then chest
+        travelToBadlands();                     // back to /rtpmenu
+    }
+}
+
+// ---------------------------------------------------------------- mining
+
+// Mines until something sends it home, then returns why.
+function goldMining() {
+    baritone("mine " + ORE);                    // #mine gold_ore
+    while (true) {
+        if (playerNearby(SAFE_RADIUS)) { return "player nearby (" + nearestPlayer(SAFE_RADIUS) + ")"; }
+        if (health() <= LOW_HEALTH) { return "low health (" + health() + ")"; }
+        if (inventoryFull("raw_gold")) { return "inventory full"; }
+        if (!checkPickaxe()) { return "no pickaxe left"; }
+        if (food() <= LOW_HUNGER) { eatWhileMining(); }
+        wait(5);                                // check 4 times a second
+    }
+}
+
+// Hunger bar low -> pause mining, eat until the bar is full, carry on.
+function eatWhileMining() {
+    baritone("pause");
+    wait(5);
+    let ate = false;
+    while (food() < 20 && eat()) {
+        ate = true;
+    }
+    baritone("resume");
+    if (ate) {
+        warnedNoFood = false;
+        print("Ate - hunger now " + food() + "/20");
+    } else if (!warnedNoFood) {
+        warnedNoFood = true;
+        print("Hunger is low but there is no food in the hotbar");
+    }
+}
+
+// Pickaxe durability low -> use the next pickaxe. Returns false when none is left.
+function checkPickaxe() {
+    if (pickaxeCount(MIN_DURABILITY) == 0) {
+        return false;
+    }
+    if (contains(heldItem(), "pickaxe") && heldDurability() < MIN_DURABILITY) {
+        print("Pickaxe worn out (" + heldDurability() + " left) - switching");
+        stopBaritone();
+        if (!equipPickaxe(MIN_DURABILITY)) {
+            return false;
+        }
+        baritone("mine " + ORE);                // back to #mine gold_ore with the new pickaxe
+    }
+    return true;
+}
+
+function goHome() {
+    stopBaritone();                             // stop #mine
+    command(HOME_COMMAND);
+    waitSeconds(5);                             // teleport warm-up
+}
+
+// ---------------------------------------------------------------- at home
+
+function atHome() {
+    // eat and heal to full health and a full hunger bar
+    eatAndHeal();
+
+    // go to the chest
+    if (findBlock("chest", 5) == null) {
+        goto("chest");
+    }
+    if (!openNearest("chest")) {
+        error("No chest found near home");
+    }
+
+    // deposit the gold, then leave 27, 1 in each inventory slot
+    let stored = deposit("raw_gold");
+    print("Stored " + stored + " raw gold");
+    let filled = fillSlots("raw_gold", KEEP_GOLD);
+    print("Filled " + filled + " slots with raw gold");
+    closeGui();
+
+    equipPickaxe(MIN_DURABILITY);
+}
+
+function eatAndHeal() {
+    while (health() < maxHealth() || food() < 20) {
+        if (food() < 20) {
+            if (!eat()) {
+                print("Out of food");
+                if (health() >= maxHealth()) { return; }   // can't fill hunger, but health is full
+                waitSeconds(2);                            // wait for health to regenerate
+            }
+        } else {
+            waitSeconds(1);                                // hunger full -> health regenerates
+        }
+    }
+}
+
+// ---------------------------------------------------------------- teleport
+
+function travelToBadlands() {
+    command("/rtpmenu");
+    if (!waitForGui(MENU_TIMEOUT)) {
+        error("/rtpmenu did not open");
+    }
+    wait(5);                                    // let the menu fill in
+    print("Clicking Overworld: slot " + OVERWORLD_SLOT + " (" + slotName(OVERWORLD_SLOT) + ")");
+    clickSlot(OVERWORLD_SLOT);
+
+    wait(10);                                   // the Badlands menu opens or replaces this one
+    if (!waitForGui(MENU_TIMEOUT)) {
+        error("The biome menu did not open after clicking Overworld");
+    }
+    wait(5);
+    print("Clicking Badlands: slot " + BADLANDS_SLOT + " (" + slotName(BADLANDS_SLOT) + ")");
+    clickSlot(BADLANDS_SLOT);
+
+    waitSeconds(8);                             // let the teleport land and chunks load
+}
+
+// runs whenever the script stops
+function onStop() {
+    stopBaritone();
+}

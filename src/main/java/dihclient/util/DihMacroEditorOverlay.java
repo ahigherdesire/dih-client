@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.components.Button;
 import dihclient.gui.vanillaui.components.CompactDropdown;
@@ -155,7 +156,6 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult.Type;
 import net.minecraft.core.BlockPos;
-import org.lwjgl.glfw.GLFW;
 
 public class DihMacroEditorOverlay extends DihOverlayBase {
    public enum EditorContext {
@@ -1052,24 +1052,22 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
 
    private boolean isControlModifierDown() {
       if (MC == null || MC.getWindow() == null) return false;
-      long handle = MC.getWindow().handle();
-      return GLFW.glfwGetKey(handle, GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS
-         || GLFW.glfwGetKey(handle, GLFW.GLFW_KEY_RIGHT_CONTROL) == GLFW.GLFW_PRESS;
+      return DihKeys.isKeyDown(InputConstants.KEY_LCONTROL)
+         || DihKeys.isKeyDown(InputConstants.KEY_RCONTROL);
    }
 
    private boolean isControlModifierDown(int modifiers) {
-      return (modifiers & GLFW.GLFW_MOD_CONTROL) != 0 || this.isControlModifierDown();
+      return (modifiers & InputConstants.MOD_CONTROL) != 0 || this.isControlModifierDown();
    }
 
    private boolean isShiftModifierDown() {
       if (MC == null || MC.getWindow() == null) return false;
-      long handle = MC.getWindow().handle();
-      return GLFW.glfwGetKey(handle, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
-         || GLFW.glfwGetKey(handle, GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
+      return DihKeys.isKeyDown(InputConstants.KEY_LSHIFT)
+         || DihKeys.isKeyDown(InputConstants.KEY_RSHIFT);
    }
 
    private boolean isShiftModifierDown(int modifiers) {
-      return (modifiers & GLFW.GLFW_MOD_SHIFT) != 0 || this.isShiftModifierDown();
+      return (modifiers & InputConstants.MOD_SHIFT) != 0 || this.isShiftModifierDown();
    }
 
    private static String pluralSteps(int count) {
@@ -2467,6 +2465,8 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
          this.addStepPickerEntry(entries, "flow", "Assert", "Validate preconditions.", () -> this.addAction(new AssertAction()));
 
          this.addStepPickerEntry(entries, "flow", "Pay", "Send payments to a player list.", () -> this.addAction(new PayAction()));
+         this.addStepPickerEntry(entries, "flow", "Trade", "Buy matching offers from the open villager trade screen; sets trade_count, trade_spent, trade_status.", () -> this.addAction(new dihclient.util.macro.TradeAction()));
+         this.addStepPickerEntry(entries, "flow", "AI Tool", "Run any AI tool with typed arguments, like .tools; sets tool_status and tool_output.", () -> this.addAction(new dihclient.util.macro.AiToolAction()));
          this.addStepPickerEntry(entries, "interaction", "InstaBreak", "Instant rebreak for one captured block.", this::addDefaultInstaBreakAction);
          this.addStepPickerEntry(entries, "interaction", "Break", "Legit vanilla break with break-progress tracking + optional GUI-race interact.", this::addDefaultBreakAction);
          this.addStepPickerEntry(entries, "flow", "Race", "Run grouped actions when a condition fires.", () -> this.addAction(new RaceAction()));
@@ -3476,16 +3476,16 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
       if (this.stepPickerSearchField != null && this.stepPickerSearchField.mouseReleased(mouseX, mouseY, button)) return true;
       if (this.nameField != null && this.nameField.mouseReleased(mouseX, mouseY, button)) return true;
       if (this.loopCountField != null && this.loopCountField.mouseReleased(mouseX, mouseY, button)) return true;
-      if (button == 0 && (this.draggingIndex >= 0 || this.pressedStepIndex >= 0)) {
+      if (button == InputConstants.MOUSE_BUTTON_LEFT && (this.draggingIndex >= 0 || this.pressedStepIndex >= 0)) {
          this.finishStepDrag();
          return true;
-      } else if (button == 0 && this.activeScrollbarDrag != 0) {
+      } else if (button == InputConstants.MOUSE_BUTTON_LEFT && this.activeScrollbarDrag != 0) {
          this.activeScrollbarDrag = 0;
          this.saveState();
          return true;
       } else if (dropdownReleased) {
          return true;
-      } else if (button != 0) {
+      } else if (button != InputConstants.MOUSE_BUTTON_LEFT) {
          return false;
       } else {
          boolean moved = this.headerDragMoved
@@ -4838,7 +4838,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
       if (!inside) {
          this.closeStepPicker();
          return true;
-      } else if (button != 0) {
+      } else if (button != InputConstants.MOUSE_BUTTON_LEFT) {
          return true;
       } else if (mouseX >= closeX && mouseX < closeX + 12 && mouseY >= closeY && mouseY < closeY + 12) {
          this.closeStepPicker();
@@ -4891,10 +4891,10 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
          return false;
       }
       if (this.stepCtxMenu.isOpen()) {
-         if (button == 0) {
+         if (button == InputConstants.MOUSE_BUTTON_LEFT) {
 
             if (this.stepCtxMenu.handleClick(mouseX, mouseY, button, (idx, label, i) -> this.executeStepCtxAction(idx, i))) return true;
-         } else if (button == 1 && !this.stepCtxMenu.isMouseOver(mouseX, mouseY)) {
+         } else if (button == InputConstants.MOUSE_BUTTON_RIGHT && !this.stepCtxMenu.isMouseOver(mouseX, mouseY)) {
 
             this.stepCtxMenu.close();
          }
@@ -4909,7 +4909,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
          this.recreateComponents();
          this.clearStepSelection();
          return true;
-      } else if (button == 0 && this.isOverHeaderUi(mouseX, mouseY)) {
+      } else if (button == InputConstants.MOUSE_BUTTON_LEFT && this.isOverHeaderUi(mouseX, mouseY)) {
          if (this.isOverCloseButtonUi(mouseX, mouseY)) {
             this.close();
             return true;
@@ -4980,7 +4980,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
          int listHeight = this.getStepListHeight();
          if (mouseY >= listY && mouseY <= listY + listHeight && mouseX >= this.getStepListFrameX() && mouseX <= this.getStepListFrameX() + this.getStepListFrameWidth()) {
             CompactScrollbar.Metrics stepListScrollbar = this.getStepListScrollbarMetrics();
-            if (button == 0 && stepListScrollbar.hasScroll() && stepListScrollbar.contains((int)mouseX, (int)mouseY)) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT && stepListScrollbar.hasScroll() && stepListScrollbar.contains((int)mouseX, (int)mouseY)) {
                this.clearStepSelection();
                this.activeScrollbarDrag = 1;
                boolean onThumb = mouseY >= stepListScrollbar.thumbY() && mouseY < stepListScrollbar.thumbY() + stepListScrollbar.thumbHeight();
@@ -5001,7 +5001,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
                this.clearStepSelection();
                this.clearStepDragState();
 
-               if (button == 1 && index >= 0 && index < this.macro.actions.size()) {
+               if (button == InputConstants.MOUSE_BUTTON_RIGHT && index >= 0 && index < this.macro.actions.size()) {
                   int lockedRowY = y + index * this.actionRowHeight();
                   if (this.isStepRowFullyVisible(lockedRowY) && mouseX < this.getStepListContentRight()) {
                      this.stepCtxMenu.open((int)mouseX, (int)mouseY, index);
@@ -5089,7 +5089,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
                   return true;
                }
 
-               if (button == 0 && mouseX < this.getStepListContentRight()) {
+               if (button == InputConstants.MOUSE_BUTTON_LEFT && mouseX < this.getStepListContentRight()) {
                   boolean shiftDown = this.isShiftModifierDown();
                   boolean controlDown = this.isControlModifierDown();
                   if (controlDown || shiftDown) {
@@ -5099,19 +5099,19 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
                   }
                   return true;
                }
-               if (button == 1 && mouseX < this.getStepListContentRight()) {
+               if (button == InputConstants.MOUSE_BUTTON_RIGHT && mouseX < this.getStepListContentRight()) {
                   this.handleStepRightClick(index, (int)mouseX, (int)mouseY);
                   return true;
                }
             }
 
-            if (button == 0) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT) {
                this.clearStepSelection();
                return true;
             }
          }
 
-         if (button == 0) {
+         if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             this.clearStepSelection();
          }
          return false;
@@ -5320,7 +5320,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
          }
          if (this.isStepPickerOpen()) {
             if (this.stepPickerSearchField != null && this.stepPickerSearchField.isFocused()) {
-               if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+               if (keyCode == InputConstants.KEY_ESCAPE) {
                   this.stepPickerSearchField.setFocused(false);
                   return true;
                }
@@ -5333,29 +5333,29 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
             return true;
          } else if (!this.hasFocusedEditorField()
             && this.isStepListLockedForRun()
-            && (this.isControlModifierDown(modifiers) && (keyCode == GLFW.GLFW_KEY_C
-               || keyCode == GLFW.GLFW_KEY_V
-               || keyCode == GLFW.GLFW_KEY_X
-               || keyCode == GLFW.GLFW_KEY_Z
-               || keyCode == GLFW.GLFW_KEY_R)
-               || keyCode == GLFW.GLFW_KEY_DELETE
-               || keyCode == GLFW.GLFW_KEY_BACKSPACE)) {
+            && (this.isControlModifierDown(modifiers) && (keyCode == InputConstants.KEY_C
+               || keyCode == InputConstants.KEY_V
+               || keyCode == InputConstants.KEY_X
+               || keyCode == InputConstants.KEY_Z
+               || keyCode == InputConstants.KEY_R)
+               || keyCode == InputConstants.KEY_DELETE
+               || keyCode == InputConstants.KEY_BACKSPACE)) {
             return true;
-         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == GLFW.GLFW_KEY_Z) {
+         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == InputConstants.KEY_Z) {
             this.performUndo();
             return true;
-         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == GLFW.GLFW_KEY_R) {
+         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == InputConstants.KEY_R) {
             this.performRedo();
             return true;
-         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == GLFW.GLFW_KEY_X) {
+         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == InputConstants.KEY_X) {
             this.deleteSelectedSteps();
             return true;
-         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == GLFW.GLFW_KEY_C) {
+         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == InputConstants.KEY_C) {
             return this.copySelectedStepsToClipboard();
-         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == GLFW.GLFW_KEY_V) {
+         } else if (!this.hasFocusedEditorField() && this.isControlModifierDown(modifiers) && keyCode == InputConstants.KEY_V) {
             return this.pasteMacroStepsFromClipboardOrSelection();
          } else if (!this.hasFocusedEditorField()
-            && (keyCode == GLFW.GLFW_KEY_DELETE || keyCode == GLFW.GLFW_KEY_BACKSPACE)
+            && (keyCode == InputConstants.KEY_DELETE || keyCode == InputConstants.KEY_BACKSPACE)
             && this.deleteSelectedSteps()) {
             return true;
          } else if (keyCode == 256) {
@@ -5509,14 +5509,14 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
       } else if (this.isStepListLockedForRun() && (this.draggingIndex >= 0 || this.pressedStepIndex >= 0)) {
          this.clearStepDragState();
          return true;
-      } else if (button == 0 && (this.draggingIndex >= 0 || this.pressedStepIndex >= 0)) {
+      } else if (button == InputConstants.MOUSE_BUTTON_LEFT && (this.draggingIndex >= 0 || this.pressedStepIndex >= 0)) {
          this.tryStartStepDrag(mouseX, mouseY);
          if (this.draggingIndex >= 0) {
             this.updateStepDrag(mouseY);
          }
 
          return true;
-      } else if (this.isWindowResizing && button == 0) {
+      } else if (this.isWindowResizing && button == InputConstants.MOUSE_BUTTON_LEFT) {
          int nextWidth = this.resizeStartWidth + (int)Math.round(mouseX - this.resizeStartMouseX);
          int nextHeight = this.resizeStartHeight + (int)Math.round(mouseY - this.resizeStartMouseY);
          DihWindowLayout nextBounds = this.clampToScreen(
@@ -5528,7 +5528,7 @@ public class DihMacroEditorOverlay extends DihOverlayBase {
          this.panelY = nextBounds.y;
          this.recreateComponents();
          return true;
-      } else if (this.isWindowDragging && button == 0) {
+      } else if (this.isWindowDragging && button == InputConstants.MOUSE_BUTTON_LEFT) {
          this.panelX = (int)(mouseX - this.dragOffsetX);
          this.panelY = (int)(mouseY - this.dragOffsetY);
          int screenW = DihUiScale.getVirtualScreenWidth();

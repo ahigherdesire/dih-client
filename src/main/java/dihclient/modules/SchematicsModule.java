@@ -1,0 +1,275 @@
+package dihclient.modules;
+
+import dihclient.api.module.BoolSetting;
+import dihclient.api.module.ChoiceSetting;
+import dihclient.api.module.ColorSetting;
+import dihclient.api.module.DoubleSetting;
+import dihclient.api.module.IntSetting;
+import dihclient.api.module.KeybindSetting;
+import dihclient.schematic.SchematicPlacement;
+import dihclient.schematic.SchematicPlacing;
+import dihclient.schematic.Schematics;
+import dihclient.util.DihBindUtil;
+import dihclient.util.DihClientMessaging;
+import dihclient.util.DihUiScale;
+import net.minecraft.client.gui.GuiGraphicsExtractor;
+
+import java.util.List;
+
+/**
+ * Shows schematic placements in the world and holds their keybinds. The placements themselves live in
+ * {@link Schematics} and are managed with {@code .schem} and the Schematics screen.
+ */
+public final class SchematicsModule extends Module {
+
+    static final String LAYER_ALL = "All";
+    static final String LAYER_SINGLE = "Single";
+    static final String LAYER_BELOW = "Below";
+    static final String LAYER_ABOVE = "Above";
+
+    /** Litematica's default overlay colours. */
+    static final int MISSING = 0x2C33B3E6;
+    static final int EXTRA = 0x4CFF4CE6;
+    static final int WRONG_STATE = 0x4CFF9010;
+    static final int WRONG_BLOCK = 0x4CFF3333;
+
+    private static SchematicsModule cached;
+
+    private int cachedRevision = -1;
+    private SchematicOverlayRenderer.Style style;
+    private final boolean[] keyWasDown = new boolean[5];
+
+    public SchematicsModule() {
+        super("schematics", "Schematics", ModuleCategory.RENDER,
+            "Places schematic files in the world and shows what is still to build.");
+        add(new BoolSetting("ghost-blocks", "Ghost Blocks", true)
+            .group("Render").description("Draw the blocks still missing.").build());
+        add(new IntSetting("ghost-alpha", "Ghost Alpha", 150, 20, 255, 5)
+            .group("Render").description("Ghost block strength out of 255.").visibleWhen(() -> bool("ghost-blocks")).build());
+        add(new BoolSetting("overlay", "Overlay", true)
+            .group("Render").description("Tint every block that is not right yet.").build());
+        add(new BoolSetting("outline", "Outline", true)
+            .group("Render").description("Edge the tinted blocks.").build());
+        add(new BoolSetting("see-through", "See Through", false)
+            .group("Render").description("Draw the overlay through walls.").build());
+        add(new IntSetting("render-range", "Render Range", 96, 16, 512, 16)
+            .group("Render").description("Blocks from the camera that are drawn.").build());
+
+        add(new ChoiceSetting("layer-mode", "Layers", LAYER_ALL, LAYER_ALL, LAYER_SINGLE, LAYER_BELOW, LAYER_ABOVE)
+            .group("Layers").description("Draw all layers, one, or those below or above a height.").build());
+        add(new IntSetting("layer-y", "Layer Y", 64, -64, 320, 1)
+            .group("Layers").description("The height the layer mode uses.")
+            .visibleWhen(() -> !LAYER_ALL.equals(choice("layer-mode"))).build());
+
+        add(new ColorSetting("color-missing", "Missing", MISSING)
+            .group("Colors").description("A block not placed yet.").build());
+        add(new ColorSetting("color-extra", "Extra", EXTRA)
+            .group("Colors").description("A block where the schematic has air.").build());
+        add(new ColorSetting("color-wrong-state", "Wrong State", WRONG_STATE)
+            .group("Colors").description("The right block, turned or set wrong.").build());
+        add(new ColorSetting("color-wrong-block", "Wrong Block", WRONG_BLOCK)
+            .group("Colors").description("Another block than the schematic's.").build());
+
+        add(new ChoiceSetting("build-mode", "Build Mode", "Legit", "Legit", "Fast", "Creative")
+            .group("Build").description("Legit: Baritone held to Grim-safe reach, turn speed and click delay. "
+                + "Fast: blatant, places every block in reach each tick. Creative: takes blocks from the creative "
+                + "inventory and flies the build, or pastes it with commands when you are op.").build());
+        add(new IntSetting("print-per-tick", "Blocks Per Tick", 4, 1, 64, 1)
+            .group("Build").description("Most blocks Fast and Creative place in one tick.")
+            .visibleWhen(() -> !"Legit".equals(choice("build-mode"))).build());
+        add(new DoubleSetting("fast-reach", "Fast Reach", 5.0, 3.0, 6.0, 0.1)
+            .group("Build").description("How far Fast places from. The server allows about 5.5 in survival.")
+            .visibleWhen(() -> "Fast".equals(choice("build-mode"))).build());
+        add(new BoolSetting("air-place", "Air Place", true)
+            .group("Build").description("Place blocks with nothing next to them. Flags Grim's AirPlace.")
+            .visibleWhen(() -> !"Legit".equals(choice("build-mode"))).build());
+        add(new BoolSetting("creative-replace", "Replace", true)
+            .group("Build").description("Creative: break blocks that are not the schematic's, so the build matches it.")
+            .visibleWhen(() -> "Creative".equals(choice("build-mode"))).build());
+        add(new BoolSetting("creative-commands", "Use Commands", true)
+            .group("Build").description("Creative: when you are op, paste with /fill and /setblock at once instead of placing.")
+            .visibleWhen(() -> "Creative".equals(choice("build-mode"))).build());
+        add(new IntSetting("commands-per-tick", "Commands Per Tick", 20, 1, 200, 1)
+            .group("Build").description("Creative paste: commands sent each tick.")
+            .visibleWhen(() -> "Creative".equals(choice("build-mode")) && bool("creative-commands")).build());
+        add(new DoubleSetting("fly-speed", "Fly Speed", 1.0, 0.2, 3.0, 0.1)
+            .group("Build").description("Creative: blocks per tick when flying to what is left.")
+            .visibleWhen(() -> "Creative".equals(choice("build-mode"))).build());
+
+        add(new KeybindSetting("menu-key", "Menu Key", -1)
+            .group("Keys").description("Opens the Schematics screen.").build());
+        add(new KeybindSetting("open-key", "Open File Key", -1)
+            .group("Keys").description("Picks a schematic file from anywhere on your computer and places it.").build());
+        add(new KeybindSetting("adjust-key", "Adjust Key", -1)
+            .group("Keys").description("Moves the selected placement with the mouse.").build());
+        add(new KeybindSetting("rotate-key", "Rotate Key", -1)
+            .group("Keys").description("Turns the selected placement 90 degrees clockwise.").build());
+        add(new KeybindSetting("mirror-key", "Mirror Key", -1)
+            .group("Keys").description("Cycles the selected placement's mirror.").build());
+    }
+
+    static SchematicsModule instance() {
+        SchematicsModule local = cached;
+        if (local != null) {
+            return local;
+        }
+        Module module = ModuleRegistry.get("schematics");
+        return module instanceof SchematicsModule schematics ? (cached = schematics) : null;
+    }
+
+    public static void initialize() {
+        SchematicOverlayRenderer.installRenderHook();
+    }
+
+    @Override
+    public void onEnable() {
+        SchematicOverlayRenderer.installRenderHook();
+        SchematicOverlayRenderer.invalidate();
+    }
+
+    @Override
+    public void onDisable() {
+        SchematicOverlayRenderer.invalidate();
+        dihclient.schematic.SchematicActions.stopBuild(MC, null);
+    }
+
+    /**
+     * @return the build mode the Build Mode setting picks
+     */
+    public dihclient.schematic.SchematicBuildMode buildMode() {
+        dihclient.schematic.SchematicBuildMode mode = dihclient.schematic.SchematicBuildMode.parse(choice("build-mode"));
+        return mode == null ? dihclient.schematic.SchematicBuildMode.LEGIT : mode;
+    }
+
+    /**
+     * @return the printer settings for {@code mode}
+     */
+    public dihclient.schematic.SchematicPrinter.Options printerOptions(dihclient.schematic.SchematicBuildMode mode) {
+        boolean creative = mode == dihclient.schematic.SchematicBuildMode.CREATIVE;
+        return new dihclient.schematic.SchematicPrinter.Options(integer("print-per-tick"),
+            creative ? 5.5 : decimal("fast-reach"), bool("air-place"), bool("creative-replace"),
+            bool("creative-commands"), integer("commands-per-tick"), decimal("fly-speed"));
+    }
+
+    /**
+     * @return the module, or null when it is not registered
+     */
+    public static SchematicsModule get() {
+        return instance();
+    }
+
+    @Override
+    public String info() {
+        int count = Schematics.get().placements().size();
+        return count == 0 ? "" : String.valueOf(count);
+    }
+
+    @Override
+    public void tick() {
+        if (MC.player == null) {
+            return;
+        }
+        Schematics.get().tick(MC);
+        SchematicPlacing.tick(MC);
+        dihclient.schematic.SchematicActions.tickBuild(MC);
+        key(0, "menu-key", () -> MC.gui.setScreen(new dihclient.gui.screen.DihSchematicsScreen(null)));
+        key(1, "adjust-key", () -> {
+            SchematicPlacement selected = selectedOrSay();
+            if (selected != null) {
+                MC.gui.setScreen(new dihclient.gui.screen.DihSchematicPlacementScreen(selected, null));
+            }
+        });
+        key(2, "rotate-key", () -> {
+            SchematicPlacement selected = selectedOrSay();
+            if (selected != null) {
+                selected.rotate(1);
+                Schematics.get().changed();
+            }
+        });
+        key(4, "open-key", () -> dihclient.schematic.SchematicDrop.pick(MC));
+        key(3, "mirror-key", () -> {
+            SchematicPlacement selected = selectedOrSay();
+            if (selected != null) {
+                selected.cycleMirror();
+                Schematics.get().changed();
+            }
+        });
+    }
+
+    static boolean hasHudWork() {
+        Module module = ModuleRegistry.get("schematics");
+        return module != null && module.isEnabled() && SchematicPlacing.active() != null;
+    }
+
+    /**
+     * The placing panel: what is being placed and its keys, top centre while a new placement is moved.
+     */
+    static void renderHud(GuiGraphicsExtractor context) {
+        if (!hasHudWork() || MC.gui.screen() != null) {
+            return;
+        }
+        List<String> lines = SchematicPlacing.hudLines();
+        if (lines.isEmpty()) {
+            return;
+        }
+        int lineH = MC.font.lineHeight + 2;
+        int width = 0;
+        for (String line : lines) {
+            width = Math.max(width, MC.font.width(line));
+        }
+        int x = (DihUiScale.getVirtualScreenWidth() - width) / 2;
+        int y = 10;
+        context.fill(x - 6, y - 5, x + width + 6, y + lines.size() * lineH + 3, 0xB0101014);
+        for (int i = 0; i < lines.size(); i++) {
+            context.text(MC.font, lines.get(i), x, y + i * lineH, i == 0 ? 0xFFFFFFFF : 0xFFB8B8C2, false);
+        }
+    }
+
+    private void key(int index, String setting, Runnable action) {
+        int bind;
+        try {
+            bind = Integer.parseInt(value(setting));
+        } catch (NumberFormatException ignored) {
+            bind = -1;
+        }
+        boolean down = bind != -1 && DihBindUtil.isBindPressed(MC, bind);
+        if (down && !this.keyWasDown[index] && MC.gui.screen() == null) {
+            action.run();
+        }
+        this.keyWasDown[index] = down;
+    }
+
+    private static SchematicPlacement selectedOrSay() {
+        SchematicPlacement selected = Schematics.get().selected();
+        if (selected == null) {
+            DihClientMessaging.sendPrefixed("§7No schematic placement selected. §fUse .schem place <file>");
+        }
+        return selected;
+    }
+
+    SchematicOverlayRenderer.Style style() {
+        int revision = ModuleRegistry.revision();
+        if (revision != this.cachedRevision || this.style == null) {
+            this.cachedRevision = revision;
+            this.style = new SchematicOverlayRenderer.Style(bool("ghost-blocks"), bool("overlay"), bool("outline"),
+                bool("see-through"), integer("render-range"), choice("layer-mode"), integer("layer-y"),
+                integer("ghost-alpha"),
+                ModuleRenderUtil.color(this, "color-missing", MISSING),
+                ModuleRenderUtil.color(this, "color-extra", EXTRA),
+                ModuleRenderUtil.color(this, "color-wrong-state", WRONG_STATE),
+                ModuleRenderUtil.color(this, "color-wrong-block", WRONG_BLOCK));
+        }
+        return this.style;
+    }
+
+    /**
+     * Sets the layer mode ({@code All}, {@code Single}, {@code Below} or {@code Above}) and its height, for
+     * {@code .schem layer}.
+     */
+    public void setLayer(String mode, Integer y) {
+        setValue("layer-mode", mode);
+        if (y != null) {
+            setValue("layer-y", String.valueOf(y));
+        }
+    }
+}

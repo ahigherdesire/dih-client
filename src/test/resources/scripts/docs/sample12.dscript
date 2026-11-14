@@ -1,0 +1,9 @@
+// Waits up to 30 seconds for Baritone to finish; gives up instead of hanging forever.
+function main() {
+    baritone("goto 100 64 -200");
+    if (!waitForBaritone(30 * 20)) {
+        stopBaritone();
+        error("Didn't arrive within 30 seconds");
+    }
+    print("Arrived");
+}

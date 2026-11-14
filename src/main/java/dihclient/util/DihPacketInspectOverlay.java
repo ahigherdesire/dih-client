@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.direct.DirectLayout;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
@@ -17,7 +18,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -433,7 +433,7 @@ public class DihPacketInspectOverlay extends DihOverlayBase {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!visible) return false;
         DihWindowLayout bounds = getBounds();
-        if (button == 0 && mouseY >= panelY && mouseY <= panelY + HEADER_HEIGHT && mouseX >= panelX && mouseX <= panelX + panelWidth) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && mouseY >= panelY && mouseY <= panelY + HEADER_HEIGHT && mouseX >= panelX && mouseX <= panelX + panelWidth) {
             if (isOverCloseButton(mouseX, mouseY, bounds)) {
                 close();
                 return true;
@@ -452,14 +452,14 @@ public class DihPacketInspectOverlay extends DihOverlayBase {
         int listX = panelX + outerPad();
         int listWidth = panelWidth - (outerPad() * 2);
 
-        if (button == 0 && listViewport != null && listViewport.contains(mouseX, mouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && listViewport != null && listViewport.contains(mouseX, mouseY)) {
             if (listViewport.mouseClicked(mouseX, mouseY, button)) {
                 return true;
             }
         }
 
         int footerY = panelY + panelHeight - footerHeight() + footerTopInset();
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (FooterButton footerButton : buildFooterButtons(footerY)) {
                 if (mouseX >= footerButton.x() && mouseX < footerButton.x() + footerButton.width()
                     && mouseY >= footerButton.y() && mouseY < footerButton.y() + buttonHeight()) {
@@ -474,13 +474,13 @@ public class DihPacketInspectOverlay extends DihOverlayBase {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0 && dragging) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && dragging) {
             dragging = false;
             rememberScrollOffset();
             saveLayout();
             return true;
         }
-        if (button == 0 && listViewport != null) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && listViewport != null) {
             listViewport.mouseReleased();
             rememberScrollOffset();
             return true;
@@ -495,7 +495,7 @@ public class DihPacketInspectOverlay extends DihOverlayBase {
             listViewport.mouseDragged(mouseX, mouseY);
             rememberScrollOffset();
         }
-        if (!visible || button != 0 || !dragging) return false;
+        if (!visible || button != InputConstants.MOUSE_BUTTON_LEFT || !dragging) return false;
         setBounds(new DihWindowLayout((int) Math.round(mouseX - dragOffsetX), (int) Math.round(mouseY - dragOffsetY),
             panelWidth, panelHeight, visible, collapsed));
         return true;
@@ -523,7 +523,7 @@ public class DihPacketInspectOverlay extends DihOverlayBase {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!visible) return false;
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if (keyCode == InputConstants.KEY_ESCAPE) {
             close();
             return true;
         }

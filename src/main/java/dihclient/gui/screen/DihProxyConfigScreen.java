@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContexts;
 import dihclient.gui.vanillaui.UiRenderer;
@@ -217,14 +218,14 @@ public class DihProxyConfigScreen extends DihScreen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         MouseButtonEvent virtualEvent = virtualEvent(event);
-        if (virtualEvent.button() == 0 && CompactScreenPanel.isOverClose(
+        if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT && CompactScreenPanel.isOverClose(
             UiBounds.of(panelX(), panelTop(), panelW(), panelBottom() - panelTop()), 20,
             (int) virtualEvent.x(), (int) virtualEvent.y())) {
             this.minecraft.gui.setScreen(parent);
             return true;
         }
         if (CompactDropdown.mouseClicked(dropdowns, virtualEvent.x(), virtualEvent.y(), virtualEvent.button())) return true;
-        if (virtualEvent.button() != 0) return super.mouseClicked(virtualEvent, doubleClick);
+        if (virtualEvent.button() != InputConstants.MOUSE_BUTTON_LEFT) return super.mouseClicked(virtualEvent, doubleClick);
         for (CompactOverlayButton button : buttons) {
             if (CompactOverlayButton.fireIfHit(button, virtualEvent.x(), virtualEvent.y(), virtualEvent.button())) return true;
         }

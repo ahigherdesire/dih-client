@@ -13,7 +13,11 @@ import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 @Mixin(LocalPlayer.class)
 public class DihKillAuraRotationMixin {
 
+    //? if >=26.3 {
+    /*@ModifyExpressionValue(method = "sendChanges", at = @At(value = "INVOKE",
+    *///?} else {
     @ModifyExpressionValue(method = "tick", at = @At(value = "INVOKE",
+    //?}
         target = "Lnet/minecraft/client/player/LocalPlayer;getYRot()F"))
     private float dih$killAuraSilentYaw(float original) {
         LocalPlayer self = (LocalPlayer) (Object) this;
@@ -24,7 +28,11 @@ public class DihKillAuraRotationMixin {
         return DihSilentAim.outgoingMovementYaw(self, original);
     }
 
+    //? if >=26.3 {
+    /*@ModifyExpressionValue(method = "sendChanges", at = @At(value = "INVOKE",
+    *///?} else {
     @ModifyExpressionValue(method = "tick", at = @At(value = "INVOKE",
+    //?}
         target = "Lnet/minecraft/client/player/LocalPlayer;getXRot()F"))
     private float dih$killAuraSilentPitch(float original) {
         LocalPlayer self = (LocalPlayer) (Object) this;

@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihKeys;
 import dihclient.util.PacketListCodec;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
@@ -37,7 +38,7 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.Packet;
-import org.lwjgl.glfw.GLFW;
+import com.mojang.blaze3d.platform.InputConstants;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
@@ -119,9 +120,9 @@ public class DihModuleScreen extends DihScreen {
         int mx = DihUiScale.toVirtualInt(mouseX);
         int my = DihUiScale.toVirtualInt(mouseY);
         boolean selectorOpen = packetSelectorOverlay != null && packetSelectorOverlay.isVisible();
-        syncUtilityOverlaysForTopLayer(selectorOpen || menu.hasTopLayer());
+        syncUtilityOverlaysForTopLayer(selectorOpen || menu.hidesOverlays());
         boolean overlayBlocksMenuHover = !selectorOpen
-            && !menu.hasTopLayer()
+            && !menu.blocksOverlayInput()
             && DihOverlayManager.get().shouldBlockUnderlyingHover(mouseX, mouseY);
         int menuMouseX = overlayBlocksMenuHover ? DihOverlayManager.HOVER_BLOCKED_MOUSE : mx;
         int menuMouseY = overlayBlocksMenuHover ? DihOverlayManager.HOVER_BLOCKED_MOUSE : my;
@@ -138,7 +139,7 @@ public class DihModuleScreen extends DihScreen {
             DihUiScale.popOverlayScale(graphics);
         }
 
-        if (!PackHideState.isActive() && !selectorOpen && !menu.hasSelectedModule() && !menu.hasTopLayer()) {
+        if (!PackHideState.isActive() && !selectorOpen && !menu.hidesOverlays()) {
             DihOverlayManager.get().renderAll(graphics, mouseX, mouseY, delta);
         }
     }
@@ -150,7 +151,7 @@ public class DihModuleScreen extends DihScreen {
         if (packetSelectorOverlay != null && packetSelectorOverlay.isVisible()) {
             return packetSelectorOverlay.mouseClicked(mx, my, event.button());
         }
-        if (menu != null && !menu.hasTopLayer() && DihOverlayManager.get().handleMouseClicked(event.x(), event.y(), event.button())) return true;
+        if (menu != null && !menu.blocksOverlayInput() && DihOverlayManager.get().handleMouseClicked(event.x(), event.y(), event.button())) return true;
         return menu == null || menu.mouseClicked(mx, my, event.button());
     }
 
@@ -159,7 +160,7 @@ public class DihModuleScreen extends DihScreen {
         int mx = DihUiScale.toVirtualInt(event.x());
         int my = DihUiScale.toVirtualInt(event.y());
         if (packetSelectorOverlay != null && packetSelectorOverlay.isVisible() && packetSelectorOverlay.mouseReleased(mx, my, event.button())) return true;
-        if (menu != null && !menu.hasTopLayer() && DihOverlayManager.get().handleMouseReleased(event.x(), event.y(), event.button())) return true;
+        if (menu != null && !menu.blocksOverlayInput() && DihOverlayManager.get().handleMouseReleased(event.x(), event.y(), event.button())) return true;
         return menu == null || menu.mouseReleased(mx, my, event.button());
     }
 
@@ -168,7 +169,7 @@ public class DihModuleScreen extends DihScreen {
         int mx = DihUiScale.toVirtualInt(event.x());
         int my = DihUiScale.toVirtualInt(event.y());
         if (packetSelectorOverlay != null && packetSelectorOverlay.isVisible() && packetSelectorOverlay.mouseDragged(mx, my, event.button(), dx, dy)) return true;
-        if (menu != null && !menu.hasTopLayer() && DihOverlayManager.get().handleMouseDragged(event.x(), event.y(), event.button(), dx, dy)) return true;
+        if (menu != null && !menu.blocksOverlayInput() && DihOverlayManager.get().handleMouseDragged(event.x(), event.y(), event.button(), dx, dy)) return true;
         return menu == null || menu.mouseDragged(mx, my, event.button(), dx, dy);
     }
 
@@ -177,15 +178,17 @@ public class DihModuleScreen extends DihScreen {
         int mx = DihUiScale.toVirtualInt(x);
         int my = DihUiScale.toVirtualInt(y);
         if (packetSelectorOverlay != null && packetSelectorOverlay.isVisible()) return packetSelectorOverlay.mouseScrolled(mx, my, scrollY);
-        if (menu != null && !menu.hasTopLayer() && DihOverlayManager.get().handleMouseScrolled(x, y, scrollY)) return true;
+        if (menu != null && !menu.blocksOverlayInput() && DihOverlayManager.get().handleMouseScrolled(x, y, scrollY)) return true;
         return menu == null || menu.mouseScrolled(mx, my, scrollY);
     }
 
     @Override
     public boolean keyPressed(KeyEvent input) {
-        if (packetSelectorOverlay != null && packetSelectorOverlay.isVisible() && packetSelectorOverlay.keyPressed(input.key(), input.scancode(), input.modifiers())) return true;
-        if (menu != null && !menu.hasTopLayer() && DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) return true;
-        if (menu != null && menu.keyPressed(input.key(), input.scancode(), input.modifiers())) return true;
+        if (!blocksGlobalKeybinds() && dihclient.palette.DihCommandPalette.isShortcut(input.key(), input.modifiers())
+            && dihclient.palette.DihCommandPalette.openFromKey()) return true;
+        if (packetSelectorOverlay != null && packetSelectorOverlay.isVisible() && packetSelectorOverlay.keyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) return true;
+        if (menu != null && !menu.blocksOverlayInput() && DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) return true;
+        if (menu != null && menu.keyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) return true;
         if (passMovementKey(input, true)) return false;
         return super.keyPressed(input);
     }
@@ -200,7 +203,7 @@ public class DihModuleScreen extends DihScreen {
     public boolean charTyped(CharacterEvent input) {
         char chr = (char) input.codepoint();
         if (packetSelectorOverlay != null && packetSelectorOverlay.isVisible() && packetSelectorOverlay.charTyped(chr, 0)) return true;
-        if (menu != null && !menu.hasTopLayer() && DihOverlayManager.get().handleCharTyped(chr, 0)) return true;
+        if (menu != null && !menu.blocksOverlayInput() && DihOverlayManager.get().handleCharTyped(chr, 0)) return true;
         if (menu != null && menu.charTyped(chr)) return true;
         return super.charTyped(input);
     }
@@ -495,8 +498,16 @@ public class DihModuleScreen extends DihScreen {
     }
 
     private void runUtility(String id) {
+        if ("ai_setup".equals(id)) {
+            if (minecraft != null) minecraft.gui.setScreen(new DihAiSetupScreen(this));
+            return;
+        }
         if ("macros".equals(id)) {
             toggleMacroPanel();
+            return;
+        }
+        if ("addons".equals(id)) {
+            if (minecraft != null) minecraft.gui.setScreen(new DihAddonStoreScreen(this));
             return;
         }
         if ("keys".equals(id)) {

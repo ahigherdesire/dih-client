@@ -27,8 +27,10 @@ import net.minecraft.world.level.levelgen.WorldOptions;
 import net.minecraft.world.level.levelgen.WorldgenRandom;
 import net.minecraft.world.level.levelgen.blending.Blender;
 import net.minecraft.world.level.block.state.BlockState;
+//? if <26.3 {
 import net.minecraft.world.level.levelgen.carver.CarvingContext;
 import net.minecraft.world.level.levelgen.carver.ConfiguredWorldCarver;
+//?}
 
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -58,6 +60,7 @@ public final class DihRegionGenerator {
         this.containers = context.palettedContainerFactory();
     }
 
+    //? if <26.3 {
     public Map<Long, ChunkAccess> generate(int minChunkX, int minChunkZ, int size) {
         return generate(minChunkX, minChunkZ, size, () -> false);
     }
@@ -250,6 +253,21 @@ public final class DihRegionGenerator {
             }
         }
     }
+    //?} else {
+    /*public Map<Long, ChunkAccess> generate(int minChunkX, int minChunkZ, int size) {
+        return generate(minChunkX, minChunkZ, size, () -> false);
+    }
+
+    public Map<Long, ChunkAccess> generate(int minChunkX, int minChunkZ, int size, BooleanSupplier cancelled) {
+        throw new UnsupportedOperationException("OreSim is not available on Minecraft 26.3 yet (26.3 reworked worldgen features and carvers).");
+    }
+
+    private static void checkCancelled(BooleanSupplier cancelled) {
+        if (cancelled.getAsBoolean() || Thread.currentThread().isInterrupted()) {
+            throw new CancellationException("OreSim region generation superseded");
+        }
+    }
+    *///?}
 
     public static void forEachBlock(ChunkAccess chunk, Predicate<BlockState> wanted, BlockSink sink) {
         forEachBlock(chunk, wanted, sink, () -> false);

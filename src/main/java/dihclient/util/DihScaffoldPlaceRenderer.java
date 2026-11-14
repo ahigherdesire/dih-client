@@ -3,9 +3,8 @@ package dihclient.util;
 import dihclient.modules.PackHideState;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.rendertype.DihRenderTypes;
+import dihclient.render.mc.DihRenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.phys.Vec3;
 
@@ -52,7 +51,7 @@ public final class DihScaffoldPlaceRenderer {
     }
 
     public static void initialize() {
-        LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
+        dihclient.platform.DihPlatform.onCollectSubmits(context -> {
             if (!isActive()) return;
             Minecraft mc = Minecraft.getInstance();
             if (mc == null || mc.level == null) return;

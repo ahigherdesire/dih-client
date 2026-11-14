@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.modules.FreeLookModule;
 import dihclient.modules.ModuleRegistry;
 import dihclient.util.DihCpsTracker;
@@ -58,11 +59,30 @@ public abstract class DihMouseHandlerMixin {
 
     @Inject(method = "onButton", at = @At("HEAD"))
     private void dih$trackCps(long window, net.minecraft.client.input.MouseButtonInfo button, int action, CallbackInfo ci) {
-        if (action != org.lwjgl.glfw.GLFW.GLFW_PRESS || button == null) return;
+        if (action != com.mojang.blaze3d.platform.InputConstants.PRESS || button == null) return;
         if (minecraft == null || minecraft.gui.screen() != null) return;
         int b = button.button();
-        if (b == 0) DihCpsTracker.recordLeft();
-        else if (b == 1) DihCpsTracker.recordRight();
+        if (b == InputConstants.MOUSE_BUTTON_LEFT) DihCpsTracker.recordLeft();
+        else if (b == InputConstants.MOUSE_BUTTON_RIGHT) DihCpsTracker.recordRight();
+    }
+
+    @Inject(method = "onDrop", at = @At("HEAD"), cancellable = true)
+    //? if >=26.3 {
+    /*private void dih$dropSchematics(long window, java.util.List<String> names, CallbackInfo ci) {
+        java.util.List<java.nio.file.Path> paths = new java.util.ArrayList<>();
+        for (String name : names) {
+            try {
+                paths.add(java.nio.file.Path.of(name));
+            } catch (java.nio.file.InvalidPathException e) {
+                return;
+            }
+        }
+    *///?} else {
+    private void dih$dropSchematics(long window, java.util.List<java.nio.file.Path> paths, int failed, CallbackInfo ci) {
+    //?}
+        if (minecraft != null && dihclient.schematic.SchematicDrop.handle(minecraft, paths)) {
+            ci.cancel();
+        }
     }
 
     @Inject(method = "onScroll", at = @At("HEAD"), cancellable = true)
@@ -75,6 +95,11 @@ public abstract class DihMouseHandlerMixin {
         }
 
         if (dihclient.modules.PackFreecamState.onMouseScroll(yOffset)) {
+            ci.cancel();
+            return;
+        }
+
+        if (dihclient.modules.ZoomModule.onScroll(yOffset)) {
             ci.cancel();
             return;
         }
@@ -111,8 +136,14 @@ public abstract class DihMouseHandlerMixin {
     @ModifyExpressionValue(method = "turnPlayer", at = @At(value = "FIELD",
         target = "Lnet/minecraft/client/Options;smoothCamera:Z"))
     private boolean dih$avoidDoubleSmoothingTelly(boolean original) {
-        return original && !DihMouseInputSimulator.hasExclusiveInput(
+        return (original || dihclient.modules.ZoomModule.cinematic()) && !DihMouseInputSimulator.hasExclusiveInput(
             DihMouseInputSimulator.Source.SCAFFOLD_TELLY);
+    }
+
+    @ModifyExpressionValue(method = "turnPlayer", at = @At(value = "INVOKE",
+        target = "Ljava/lang/Double;doubleValue()D", ordinal = 0))
+    private double dih$zoomSensitivity(double sensitivity) {
+        return dihclient.modules.ZoomModule.scaleSensitivity(sensitivity);
     }
 
     @Unique

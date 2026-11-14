@@ -18,6 +18,7 @@
 package baritone.ai;
 
 import baritone.Baritone;
+import baritone.acquire.AcquireControl;
 import baritone.api.pathing.goals.Goal;
 import baritone.api.process.IBaritoneProcess;
 import baritone.api.utils.BetterBlockPos;
@@ -86,7 +87,8 @@ public final class WorldSnapshot {
                 + ", " + activity(baritone);
     }
 
-    private static String activity(Baritone baritone) {
+    /** What Baritone is doing; an active {@code #acquire} leads, since it is the job the rest serves. */
+    static String activity(Baritone baritone) {
         StringBuilder sb = new StringBuilder();
         IBaritoneProcess process = baritone.getPathingControlManager().mostRecentInControl().orElse(null);
         if (process == null) {
@@ -101,7 +103,25 @@ public final class WorldSnapshot {
                 sb.append(" toward ").append(goal);
             }
         }
-        return sb.toString();
+        String acquire = acquireStatus();
+        return acquire == null ? sb.toString() : acquire + "; " + sb;
+    }
+
+    /** The running acquire's one-line status, or null when none runs or the feature isn't loaded. */
+    static String acquireStatus() {
+        AcquireControl control = AcquireControl.get();
+        if (control == null) {
+            return null;
+        }
+        try {
+            if (!control.isActive()) {
+                return null;
+            }
+            String status = control.status();
+            return status == null || status.isBlank() ? "acquire running" : status.replaceAll("\\s+", " ").trim();
+        } catch (RuntimeException e) {
+            return null;
+        }
     }
 
     private static String dimensionName(Level world) {

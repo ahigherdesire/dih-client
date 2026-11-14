@@ -42,9 +42,8 @@ public final class Tooltip {
             h
         );
 
-        UiRenderer.rect(context.graphics(), bounds, context.theme().colors().windowStrong);
-        UiRenderer.rect(context.graphics(), UiBounds.of(bounds.x(), bounds.y(), 2, bounds.height()),
-            context.theme().colors().accent);
+        UiRenderer.roundedFrame(context.graphics(), bounds, Button.RADIUS, context.theme().colors().windowStrong,
+            context.theme().colors().windowEdge);
         for (int i = 0; i < maxLines; i++) {
             context.text().draw(context.graphics(), lines.get(i), bounds.x() + PADDING + 2, bounds.y() + PADDING + i * LINE_HEIGHT,
                 context.theme().colors().text);

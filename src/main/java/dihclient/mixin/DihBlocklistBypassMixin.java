@@ -1,7 +1,7 @@
 package dihclient.mixin;
 
 import net.minecraft.client.multiplayer.resolver.AddressCheck;
-import net.minecraft.client.multiplayer.resolver.DihAddressChecks;
+import dihclient.render.mc.DihAddressChecks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;

@@ -1,4 +1,9 @@
 package dihclient.modules;
+import dihclient.util.DihFileDialogs;
+import dihclient.util.DihItems;
+import dihclient.util.DihBlocks;
+import dihclient.util.DihEntities;
+import dihclient.util.DihPackets;
 import dihclient.api.module.*;
 
 import dihclient.util.DihClientMessaging;
@@ -77,7 +82,6 @@ import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerInputPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCreativeModeSlotPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.server.network.Filterable;
@@ -134,7 +138,6 @@ import net.minecraft.resources.Identifier;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryUtil;
-import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -184,11 +187,18 @@ public final class BuiltinModules {
 
         ModuleRegistry.register(new AutoTotemModule());
         ModuleRegistry.register(new BedDefenderModule());
+        ModuleRegistry.register(new BedEspModule());
+        ModuleRegistry.register(new DangerModule());
         ModuleRegistry.register(new SurroundModule());
         ModuleRegistry.register(new AnchorAuraModule());
         ModuleRegistry.register(new CrystalAuraModule());
         ModuleRegistry.register(new AutoTrapModule());
         ModuleRegistry.register(new KillAuraModule());
+        ModuleRegistry.register(new MaceKillModule());
+        ModuleRegistry.register(new SpearKillModule());
+        ModuleRegistry.register(new ArrowDamageModule());
+        ModuleRegistry.register(new CriticalsModule());
+        ModuleRegistry.register(new ReachModule());
         ModuleRegistry.register(new AutoFarmModule());
         ModuleRegistry.register(new AutoArmorModule());
         ModuleRegistry.register(new AutoSignModule());
@@ -202,12 +212,15 @@ public final class BuiltinModules {
         ModuleRegistry.register(new AutoToolModule());
         ModuleRegistry.register(new ScaffoldModule());
         ModuleRegistry.register(new NoFallModule());
+        ModuleRegistry.register(new ClutchModule());
+        ModuleRegistry.register(new PearlChargeModule());
         ModuleRegistry.register(new NoInteractModule());
         ModuleRegistry.register(new AirPlaceModule());
         ModuleRegistry.register(new GhostBlockModule());
         ModuleRegistry.register(new OffhandInteractModule());
         ModuleRegistry.register(new SpamModule());
         ModuleRegistry.register(new PayAllModule());
+        ModuleRegistry.register(new AutoTradeModule());
         ModuleRegistry.register(new BookBotModule());
         ModuleRegistry.register(new PacketCancellerModule());
         ModuleRegistry.register(new AutoReconnectModule());
@@ -234,9 +247,11 @@ public final class BuiltinModules {
         ModuleRegistry.register(new StorageEspModule());
         ModuleRegistry.register(new BlockEspModule());
         ModuleRegistry.register(new HoleEspModule());
+        ModuleRegistry.register(new SchematicsModule());
         ModuleRegistry.register(new NoRenderModule());
         ModuleRegistry.register(new XCarryModule());
         ModuleRegistry.register(new HudModule());
+        ModuleRegistry.register(new GifModule());
         ModuleRegistry.register(new AdminToolsModule());
         ModuleRegistry.register(new GoldenLeverModule());
         ModuleRegistry.register(new NameCensorModule());
@@ -244,6 +259,23 @@ public final class BuiltinModules {
         ModuleRegistry.register(new TeamsModule());
         ModuleRegistry.register(new PingSpoofModule());
         ModuleRegistry.register(new BlinkModule());
+        // Ported from LiquidBounce (GPL-3.0, CCBlueX).
+        ModuleRegistry.register(new RadarModule());
+        ModuleRegistry.register(new ZoomModule());
+        ModuleRegistry.register(new NewChunksModule());
+        ModuleRegistry.register(new LogoffSpotModule());
+        ModuleRegistry.register(new BreadcrumbsModule());
+        ModuleRegistry.register(new AutoRespawnModule());
+        ModuleRegistry.register(new AntiAfkModule());
+        ModuleRegistry.register(new SmartEatModule());
+        ModuleRegistry.register(new BetterChatModule());
+        ModuleRegistry.register(new NukerModule());
+        ModuleRegistry.register(new PacketMineModule());
+        ModuleRegistry.register(new WTapModule());
+        ModuleRegistry.register(new STapModule());
+        ModuleRegistry.register(new BlockHitModule());
+        ModuleRegistry.register(new BowAimAssistModule());
+        ModuleRegistry.register(new AutoMaceModule());
     }
 
     private static void migrateUtilityModuleState(String id, boolean enabled) {
@@ -341,6 +373,38 @@ public final class BuiltinModules {
     static final class InvMoveModule extends Module {
         InvMoveModule() {
             super("inv-move", "InvMove", ModuleCategory.MOVEMENT, "Allows movement keys in normal container screens.");
+            add(new BoolSetting("arrow-look", "Arrow Keys Look", false)
+                .group("General")
+                .description("Turns your view with the arrow keys while a screen is open")
+                .build());
+            add(new IntSetting("look-speed", "Look Speed", 5, 1, 20, 1)
+                .group("General")
+                .unit("deg")
+                .description("Degrees turned per tick by the arrow keys")
+                .visibleWhen(() -> bool("arrow-look"))
+                .build());
+
+            add(new BoolSetting("jump", "Jump", true)
+                .group("Keys")
+                .description("Lets the jump key work in screens")
+                .build());
+            add(new BoolSetting("sneak", "Sneak", true)
+                .group("Keys")
+                .description("Lets the sneak key work in screens")
+                .build());
+            add(new BoolSetting("sprint", "Sprint", true)
+                .group("Keys")
+                .description("Lets the sprint key work in screens")
+                .build());
+
+            add(new BoolSetting("player-inventory", "Player Inventory", true)
+                .group("Screens")
+                .description("Works in your own and the creative inventory")
+                .build());
+            add(new BoolSetting("containers", "Containers", true)
+                .group("Screens")
+                .description("Works in chests, furnaces and other block screens")
+                .build());
         }
 
         @Override
@@ -356,30 +420,110 @@ public final class BuiltinModules {
         @Override
         public void tick() {
             dihclient.util.DihInventoryMoveHelper.syncHeldMovementKeysIfSafe();
+            if (bool("arrow-look")) arrowLook();
+        }
+
+        private void arrowLook() {
+            if (MC.player == null || MC.gui.screen() == null) return;
+            if (!dihclient.util.DihInventoryMoveHelper.handlesCurrentScreen()) return;
+            float step = Math.max(1, integer("look-speed"));
+            float yaw = 0.0F;
+            float pitch = 0.0F;
+            if (dihclient.util.DihKeys.isKeyDown(com.mojang.blaze3d.platform.InputConstants.KEY_LEFT)) yaw -= step;
+            if (dihclient.util.DihKeys.isKeyDown(com.mojang.blaze3d.platform.InputConstants.KEY_RIGHT)) yaw += step;
+            if (dihclient.util.DihKeys.isKeyDown(com.mojang.blaze3d.platform.InputConstants.KEY_UP)) pitch -= step;
+            if (dihclient.util.DihKeys.isKeyDown(com.mojang.blaze3d.platform.InputConstants.KEY_DOWN)) pitch += step;
+            if (yaw == 0.0F && pitch == 0.0F) return;
+            MC.player.setYRot(MC.player.getYRot() + yaw);
+            MC.player.setXRot(Mth.clamp(MC.player.getXRot() + pitch, -90.0F, 90.0F));
         }
     }
 
     static final class XCarryModule extends Module {
+        /** Crafting grid slots of the player's inventory menu. */
+        private static final int[] GRID_SLOTS = {1, 2, 3, 4};
+
+        private boolean inventoryWasOpen;
+
         XCarryModule() {
             super("xcarry", "XCarry", ModuleCategory.PLAYER, "Keeps stored items in crafting / result / armor / offhand slots when closing inventory.");
             add(new BoolSetting("use-crafting", "Use Crafting Grid", true)
+                .group("Slots")
                 .description("Use all craft slots").build());
             add(new BoolSetting("use-armor",    "Use Armor Slots", true)
+                .group("Slots")
                 .description("Use armor slots 5-8.").build());
             add(new BoolSetting("use-offhand",  "Use Offhand", true)
+                .group("Slots")
                 .description("Use offhand slot.").build());
             add(new BoolSetting("carry-cursor", "Carry Cursor", true)
+                .group("Slots")
                 .description("Keep cursor stack.").build());
+
+            add(new BoolSetting("notify", "Notify", false)
+                .group("General")
+                .description("Says in chat how many stacks you carry when you close your inventory").build());
+            add(new BoolSetting("show-count", "Show Count", true)
+                .group("General")
+                .description("Shows the carried crafting-grid stacks next to the module name").build());
+            add(new BoolSetting("empty-on-disable", "Empty On Disable", false)
+                .group("General")
+                .description("Moves crafting-grid items back into your inventory when turned off").build());
         }
 
         @Override
         public void onEnable() {
             DihConfig.getGlobal().xCarry = true;
+            inventoryWasOpen = false;
         }
 
         @Override
         public void onDisable() {
+            if (bool("empty-on-disable")) emptyGrid();
             DihConfig.getGlobal().xCarry = false;
+        }
+
+        @Override
+        public void tick() {
+            boolean open = MC.gui.screen() instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen;
+            if (inventoryWasOpen && !open && bool("notify")) {
+                int carried = carriedStacks();
+                if (carried > 0) {
+                    dihclient.util.DihClientMessaging.sendPrefixed("XCarry: carrying " + carried + " stack"
+                        + (carried == 1 ? "" : "s") + ".");
+                }
+            }
+            inventoryWasOpen = open;
+        }
+
+        @Override
+        public String info() {
+            if (!bool("show-count")) return "";
+            int carried = carriedStacks();
+            return carried > 0 ? Integer.toString(carried) : "";
+        }
+
+        /** Stacks sitting in the crafting grid, which a normal inventory close would drop. */
+        private int carriedStacks() {
+            if (MC.player == null || MC.player.inventoryMenu == null) return 0;
+            net.minecraft.world.inventory.InventoryMenu menu = MC.player.inventoryMenu;
+            int count = 0;
+            for (int slot : GRID_SLOTS) {
+                if (slot < menu.slots.size() && !menu.slots.get(slot).getItem().isEmpty()) count++;
+            }
+            return count;
+        }
+
+        private void emptyGrid() {
+            if (MC.player == null || MC.gameMode == null || MC.player.inventoryMenu == null) return;
+            if (MC.gui.screen() != null
+                && !(MC.gui.screen() instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen)) return;
+            net.minecraft.world.inventory.InventoryMenu menu = MC.player.inventoryMenu;
+            for (int slot : GRID_SLOTS) {
+                if (slot >= menu.slots.size() || menu.slots.get(slot).getItem().isEmpty()) continue;
+                MC.gameMode.handleContainerInput(menu.containerId, slot, 0,
+                    net.minecraft.world.inventory.ContainerInput.QUICK_MOVE, MC.player);
+            }
         }
     }
 
@@ -407,19 +551,46 @@ public final class BuiltinModules {
         private boolean cachedOnAir;
         private boolean sendingAntiKickReplacement;
         private boolean vulcanNoElytraDisableQueued;
+        private double cachedSprintBoost = 1.5;
+        private double cachedGlideSpeed;
+        private boolean cachedStopInstantly;
+        private double cachedNudge = 0.03130D;
+        private volatile boolean setbackPending;
 
         FlightModule() {
             super("flight", "Flight", ModuleCategory.MOVEMENT, "Client-side flight.");
-            add(new ChoiceSetting("mode", "Mode", "Abilities", "Abilities", "Velocity", "Vulcan").description("Flight method").build());
-            add(new DoubleSetting("speed", "Speed", 0.10, 0.0, 2.0, 0.01).visibleWhen(() -> !"Vulcan".equals(value("mode"))).description("Your speed when flying.").build());
-            add(new BoolSetting("vertical-speed-match", "Vertical Speed Match", false).description("Match vertical speed.").visibleWhen(() -> "Velocity".equals(value("mode"))).build());
-            add(new BoolSetting("no-sneak", "No Sneak", false).description("Ignore sneak input.").visibleWhen(() -> "Velocity".equals(value("mode"))).build());
-            add(new BoolSetting("anti-break-elytra", "Anti Break Elytra", true).visibleWhen(() -> "Vulcan".equals(value("mode"))).description("Preserve low-durability elytra.").build());
-            add(new BoolSetting("anti-hunger", "AntiHunger", false)
+            add(new ChoiceSetting("mode", "Mode", "Abilities", "Abilities", "Velocity", "Vulcan").group("General").description("Flight method").build());
+            add(new DoubleSetting("speed", "Speed", 0.10, 0.0, 2.0, 0.01).group("General").visibleWhen(() -> !"Vulcan".equals(value("mode"))).description("Your speed when flying.").build());
+            add(new DoubleSetting("sprint-boost", "Sprint Boost", 1.5, 1.0, 3.0, 0.05).group("General")
+                .visibleWhen(() -> "Velocity".equals(value("mode")))
+                .description("Speed multiplier while sprinting").build());
+            add(new BoolSetting("vertical-speed-match", "Vertical Speed Match", false).group("General").description("Rise and sink twice as fast, matching horizontal speed").visibleWhen(() -> "Velocity".equals(value("mode"))).build());
+            add(new DoubleSetting("glide-speed", "Glide Speed", 0.0, 0.0, 1.0, 0.01).group("General")
+                .visibleWhen(() -> "Velocity".equals(value("mode")))
+                .description("Sinks this many blocks per tick when you press neither jump nor sneak").build());
+            add(new BoolSetting("no-sneak", "No Sneak", false).group("General").description("Ignore sneak input.").visibleWhen(() -> "Velocity".equals(value("mode"))).build());
+            add(new BoolSetting("stop-instantly", "Stop Instantly", false).group("General")
+                .visibleWhen(() -> "Abilities".equals(value("mode")))
+                .description("Stops dead when you let go of the keys instead of drifting").build());
+            add(new BoolSetting("anti-hunger", "AntiHunger", false).group("General")
                 .description("Hide sprint from server.").build());
+            add(new BoolSetting("stop-on-disable", "Stop On Disable", false).group("General")
+                .description("Clears your momentum when Flight turns off").build());
+
+            add(new BoolSetting("anti-break-elytra", "Anti Break Elytra", true).group("Vulcan").visibleWhen(() -> "Vulcan".equals(value("mode"))).description("Preserve low-durability elytra.").build());
+            add(new IntSetting("min-durability", "Min Durability", 40, 1, 200, 1).group("Vulcan")
+                .visibleWhen(() -> "Vulcan".equals(value("mode")) && bool("anti-break-elytra"))
+                .description("Swaps out an elytra with this little durability left (or under 10%)").build());
+
             add(new ChoiceSetting("anti-kick-mode", "Anti Kick", "Packet", "Normal", "Packet", "None").group("Anti Kick").visibleWhen(() -> !"Vulcan".equals(value("mode"))).description("Reduce floating kicks").build());
             add(new IntSetting("delay", "Delay", 20, 1, 200, 1).group("Anti Kick").visibleWhen(() -> !"Vulcan".equals(value("mode"))).description("Ticks between anti-kick nudges.").build());
             add(new IntSetting("off-time", "Off Time", 1, 1, 20, 1).group("Anti Kick").visibleWhen(() -> !"Vulcan".equals(value("mode"))).description("Ticks spent nudging down.").build());
+            add(new DoubleSetting("nudge", "Nudge Distance", 0.0313, 0.01, 0.2, 0.0001).group("Anti Kick")
+                .visibleWhen(() -> "Packet".equals(value("anti-kick-mode")) && !"Vulcan".equals(value("mode")))
+                .description("How far each anti-kick packet drops you, in blocks").build());
+
+            add(new BoolSetting("disable-on-setback", "Disable On Setback", false).group("Conditions")
+                .description("Turns Flight off when the server teleports you back").build());
         }
 
         @Override
@@ -448,6 +619,11 @@ public final class BuiltinModules {
 
         @Override
         public void tick() {
+            if (setbackPending) {
+                setbackPending = false;
+                disableWithToggleMessage("Flight disabled: server set you back.");
+                return;
+            }
             updateFlightCache();
             if (MC.player == null || shouldYieldToMeteorFlight() || "Vulcan".equals(cachedMode)) return;
         }
@@ -492,8 +668,11 @@ public final class BuiltinModules {
                 MC.player.setDeltaMovement(Vec3.ZERO);
                 Vec3 velocity = MC.player.getDeltaMovement();
                 double vertical = cachedSpeed * (cachedVerticalSpeedMatch ? 10.0 : 5.0);
-                if (MC.options.keyJump.isDown()) velocity = velocity.add(0.0, vertical, 0.0);
-                if (MC.options.keyShift.isDown()) velocity = velocity.subtract(0.0, vertical, 0.0);
+                boolean rise = MC.options.keyJump.isDown();
+                boolean sink = MC.options.keyShift.isDown();
+                if (rise) velocity = velocity.add(0.0, vertical, 0.0);
+                if (sink) velocity = velocity.subtract(0.0, vertical, 0.0);
+                if (!rise && !sink && cachedGlideSpeed > 0.0) velocity = velocity.subtract(0.0, cachedGlideSpeed, 0.0);
                 MC.player.setDeltaMovement(velocity);
                 if (cachedNoSneak) MC.player.setOnGround(false);
             } else if ("Abilities".equals(mode)) {
@@ -505,7 +684,16 @@ public final class BuiltinModules {
                 if (!MC.player.getAbilities().instabuild) {
                     MC.player.getAbilities().mayfly = true;
                 }
+                if (cachedStopInstantly) stopDrift();
             }
+        }
+
+        private void stopDrift() {
+            Vec3 velocity = MC.player.getDeltaMovement();
+            boolean horizontalInput = MC.player.input.getMoveVector().lengthSquared() > 0.0F;
+            boolean verticalInput = MC.options.keyJump.isDown() || MC.options.keyShift.isDown();
+            MC.player.setDeltaMovement(horizontalInput ? velocity.x : 0.0, verticalInput ? velocity.y : 0.0,
+                horizontalInput ? velocity.z : 0.0);
         }
 
         @Override
@@ -520,8 +708,10 @@ public final class BuiltinModules {
                 stopVulcanGlideState();
             }
             resetFlightState();
+            setbackPending = false;
             if (MC.player == null || MC.player.isSpectator()) return;
             if (touchedAbilities || "Abilities".equals(lastMode)) abilitiesOff();
+            if (bool("stop-on-disable")) MC.player.setDeltaMovement(Vec3.ZERO);
         }
 
         @Override
@@ -567,6 +757,7 @@ public final class BuiltinModules {
         public boolean onPacketReceive(Packet<?> packet) {
             if (dihclient.util.multi.MultiPilot.isActive()) return false;
             if (MC.player == null || shouldYieldToMeteorFlight()) return false;
+            if (packet instanceof ClientboundPlayerPositionPacket && bool("disable-on-setback")) setbackPending = true;
             updateFlightCache();
             if (!(packet instanceof ClientboundPlayerAbilitiesPacket abilities) || !"Abilities".equals(cachedMode)) return false;
             MC.player.getAbilities().invulnerable = abilities.isInvulnerable();
@@ -580,7 +771,7 @@ public final class BuiltinModules {
             updateFlightCache();
             if (!isEnabled() || shouldYieldToMeteorFlight() || !"Velocity".equals(cachedMode)) return -1.0f;
 
-            return (float) cachedSpeed * (MC.player != null && MC.player.isSprinting() ? 15.0f : 10.0f);
+            return (float) (cachedSpeed * 10.0 * (MC.player != null && MC.player.isSprinting() ? cachedSprintBoost : 1.0));
         }
 
         boolean antiHungerToggle() {
@@ -612,14 +803,14 @@ public final class BuiltinModules {
 
         private void antiKickPacket(ServerboundMovePlayerPacket packet, double currentY) {
             if (delayLeft <= 0 && lastPacketY != Double.MAX_VALUE && shouldFlyDown(currentY, lastPacketY) && isOnAirCached()) {
-                ((DihMovePlayerPacketAccessor) packet).dih$setY(lastPacketY - 0.03130D);
+                ((DihMovePlayerPacketAccessor) packet).dih$setY(lastPacketY - cachedNudge);
             } else {
                 lastPacketY = currentY;
             }
         }
 
         private boolean shouldFlyDown(double currentY, double lastY) {
-            return currentY >= lastY || lastY - currentY < 0.03130D;
+            return currentY >= lastY || lastY - currentY < cachedNudge;
         }
 
         private boolean isOnAirCached() {
@@ -773,7 +964,7 @@ public final class BuiltinModules {
 
         private int vulcanElytraSafeDurability(ItemStack stack) {
             int max = stack == null || !stack.isDamageableItem() ? 0 : stack.getMaxDamage();
-            return Math.max(40, (int) Math.ceil(max * 0.10));
+            return Math.max(Math.max(1, integer("min-durability")), (int) Math.ceil(max * 0.10));
         }
 
         private void resetFlightState() {
@@ -798,6 +989,10 @@ public final class BuiltinModules {
             cachedNoSneak = bool("no-sneak");
             cachedDelay = Math.max(1, integer("delay"));
             cachedOffTime = Math.max(1, integer("off-time"));
+            cachedSprintBoost = Math.max(1.0, decimal("sprint-boost"));
+            cachedGlideSpeed = Math.max(0.0, decimal("glide-speed"));
+            cachedStopInstantly = bool("stop-instantly");
+            cachedNudge = Math.max(0.01, decimal("nudge"));
         }
 
         private boolean shouldYieldToMeteorFlight() {
@@ -824,22 +1019,35 @@ public final class BuiltinModules {
     static final class SprintModule extends Module {
         SprintModule() {
             super("sprint", "Sprint", ModuleCategory.MOVEMENT, "Sprints automatically.");
+            add(new BoolSetting("omnidirectional", "Omnidirectional", false)
+                .group("General").description("Sprints in every direction, not only forward").build());
+            add(new BoolSetting("omni-jump", "Jump Toward Movement", false)
+                .group("General").description("Sprint-jumps push you the way you walk, not the way you look")
+                .visibleWhen(() -> bool("omnidirectional")).build());
+            add(new BoolSetting("pause-in-liquids", "Pause In Liquids", false)
+                .group("General").description("Leaves sprinting to you while in water or lava").build());
+
             add(new BoolSetting("ignore-blindness", "Blindness", false)
                 .description("Sprint while blind").group("Ignore").build());
             add(new BoolSetting("ignore-collision", "Collision", false)
                 .description("Sprint against walls").group("Ignore").build());
+            add(new BoolSetting("ignore-item-use", "Item Use", false)
+                .description("Keeps sprinting while you eat, drink or block").group("Ignore").build());
         }
 
         boolean sprintDecision(boolean original, boolean movementTick) {
             boolean sprint = original;
+            if (bool("pause-in-liquids") && (MC.player.isInWater() || MC.player.isInLava())) return original;
             if (isMoving()) sprint = true;
             if (movementTick && shouldPreventSprint()) sprint = false;
             return sprint;
         }
 
         private boolean shouldPreventSprint() {
-            if (((dihclient.mixin.accessor.DihLocalPlayerAccessor) MC.player).dih$isSlowDueToUsingItem()) return true;
+            if (!bool("ignore-item-use")
+                && ((dihclient.mixin.accessor.DihLocalPlayerAccessor) MC.player).dih$isSlowDueToUsingItem()) return true;
             if (MC.player.isShiftKeyDown()) return true;
+            if (omnidirectional()) return false;
 
             dihclient.util.DihRotationUtil.Rotation current = dihclient.util.DihSilentAim.packetRotation();
             if (current == null) return false;
@@ -856,11 +1064,11 @@ public final class BuiltinModules {
         }
 
         boolean omnidirectional() {
-            return false;
+            return bool("omnidirectional");
         }
 
         boolean jumpUsesMovementYaw() {
-            return false;
+            return omnidirectional() && bool("omni-jump");
         }
 
         boolean ignoreCollision() {
@@ -881,6 +1089,20 @@ public final class BuiltinModules {
 
         ParkourModule() {
             super("parkour", "Parkour", ModuleCategory.MOVEMENT, "Jumps at block edges.");
+            add(new IntSetting("min-drop", "Min Drop", 1, 1, 6, 1)
+                .group("General").unit("blocks")
+                .description("Only jumps off ledges at least this deep, so it walks down steps").build());
+            add(new IntSetting("lead-ticks", "Jump Early", 1, 1, 3, 1)
+                .group("General").unit("ticks")
+                .description("How many ticks ahead it looks for the edge").build());
+
+            add(new BoolSetting("only-sprinting", "Only Sprinting", false)
+                .group("Conditions").description("Only jumps while you sprint").build());
+            add(new BoolSetting("only-forward", "Only Forward", false)
+                .group("Conditions").description("Only jumps while you hold the forward key").build());
+            add(new DoubleSetting("min-speed", "Min Speed", 0.0, 0.0, 8.0, 0.1)
+                .group("Conditions").unit("b/s")
+                .description("Skips the jump when you move slower than this").build());
         }
 
         @Override
@@ -896,6 +1118,9 @@ public final class BuiltinModules {
             if (!MC.player.onGround() || MC.player.isShiftKeyDown()) return;
             if (MC.options.keyShift.isDown() || MC.options.keyJump.isDown()) return;
             if (MC.player.input.getMoveVector().lengthSquared() <= 0.0F) return;
+            if (bool("only-sprinting") && !MC.player.isSprinting()) return;
+            if (bool("only-forward") && !MC.options.keyUp.isDown()) return;
+            if (MC.player.getDeltaMovement().horizontalDistance() * 20.0 < decimal("min-speed")) return;
             if (onGroundNextTick()) return;
 
             dihclient.util.DihKeyMappingBridge.of(MC.options.keyJump).dih$simulatePress(true);
@@ -904,9 +1129,11 @@ public final class BuiltinModules {
 
         private boolean onGroundNextTick() {
             net.minecraft.world.phys.Vec3 d = MC.player.getDeltaMovement();
+            int lead = Math.max(1, integer("lead-ticks"));
+            double extraDepth = Math.max(0, integer("min-drop") - 1);
             net.minecraft.world.phys.AABB next = MC.player.getBoundingBox()
-                .move(d.x, d.y - 0.08, d.z)
-                .expandTowards(0.0, -0.02, 0.0);
+                .move(d.x * lead, d.y - 0.08, d.z * lead)
+                .expandTowards(0.0, -0.02 - extraDepth, 0.0);
             return !MC.level.noCollision(MC.player, next);
         }
 
@@ -935,15 +1162,58 @@ public final class BuiltinModules {
 
         AutoToolModule() {
             super("auto-tool", "AutoTool", ModuleCategory.PLAYER, "Switches to the best tool to mine a block.");
-            add(new IntSetting("switch-delay-ms", "Switch Delay", 12, 0, 1000, 1)
+            add(new IntSetting("switch-delay-ms", "Switch Delay", 12, 0, 1000, 1).unit("ms")
+                .group("General")
                 .description("Delay before switching.").build());
-            add(new BoolSetting("consider-inventory", "Consider Inventory", false));
-            add(new BoolSetting("ignore-durability", "Ignore Durability", true));
-            add(new BoolSetting("prefer-silk-touch", "Prefer Silk Touch", false));
-            add(new BoolSetting("require-sneaking", "Require Sneaking", false));
-            add(new BoolSetting("switch-back", "Switch Back", false));
-            add(new IntSetting("switch-back-delay-ms", "Restore Delay", 100, 0, 1000, 25)
-                .description("Delay before restoring.").build());
+            add(new BoolSetting("require-sneaking", "Require Sneaking", false)
+                .group("General")
+                .description("Only switches while you sneak").build());
+            add(new BoolSetting("off-in-creative", "Off In Creative", false)
+                .group("General")
+                .description("Leaves your slot alone in creative, where every block breaks at once").build());
+
+            add(new BoolSetting("consider-inventory", "Consider Inventory", false)
+                .group("Tools")
+                .description("Pulls a better tool up from your main inventory").build());
+            add(new BoolSetting("ignore-durability", "Ignore Durability", true)
+                .group("Tools")
+                .description("Also uses tools that are about to break").build());
+            add(new BoolSetting("prefer-silk-touch", "Prefer Silk Touch", false)
+                .group("Tools")
+                .description("Picks a Silk Touch tool when one works on the block").build());
+            add(new BoolSetting("skip-instant", "Skip Instant Blocks", false)
+                .group("Tools")
+                .description("Does not switch for blocks that break at once, like grass and torches").build());
+
+            add(RegistryListSetting.blocks("ignored-blocks", "Ignored Blocks", "")
+                .group("Filters")
+                .description("Blocks it never switches for").build());
+            add(RegistryListSetting.items("keep-items", "Keep Items", "")
+                .group("Filters")
+                .description("Never switches away while you hold one of these").build());
+
+            add(new BoolSetting("switch-back", "Switch Back", false)
+                .group("Switch Back")
+                .description("Returns to your old slot when you stop mining").build());
+            add(new IntSetting("switch-back-delay-ms", "Restore Delay", 100, 0, 1000, 25).unit("ms")
+                .group("Switch Back")
+                .description("Delay before restoring.")
+                .visibleWhen(() -> bool("switch-back")).build());
+        }
+
+        private boolean blockedByFilters(BlockPos pos, BlockState state) {
+            if (bool("off-in-creative") && MC.player.isCreative()) return true;
+            if (bool("skip-instant") && state.getDestroySpeed(MC.level, pos) == 0.0F) return true;
+            if (listMatches("ignored-blocks", BuiltInRegistries.BLOCK.getKey(state.getBlock()).toString())) return true;
+            ItemStack held = MC.player.getMainHandItem();
+            return !held.isEmpty() && listMatches("keep-items", BuiltInRegistries.ITEM.getKey(held.getItem()).toString());
+        }
+
+        private boolean listMatches(String settingId, String id) {
+            for (String entry : list(settingId)) {
+                if (RegistryListCodec.matches(id, entry)) return true;
+            }
+            return false;
         }
 
         @Override
@@ -973,6 +1243,7 @@ public final class BuiltinModules {
                 if (pos == null) return;
                 BlockState state = MC.level.getBlockState(pos);
                 if (state.isAir()) return;
+                if (!pos.equals(currentTargetPos) && blockedByFilters(pos, state)) return;
 
                 lastMineMs = nowMs();
                 if (!pos.equals(currentTargetPos)) {
@@ -1099,17 +1370,36 @@ public final class BuiltinModules {
         private String lastSpeedMode = "Vanilla";
         private Boolean meteorSpeedActiveCache;
         private long meteorSpeedActiveCacheAt;
+        private volatile boolean setbackPending;
 
         SpeedModule() {
             super("speed", "Speed", ModuleCategory.MOVEMENT, "Boosts movement speed.");
-            add(new ChoiceSetting("mode", "Mode", "Vanilla", "Vanilla", "Strafe").description("Speed method").build());
-            add(new DoubleSetting("vanilla-speed", "Vanilla Speed", 5.6, 0.0, 20.0, 0.1).visibleWhen(() -> "Vanilla".equals(value("mode"))).description("Blocks per second").build());
-            add(new DoubleSetting("strafe-speed", "Strafe Speed", 1.6, 0.0, 3.0, 0.05).visibleWhen(() -> "Strafe".equals(value("mode"))).description("Strafe speed multiplier.").build());
-            add(new BoolSetting("speed-limit", "Speed Limit", false).visibleWhen(() -> "Strafe".equals(value("mode"))).description("Limit max speed.").build());
-            add(new DoubleSetting("timer", "Timer", 1.0, 0.01, 10.0, 0.05).description("Client timer speed."));
-            add(new BoolSetting("in-liquids", "In Liquids", false));
-            add(new BoolSetting("when-sneaking", "When Sneaking", false));
-            add(new BoolSetting("only-on-ground", "Only Ground", false).visibleWhen(() -> "Vanilla".equals(value("mode"))).build());
+            add(new ChoiceSetting("mode", "Mode", "Vanilla", "Vanilla", "Strafe").group("General").description("Speed method").build());
+            add(new DoubleSetting("timer", "Timer", 1.0, 0.01, 10.0, 0.05).group("General").description("Client timer speed.").build());
+
+            add(new DoubleSetting("vanilla-speed", "Vanilla Speed", 5.6, 0.0, 20.0, 0.1).group("Vanilla").visibleWhen(() -> "Vanilla".equals(value("mode"))).description("Blocks per second").build());
+            add(new BoolSetting("speed-effect", "Speed Effect", true).group("Vanilla")
+                .visibleWhen(() -> "Vanilla".equals(value("mode")))
+                .description("Adds the Speed potion bonus on top").build());
+            add(new BoolSetting("auto-jump", "Auto Jump", false).group("Vanilla")
+                .visibleWhen(() -> "Vanilla".equals(value("mode")))
+                .description("Hops whenever you walk on the ground").build());
+
+            add(new DoubleSetting("strafe-speed", "Strafe Speed", 1.6, 0.0, 3.0, 0.05).group("Strafe").visibleWhen(() -> "Strafe".equals(value("mode"))).description("Strafe speed multiplier.").build());
+            add(new DoubleSetting("hop-height", "Hop Height", 0.40123128, 0.2, 0.6, 0.01).group("Strafe")
+                .visibleWhen(() -> "Strafe".equals(value("mode")))
+                .description("Upward speed of each strafe hop; vanilla jumps are 0.42").build());
+            add(new BoolSetting("speed-limit", "Speed Limit", false).group("Strafe").visibleWhen(() -> "Strafe".equals(value("mode"))).description("Limit max speed.").build());
+
+            add(new BoolSetting("in-liquids", "In Liquids", false).group("Conditions").description("Keeps the boost in water and lava").build());
+            add(new BoolSetting("when-sneaking", "When Sneaking", false).group("Conditions").description("Keeps the boost while sneaking").build());
+            add(new BoolSetting("only-on-ground", "Only Ground", false).group("Conditions").visibleWhen(() -> "Vanilla".equals(value("mode"))).description("Only boosts while your feet are on the ground").build());
+            add(new BoolSetting("pause-when-hurt", "Pause When Hurt", false).group("Conditions")
+                .description("Lets knockback play out instead of overwriting it").build());
+            add(new BoolSetting("pause-while-using", "Pause While Using", false).group("Conditions")
+                .description("No boost while you eat, drink, block or draw a bow").build());
+            add(new BoolSetting("disable-on-setback", "Disable On Setback", false).group("Conditions")
+                .description("Turns Speed off when the server teleports you back").build());
         }
 
         @Override
@@ -1125,11 +1415,20 @@ public final class BuiltinModules {
 
         @Override
         public void preMovementTick() {
+            if (setbackPending) {
+                setbackPending = false;
+                disableWithToggleMessage("Speed disabled: server set you back.");
+                return;
+            }
             if (MC.player == null || shouldYieldToMeteorSpeed() || stopSpeed()) return;
             syncSpeedMode();
             if (isInLiquid()) {
                 resetStrafe();
                 return;
+            }
+            if ("Vanilla".equals(choice("mode")) && bool("auto-jump") && MC.player.onGround() && isMoving()
+                && !MC.options.keyJump.isDown()) {
+                MC.player.jumpFromGround();
             }
             lastDistance = Math.sqrt((MC.player.getX() - MC.player.xo) * (MC.player.getX() - MC.player.xo) + (MC.player.getZ() - MC.player.zo) * (MC.player.getZ() - MC.player.zo));
         }
@@ -1145,7 +1444,10 @@ public final class BuiltinModules {
 
         @Override
         public boolean onPacketReceive(Packet<?> packet) {
-            if (packet instanceof ClientboundPlayerPositionPacket) resetStrafe();
+            if (packet instanceof ClientboundPlayerPositionPacket) {
+                resetStrafe();
+                if (bool("disable-on-setback")) setbackPending = true;
+            }
             return false;
         }
 
@@ -1168,7 +1470,7 @@ public final class BuiltinModules {
             Vec3 horizontal = horizontalVelocity(decimal("vanilla-speed"));
             double x = horizontal.x;
             double z = horizontal.z;
-            if (MC.player.hasEffect(MobEffects.SPEED)) {
+            if (bool("speed-effect") && MC.player.hasEffect(MobEffects.SPEED)) {
                 MobEffectInstance effect = MC.player.getEffect(MobEffects.SPEED);
                 if (effect != null) {
                     double multiplier = (effect.getAmplifier() + 1) * 0.205;
@@ -1204,7 +1506,7 @@ public final class BuiltinModules {
             }
             if (strafeStage == 1) {
                 if (isMoving() && MC.player.onGround()) {
-                    movement = new Vec3(movement.x, hop(0.40123128), movement.z);
+                    movement = new Vec3(movement.x, hop(decimal("hop-height")), movement.z);
                     strafeSpeed *= decimal("strafe-speed");
                     strafeStage = 2;
                 }
@@ -1317,6 +1619,8 @@ public final class BuiltinModules {
             if (MC.player == null) return true;
             if (MC.player.isFallFlying() || MC.player.onClimbable() || MC.player.getVehicle() != null) return true;
             if (!bool("when-sneaking") && MC.player.isShiftKeyDown()) return true;
+            if (bool("pause-when-hurt") && MC.player.hurtTime > 0) return true;
+            if (bool("pause-while-using") && MC.player.isUsingItem()) return true;
             boolean inLiquid = isInLiquid();
             boolean liquidSpeedAllowed = inLiquid && bool("in-liquids");
             if (bool("only-on-ground") && !MC.player.onGround() && "Vanilla".equals(choice("mode")) && !liquidSpeedAllowed) return true;
@@ -1374,10 +1678,20 @@ public final class BuiltinModules {
 
     static final class SneakModule extends Module {
         private boolean sentPacketSneak;
+        private boolean heldVanillaSneak;
 
         SneakModule() {
             super("sneak", "Sneak", ModuleCategory.MOVEMENT, "Keeps sneak held for you.");
-            add(new ChoiceSetting("mode", "Mode", "Vanilla", "Vanilla", "Packet").description("Which method to sneak.").build());
+            add(new ChoiceSetting("mode", "Mode", "Vanilla", "Vanilla", "Packet").group("General").description("Which method to sneak.").build());
+
+            add(new BoolSetting("pause-in-air", "Pause In Air", false)
+                .group("Conditions").description("Lets go of sneak while you are off the ground").build());
+            add(new BoolSetting("pause-in-liquids", "Pause In Liquids", false)
+                .group("Conditions").description("Lets go of sneak in water and lava so you don't sink").build());
+            add(new BoolSetting("pause-on-climbable", "Pause On Ladders", false)
+                .group("Conditions").description("Lets go of sneak on ladders, vines and scaffolding").build());
+            add(new BoolSetting("pause-when-sprinting", "Pause When Sprinting", false)
+                .group("Conditions").description("Lets go of sneak while you hold the sprint key").build());
         }
 
         boolean holdsSneakDown() {
@@ -1386,7 +1700,27 @@ public final class BuiltinModules {
                 && !dihclient.util.multi.PacketTeleportController.ownsMainMovement()
                 && !"Packet".equals(choice("mode"))
                 && MC != null && MC.options != null && MC.player != null
-                && !MC.player.getAbilities().flying;
+                && !MC.player.getAbilities().flying
+                && !paused();
+        }
+
+        private boolean paused() {
+            if (MC.player == null || MC.options == null) return false;
+            if (bool("pause-in-air") && !MC.player.onGround()) return true;
+            if (bool("pause-in-liquids") && (MC.player.isInWater() || MC.player.isInLava())) return true;
+            if (bool("pause-on-climbable") && MC.player.onClimbable()) return true;
+            return bool("pause-when-sprinting") && DihKeyMappingBridge.of(MC.options.keySprint).dih$isActuallyDown();
+        }
+
+        private void releaseSneak() {
+            if (sentPacketSneak) {
+                sendInputSneak(false);
+                sentPacketSneak = false;
+            }
+            if (heldVanillaSneak) {
+                heldVanillaSneak = false;
+                MC.options.keyShift.setDown(DihKeyMappingBridge.of(MC.options.keyShift).dih$isActuallyDown());
+            }
         }
 
         @Override
@@ -1405,11 +1739,16 @@ public final class BuiltinModules {
 
             if (dihclient.util.multi.PacketTeleportController.ownsMainMovement()) return;
             if (MC.options == null || MC.player == null || MC.player.getAbilities().flying) return;
+            if (paused()) {
+                releaseSneak();
+                return;
+            }
             if ("Packet".equals(choice("mode"))) {
                 sendInputSneak(true);
                 sentPacketSneak = true;
             } else {
                 MC.options.keyShift.setDown(true);
+                heldVanillaSneak = true;
             }
         }
 
@@ -1423,6 +1762,7 @@ public final class BuiltinModules {
                 sendInputSneak(false);
                 sentPacketSneak = false;
             }
+            heldVanillaSneak = false;
             if (MC.options != null) MC.options.keyShift.setDown(false);
         }
 
@@ -1446,24 +1786,34 @@ public final class BuiltinModules {
             super("fake-coords", "FakeCoords", ModuleCategory.RENDER,
                 "Spoofs displayed coordinates only.");
             add(new ChoiceSetting("mode", "Mode", "Offset", "Offset", "Scaled", "Rotated", "Scrambled", "Frozen", "Custom")
-                .description("Choose spoofing mode.").build());
+                .group("General").description("Choose spoofing mode.").build());
             add(new BoolSetting("fake-y", "Fake Y", false)
-                .description("Spoof vertical coordinate.").build());
+                .group("General").description("Spoof vertical coordinate.").build());
+            add(new BoolSetting("affect-f3", "Debug Screen", true)
+                .group("General").description("Spoof the coordinates on the F3 screen.").build());
+            add(new BoolSetting("affect-hud", "HUD", true)
+                .group("General").description("Spoof the coordinates in the HUD lines.").build());
+            add(new ActionSetting("reroll", "Reroll", DihFakeCoords::regenerate)
+                .group("General").buttonLabel("Reroll").description("Pick new random fake coordinates.")
+                .visibleWhen(() -> !"Custom".equals(choice("mode"))).build());
+            add(new BoolSetting("reroll-on-join", "Reroll On Join", false)
+                .group("General").description("Pick new fake coordinates every time you join a world.")
+                .visibleWhen(() -> !"Custom".equals(choice("mode"))).build());
             add(new DoubleSetting("custom-x", "Custom X", 0, -30_000_000, 30_000_000, 1)
-                .description("Set displayed X.")
+                .group("Custom").description("Set displayed X.")
                 .numericTextField()
                 .visibleWhen(() -> "Custom".equals(choice("mode"))).build());
             add(new DoubleSetting("custom-y", "Custom Y", 64, -30_000_000, 30_000_000, 1)
-                .description("Set displayed Y.")
+                .group("Custom").description("Set displayed Y.")
                 .numericTextField()
                 .visibleWhen(() -> "Custom".equals(choice("mode"))).build());
             add(new DoubleSetting("custom-z", "Custom Z", 0, -30_000_000, 30_000_000, 1)
-                .description("Set displayed Z.")
+                .group("Custom").description("Set displayed Z.")
                 .numericTextField()
                 .visibleWhen(() -> "Custom".equals(choice("mode"))).build());
             add(new ActionSetting("anchor", "Anchor", this::captureCurrentPosition)
                 .buttonLabel("Capture Position")
-                .description("Use current position.")
+                .group("Custom").description("Use current position.")
                 .visibleWhen(() -> "Custom".equals(choice("mode"))).build());
         }
 
@@ -1473,7 +1823,13 @@ public final class BuiltinModules {
         public void onEnable() {
             DihFakeCoords.Mode m = mode();
             DihFakeCoords.enable(m, bool("fake-y"));
+            DihFakeCoords.setTargets(bool("affect-f3"), bool("affect-hud"));
             if (m == DihFakeCoords.Mode.CUSTOM) pushCustom();
+        }
+
+        @Override
+        public void onGameJoin() {
+            if (isEnabled() && bool("reroll-on-join")) DihFakeCoords.regenerate();
         }
 
         @Override
@@ -1486,6 +1842,7 @@ public final class BuiltinModules {
             DihFakeCoords.Mode m = mode();
             DihFakeCoords.setMode(m);
             DihFakeCoords.setFakeY(bool("fake-y"));
+            DihFakeCoords.setTargets(bool("affect-f3"), bool("affect-hud"));
             if (m == DihFakeCoords.Mode.CUSTOM) pushCustom();
         }
 
@@ -1520,14 +1877,33 @@ public final class BuiltinModules {
 
         NoFallModule() {
             super("no-fall", "NoFall", ModuleCategory.MOVEMENT, "Reduces fall damage.");
-            add(new ChoiceSetting("mode", "Mode", "Packet", "Packet", "AirPlace", "Place").description("Fall protection method.").build());
-            add(new ChoiceSetting("placed-item", "Placed Item", "Bucket", "Bucket", "PowderSnow", "HayBale", "Cobweb", "SlimeBlock").visibleWhen(() -> "Place".equals(value("mode")) || "AirPlace".equals(value("mode"))).build());
-            add(new ChoiceSetting("air-place-mode", "Air Place Mode", "BeforeDeath", "BeforeDamage", "BeforeDeath").visibleWhen(() -> "AirPlace".equals(value("mode"))).build());
-            add(new BoolSetting("anchor", "Anchor", true).visibleWhen(() -> !"Packet".equals(value("mode"))).description("Slow before placing.").build());
-            add(new BoolSetting("anti-bounce", "Anti Bounce", true).description("Stop bounce effects."));
-            add(new BoolSetting("pause-on-mace", "Pause On Mace", true).description("Pause holding mace"));
+            add(new ChoiceSetting("mode", "Mode", "Packet", "Packet", "AirPlace", "Place").group("General").description("Fall protection method.").build());
+            add(new BoolSetting("anti-bounce", "Anti Bounce", true).group("General").description("Stop bounce effects.").build());
+            add(new BoolSetting("pause-on-mace", "Pause On Mace", true).group("General").description("Pause holding mace").build());
 
-            add(new BoolSetting("client-rotate", "Client Rotation", false).visibleWhen(() -> !"Packet".equals(value("mode"))).description("Also rotate camera client-side.").build());
+            add(new DoubleSetting("trigger-speed", "Trigger Speed", 0.5, 0.1, 2.0, 0.05).group("Packet")
+                .visibleWhen(() -> "Packet".equals(value("mode")))
+                .description("Claims ground once you fall faster than this, in blocks per tick").build());
+            add(new BoolSetting("with-flight", "With Flight", true).group("Packet")
+                .visibleWhen(() -> "Packet".equals(value("mode")))
+                .description("Always claims ground while Flight is on").build());
+
+            add(new ChoiceSetting("placed-item", "Placed Item", "Bucket", "Bucket", "PowderSnow", "HayBale", "Cobweb", "SlimeBlock").group("Place").visibleWhen(() -> "Place".equals(value("mode")) || "AirPlace".equals(value("mode"))).description("What it puts down to break the fall; Bucket uses powder snow in the Nether").build());
+            add(new ChoiceSetting("air-place-mode", "Air Place Mode", "BeforeDeath", "BeforeDamage", "BeforeDeath").group("Place").visibleWhen(() -> "AirPlace".equals(value("mode"))).description("Place before any damage, or only before a fall that would kill").build());
+            add(new DoubleSetting("place-height", "Place Height", 3.0, 2.0, 20.0, 0.5).group("Place")
+                .visibleWhen(() -> "Place".equals(value("mode")))
+                .description("Places once you have fallen this many blocks").build());
+            add(new IntSetting("reach-down", "Reach Down", 5, 2, 6, 1).group("Place")
+                .visibleWhen(() -> "Place".equals(value("mode")))
+                .unit("blocks").description("How far below you it looks for ground to place on").build());
+            add(new BoolSetting("skip-water", "Skip Above Water", true).group("Place")
+                .visibleWhen(() -> "Place".equals(value("mode")))
+                .description("Doesn't place when you will land in water anyway").build());
+            add(new BoolSetting("pick-up", "Pick Up", true).group("Place")
+                .visibleWhen(() -> "Place".equals(value("mode")))
+                .description("Scoops the water or powder snow back into the bucket after landing").build());
+            add(new BoolSetting("anchor", "Anchor", true).group("Place").visibleWhen(() -> !"Packet".equals(value("mode"))).description("Slow before placing.").build());
+            add(new BoolSetting("client-rotate", "Client Rotation", false).group("Place").visibleWhen(() -> !"Packet".equals(value("mode"))).description("Also rotate camera client-side.").build());
         }
 
         @Override
@@ -1551,7 +1927,8 @@ public final class BuiltinModules {
             if (MC.player == null || MC.gameMode == null || "Packet".equals(choice("mode"))) return;
 
             if (DihKillAuraRotation.currentOwner() != null && DihKillAuraRotation.hasCurrentRotation()) return;
-            cleanupPlacedFluid();
+            if (bool("pick-up")) cleanupPlacedFluid();
+            else placedFluid = false;
             if (!shouldPlaceModeAct()) return;
             if (bool("anchor")) centerPlayer();
             if ("AirPlace".equals(choice("mode"))) tryAirPlaceBelow();
@@ -1572,9 +1949,9 @@ public final class BuiltinModules {
             if (MC.player == null || MC.player.getAbilities().instabuild) return false;
             if (bool("pause-on-mace") && MC.player.getMainHandItem().is(Items.MACE)) return false;
             Module flight = ModuleRegistry.get("flight");
-            if (flight != null && flight.isEnabled()) return true;
+            if (bool("with-flight") && flight != null && flight.isEnabled()) return true;
             if (MC.player.isFallFlying()) return false;
-            return MC.player.getDeltaMovement().y <= -0.5;
+            return MC.player.getDeltaMovement().y <= -decimal("trigger-speed");
         }
 
         private boolean shouldPlaceModeAct() {
@@ -1589,7 +1966,7 @@ public final class BuiltinModules {
                 }
                 return fall > 2.0;
             }
-            return fall > 3.0 && !isAboveWater();
+            return fall > decimal("place-height") && !(bool("skip-water") && isAboveWater());
         }
 
         private boolean tryPlaceBelow() {
@@ -1600,7 +1977,7 @@ public final class BuiltinModules {
             if (slot < 0) return false;
             BlockHitResult ray = MC.level.clip(new ClipContext(
                 MC.player.position(),
-                MC.player.position().subtract(0, 5, 0),
+                MC.player.position().subtract(0, Math.max(1, integer("reach-down")), 0),
                 ClipContext.Block.OUTLINE,
                 ClipContext.Fluid.NONE,
                 MC.player
@@ -1800,7 +2177,7 @@ public final class BuiltinModules {
             int bottom = MC.level.getMinY();
             while (pos.getY() > bottom) {
                 net.minecraft.world.level.block.state.BlockState state = MC.level.getBlockState(pos);
-                if (state.blocksMotion()) break;
+                if (DihBlocks.blocksMotion(state)) break;
                 if (state.getFluidState().is(net.minecraft.tags.FluidTags.WATER)) return true;
                 pos.move(Direction.DOWN);
             }
@@ -1860,12 +2237,57 @@ public final class BuiltinModules {
         FastUseModule() {
             super("fast-use", "FastUse", ModuleCategory.PLAYER, "Speeds up item use.");
             fastUseInstance = this;
-            add(new BoolSetting("exp", "Fast EXP", true).description("Speed experience bottles."));
+            add(new BoolSetting("exp", "Fast EXP", true).group("EXP").description("Speed experience bottles."));
             add(new RangeSetting("exp-cps", "EXP CPS", DEFAULT_CPS, 5, 20, 0.5)
+                .group("EXP")
+                .description("Throws per second while you hold use")
                 .minSeparation(0.5).visibleWhen(() -> bool("exp")).build());
-            add(new BoolSetting("blocks", "Fast Blocks", true).description("Speed block use."));
+            add(new IntSetting("exp-pitch", "EXP Pitch", 90, 45, 90, 1).unit("°")
+                .group("EXP")
+                .description("How far down it aims the bottles; 90 is straight at your feet")
+                .visibleWhen(() -> bool("exp")).build());
+            add(new BoolSetting("exp-only-damaged", "Only When Damaged", false)
+                .group("EXP")
+                .description("Only speeds bottles up while something you wear or hold is damaged")
+                .visibleWhen(() -> bool("exp")).build());
+
+            add(new BoolSetting("blocks", "Fast Blocks", true).group("Blocks").description("Speed block use."));
             add(new RangeSetting("blocks-cps", "Blocks CPS", DEFAULT_CPS, 5, 20, 0.5)
+                .group("Blocks")
+                .description("Placements per second while you hold use")
                 .minSeparation(0.5).visibleWhen(() -> bool("blocks")).build());
+            add(new ChoiceSetting("block-filter", "Block Filter", "Off", "Off", "Whitelist", "Blacklist")
+                .group("Blocks")
+                .description("Limit which blocks get placed faster")
+                .visibleWhen(() -> bool("blocks")).build());
+            add(RegistryListSetting.placeableBlocks("block-list", "Block List", "")
+                .group("Blocks")
+                .description("Blocks the filter uses")
+                .visibleWhen(() -> bool("blocks") && !"Off".equals(choice("block-filter"))).build());
+        }
+
+        private boolean blockAllowed(ItemStack stack) {
+            if (!(stack.getItem() instanceof BlockItem blockItem)) return false;
+            String filter = choice("block-filter");
+            if ("Off".equals(filter)) return true;
+            String id = BuiltInRegistries.BLOCK.getKey(blockItem.getBlock()).toString();
+            boolean listed = false;
+            for (String entry : list("block-list")) {
+                if (RegistryListCodec.matches(id, entry)) {
+                    listed = true;
+                    break;
+                }
+            }
+            return "Whitelist".equals(filter) == listed;
+        }
+
+        private boolean expWanted() {
+            if (!bool("exp")) return false;
+            if (!bool("exp-only-damaged")) return true;
+            for (EquipmentSlot slot : EquipmentSlot.values()) {
+                if (MC.player.getItemBySlot(slot).isDamaged()) return true;
+            }
+            return false;
         }
 
         @Override
@@ -1885,7 +2307,7 @@ public final class BuiltinModules {
                 return;
             }
 
-            InteractionHand expHand = bool("exp") && canUseManualUse() && !mainHandWouldPreempt(true)
+            InteractionHand expHand = expWanted() && canUseManualUse() && !mainHandWouldPreempt(true)
                 ? experienceBottleHand() : null;
             if (expHand != null && isPhysicalUseHeld()) {
                 activateManualUse(true);
@@ -1935,7 +2357,7 @@ public final class BuiltinModules {
                 DihRotationUtil.Rotation accepted = serverRotation();
 
                 expSilentRotation = DihRotationUtil.normalizeToSensitivity(
-                    new DihRotationUtil.Rotation(accepted.yaw(), 90.0F), accepted);
+                    new DihRotationUtil.Rotation(accepted.yaw(), (float) integer("exp-pitch")), accepted);
 
                 expRotationResetTicks = EXP_ROTATION_RESET_TICKS;
             }
@@ -2092,8 +2514,9 @@ public final class BuiltinModules {
         }
 
         private boolean isHoldingBlockItem() {
-            return MC.player.getMainHandItem().getItem() instanceof BlockItem
-                || MC.player.getOffhandItem().getItem() instanceof BlockItem;
+            // The main hand is used first, so its block decides when it holds one.
+            ItemStack main = MC.player.getMainHandItem();
+            return main.getItem() instanceof BlockItem ? blockAllowed(main) : blockAllowed(MC.player.getOffhandItem());
         }
     }
 
@@ -2102,34 +2525,77 @@ public final class BuiltinModules {
         FastBreakModule() {
             super("fast-break", "FastBreak", ModuleCategory.PLAYER, "Speeds up block breaking.");
             add(new ChoiceSetting("mode", "Mode", "Damage", "Normal", "Haste", "Damage", "Packet")
+                .group("General")
                 .description("Break method.")
                 .build());
-            add(RegistryListSetting.blocks("blocks", "Blocks", "")
-                .visibleWhen(() -> !"Haste".equals(value("mode")))
-                .description("Selected blocks.")
+            add(new BoolSetting("no-break-delay", "No Break Delay", false)
+                .group("General")
+                .description("Skips the short wait between blocks; Packet mode always does")
+                .visibleWhen(() -> !packetMode(this))
                 .build());
+
             add(new ChoiceSetting("blocks-filter", "Blocks Filter", "Blacklist", "Whitelist", "Blacklist")
+                .group("Blocks")
                 .visibleWhen(() -> !"Haste".equals(value("mode")))
                 .description("List mode.")
                 .build());
+            add(RegistryListSetting.blocks("blocks", "Blocks", "")
+                .group("Blocks")
+                .visibleWhen(() -> !"Haste".equals(value("mode")))
+                .description("Selected blocks.")
+                .build());
+
             add(new DoubleSetting("modifier", "Modifier", 1.4, 0.0, 999.0, 0.1)
+                .group("Normal")
                 .sliderRange(0.0, 10.0)
                 .visibleWhen(() -> normalMode(this))
                 .description("Speed multiplier.")
                 .build());
+            add(new BoolSetting("no-air-penalty", "No Air Penalty", false)
+                .group("Normal")
+                .visibleWhen(() -> normalMode(this))
+                .description("Mines as fast in the air as on the ground")
+                .build());
+            add(new BoolSetting("no-water-penalty", "No Water Penalty", false)
+                .group("Normal")
+                .visibleWhen(() -> normalMode(this))
+                .description("Mines as fast underwater as on land")
+                .build());
+            add(new BoolSetting("no-fatigue", "No Mining Fatigue", false)
+                .group("Normal")
+                .visibleWhen(() -> normalMode(this))
+                .description("Cancels the slowdown from Mining Fatigue")
+                .build());
+
             add(new IntSetting("haste-amplifier", "Haste Amplifier", 2, 1, 10, 1)
+                .group("Haste")
                 .visibleWhen(() -> hasteMode(this))
                 .description("Haste amplifier to apply.")
                 .build());
+
             add(new BoolSetting("instamine", "Instamine", true)
+                .group("Damage")
                 .visibleWhen(() -> damageMode(this))
                 .description("Finish blocks early.")
                 .build());
+            add(new DoubleSetting("finish-progress", "Finish At", 0.7, 0.5, 1.0, 0.05)
+                .group("Damage")
+                .visibleWhen(() -> damageMode(this) && bool("instamine"))
+                .description("Breaks the block once mining is this far along")
+                .build());
+            add(new DoubleSetting("instant-threshold", "Instant Threshold", 0.5, 0.3, 1.0, 0.05)
+                .group("Damage")
+                .visibleWhen(() -> damageMode(this) && bool("instamine"))
+                .description("Breaks on the first click when one tick of mining does at least this much")
+                .build());
             add(new BoolSetting("grim-bypass", "Grim Bypass", false)
+                .group("Damage")
                 .visibleWhen(() -> damageMode(this))
                 .description("Abort after stop.")
                 .build());
+
             add(new IntSetting("activation-chance", "Activation Chance", 100, 0, 100, 1)
+                .group("Packet")
                 .visibleWhen(() -> packetMode(this))
                 .unit("%").formatter(v -> v + "%")
                 .description("% to fast-break.")
@@ -2162,9 +2628,9 @@ public final class BuiltinModules {
                 removeHaste();
             }
 
-            if ("Damage".equals(mode)) {
-                tickDamageMode();
-            } else if ("Packet".equals(mode) && MC.gameMode instanceof DihMultiPlayerGameModeAccessor accessor) {
+            if ("Damage".equals(mode)) tickDamageMode();
+            if (("Packet".equals(mode) || bool("no-break-delay"))
+                && MC.gameMode instanceof DihMultiPlayerGameModeAccessor accessor) {
                 accessor.dih$setDestroyDelay(0);
             }
         }
@@ -2191,7 +2657,7 @@ public final class BuiltinModules {
             if (MC.player == null || MC.level == null || MC.gameMode == null || MC.getConnection() == null || pos == null) return false;
             BlockState state = MC.level.getBlockState(pos);
             if (!canMine(state, pos) || !passesBlockFilter(state)) return false;
-            if (state.getDestroyProgress(MC.player, MC.level, pos) <= 0.5f) return false;
+            if (state.getDestroyProgress(MC.player, MC.level, pos) <= (float) decimal("instant-threshold")) return false;
             if (!(MC.gameMode instanceof DihMultiPlayerGameModeAccessor accessor)) return false;
 
             Direction dir = direction == null ? Direction.UP : direction;
@@ -2236,7 +2702,28 @@ public final class BuiltinModules {
             if (!"Normal".equals(choice("mode"))) return original;
             if (MC.player == null || MC.level == null || pos == null) return original;
             if (!canMine(state, pos) || !passesBlockFilter(state)) return original;
-            return (float) (original * Math.max(0.0, decimal("modifier")));
+            return (float) (original * Math.max(0.0, decimal("modifier")) * penaltyCompensation());
+        }
+
+        /** Undoes the vanilla slowdowns that the Normal-mode options turn off. */
+        private double penaltyCompensation() {
+            double factor = 1.0;
+            if (bool("no-air-penalty") && !MC.player.onGround()) factor *= 5.0;
+            if (bool("no-water-penalty") && MC.player.isEyeInFluid(net.minecraft.tags.FluidTags.WATER)) {
+                double submerged = MC.player.getAttributeValue(
+                    net.minecraft.world.entity.ai.attributes.Attributes.SUBMERGED_MINING_SPEED);
+                if (submerged > 0.0 && submerged < 1.0) factor /= submerged;
+            }
+            MobEffectInstance fatigue = bool("no-fatigue") ? MC.player.getEffect(MobEffects.MINING_FATIGUE) : null;
+            if (fatigue != null) {
+                factor /= switch (fatigue.getAmplifier()) {
+                    case 0 -> 0.3;
+                    case 1 -> 0.09;
+                    case 2 -> 0.0027;
+                    default -> 8.1E-4;
+                };
+            }
+            return factor;
         }
 
         boolean usesNormalDestroyModifier() {
@@ -2273,7 +2760,7 @@ public final class BuiltinModules {
             if (!canMine(state, pos) || !passesBlockFilter(state)) return;
             float progress = accessor.dih$getDestroyProgress();
             float delta = state.getDestroyProgress(MC.player, MC.level, pos);
-            if (progress > 0.0f && progress + delta >= 0.7f) {
+            if (progress > 0.0f && progress + delta >= (float) decimal("finish-progress")) {
                 accessor.dih$setDestroyProgress(1.0f);
             }
         }
@@ -2330,25 +2817,74 @@ public final class BuiltinModules {
         private int switchCandidateTicks;
         private String cachedEntityListSource = "";
         private Set<String> cachedEntityIds = Set.of();
+        private final CombatFilters.IdSet heldItemIds = new CombatFilters.IdSet();
 
         AimAssistModule() {
             super("aim-assist", "AimAssist", ModuleCategory.COMBAT, "Smoothly assists your aim toward configured entities.");
-            add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player").build());
-            add(new DoubleSetting("range", "Range", 4.5, 1.0, 8.0, 0.1).build());
-            add(new IntSetting("fov", "FOV", 80, 0, 180, 1).build());
-            add(new ChoiceSetting("target-point", "Target Point", "Nearest", "Nearest", "Center", "Head", "Body", "Feet").build());
+            add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player")
+                .group("General").description("Entity types to aim at.").build());
+            add(new ChoiceSetting("priority", "Priority", "Direction", "Direction", "Type", "Health", "Distance", "HurtTime", "Age")
+                .group("General").description("Who gets aimed at first.").build());
+            add(new ChoiceSetting("axis", "Axis", "Both", "Both", "Horizontal", "Vertical")
+                .group("General").description("Which way your view is turned.").build());
+            add(new BoolSetting("only-on-click", "Only On Click", false)
+                .group("General").description("Only works while you hold the attack key.").build());
+            add(new BoolSetting("pause-mining", "Pause While Mining", true)
+                .group("General").description("Stops while you break a block.").build());
+            add(new BoolSetting("held-items-only", "Held Items Only", false)
+                .group("General").description("Only with listed items.").build());
+            add(RegistryListSetting.items("held-items", "Held Items", CombatFilters.DEFAULT_WEAPONS)
+                .group("General").description("Main-hand items that turn on the assist.")
+                .visibleWhen(() -> bool("held-items-only")).build());
+
+            add(new DoubleSetting("range", "Range", 4.5, 1.0, 8.0, 0.1)
+                .group("Targets").description("Farthest target to aim at, in blocks.").build());
+            add(new IntSetting("fov", "FOV", 80, 0, 180, 1)
+                .group("Targets").description("How far off your crosshair a target may be, in degrees.").build());
+            add(new IntSetting("hurt-time", "Hurt Time", 10, 0, 10, 1)
+                .group("Targets").description("Skips targets flashing from a hit for longer than this, in ticks.").build());
+            add(new IntSetting("switch-delay", "Switch Delay", TARGET_SWITCH_CONFIRM_TICKS, 0, 20, 1)
+                .group("Targets").description("Ticks a better target must stay better before the aim moves to it.").build());
+            add(new BoolSetting("through-walls", "Through Walls", false)
+                .group("Targets").description("Aims at targets behind blocks too.").build());
+            add(new BoolSetting("ignore-invisible", "Ignore Invisible", false)
+                .group("Targets").description("Skips invisible entities.").build());
+            add(new BoolSetting("ignore-naked", "Ignore Naked", false)
+                .group("Targets").description("Skips players wearing no armor.").build());
+            add(new BoolSetting("ignore-named", "Ignore Named", false)
+                .group("Targets").description("Skips mobs with a name tag.").build());
+            add(new BoolSetting("ignore-babies", "Ignore Babies", false)
+                .group("Targets").description("Skips baby mobs.").build());
+            add(new ChoiceSetting("ignore-pets", "Ignore Pets", "Yours", "Off", "Yours", "All")
+                .group("Targets").description("Skips tamed animals: yours, anyone's, or none.").build());
+            add(new IntSetting("max-health", "Max Health", 0, 0, 100, 1)
+                .group("Targets").description("Skips targets with more health than this; 0 is no limit.").build());
+
+            add(new ChoiceSetting("target-point", "Target Point", "Nearest", "Nearest", "Center", "Head", "Body", "Feet")
+                .group("Aim").description("Where on the target to aim.").build());
             add(new IntSetting("safe-zone", "Safe Zone", 5, 0, 100, 1)
+                .group("Aim")
                 .formatter(v -> v + "%")
                 .description("Deadzone around aim point.")
                 .build());
-            add(new ChoiceSetting("priority", "Priority", "Direction", "Direction", "Type", "Health", "Distance", "HurtTime", "Age").build());
-            add(new ChoiceSetting("axis", "Axis", "Both", "Both", "Horizontal", "Vertical").build());
-            add(new IntSetting("hurt-time", "Hurt Time", 10, 0, 10, 1).build());
-            add(new ChoiceSetting("smooth-mode", "Smooth", "Interpolation", "Interpolation", "Instant").group("Smoothing").build());
-            add(new IntSetting("horizontal-speed", "Horizontal", 40, 1, 100, 1).group("Smoothing").formatter(v -> v + "%").visibleWhen(() -> usesSmoothing(this)).build());
-            add(new IntSetting("vertical-speed", "Vertical", 10, 1, 100, 1).group("Smoothing").formatter(v -> v + "%").visibleWhen(() -> usesSmoothing(this)).build());
-            add(new IntSetting("direction-factor", "Direction Factor", 100, 0, 100, 1).group("Smoothing").formatter(v -> v + "%").visibleWhen(() -> usesSmoothing(this)).build());
-            add(new DoubleSetting("midpoint", "Midpoint", 0.35, 0.0, 1.0, 0.05).group("Smoothing").visibleWhen(() -> usesSmoothing(this)).build());
+
+            add(new ChoiceSetting("smooth-mode", "Smooth", "Interpolation", "Interpolation", "Instant").group("Smoothing")
+                .description("Interpolation eases toward the target; Instant snaps to it.").build());
+            add(new IntSetting("horizontal-speed", "Horizontal", 40, 1, 100, 1).group("Smoothing").formatter(v -> v + "%")
+                .description("How fast the view turns sideways.").visibleWhen(() -> usesSmoothing(this)).build());
+            add(new IntSetting("vertical-speed", "Vertical", 10, 1, 100, 1).group("Smoothing").formatter(v -> v + "%")
+                .description("How fast the view turns up and down.").visibleWhen(() -> usesSmoothing(this)).build());
+            add(new IntSetting("direction-factor", "Direction Factor", 100, 0, 100, 1).group("Smoothing").formatter(v -> v + "%")
+                .description("How much a target changing direction slows the turn.").visibleWhen(() -> usesSmoothing(this)).build());
+            add(new DoubleSetting("midpoint", "Midpoint", 0.35, 0.0, 1.0, 0.05).group("Smoothing")
+                .description("Where in each turn the view moves fastest.").visibleWhen(() -> usesSmoothing(this)).build());
+        }
+
+        private boolean paused() {
+            if (bool("pause-mining") && MC.gameMode != null && MC.gameMode.isDestroying()) return true;
+            if (bool("only-on-click") && !DihKeyMappingBridge.of(MC.options.keyAttack).dih$isActuallyDown()) return true;
+            return bool("held-items-only")
+                && !CombatFilters.holds(MC.player.getMainHandItem(), heldItemIds, list("held-items"));
         }
 
         private static boolean usesSmoothing(Module module) {
@@ -2368,7 +2904,8 @@ public final class BuiltinModules {
                 || DihSilentAim.packetRotation() != null
                 || ScaffoldModule.hasActiveSilentMovementRotation()
 
-                || AutoTotemModule.operationActive()) {
+                || AutoTotemModule.operationActive()
+                || paused()) {
                 clearAimState();
                 return;
             }
@@ -2481,7 +3018,7 @@ public final class BuiltinModules {
                 switchCandidateId = best.getId();
                 switchCandidateTicks = 1;
             }
-            if (switchCandidateTicks < TARGET_SWITCH_CONFIRM_TICKS) return tracked;
+            if (switchCandidateTicks < integer("switch-delay")) return tracked;
             switchCandidateId = Integer.MIN_VALUE;
             switchCandidateTicks = 0;
             return best;
@@ -2493,9 +3030,21 @@ public final class BuiltinModules {
             if (TeamsModule.combatExcluded(entity, "aimassist")) return false;
             if (entity.hurtTime > integer("hurt-time")) return false;
             if (!matchesEntity(entity)) return false;
+            if (!passesTargetFilters(entity)) return false;
             if (entity.distanceToSqr(MC.player) > rangeSq) return false;
             DihRotationUtil.Rotation toEntity = DihRotationUtil.lookingAt(entity.getBoundingBox().getCenter(), MC.player.getEyePosition());
             return DihRotationUtil.angleTo(current, toEntity) <= integer("fov");
+        }
+
+        private boolean passesTargetFilters(LivingEntity entity) {
+            boolean player = entity instanceof net.minecraft.world.entity.player.Player;
+            if (bool("ignore-invisible") && entity.isInvisible()) return false;
+            if (bool("ignore-naked") && player && CombatFilters.wearsNoArmor(entity)) return false;
+            if (bool("ignore-named") && !player && entity.hasCustomName()) return false;
+            if (bool("ignore-babies") && entity.isBaby()) return false;
+            if (CombatFilters.ignoredPet(entity, choice("ignore-pets"), MC.player)) return false;
+            int maxHealth = integer("max-health");
+            return maxHealth <= 0 || entity.getHealth() + entity.getAbsorptionAmount() <= maxHealth;
         }
 
         private int compareTargets(LivingEntity a, LivingEntity b, String priority, DihRotationUtil.Rotation current, Vec3 eyes) {
@@ -2558,7 +3107,7 @@ public final class BuiltinModules {
                 case "Feet" -> new Vec3(cx, box.minY + 0.1, cz);
                 default -> nearestPoint(eyes, box);
             };
-            if (visible(eyes, preferred)) return preferred;
+            if (bool("through-walls") || visible(eyes, preferred)) return preferred;
             return bestVisiblePoint(eyes, box);
         }
 
@@ -2573,7 +3122,7 @@ public final class BuiltinModules {
                 player.getZ(),
                 choice("target-point")
             );
-            if (visible(eyes, preferred)) return preferred;
+            if (bool("through-walls") || visible(eyes, preferred)) return preferred;
             return bestVisiblePlayerPoint(eyes, modelBox, player.getX(), player.getZ(), preferred.y);
         }
 
@@ -2721,14 +3270,32 @@ public final class BuiltinModules {
         private static final ValueRange DEFAULT_CPS = new ValueRange(6, 11);
 
         private final dihclient.util.DihClickPacer pacer = new dihclient.util.DihClickPacer();
+        private final CombatFilters.IdSet heldItemIds = new CombatFilters.IdSet();
 
         AutoClickerModule() {
             super("auto-clicker", "AutoClicker", ModuleCategory.COMBAT, "Auto clicks or holds");
             add(new RangeSetting("tps", "CPS", DEFAULT_CPS, 5, 20, 0.5).minSeparation(0.5)
+                .group("General").description("Clicks per second, picked between these.")
                 .visibleWhen(() -> !"Hold".equals(value("mode"))).build());
             add(new ChoiceSetting("mode", "Mode", "Constant", "Constant", "Hold Down", "Hold")
-                .description("Click or hold").build());
-            add(new ChoiceSetting("button", "Button", "Left", "Left", "Right").description("Mouse button").build());
+                .group("General").description("Click or hold").build());
+            add(new ChoiceSetting("button", "Button", "Left", "Left", "Right")
+                .group("General").description("Mouse button").build());
+
+            add(new BoolSetting("break-blocks", "Break Blocks", false)
+                .group("Left Click").description("Holds the button instead of clicking while you aim at a block, so it breaks.")
+                .visibleWhen(() -> !"Right".equals(value("button")) && !"Hold".equals(value("mode"))).build());
+            add(new IntSetting("min-charge", "Min Charge", 0, 0, 100, 5).unit("%")
+                .group("Left Click").description("Skips clicks until the weapon cooldown is this full; 0 never waits.")
+                .visibleWhen(() -> !"Right".equals(value("button")) && !"Hold".equals(value("mode"))).build());
+
+            add(new BoolSetting("held-items-only", "Held Items Only", false)
+                .group("Conditions").description("Only clicks while holding a listed item.").build());
+            add(RegistryListSetting.items("held-items", "Held Items", CombatFilters.DEFAULT_WEAPONS)
+                .group("Conditions").description("Main-hand items that let it click.")
+                .visibleWhen(() -> bool("held-items-only")).build());
+            add(new BoolSetting("pause-using", "Pause While Using", false)
+                .group("Conditions").description("Stops while you eat, drink, block or draw a bow.").build());
         }
 
         @Override
@@ -2749,7 +3316,10 @@ public final class BuiltinModules {
                 || DihSilentAim.packetRotation() != null
                 || ScaffoldModule.hasActiveSilentMovementRotation()
 
-                || AutoTotemModule.operationActive()) {
+                || AutoTotemModule.operationActive()
+                || bool("pause-using") && MC.player.isUsingItem()
+                || bool("held-items-only")
+                    && !CombatFilters.holds(MC.player.getMainHandItem(), heldItemIds, list("held-items"))) {
                 standDown();
                 return;
             }
@@ -2760,11 +3330,21 @@ public final class BuiltinModules {
                 holdConfiguredButton();
                 return;
             }
+            boolean left = !"Right".equals(choice("button"));
+            if (left && bool("break-blocks") && MC.hitResult != null
+                && MC.hitResult.getType() == HitResult.Type.BLOCK) {
+                // Constant mode mines by itself; in Hold Down your own held button already does.
+                pacer.reset();
+                DihInputClicker.setUseHeld(false);
+                DihInputClicker.setAttackHeld("Constant".equals(mode));
+                return;
+            }
             releaseHeldButton();
             if ("Hold Down".equals(mode) && !configuredButtonDown()) {
                 pacer.reset();
                 return;
             }
+            if (left && MC.player.getAttackStrengthScale(0.0f) < integer("min-charge") / 100.0f) return;
 
             ValueRange band = ValueRange.parse(value("tps"), DEFAULT_CPS);
             if (pacer.shouldClick(band.min(), band.max())) {
@@ -2799,18 +3379,68 @@ public final class BuiltinModules {
     }
 
     static final class TriggerBotModule extends Module {
+        private static final ValueRange DEFAULT_CPS = new ValueRange(8, 12);
+        private final dihclient.util.DihClickPacer pacer = new dihclient.util.DihClickPacer();
         private long readyAtNanos;
         private boolean armed;
         private String cachedEntityListSource = "";
         private Set<String> cachedEntityIds = Set.of();
+        private final CombatFilters.IdSet heldItemIds = new CombatFilters.IdSet();
 
         TriggerBotModule() {
             super("trigger-bot", "TriggerBot", ModuleCategory.COMBAT, "Attacks configured entities when your crosshair is on them.");
             add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player")
-                .description("Trigger entities").build());
-            add(new BoolSetting("respect-cooldown", "Respect Cooldown", true).description("Wait for full cooldown"));
+                .group("General").description("Trigger entities").build());
+            add(new ChoiceSetting("timing", "Timing", "Cooldown", "Cooldown", "CPS")
+                .group("General")
+                .description("Cooldown: hit when the swing is charged. CPS: click at a set rate, like AutoClicker."));
+            add(new BoolSetting("respect-cooldown", "Respect Cooldown", true).description("Wait for full cooldown")
+                .group("General")
+                .visibleWhen(() -> !"CPS".equals(value("timing"))));
+            add(new IntSetting("min-charge", "Min Charge", 100, 50, 100, 5).unit("%")
+                .group("General").description("Hits once the weapon cooldown is this full.")
+                .visibleWhen(() -> !"CPS".equals(value("timing")) && bool("respect-cooldown")));
             add(new BoolSetting("randomize-delay", "Randomize Delay", false)
-                .description("Small delay after cooldown."));
+                .group("General")
+                .description("Small delay after cooldown.").visibleWhen(() -> !"CPS".equals(value("timing"))));
+            add(new RangeSetting("cps", "CPS", DEFAULT_CPS, 1, 20, 0.5).minSeparation(0.5)
+                .group("General")
+                .description("Click rate; it drifts and hesitates within this band like AutoClicker.")
+                .visibleWhen(() -> "CPS".equals(value("timing"))));
+            add(new BoolSetting("wait-for-crit", "Wait For Crits", false)
+                .group("General").description("In the air, holds the hit until you fall, so it lands as a critical.").build());
+            add(new BoolSetting("pause-using", "Pause While Using", true)
+                .group("General").description("Stops while you eat, drink, block or draw a bow.").build());
+            add(new BoolSetting("held-items-only", "Held Items Only", false)
+                .group("General").description("Only with listed items.").build());
+            add(RegistryListSetting.items("held-items", "Held Items", CombatFilters.DEFAULT_WEAPONS)
+                .group("General").description("Main-hand items that let it attack.")
+                .visibleWhen(() -> bool("held-items-only")).build());
+
+            add(new IntSetting("hurt-time", "Hurt Time", 10, 0, 10, 1)
+                .group("Targets").description("Skips targets flashing from a hit for longer than this, in ticks.").build());
+            add(new IntSetting("max-health", "Max Health", 0, 0, 100, 1)
+                .group("Targets").description("Skips targets with more health than this; 0 is no limit.").build());
+            add(new BoolSetting("ignore-invisible", "Ignore Invisible", false)
+                .group("Targets").description("Skips invisible entities.").build());
+            add(new BoolSetting("ignore-naked", "Ignore Naked", false)
+                .group("Targets").description("Skips players wearing no armor.").build());
+            add(new BoolSetting("ignore-named", "Ignore Named", false)
+                .group("Targets").description("Skips mobs with a name tag.").build());
+            add(new BoolSetting("ignore-babies", "Ignore Babies", false)
+                .group("Targets").description("Skips baby mobs.").build());
+            add(new ChoiceSetting("ignore-pets", "Ignore Pets", "Yours", "Off", "Yours", "All")
+                .group("Targets").description("Skips tamed animals: yours, anyone's, or none.").build());
+        }
+
+        private boolean waitingForCrit() {
+            if (!bool("wait-for-crit")) return false;
+            var player = MC.player;
+            if (player.onGround() || player.onClimbable() || player.isInWater() || player.isPassenger()
+                || player.getAbilities().flying || player.isFallFlying()) {
+                return false;
+            }
+            return player.fallDistance <= 0.0D || player.getDeltaMovement().y >= 0.0D;
         }
 
         @Override
@@ -2833,7 +3463,10 @@ public final class BuiltinModules {
 
                 || ownsManualFastExp()
 
-                || AutoTotemModule.operationActive()) {
+                || AutoTotemModule.operationActive()
+                || bool("pause-using") && MC.player.isUsingItem()
+                || bool("held-items-only")
+                    && !CombatFilters.holds(MC.player.getMainHandItem(), heldItemIds, list("held-items"))) {
                 resetTrigger();
                 return;
             }
@@ -2841,9 +3474,16 @@ public final class BuiltinModules {
                 resetTrigger();
                 return;
             }
+            if (waitingForCrit()) return;
+
+            if ("CPS".equals(choice("timing"))) {
+                ValueRange band = ValueRange.parse(value("cps"), DEFAULT_CPS);
+                if (pacer.shouldClick(band.min(), band.max())) DihInputClicker.queueAttackClick();
+                return;
+            }
 
             boolean respectCooldown = bool("respect-cooldown");
-            if (respectCooldown && MC.player.getAttackStrengthScale(0.0f) < 1.0f) {
+            if (respectCooldown && MC.player.getAttackStrengthScale(0.0f) < integer("min-charge") / 100.0f) {
                 resetTrigger();
                 return;
             }
@@ -2868,7 +3508,20 @@ public final class BuiltinModules {
             Set<String> ids = cachedEntityIds();
             if (ids.isEmpty()) return false;
             String id = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString().toLowerCase(Locale.ROOT);
-            return ids.contains(id) || ids.contains(id.substring(id.indexOf(':') + 1));
+            if (!ids.contains(id) && !ids.contains(id.substring(id.indexOf(':') + 1))) return false;
+            return !(entity instanceof LivingEntity living) || passesTargetFilters(living);
+        }
+
+        private boolean passesTargetFilters(LivingEntity entity) {
+            boolean player = entity instanceof net.minecraft.world.entity.player.Player;
+            if (entity.hurtTime > integer("hurt-time")) return false;
+            if (bool("ignore-invisible") && entity.isInvisible()) return false;
+            if (bool("ignore-naked") && player && CombatFilters.wearsNoArmor(entity)) return false;
+            if (bool("ignore-named") && !player && entity.hasCustomName()) return false;
+            if (bool("ignore-babies") && entity.isBaby()) return false;
+            if (CombatFilters.ignoredPet(entity, choice("ignore-pets"), MC.player)) return false;
+            int maxHealth = integer("max-health");
+            return maxHealth <= 0 || entity.getHealth() + entity.getAbsorptionAmount() <= maxHealth;
         }
 
         private Set<String> cachedEntityIds() {
@@ -2892,6 +3545,7 @@ public final class BuiltinModules {
         private void resetTrigger() {
             readyAtNanos = 0L;
             armed = false;
+            pacer.reset();
         }
     }
 
@@ -2932,44 +3586,73 @@ public final class BuiltinModules {
         private boolean awaitingReelConfirmation;
         private int reelConfirmationTicks;
         private int reelAttempts;
+        private int catches;
 
         private static final int REEL_CONFIRMATION_TICKS = 4;
         private static final int MAX_REEL_ATTEMPTS = 3;
 
         AutoFishModule() {
             super("auto-fish", "AutoFish", ModuleCategory.PLAYER, "Automatically reels and recasts fishing rods.");
-            add(new ChoiceSetting("trigger-mode", "Trigger", "Sound", "Sound", "Bobber").build());
+            add(new ChoiceSetting("trigger-mode", "Trigger", "Sound", "Sound", "Bobber").group("General")
+                .description("Reel in on the splash sound, or when the bobber dips").build());
             add(RegistryListSetting.soundEvents("sounds", "Sounds", "minecraft:entity.fishing_bobber.splash")
+                .group("General")
+                .description("Sounds that count as a bite")
                 .visibleWhen(() -> "Sound".equals(value("trigger-mode"))).build());
-            add(new BoolSetting("sound-distance", "Sound Distance", true)
+            add(new BoolSetting("sound-distance", "Sound Distance", true).group("General")
                 .visibleWhen(() -> "Sound".equals(value("trigger-mode"))).description("Require sound near player."));
-            add(new DoubleSetting("max-sound-distance", "Max Distance", 12.0, 1.0, 128.0, 0.5)
+            add(new DoubleSetting("max-sound-distance", "Max Distance", 12.0, 1.0, 128.0, 0.5).group("General")
                 .visibleWhen(() -> "Sound".equals(value("trigger-mode")) && Boolean.parseBoolean(value("sound-distance")))
                 .description("Max player sound range.").build());
-            add(new ChoiceSetting("click-mode", "Click Mode", "Real Input", "Real Input", "Interaction API").build());
+            add(new ChoiceSetting("click-mode", "Click Mode", "Real Input", "Real Input", "Interaction API").group("General")
+                .description("Press the use key, or call the game's item use directly").build());
+            add(new BoolSetting("show-catches", "Show Catches", false).group("General")
+                .description("Shows how many fish you caught next to the module name").build());
+            add(new IntSetting("stop-after", "Stop After", 0, 0, 1000, 1).group("General")
+                .description("Turns off after this many catches; 0 never stops").build());
             add(new BoolSetting("auto-cast", "Auto Cast", true).group("Casting")
                 .description("Recast when missing").build());
             add(new IntSetting("cast-timeout", "No Bite Retry", 60, 0, 300, 1).group("Casting")
                 .description("0 = wait forever.").unit("s"));
-            add(new BoolSetting("randomize-delays", "Randomize Delays", true).group("Delays").build());
-            add(new IntSetting("catch-min", "Catch Min", 2, 0, 32, 1).group("Delays").visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
-            add(new IntSetting("catch-max", "Catch Max", 5, 0, 40, 1).group("Delays").visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
-            add(new IntSetting("recast-min", "Recast Min", 8, 0, 32, 1).group("Delays").visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
-            add(new IntSetting("recast-max", "Recast Max", 12, 0, 40, 1).group("Delays").visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
-            add(new IntSetting("catch-delay", "Catch Delay", 3, 0, 40, 1).group("Delays").visibleWhen(() -> !Boolean.parseBoolean(value("randomize-delays"))).build());
-            add(new IntSetting("recast-delay", "Recast Delay", 10, 0, 40, 1).group("Delays").visibleWhen(() -> !Boolean.parseBoolean(value("randomize-delays"))).build());
-            add(new IntSetting("movement-steps", "Steps", 6, 0, 6, 1).group("Movement").build());
+            add(new BoolSetting("randomize-delays", "Randomize Delays", true).group("Delays")
+                .description("Picks each delay between a min and a max").build());
+            add(new IntSetting("catch-min", "Catch Min", 2, 0, 32, 1).group("Delays").unit("ticks")
+                .description("Shortest wait before reeling in")
+                .visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
+            add(new IntSetting("catch-max", "Catch Max", 5, 0, 40, 1).group("Delays").unit("ticks")
+                .description("Longest wait before reeling in")
+                .visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
+            add(new IntSetting("recast-min", "Recast Min", 8, 0, 32, 1).group("Delays").unit("ticks")
+                .description("Shortest wait before casting again")
+                .visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
+            add(new IntSetting("recast-max", "Recast Max", 12, 0, 40, 1).group("Delays").unit("ticks")
+                .description("Longest wait before casting again")
+                .visibleWhen(() -> Boolean.parseBoolean(value("randomize-delays"))).build());
+            add(new IntSetting("catch-delay", "Catch Delay", 3, 0, 40, 1).group("Delays").unit("ticks")
+                .description("Wait before reeling in")
+                .visibleWhen(() -> !Boolean.parseBoolean(value("randomize-delays"))).build());
+            add(new IntSetting("recast-delay", "Recast Delay", 10, 0, 40, 1).group("Delays").unit("ticks")
+                .description("Wait before casting again")
+                .visibleWhen(() -> !Boolean.parseBoolean(value("randomize-delays"))).build());
+            add(new IntSetting("movement-steps", "Steps", 6, 0, 6, 1).group("Movement")
+                .description("Turns one step after each catch, sweeping up to this many steps each way; 0 stays still").build());
             add(new DoubleSetting("degrees-per-step", "Degrees / Step", 5.0, 0.1, 20.0, 0.1)
-                .group("Movement").visibleWhen(() -> !"0".equals(value("movement-steps"))).build());
-            add(new IntSetting("movement-duration", "Duration", 6, 1, 30, 1)
-                .group("Movement").visibleWhen(() -> !"0".equals(value("movement-steps"))).build());
-            add(new BoolSetting("anti-break", "Anti Break", true).group("Rod Safety").build());
+                .group("Movement").description("How far each turn goes")
+                .visibleWhen(() -> !"0".equals(value("movement-steps"))).build());
+            add(new IntSetting("movement-duration", "Duration", 6, 1, 30, 1).unit("ticks")
+                .group("Movement").description("How long each turn takes")
+                .visibleWhen(() -> !"0".equals(value("movement-steps"))).build());
+            add(new BoolSetting("anti-break", "Anti Break", true).group("Rod Safety")
+                .description("Stops before your rod breaks").build());
             add(new IntSetting("min-durability", "Min Durability", 2, 1, 32, 1)
-                .group("Rod Safety").visibleWhen(() -> Boolean.parseBoolean(value("anti-break"))).build());
-            add(new BoolSetting("auto-select-rod", "Auto Select Best Rod", true).group("Rod Safety").build());
+                .group("Rod Safety").description("Durability a rod must keep")
+                .visibleWhen(() -> Boolean.parseBoolean(value("anti-break"))).build());
+            add(new BoolSetting("auto-select-rod", "Auto Select Best Rod", true).group("Rod Safety")
+                .description("Switches to your best usable rod").build());
             add(new BoolSetting("stop-macro-enabled", "Auto Stop", false).group("Auto Stop")
                 .description("Silent conditional rule").build());
             add(new StringSetting("stop-macro", "Rule", "").group("Auto Stop")
+                .description("The condition that stops AutoFish, e.g. inventory full")
                 .visibleWhen(() -> Boolean.parseBoolean(value("stop-macro-enabled"))).conditionalMacroPicker());
             add(new ChoiceSetting("stop-macro-trigger", "On Trigger", "Stop AutoFish",
                     "Stop AutoFish", "Run Steps Only", "Stop, Run, Resume").group("Auto Stop")
@@ -2988,7 +3671,13 @@ public final class BuiltinModules {
         }
 
         @Override
+        public String info() {
+            return bool("show-catches") ? Integer.toString(catches) : "";
+        }
+
+        @Override
         public void onEnable() {
+            catches = 0;
             normalizeDelayPairs();
             migrateLegacyStopSettings();
             tuneSelectedAutoFishPresetMacro();
@@ -3113,10 +3802,10 @@ public final class BuiltinModules {
             if (DihHandArbiter.handPacketOwner() != null) return false;
             if (packet instanceof ServerboundUseItemPacket usePacket) {
                 if (consumeOwnedUsePacket()) return false;
-                if (isRodHand(usePacket.getHand())) handleManualRodUse();
+                if (isRodHand(DihPackets.hand(usePacket))) handleManualRodUse();
             } else if (packet instanceof ServerboundUseItemOnPacket useOnPacket) {
                 if (consumeOwnedUsePacket()) return false;
-                if (isRodHand(useOnPacket.getHand())) handleManualRodUse();
+                if (isRodHand(DihPackets.hand(useOnPacket))) handleManualRodUse();
             } else if (packet instanceof ServerboundSetCarriedItemPacket carriedPacket) {
                 if (consumeOwnedSlotPacket()) return false;
                 handleManualSlotSwitch(carriedPacket.getSlot());
@@ -3213,7 +3902,7 @@ public final class BuiltinModules {
 
                 if (ModuleRegistry.shouldCancelUseExcept(MC.hitResult, hand, id())) return false;
                 InteractionResult result = MC.gameMode.useItem(MC.player, hand);
-                if (result != null && result.consumesAction()) MC.player.swing(hand);
+                if (result != null && result.consumesAction()) DihEntities.swing(MC.player, hand);
             } else {
                 DihInputClicker.queueUseClick();
             }
@@ -3290,6 +3979,13 @@ public final class BuiltinModules {
                 reelConfirmationTicks = 0;
                 reelAttempts = 0;
                 clearVirtualCastState();
+                catches++;
+                int stopAfter = integer("stop-after");
+                if (stopAfter > 0 && catches >= stopAfter) {
+                    dihclient.util.DihClientMessaging.sendPrefixed("AutoFish: stopped after " + catches + " catches.");
+                    setEnabled(false);
+                    return true;
+                }
                 startMovement();
                 pendingRecast = bool("auto-cast");
                 recastTimer = pendingRecast ? nextDelay("recast-delay", "recast-min", "recast-max") : 0;
@@ -3854,14 +4550,37 @@ public final class BuiltinModules {
         private BlockPos target;
         private Direction direction = Direction.UP;
         private int delay;
+        private Block targetBlock;
+        private boolean sentSinceSolid;
+        private int rebreaks;
 
         InstantRebreakModule() {
             super("instant-rebreak", "InstantRebreak", ModuleCategory.PLAYER, "Rebreaks the last block.");
-            add(new IntSetting("delay", "Delay", 0, 0, 20, 1).description("Delay between rebreak packets."));
-            add(new BoolSetting("only-pick", "Only Pickaxe", true).description("Require pickaxe."));
-            add(new BoolSetting("rotate", "Rotate", false).description("Face target first."));
+            add(new IntSetting("delay", "Delay", 0, 0, 20, 1).unit("ticks").group("General")
+                .description("Delay between rebreak packets."));
+            add(new BoolSetting("rotate", "Rotate", false).group("General").description("Face target first."));
+            add(new IntSetting("max-rebreaks", "Max Rebreaks", 0, 0, 100, 1).group("General")
+                .description("Forgets the block after breaking it this many times; 0 never stops"));
+
+            add(new BoolSetting("only-pick", "Only Pickaxe", true).group("Conditions").description("Require pickaxe."));
+            add(new BoolSetting("same-block", "Same Block Only", false).group("Conditions")
+                .description("Only rebreaks when the same kind of block comes back"));
+            add(new BoolSetting("range-check", "Range Check", false).group("Conditions")
+                .description("Waits while the block is farther than the range"));
+            add(new DoubleSetting("range", "Range", 6.0, 1.0, 10.0, 0.5).unit("blocks").group("Conditions")
+                .description("Farthest block it sends rebreaks for")
+                .visibleWhen(() -> bool("range-check")));
+            add(new BoolSetting("pause-while-using", "Pause While Using", false).group("Conditions")
+                .description("Waits while you eat, drink or block"));
+
             add(new BoolSetting("render", "Render", true).group("Render").description("Show the rebreak target."));
-            add(new ColorSetting("color", "Color", 0xFFFF3B3B).group("Render").description("Single outline color.").build());
+            add(new ColorSetting("color", "Color", 0xFFFF3B3B).group("Render").description("Single outline color.")
+                .visibleWhen(() -> bool("render")).build());
+        }
+
+        @Override
+        public String info() {
+            return target == null || rebreaks == 0 ? "" : Integer.toString(rebreaks);
         }
 
         @Override
@@ -3874,6 +4593,9 @@ public final class BuiltinModules {
         public void onStartBreakingBlock(BlockPos pos, Direction direction) {
             if (dihclient.util.multi.MultiPilot.isActive()) return;
             target = pos == null ? null : pos.immutable();
+            targetBlock = target == null || MC.level == null ? null : MC.level.getBlockState(target).getBlock();
+            sentSinceSolid = false;
+            rebreaks = 0;
             this.direction = direction == null ? Direction.UP : direction;
             if (bool("render")) DihInstaBreakRenderer.setTarget(target, colorValue("color", colorValue("line-color", 0xFF39D77A)));
             delay = 0;
@@ -3889,8 +4611,27 @@ public final class BuiltinModules {
             if (!bool("render")) DihInstaBreakRenderer.clear();
             else DihInstaBreakRenderer.setTarget(target, colorValue("color", colorValue("line-color", 0xFF39D77A)));
 
-            if (MC.level.isOutsideBuildHeight(target) || MC.level.getBlockState(target).isAir()) return;
+            if (MC.level.isOutsideBuildHeight(target)) return;
+            BlockState current = MC.level.getBlockState(target);
+            if (current.isAir()) {
+                if (sentSinceSolid) {
+                    sentSinceSolid = false;
+                    rebreaks++;
+                    int max = integer("max-rebreaks");
+                    if (max > 0 && rebreaks >= max) {
+                        target = null;
+                        DihInstaBreakRenderer.clear();
+                    }
+                }
+                return;
+            }
+            if (bool("same-block") && targetBlock != null && current.getBlock() != targetBlock) return;
             if (bool("only-pick") && !MC.player.getMainHandItem().is(ItemTags.PICKAXES)) return;
+            if (bool("pause-while-using") && MC.player.isUsingItem()) return;
+            if (bool("range-check")
+                && MC.player.getEyePosition().distanceToSqr(Vec3.atCenterOf(target)) > decimal("range") * decimal("range")) {
+                return;
+            }
             if (delay++ < integer("delay")) return;
             delay = 0;
             if (bool("rotate")) MC.player.lookAt(EntityAnchorArgument.Anchor.EYES, Vec3.atCenterOf(target));
@@ -3905,7 +4646,8 @@ public final class BuiltinModules {
                 MC.getConnection().send(new ServerboundPlayerActionPacket(
                     ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, pos, dir));
             }
-            MC.getConnection().send(new ServerboundSwingPacket(InteractionHand.MAIN_HAND));
+            MC.getConnection().send(DihPackets.mainHandSwing());
+            sentSinceSolid = true;
         }
 
         private int colorValue(String id, int fallback) {
@@ -3922,26 +4664,65 @@ public final class BuiltinModules {
     static final class NoInteractModule extends Module {
         NoInteractModule() {
             super("no-interact", "NoInteract", ModuleCategory.PLAYER, "Cancels selected inputs.");
+            add(new BoolSetting("sneak-bypass", "Sneak Bypass", false).group("General")
+                .description("Holding sneak lets every input through").build());
+            add(new BoolSetting("pause-in-creative", "Pause In Creative", false).group("General")
+                .description("Lets every input through in creative mode").build());
+            add(new BoolSetting("notify", "Notify", false).group("General")
+                .description("Says in chat when it cancels something, at most once a second").build());
+
             add(RegistryListSetting.blocks("block-mine", "Block Mine", "").group("Blocks").description("Mining block list.").build());
-            add(new ChoiceSetting("block-mine-mode", "Mine Mode", "BlackList", "WhiteList", "BlackList").group("Blocks").build());
+            add(new ChoiceSetting("block-mine-mode", "Mine Mode", "BlackList", "WhiteList", "BlackList").group("Blocks")
+                .description("BlackList stops mining the listed blocks; WhiteList allows only them").build());
             add(RegistryListSetting.blocks("block-interact", "Block Interact", "").group("Blocks").description("Use block list.").build());
-            add(new ChoiceSetting("block-interact-mode", "Block Mode", "BlackList", "WhiteList", "BlackList").group("Blocks").build());
-            add(new ChoiceSetting("block-interact-hand", "Block Hand", "Both", "Mainhand", "Offhand", "Both", "None").group("Blocks").build());
+            add(new ChoiceSetting("block-interact-mode", "Block Mode", "BlackList", "WhiteList", "BlackList").group("Blocks")
+                .description("BlackList stops using the listed blocks; WhiteList allows only them").build());
+            add(new ChoiceSetting("block-interact-hand", "Block Hand", "Both", "Mainhand", "Offhand", "Both", "None").group("Blocks")
+                .description("Which hand the block-use rule applies to").build());
             add(RegistryListSetting.entityTypes("entity-interact", "Entity Interact", "").group("Entities").description("Use entity list.").build());
-            add(new ChoiceSetting("entity-interact-mode", "Entity Mode", "BlackList", "WhiteList", "BlackList").group("Entities").build());
-            add(new ChoiceSetting("entity-interact-hand", "Entity Hand", "Both", "Mainhand", "Offhand", "Both", "None").group("Entities").build());
-            add(RegistryListSetting.entityTypes("entity-hit", "Entity Hit", "").group("Attacks").build());
-            add(new ChoiceSetting("entity-hit-mode", "Hit Mode", "WhiteList", "WhiteList", "BlackList").group("Attacks").build());
-            add(new BoolSetting("friends", "Friends", false).group("Entities"));
-            add(new BoolSetting("babies", "Babies", false).group("Entities"));
-            add(new BoolSetting("nametagged", "Nametagged", false).group("Entities"));
+            add(new ChoiceSetting("entity-interact-mode", "Entity Mode", "BlackList", "WhiteList", "BlackList").group("Entities")
+                .description("BlackList stops using the listed entities; WhiteList allows only them").build());
+            add(new ChoiceSetting("entity-interact-hand", "Entity Hand", "Both", "Mainhand", "Offhand", "Both", "None").group("Entities")
+                .description("Which hand the entity-use rule applies to").build());
+            add(RegistryListSetting.entityTypes("entity-hit", "Entity Hit", "").group("Attacks")
+                .description("Entities the hit rule uses").build());
+            add(new ChoiceSetting("entity-hit-mode", "Hit Mode", "WhiteList", "WhiteList", "BlackList").group("Attacks")
+                .description("WhiteList lets you hit only the listed entities; BlackList stops hitting them").build());
+            add(new BoolSetting("friends", "Friends", false).group("Entities")
+                .description("Also applies the entity rules to friends and teammates"));
+            add(new BoolSetting("babies", "Babies", false).group("Entities")
+                .description("Also applies the entity rules to baby mobs"));
+            add(new BoolSetting("nametagged", "Nametagged", false).group("Entities")
+                .description("Also applies the entity rules to mobs with a name tag"));
+        }
+
+        private long lastNotifyMs;
+
+        /** Whether the rules are switched off right now. */
+        private boolean bypassed() {
+            if (MC.player == null) return false;
+            if (bool("sneak-bypass") && MC.player.isShiftKeyDown()) return true;
+            return bool("pause-in-creative") && MC.player.isCreative();
+        }
+
+        private boolean cancelled(boolean cancel, String what) {
+            if (!cancel) return false;
+            if (bypassed()) return false;
+            if (bool("notify")) {
+                long now = System.currentTimeMillis();
+                if (now - lastNotifyMs >= 1000L) {
+                    lastNotifyMs = now;
+                    DihClientMessaging.sendPrefixed("NoInteract blocked " + what + ".");
+                }
+            }
+            return true;
         }
 
         @Override
         public boolean shouldCancelStartBreakingBlock(BlockPos pos, Direction direction) {
             if (MC.level == null || pos == null) return matchesRegistry("", list("block-mine"), choice("block-mine-mode"));
             String id = BuiltInRegistries.BLOCK.getKey(MC.level.getBlockState(pos).getBlock()).toString();
-            return matchesRegistry(id, list("block-mine"), choice("block-mine-mode"));
+            return cancelled(matchesRegistry(id, list("block-mine"), choice("block-mine-mode")), "mining");
         }
 
         @Override
@@ -3949,7 +4730,8 @@ public final class BuiltinModules {
             if (!(hitResult instanceof EntityHitResult entityHit)) return false;
             Entity entity = entityHit.getEntity();
             if (!entityFilterAllowed(entity)) return false;
-            return matchesRegistry(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString(), list("entity-hit"), choice("entity-hit-mode"));
+            return cancelled(matchesRegistry(BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString(),
+                list("entity-hit"), choice("entity-hit-mode")), "a hit");
         }
 
         @Override
@@ -3958,13 +4740,13 @@ public final class BuiltinModules {
                 if (!matchesHand(choice("block-interact-hand"), hand)) return false;
                 if (MC.level == null) return matchesRegistry("", list("block-interact"), choice("block-interact-mode"));
                 String id = BuiltInRegistries.BLOCK.getKey(MC.level.getBlockState(blockHit.getBlockPos()).getBlock()).toString();
-                return matchesRegistry(id, list("block-interact"), choice("block-interact-mode"));
+                return cancelled(matchesRegistry(id, list("block-interact"), choice("block-interact-mode")), "a block use");
             }
             if (hitResult instanceof EntityHitResult entityHit) {
                 if (!matchesHand(choice("entity-interact-hand"), hand)) return false;
                 if (!entityFilterAllowed(entityHit.getEntity())) return false;
                 String id = BuiltInRegistries.ENTITY_TYPE.getKey(entityHit.getEntity().getType()).toString();
-                return matchesRegistry(id, list("entity-interact"), choice("entity-interact-mode"));
+                return cancelled(matchesRegistry(id, list("entity-interact"), choice("entity-interact-mode")), "an entity use");
             }
             return false;
         }
@@ -3972,10 +4754,10 @@ public final class BuiltinModules {
         @Override
         public boolean onPacketSend(Packet<?> packet) {
             if (packet instanceof ServerboundUseItemOnPacket use) {
-                if (!matchesHand(choice("block-interact-hand"), use.getHand())) return false;
+                if (!matchesHand(choice("block-interact-hand"), DihPackets.hand(use))) return false;
                 if (MC.level == null) return matchesRegistry("", list("block-interact"), choice("block-interact-mode"));
-                String id = BuiltInRegistries.BLOCK.getKey(MC.level.getBlockState(use.getHitResult().getBlockPos()).getBlock()).toString();
-                return matchesRegistry(id, list("block-interact"), choice("block-interact-mode"));
+                String id = BuiltInRegistries.BLOCK.getKey(MC.level.getBlockState(DihPackets.hitResult(use).getBlockPos()).getBlock()).toString();
+                return cancelled(matchesRegistry(id, list("block-interact"), choice("block-interact-mode")), "a block use");
             }
             if (packet instanceof ServerboundPlayerActionPacket action && action.getAction() == ServerboundPlayerActionPacket.Action.START_DESTROY_BLOCK) {
                 return shouldCancelStartBreakingBlock(action.getPos(), action.getDirection());
@@ -3986,7 +4768,7 @@ public final class BuiltinModules {
                 Entity entity = MC.level.getEntity(interact.entityId());
                 if (entity == null || !entityFilterAllowed(entity)) return false;
                 String id = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType()).toString();
-                return matchesRegistry(id, list("entity-interact"), choice("entity-interact-mode"));
+                return cancelled(matchesRegistry(id, list("entity-interact"), choice("entity-interact-mode")), "an entity use");
             }
             return false;
         }
@@ -4018,6 +4800,7 @@ public final class BuiltinModules {
             if (entity == null) return false;
             if (!bool("nametagged") && entity.hasCustomName()) return false;
             if (!bool("babies") && entity instanceof LivingEntity living && living.isBaby()) return false;
+            if (!bool("friends") && TeamsModule.isFriendOrTeam(entity)) return false;
             return true;
         }
     }
@@ -4027,13 +4810,63 @@ public final class BuiltinModules {
 
         OffhandInteractModule() {
             super("offhand-interact-placement", "OffhandInteract", ModuleCategory.PLAYER, "Uses the offhand too.");
-            add(new BoolSetting("cancelMainhand", "Cancel Mainhand", false));
+            add(new BoolSetting("cancelMainhand", "Cancel Mainhand", false).group("General")
+                .description("Only the offhand acts; the main-hand click is not sent"));
+            add(new ChoiceSetting("main-hand", "Main Hand", "Any", "Any", "No Blocks", "Empty")
+                .group("General")
+                .description("What the main hand may hold for the offhand to join in"));
+            add(new BoolSetting("sneak-only", "Sneak Only", false).group("General")
+                .description("Only while you sneak"));
+            add(new BoolSetting("skip-interactables", "Skip Interactables", false).group("General")
+                .description("Leaves chests, doors, buttons and levers to the main hand so they do not toggle twice"));
+
+            add(new ChoiceSetting("offhand-items", "Offhand Items", "Any", "Any", "Blocks Only", "List")
+                .group("Items")
+                .description("Which offhand items get used"));
+            add(RegistryListSetting.items("item-list", "Item List", "")
+                .group("Items")
+                .description("Offhand items that get used")
+                .visibleWhen(() -> "List".equals(choice("offhand-items"))));
+        }
+
+        private boolean conditionsAllow(BlockHitResult hit) {
+            if (bool("sneak-only") && !MC.player.isShiftKeyDown()) return false;
+            ItemStack main = MC.player.getMainHandItem();
+            String mainRule = choice("main-hand");
+            if ("Empty".equals(mainRule) && !main.isEmpty()) return false;
+            if ("No Blocks".equals(mainRule) && main.getItem() instanceof BlockItem) return false;
+            ItemStack off = MC.player.getOffhandItem();
+            String itemRule = choice("offhand-items");
+            if ("Blocks Only".equals(itemRule) && !(off.getItem() instanceof BlockItem)) return false;
+            if ("List".equals(itemRule)) {
+                String id = BuiltInRegistries.ITEM.getKey(off.getItem()).toString();
+                boolean listed = false;
+                for (String entry : list("item-list")) {
+                    if (RegistryListCodec.matches(id, entry)) {
+                        listed = true;
+                        break;
+                    }
+                }
+                if (!listed) return false;
+            }
+            if (bool("skip-interactables") && MC.level != null && hit != null) {
+                BlockPos pos = hit.getBlockPos();
+                BlockState state = MC.level.getBlockState(pos);
+                Block block = state.getBlock();
+                if (state.getMenuProvider(MC.level, pos) != null
+                    || block instanceof net.minecraft.world.level.block.DoorBlock
+                    || block instanceof net.minecraft.world.level.block.TrapDoorBlock
+                    || block instanceof net.minecraft.world.level.block.FenceGateBlock
+                    || block instanceof net.minecraft.world.level.block.ButtonBlock
+                    || block instanceof net.minecraft.world.level.block.LeverBlock) return false;
+            }
+            return true;
         }
 
         @Override
         public boolean onPacketSend(Packet<?> packet) {
             if (sendingSynthetic || MC.gameMode == null || MC.player == null) return false;
-            if (packet instanceof ServerboundUseItemOnPacket use && use.getHand() == InteractionHand.MAIN_HAND) {
+            if (packet instanceof ServerboundUseItemOnPacket use && DihPackets.hand(use) == InteractionHand.MAIN_HAND) {
 
                 if (DihBlinkManager.holdsActionsWithoutMovement()) return false;
 
@@ -4041,7 +4874,9 @@ public final class BuiltinModules {
 
                 if (AutoTotemModule.operationActive()) return false;
 
-                if (ModuleRegistry.shouldCancelUseExcept(use.getHitResult(), InteractionHand.OFF_HAND, id())) return false;
+                if (!conditionsAllow(DihPackets.hitResult(use))) return false;
+
+                if (ModuleRegistry.shouldCancelUseExcept(DihPackets.hitResult(use), InteractionHand.OFF_HAND, id())) return false;
 
                 String placementOwner = DihPlacementTick.owner();
                 if (placementOwner != null && !placementOwner.equals(id())) return false;
@@ -4050,7 +4885,7 @@ public final class BuiltinModules {
                 sendingSynthetic = true;
                 try {
 
-                    MC.gameMode.useItemOn(MC.player, InteractionHand.OFF_HAND, use.getHitResult());
+                    MC.gameMode.useItemOn(MC.player, InteractionHand.OFF_HAND, DihPackets.hitResult(use));
                 } finally {
                     sendingSynthetic = false;
                 }
@@ -4064,19 +4899,36 @@ public final class BuiltinModules {
         private int timer;
         private int index;
 
+        /** The rest of a long message that Auto Split is still sending, piece by piece. */
+        private final java.util.ArrayDeque<String> pendingParts = new java.util.ArrayDeque<>();
+
         SpamModule() {
-            super("spam", "Spam", ModuleCategory.MISC, "Sends timed chat.");
-            add(new StringListSetting("messages", "Messages", "你好，世界！").description("Messages separated by |."));
-            add(new IntSetting("delay", "Delay", 20, 0, 200, 1));
-            add(new BoolSetting("disable-on-leave", "Disable On Leave", true).group("Safety"));
-            add(new BoolSetting("disable-on-disconnect", "Disable On Disconnect", true).group("Safety"));
-            add(new BoolSetting("randomise", "Randomise", false));
-            add(new BoolSetting("auto-split-messages", "Auto Split", false).group("Splitting"));
-            add(new IntSetting("split-length", "Split Length", 256, 8, 256, 8).group("Splitting").visibleWhen(() -> Boolean.parseBoolean(value("auto-split-messages"))).build());
-            add(new IntSetting("split-delay", "Split Delay", 20, 0, 200, 1).group("Splitting").visibleWhen(() -> Boolean.parseBoolean(value("auto-split-messages"))).build());
-            add(new BoolSetting("bypass", "Bypass", false).group("Bypass"));
-            add(new BoolSetting("include-uppercase-characters", "Uppercase", false).group("Bypass").visibleWhen(() -> Boolean.parseBoolean(value("bypass"))).build());
-            add(new IntSetting("length", "Bypass Length", 4, 1, 16, 1).group("Bypass").visibleWhen(() -> Boolean.parseBoolean(value("bypass"))).build());
+            super("spam", "Spam", ModuleCategory.MISC, "Sends your chat messages over and over on a timer.");
+            add(new StringListSetting("messages", "Messages", "Hello, world!")
+                .description("What to send. Separate several messages with |. Start one with / to run it as a command."));
+            add(new IntSetting("delay", "Delay", 20, 0, 200, 1).unit("ticks")
+                .description("Time between messages. 20 ticks = 1 second.").build());
+            add(new BoolSetting("disable-on-leave", "Turn Off On Leave", true).group("Safety")
+                .description("Turns Spam off when you leave the world or get disconnected.").build());
+            add(new BoolSetting("disable-on-disconnect", "Disable On Disconnect", true).group("Safety").visibleWhen(() -> false).build());
+            add(new BoolSetting("randomise", "Random Order", false)
+                .description("Pick a random message each time instead of going in order.").build());
+            add(new BoolSetting("auto-split-messages", "Auto Split", false).group("Splitting")
+                .description("Send messages longer than Split Length in several parts instead of cutting them off.").build());
+            add(new IntSetting("split-length", "Split Length", 256, 8, 256, 8).group("Splitting").unit("characters")
+                .description("Longest part to send. Chat allows 256.")
+                .visibleWhen(() -> Boolean.parseBoolean(value("auto-split-messages"))).build());
+            add(new IntSetting("split-delay", "Split Delay", 20, 0, 200, 1).group("Splitting").unit("ticks")
+                .description("Time between the parts of one message. 20 ticks = 1 second.")
+                .visibleWhen(() -> Boolean.parseBoolean(value("auto-split-messages"))).build());
+            add(new BoolSetting("bypass", "Anti Repeat", false).group("Bypass")
+                .description("Adds random characters to each message so servers don't block it as a repeat.").build());
+            add(new BoolSetting("include-uppercase-characters", "Uppercase", false).group("Bypass")
+                .description("Use capital letters in the random characters too.")
+                .visibleWhen(() -> Boolean.parseBoolean(value("bypass"))).build());
+            add(new IntSetting("length", "Random Length", 4, 1, 16, 1).group("Bypass").unit("characters")
+                .description("How many random characters to add.")
+                .visibleWhen(() -> Boolean.parseBoolean(value("bypass"))).build());
             add(new BoolSetting("uppercase", "Uppercase Legacy", false).group("Bypass").visibleWhen(() -> false).build());
             add(new IntSetting("bypass-length", "Bypass Length Legacy", 4, 1, 16, 1).group("Bypass").visibleWhen(() -> false).build());
         }
@@ -4085,31 +4937,56 @@ public final class BuiltinModules {
         public void onEnable() {
             timer = integer("delay");
             index = 0;
+            pendingParts.clear();
         }
 
         @Override
         public void tick() {
             if (MC.getConnection() == null) return;
             if (timer-- > 0) return;
-            timer = integer("delay");
-            List<String> messages = splitMessages();
-            if (messages.isEmpty()) return;
-            int selected = bool("randomise") ? new Random().nextInt(messages.size()) : index++ % messages.size();
-            String msg = messages.get(selected);
-            if (bool("bypass")) msg += " " + bypassToken();
-            if (bool("auto-split-messages") && msg.length() > integer("split-length")) {
-                int split = Math.max(1, integer("split-length"));
-                msg = msg.substring(0, split);
-                timer = integer("split-delay");
-            } else if (msg.length() > 256) msg = msg.substring(0, 256);
+            String msg;
+            if (!pendingParts.isEmpty()) {
+                msg = pendingParts.removeFirst();
+            } else {
+                List<String> messages = splitMessages();
+                if (messages.isEmpty()) {
+                    timer = integer("delay");
+                    return;
+                }
+                int selected = bool("randomise") ? new Random().nextInt(messages.size()) : index++ % messages.size();
+                msg = messages.get(selected);
+                if (bool("bypass")) msg += " " + bypassToken();
+                if (bool("auto-split-messages") && !msg.startsWith("/")) {
+                    List<String> parts = splitIntoParts(msg, integer("split-length"));
+                    msg = parts.getFirst();
+                    pendingParts.addAll(parts.subList(1, parts.size()));
+                }
+            }
+            if (msg.length() > 256) msg = msg.substring(0, 256);
+            timer = pendingParts.isEmpty() ? integer("delay") : integer("split-delay");
             if (msg.startsWith("/") && msg.length() > 1) MC.getConnection().sendCommand(msg.substring(1));
-
             else dihclient.commands.DihCommands.sendPlainChat(MC.getConnection(), msg);
+        }
+
+        /** Cuts {@code msg} into parts of at most {@code length} characters, at a space when one is close. */
+        static List<String> splitIntoParts(String msg, int length) {
+            int max = Math.max(1, Math.min(256, length));
+            List<String> parts = new ArrayList<>();
+            String rest = msg;
+            while (rest.length() > max) {
+                int cut = rest.lastIndexOf(' ', max);
+                if (cut < max / 2) cut = max;
+                parts.add(rest.substring(0, cut).strip());
+                rest = rest.substring(cut).strip();
+            }
+            if (!rest.isEmpty() || parts.isEmpty()) parts.add(rest);
+            return parts;
         }
 
         @Override
         public void onGameLeft() {
-            if (bool("disable-on-leave") || bool("disable-on-disconnect")) setEnabled(false);
+            pendingParts.clear();
+            if (bool("disable-on-leave")) setEnabled(false);
         }
 
         private List<String> splitMessages() {
@@ -4137,16 +5014,19 @@ public final class BuiltinModules {
         private final Random random = new Random();
 
         BookBotModule() {
-            super("bookbot", "BookBot", ModuleCategory.MISC, "Writes into books.");
-            add(new ChoiceSetting("mode", "Mode", "Random", "Random", "File").description("Random or file text.").build());
-            add(new ChoiceSetting("random-type", "Random Type", "Utf8", "Utf8", "Ascii", "PaperMC").visibleWhen(() -> "Random".equals(value("mode"))).build());
-            add(new IntSetting("pages", "Pages", 100, 1, 100, 1).visibleWhen(() -> "Random".equals(value("mode")) && !"PaperMC".equals(value("random-type"))).build());
-            add(new IntSetting("characters", "Chars/Page", DihBookPayloadBuilder.DEFAULT_CHARS_PER_PAGE, 1, 1024, 16).visibleWhen(() -> "Random".equals(value("mode")) && !"PaperMC".equals(value("random-type"))).build());
-            add(new IntSetting("delay", "Delay", 20, 1, 200, 1));
-            add(new BoolSetting("sign", "Sign", true));
-            add(new StringSetting("name", "Name", "Dih").visibleWhen(() -> Boolean.parseBoolean(value("sign"))).build());
-            add(new BoolSetting("append-count", "Append Count", true).visibleWhen(() -> Boolean.parseBoolean(value("sign"))).build());
-            add(new BoolSetting("word-wrap", "Word Wrap", true).visibleWhen(() -> "File".equals(value("mode"))).build());
+            super("bookbot", "BookBot", ModuleCategory.MISC, "Fills empty book and quills from your inventory with text, one after another.");
+            add(new ChoiceSetting("mode", "Mode", "Random", "Random", "File").description("Random: random characters. File: the text of a .txt file you pick.").build());
+            add(new ChoiceSetting("random-type", "Random Type", "Utf8", "Utf8", "Ascii", "PaperMC")
+                .description("Utf8: any characters (biggest books). Ascii: plain letters and numbers. PaperMC: stays under Paper servers' book size limit.")
+                .visibleWhen(() -> "Random".equals(value("mode"))).build());
+            add(new IntSetting("pages", "Pages", 100, 1, 100, 1).description("Pages per book (a book holds 100).").visibleWhen(() -> "Random".equals(value("mode")) && !"PaperMC".equals(value("random-type"))).build());
+            add(new IntSetting("characters", "Chars/Page", DihBookPayloadBuilder.DEFAULT_CHARS_PER_PAGE, 1, 1024, 16).description("Characters on each page.").visibleWhen(() -> "Random".equals(value("mode")) && !"PaperMC".equals(value("random-type"))).build());
+            add(new IntSetting("delay", "Delay", 20, 1, 200, 1).unit("ticks")
+                .description("Time between books. 20 ticks = 1 second.").build());
+            add(new BoolSetting("sign", "Sign", true).description("Sign each book so it becomes a written book with a title.").build());
+            add(new StringSetting("name", "Name", "Dih").description("Title of the signed books.").visibleWhen(() -> Boolean.parseBoolean(value("sign"))).build());
+            add(new BoolSetting("append-count", "Append Count", true).description("Add #1, #2... to the title so each book is different.").visibleWhen(() -> Boolean.parseBoolean(value("sign"))).build());
+            add(new BoolSetting("word-wrap", "Word Wrap", true).description("Move whole words to the next line instead of breaking them.").visibleWhen(() -> "File".equals(value("mode"))).build());
             add(new StringSetting("file-path", "File", "").visibleWhen(() -> "File".equals(value("mode"))).formatter(BookBotModule::displayFileName).description("Selected file.").filePicker("pick-file"));
             add(new ActionSetting("pick-file", "Pick File", this::pickFile).availableOffline().visibleWhen(() -> false).description("Choose text file.").build());
             add(new StringSetting("text", "Text", "").visibleWhen(() -> false).build());
@@ -4263,21 +5143,8 @@ public final class BuiltinModules {
 
         private void pickFile() {
             String current = text("file-path").trim();
-            PointerBuffer filters = BufferUtils.createPointerBuffer(4);
-            java.nio.ByteBuffer txt = MemoryUtil.memASCII("*.txt");
-            java.nio.ByteBuffer md = MemoryUtil.memASCII("*.md");
-            java.nio.ByteBuffer json = MemoryUtil.memASCII("*.json");
-            java.nio.ByteBuffer nbtTxt = MemoryUtil.memASCII("*.nbt.txt");
-            filters.put(txt).put(md).put(json).put(nbtTxt).rewind();
-            try {
-                String selected = TinyFileDialogs.tinyfd_openFileDialog("BookBot Text File", current.isBlank() ? null : current, filters, "Text files", false);
-                if (selected != null && !selected.isBlank()) setValue("file-path", selected);
-            } finally {
-                MemoryUtil.memFree(txt);
-                MemoryUtil.memFree(md);
-                MemoryUtil.memFree(json);
-                MemoryUtil.memFree(nbtTxt);
-            }
+            DihFileDialogs.openFile("BookBot Text File", current, java.util.List.of("txt", "md", "json", "nbt.txt"),
+                "Text files", selected -> setValue("file-path", selected));
         }
 
         private String fileSelectionFailureMessage() {
@@ -4378,7 +5245,15 @@ public final class BuiltinModules {
     static final class AutoReconnectModule extends Module {
         AutoReconnectModule() {
             super("auto-reconnect", "AutoReconnect", ModuleCategory.MISC, "Reconnects after disconnect.");
-            add(new DoubleSetting("delay", "Delay Sec", 3.5, 0.0, 60.0, 0.5));
+            add(new DoubleSetting("delay", "Delay Sec", 3.5, 0.0, 60.0, 0.5)
+                .description("Seconds to wait before reconnecting."));
+            add(new BoolSetting("randomize", "Random Extra", false)
+                .description("Add a random extra wait on top of the delay."));
+            add(new DoubleSetting("random-max", "Max Extra Sec", 2.0, 0.5, 30.0, 0.5)
+                .description("Largest random extra wait that can be added.")
+                .visibleWhen(() -> bool("randomize")));
+            add(new IntSetting("max-attempts", "Max Attempts", 0, 0, 50, 1)
+                .description("Stop after this many reconnects without a successful join; 0 is unlimited."));
         }
     }
 
@@ -4392,20 +5267,26 @@ public final class BuiltinModules {
             add(new StringSetting("nbt-shortcut", "NBT Shortcut", "Ctrl+Shift+Right-click").group("Info").readonlySummary());
             add(new BoolSetting("block-nbt-inspect", "Block NBT Inspect", false).group("Info").description("Ctrl+Shift+Right-click blocks.").build());
             add(new BoolSetting("open-contents", "Open Contents", true).group("Containers").description("Preview only.").visibleWhen(() -> false).build());
-            add(new BoolSetting("containers", "Containers", true).group("Containers"));
+            add(new BoolSetting("nbt-hint", "NBT Hint", true).group("Info").description("Shows the NBT shortcut line.").build());
+            add(new BoolSetting("containers", "Containers", true).group("Containers").description("Stack count of shulkers and other containers.").build());
             add(new BoolSetting("compact-shulker-tooltip", "Compact Shulker", true).group("Containers").description("Compact counts.").build());
             add(new BoolSetting("echests", "Ender Chests", true).group("Containers").description("Server-side data.").visibleWhen(() -> false).build());
-            add(new BoolSetting("maps", "Maps", true).group("Items"));
+            add(new BoolSetting("maps", "Maps", true).group("Items").description("Map id.").build());
             add(new DoubleSetting("map-scale", "Map Scale", 1.0, 0.5, 4.0, 0.1).group("Items").description("Map preview scale.").visibleWhen(() -> false).build());
-            add(new BoolSetting("books", "Books", true).group("Items"));
-            add(new BoolSetting("banners", "Banners", true).group("Items"));
-            add(new BoolSetting("buckets", "Buckets", true).group("Items"));
-            add(new BoolSetting("bundles", "Bundles", true).group("Items"));
-            add(new BoolSetting("minecraft-name", "Minecraft Name", true).group("Info"));
-            add(new BoolSetting("durability", "Durability", true).group("Info"));
-            add(new BoolSetting("food-info", "Food Info", true).group("Info"));
-            add(new BoolSetting("byte-size", "Byte Size", true).group("Info"));
-            add(new ChoiceSetting("byte-size-format", "Byte Format", "Both", "Raw", "Rounded", "Both").group("Info").build());
+            add(new BoolSetting("books", "Books", true).group("Items").description("Page count of books.").build());
+            add(new BoolSetting("banners", "Banners", true).group("Items").description("Banner patterns.").build());
+            add(new BoolSetting("buckets", "Buckets", true).group("Items").description("Marks buckets holding a mob.").build());
+            add(new BoolSetting("bundles", "Bundles", true).group("Items").description("Stack count of bundles.").build());
+            add(new BoolSetting("minecraft-name", "Minecraft Name", true).group("Info").description("The item's id, such as minecraft:stone.").build());
+            add(new BoolSetting("durability", "Durability", true).group("Info").description("Uses left out of the total.").build());
+            add(new BoolSetting("durability-percent", "Durability %", false).group("Info")
+                .description("Adds the uses left as a percentage.").visibleWhen(() -> bool("durability")).build());
+            add(new BoolSetting("repair-cost", "Repair Cost", false).group("Info")
+                .description("Anvil repair cost in levels, when the item has one.").build());
+            add(new BoolSetting("food-info", "Food Info", true).group("Info").description("Hunger and saturation restored.").build());
+            add(new BoolSetting("byte-size", "Byte Size", true).group("Info").description("How big the item's data is.").build());
+            add(new ChoiceSetting("byte-size-format", "Byte Format", "Both", "Raw", "Rounded", "Both").group("Info")
+                .description("Bytes, KiB, or both.").visibleWhen(() -> bool("byte-size")).build());
             if (firstInstall) setEnabledSilently(true);
         }
 
@@ -4414,12 +5295,17 @@ public final class BuiltinModules {
         public void appendTooltip(ItemStack stack, List<?> lines) {
             if (stack == null || stack.isEmpty()) return;
             List raw = lines;
-            raw.add(Component.literal("NBT: Ctrl+Shift+Right-click").withStyle(ChatFormatting.DARK_GRAY));
+            if (bool("nbt-hint")) raw.add(Component.literal("NBT: Ctrl+Shift+Right-click").withStyle(ChatFormatting.DARK_GRAY));
             if (bool("minecraft-name")) raw.add(Component.literal(BuiltInRegistries.ITEM.getKey(stack.getItem()).toString()).withStyle(ChatFormatting.DARK_GRAY));
             if (bool("durability") && stack.isDamageableItem()) {
                 int maxDamage = Math.max(1, stack.getMaxDamage());
                 int remaining = Math.max(0, maxDamage - stack.getDamageValue());
-                raw.add(Component.literal("Durability: " + remaining + " / " + maxDamage).withStyle(ChatFormatting.GRAY));
+                String percent = bool("durability-percent") ? " (" + Math.round(remaining * 100.0 / maxDamage) + "%)" : "";
+                raw.add(Component.literal("Durability: " + remaining + " / " + maxDamage + percent).withStyle(ChatFormatting.GRAY));
+            }
+            if (bool("repair-cost")) {
+                Integer cost = stack.get(DataComponents.REPAIR_COST);
+                if (cost != null && cost > 0) raw.add(Component.literal("Repair cost: " + cost).withStyle(ChatFormatting.GRAY));
             }
             if (bool("food-info") && stack.has(DataComponents.FOOD)) {
                 FoodProperties food = stack.get(DataComponents.FOOD);
@@ -4484,13 +5370,19 @@ public final class BuiltinModules {
         private String lastLightType = "";
         private int lastMinimumLightLevel = Integer.MIN_VALUE;
         private boolean appliedNightVision;
+        private boolean lastShowIcon = true;
 
         FullbrightModule() {
             super("fullbright", "Fullbright", ModuleCategory.RENDER, "Brightens the world.");
             boolean firstInstall = !DihConfig.getGlobal().modules.containsKey("fullbright");
-            add(new ChoiceSetting("mode", "Mode", "Gamma", "Gamma", "Potion", "Luminance").description("How lighting is boosted.").build());
-            add(new ChoiceSetting("light-type", "Light Type", "BLOCK", "SKY", "BLOCK").visibleWhen(() -> "Luminance".equals(value("mode"))).build());
-            add(new IntSetting("minimum-light-level", "Min Light", 8, 0, 15, 1).visibleWhen(() -> "Luminance".equals(value("mode"))).build());
+            add(new ChoiceSetting("mode", "Mode", "Gamma", "Gamma", "Potion", "Luminance").group("General")
+                .description("How lighting is boosted.").build());
+            add(new BoolSetting("show-icon", "Effect Icon", true).group("General")
+                .description("Shows the night vision icon.").visibleWhen(() -> "Potion".equals(value("mode"))).build());
+            add(new ChoiceSetting("light-type", "Light Type", "BLOCK", "SKY", "BLOCK").group("General")
+                .description("Which light to raise.").visibleWhen(() -> "Luminance".equals(value("mode"))).build());
+            add(new IntSetting("minimum-light-level", "Min Light", 8, 0, 15, 1).group("General")
+                .description("Lowest light level anywhere.").visibleWhen(() -> "Luminance".equals(value("mode"))).build());
             if (firstInstall) setEnabledSilently(true);
         }
 
@@ -4511,6 +5403,11 @@ public final class BuiltinModules {
             String mode = choice("mode");
             String lightType = choice("light-type");
             int minimumLightLevel = integer("minimum-light-level");
+            if (appliedNightVision && bool("show-icon") != lastShowIcon) {
+                disableNightVision();
+                appliedNightVision = false;
+            }
+            lastShowIcon = bool("show-icon");
             boolean changed = !mode.equals(lastMode)
                 || !lightType.equals(lastLightType)
                 || minimumLightLevel != lastMinimumLightLevel;
@@ -4542,7 +5439,7 @@ public final class BuiltinModules {
             if (instance != null) {
                 if (instance.getDuration() < 420) ((DihMobEffectInstanceAccessor) instance).dih$setDuration(420);
             } else {
-                MC.player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 420, 0));
+                MC.player.addEffect(new MobEffectInstance(MobEffects.NIGHT_VISION, 420, 0, false, true, bool("show-icon")));
             }
             appliedNightVision = true;
         }
@@ -4577,6 +5474,10 @@ public final class BuiltinModules {
                 .description("Only exposed ores.").visibleWhen(() -> tintStyle() && !oreSimMode()).build());
             add(new BoolSetting("fill", "Fill", true)
                 .description("Shade box interiors.").visibleWhen(this::espStyle).build());
+            add(new IntSetting("fill-opacity", "Fill Opacity", 30, 5, 100, 5).unit("%")
+                .description("How solid the box fill is.").visibleWhen(() -> espStyle() && bool("fill")).build());
+            add(new DoubleSetting("line-width", "Line Width", 1.5, 0.5, 6.0, 0.25)
+                .description("Box edge thickness.").visibleWhen(this::espStyle).build());
 
             add(new StringSetting("oresim-seed", "World Seed", "")
                 .description("Seed for this world")
@@ -4685,16 +5586,36 @@ public final class BuiltinModules {
     static final class FreecamModule extends Module {
         FreecamModule() {
             super("freecam", "Freecam", ModuleCategory.RENDER, "Move the camera away from the player.");
-            add(new DoubleSetting("speed", "Speed", 1.0, 0.05, 30.0, 0.05).description("Horizontal camera speed."));
-            add(new DoubleSetting("vertical-speed", "Vertical Speed", 1.0, 0.05, 30.0, 0.05).description("Vertical camera speed."));
-            add(new BoolSetting("reload-chunks", "Reload Chunks", true).description("Refresh chunk culling."));
-            add(new BoolSetting("interact", "Interact", true).description("Interact from freecam view"));
+            add(new DoubleSetting("speed", "Speed", 1.0, 0.05, 30.0, 0.05).group("Movement").description("Horizontal camera speed."));
+            add(new DoubleSetting("vertical-speed", "Vertical Speed", 1.0, 0.05, 30.0, 0.05).group("Movement")
+                .description("Vertical camera speed."));
+            add(new IntSetting("walk-speed", "Walk Speed", 50, 5, 100, 5).unit("%").group("Movement")
+                .description("Speed without sprint, as a share of the full speed."));
+            add(new BoolSetting("follow-pitch", "Follow Pitch", false).group("Movement")
+                .description("Forward moves where you look, up and down included."));
+            add(new BoolSetting("scroll-speed", "Scroll Speed", true).group("Movement")
+                .description("Scroll the wheel to change the speed."));
+            add(new DoubleSetting("scroll-step", "Scroll Step", 0.5, 0.05, 5.0, 0.05).group("Movement")
+                .description("Speed change per scroll notch.").visibleWhen(() -> bool("scroll-speed")));
+            add(new IntSetting("sensitivity", "Sensitivity", 100, 10, 300, 5).unit("%").group("Movement")
+                .description("How fast the camera turns."));
+
+            add(new BoolSetting("reload-chunks", "Reload Chunks", true).group("General").description("Refresh chunk culling."));
+            add(new BoolSetting("interact", "Interact", true).group("General").description("Interact from freecam view"));
+            add(new BoolSetting("disable-on-damage", "Disable On Damage", false).group("General")
+                .description("Turns off when you take damage."));
+            add(new BoolSetting("disable-on-death", "Disable On Death", true).group("General")
+                .description("Turns off when you die."));
         }
+
+        private float lastHealth = -1.0F;
 
         @Override
         public void onEnable() {
             PackFreecamState.enable(bool("reload-chunks"));
             PackFreecamState.setInteractEnabled(bool("interact"));
+            PackFreecamState.setSensitivity(integer("sensitivity") / 100.0);
+            lastHealth = MC.player == null ? -1.0F : MC.player.getHealth();
         }
 
         @Override
@@ -4705,6 +5626,7 @@ public final class BuiltinModules {
         @Override
         public void onOptionValueChanged(String settingId) {
             if ("interact".equals(settingId)) PackFreecamState.setInteractEnabled(bool("interact"));
+            if ("sensitivity".equals(settingId)) PackFreecamState.setSensitivity(integer("sensitivity") / 100.0);
         }
 
         @Override
@@ -4715,14 +5637,22 @@ public final class BuiltinModules {
         @Override
         public void tick() {
 
-            if (MC.player != null && MC.player.isDeadOrDying()) {
+            if (MC.player == null) return;
+            if (bool("disable-on-death") && MC.player.isDeadOrDying()) {
                 disableWithToggleMessage("Freecam disabled: you died.");
+                return;
             }
+            float health = MC.player.getHealth();
+            if (bool("disable-on-damage") && lastHealth >= 0.0F && health < lastHealth) {
+                disableWithToggleMessage("Freecam disabled: you took damage.");
+            }
+            lastHealth = health;
         }
 
         @Override
         public void preMovementTick() {
-            PackFreecamState.tickMovement(decimal("speed"), decimal("vertical-speed"));
+            PackFreecamState.tickMovement(decimal("speed"), decimal("vertical-speed"),
+                integer("walk-speed") / 100.0, bool("follow-pitch"));
         }
 
         @Override
@@ -4739,23 +5669,52 @@ public final class BuiltinModules {
     static final class EspModule extends Module {
         EspModule() {
             super("esp", "ESP", ModuleCategory.RENDER, "Highlights entities.");
-            add(new ChoiceSetting("mode", "Mode", "2D", "Shader", "2D").description("Entity highlight style.").build());
-            add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player").group("General").build());
-            add(new BoolSetting("fill", "Fill", false).group("General")
-                .visibleWhen(() -> "2D".equals(choice("mode"))).build());
-            add(new DoubleSetting("fade-distance", "Fade Distance", 3.0, 0.0, 12.0, 0.25).group("General"));
-            add(new ColorSetting("players-color", "Players", 0xCCFFFFFF).group("Colors"));
-            add(new ColorSetting("animals-color", "Animals", 0xCC74FF8F).group("Colors"));
-            add(new ColorSetting("water-animals-color", "Water Animals", 0xCC66D9FF).group("Colors"));
-            add(new ColorSetting("monsters-color", "Monsters", 0xCCFF4A4A).group("Colors"));
-            add(new ColorSetting("ambient-color", "Ambient", 0xCCB78CFF).group("Colors"));
-            add(new ColorSetting("misc-color", "Misc", 0xCCCCCCCC).group("Colors"));
+            add(new ChoiceSetting("mode", "Mode", "2D", "Shader", "2D").group("General")
+                .description("Entity highlight style.").build());
+            add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player").group("General")
+                .description("Entities to highlight.").build());
+            add(new DoubleSetting("max-distance", "Max Distance", 0.0, 0.0, 512.0, 8.0).group("General")
+                .description("Farthest entity highlighted; 0 is no limit.").build());
+            add(new DoubleSetting("fade-distance", "Fade Distance", 3.0, 0.0, 12.0, 0.25).group("General")
+                .description("Fades entities closer than this to the camera.").build());
+            add(new BoolSetting("ignore-invisible", "Ignore Invisible", false).group("General")
+                .description("Skips invisible entities.").build());
+
+            add(new ChoiceSetting("box-style", "Box Style", "Full", "Full", "Corners").group("2D")
+                .description("Whole box or only its corners.").visibleWhen(() -> "2D".equals(choice("mode"))).build());
+            add(new BoolSetting("fill", "Fill", false).group("2D")
+                .description("Shade inside the box.").visibleWhen(() -> "2D".equals(choice("mode"))).build());
+            add(new IntSetting("fill-alpha", "Fill Alpha", 50, 5, 255, 5).group("2D")
+                .description("Fill strength out of 255.").visibleWhen(() -> "2D".equals(choice("mode")) && bool("fill")).build());
+            add(new BoolSetting("border", "Border", true).group("2D")
+                .description("Black edge around the box.").visibleWhen(() -> "2D".equals(choice("mode"))).build());
+            add(new BoolSetting("health-bar", "Health Bar", true).group("2D")
+                .description("Health bar beside living entities.").visibleWhen(() -> "2D".equals(choice("mode"))).build());
+            add(new BoolSetting("smooth", "Smooth", true).group("2D")
+                .description("Eases the box between frames.").visibleWhen(() -> "2D".equals(choice("mode"))).build());
+
+            add(new BoolSetting("distance-color", "Distance Color", false).group("Colors")
+                .description("Colour by distance, red near to green far.").build());
+            add(new IntSetting("color-distance", "Color Distance", 40, 8, 256, 4).group("Colors")
+                .description("Distance that counts as far.").visibleWhen(() -> bool("distance-color")).build());
+            add(new ColorSetting("players-color", "Players", 0xCCFFFFFF).group("Colors")
+                .description("Player colour.").visibleWhen(() -> !bool("distance-color")).build());
+            add(new ColorSetting("animals-color", "Animals", 0xCC74FF8F).group("Colors")
+                .description("Passive mob colour.").visibleWhen(() -> !bool("distance-color")).build());
+            add(new ColorSetting("water-animals-color", "Water Animals", 0xCC66D9FF).group("Colors")
+                .description("Water mob colour.").visibleWhen(() -> !bool("distance-color")).build());
+            add(new ColorSetting("monsters-color", "Monsters", 0xCCFF4A4A).group("Colors")
+                .description("Hostile mob colour.").visibleWhen(() -> !bool("distance-color")).build());
+            add(new ColorSetting("ambient-color", "Ambient", 0xCCB78CFF).group("Colors")
+                .description("Bat and other ambient mob colour.").visibleWhen(() -> !bool("distance-color")).build());
+            add(new ColorSetting("misc-color", "Misc", 0xCCCCCCCC).group("Colors")
+                .description("Colour for everything else.").visibleWhen(() -> !bool("distance-color")).build());
 
             add(new BoolSetting("skeleton", "Skeleton", false).group("Skeleton")
                 .description("Draw animated skeletons.").build());
             add(new ChoiceSetting("skeleton-color-mode", "Color Mode", "Static", "Static", "Distance")
                 .group("Skeleton").visibleWhen(() -> bool("skeleton")).description("Skeleton color source.").build());
-            add(new ColorSetting("skeleton-color", "Color", 0xFFFFFFFF).group("Skeleton")
+            add(new ColorSetting("skeleton-color", "Color", 0xFFFFFFFF).group("Skeleton").description("Skeleton colour.")
                 .visibleWhen(() -> bool("skeleton") && "Static".equals(value("skeleton-color-mode"))));
             add(new DoubleSetting("skeleton-width", "Line Width", 2.0, 1.0, 6.0, 0.25).group("Skeleton")
                 .visibleWhen(() -> bool("skeleton")).description("Skeleton line thickness.").build());
@@ -4765,24 +5724,39 @@ public final class BuiltinModules {
     static final class ItemEspModule extends Module {
         ItemEspModule() {
             super("item-esp", "ItemESP", ModuleCategory.RENDER, "Outlines dropped items with the shader outline.");
-            add(new ChoiceSetting("mode", "Mode", "Shader", "Shader").description("Dropped item highlight style.").build());
+            add(new ChoiceSetting("mode", "Mode", "Shader", "Shader").group("General")
+                .description("Dropped item highlight style.").build());
             add(new ChoiceSetting("items-mode", "Items", "All", "All", "Some").group("General").description("Which items to outline").build());
             add(RegistryListSetting.items("items", "Item List", "")
                 .group("General")
                 .visibleWhen(() -> "Some".equals(value("items-mode")))
                 .description("Item ids to outline")
                 .build());
+            add(new IntSetting("min-count", "Min Stack", 1, 1, 64, 1)
+                .group("General")
+                .description("Skips stacks smaller than this")
+                .build());
+            add(new BoolSetting("enchanted-only", "Enchanted Only", false)
+                .group("General")
+                .description("Only enchanted items")
+                .build());
             add(new DoubleSetting("max-distance", "Max Distance", 64.0, 0.0, 256.0, 1.0)
                 .group("General")
                 .description("0 = unlimited.")
                 .build());
-            add(new DoubleSetting("fade-distance", "Fade Distance", 3.0, 0.0, 12.0, 0.25).group("General"));
+            add(new DoubleSetting("fade-distance", "Fade Distance", 3.0, 0.0, 12.0, 0.25).group("General")
+                .description("Fades items closer than this to the camera.").build());
+            add(new BoolSetting("tracers", "Tracers", false).group("Tracers")
+                .description("Line to each outlined item").build());
+            add(new DoubleSetting("tracer-width", "Tracer Width", 2.0, 1.0, 6.0, 0.25).group("Tracers")
+                .description("Line thickness").visibleWhen(() -> bool("tracers")).build());
             add(new ChoiceSetting("color-mode", "Color Mode", "Dynamic", "Dynamic", "Static")
                 .group("Colors")
-                .description("Color mode")
+                .description("Dynamic colours each item by what it is")
                 .build());
             add(new ColorSetting("color", "Color", 0xCCFFD76A)
                 .group("Colors")
+                .description("Outline colour")
                 .visibleWhen(() -> "Static".equals(value("color-mode"))));
         }
     }
@@ -4790,19 +5764,33 @@ public final class BuiltinModules {
     static final class TracersModule extends Module {
         TracersModule() {
             super("tracers", "Tracers", ModuleCategory.RENDER, "Draws tracer lines to entities.");
-            add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player").description("Traced entities.").build());
-            add(new IntSetting("max-distance", "Max Distance", 256, 0, 512, 16));
+            add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player").group("General")
+                .description("Traced entities.").build());
+            add(new IntSetting("max-distance", "Max Distance", 256, 0, 512, 16).group("General")
+                .description("Farthest entity traced; 0 is no limit."));
+            add(new BoolSetting("ignore-invisible", "Ignore Invisible", false).group("General")
+                .description("Skips invisible entities."));
+            add(new ChoiceSetting("target-point", "Target", "Feet", "Feet", "Body", "Head").group("General")
+                .description("Where on the entity the line ends.").build());
             add(new DoubleSetting("line-width", "Line Width", 2.0, 2.0, 6.0, 0.25).group("General").description("Tracer thickness."));
             add(new BoolSetting("height-line", "Height Line", false).group("General").description("Vertical line up the entity."));
+            add(new IntSetting("opacity", "Opacity", 100, 10, 100, 5).unit("%").group("Colors")
+                .description("Line opacity."));
             add(new BoolSetting("distance-color", "Distance Color", false).group("Colors").description("Color by distance"));
             add(new IntSetting("color-distance", "Color Distance", 40, 8, 256, 4).group("Colors")
                 .description("Far color distance").visibleWhen(() -> bool("distance-color")));
-            add(new ColorSetting("players-color", "Players", 0xCCFFFFFF).group("Colors").visibleWhen(() -> !bool("distance-color")));
-            add(new ColorSetting("animals-color", "Animals", 0xCC74FF8F).group("Colors").visibleWhen(() -> !bool("distance-color")));
-            add(new ColorSetting("water-animals-color", "Water Animals", 0xCC66D9FF).group("Colors").visibleWhen(() -> !bool("distance-color")));
-            add(new ColorSetting("monsters-color", "Monsters", 0xCCFF4A4A).group("Colors").visibleWhen(() -> !bool("distance-color")));
-            add(new ColorSetting("ambient-color", "Ambient", 0xCCB78CFF).group("Colors").visibleWhen(() -> !bool("distance-color")));
-            add(new ColorSetting("misc-color", "Misc", 0xCCCCCCCC).group("Colors").visibleWhen(() -> !bool("distance-color")));
+            add(new ColorSetting("players-color", "Players", 0xCCFFFFFF).group("Colors").description("Player colour.")
+                .visibleWhen(() -> !bool("distance-color")));
+            add(new ColorSetting("animals-color", "Animals", 0xCC74FF8F).group("Colors").description("Passive mob colour.")
+                .visibleWhen(() -> !bool("distance-color")));
+            add(new ColorSetting("water-animals-color", "Water Animals", 0xCC66D9FF).group("Colors").description("Water mob colour.")
+                .visibleWhen(() -> !bool("distance-color")));
+            add(new ColorSetting("monsters-color", "Monsters", 0xCCFF4A4A).group("Colors").description("Hostile mob colour.")
+                .visibleWhen(() -> !bool("distance-color")));
+            add(new ColorSetting("ambient-color", "Ambient", 0xCCB78CFF).group("Colors").description("Ambient mob colour.")
+                .visibleWhen(() -> !bool("distance-color")));
+            add(new ColorSetting("misc-color", "Misc", 0xCCCCCCCC).group("Colors").description("Colour for everything else.")
+                .visibleWhen(() -> !bool("distance-color")));
         }
 
         @Override
@@ -4821,19 +5809,26 @@ public final class BuiltinModules {
             super("storage-esp", "StorageESP", ModuleCategory.RENDER, "Highlights chests, shulkers, and other storage.");
 
             add(new BoolSetting("fill", "Fill", false).group("General").description("Draw translucent filled boxes."));
+            add(new IntSetting("fill-opacity", "Fill Opacity", 30, 5, 100, 5).unit("%").group("General")
+                .description("How solid the fill is.").visibleWhen(() -> bool("fill")));
+            add(new BoolSetting("outline", "Outline", true).group("General").description("Draw the box edges."));
+            add(new DoubleSetting("line-width", "Line Width", 1.5, 0.5, 6.0, 0.25).group("General")
+                .description("Edge thickness.").visibleWhen(() -> bool("outline")));
             add(new BoolSetting("meshing", "Meshing", true).group("General")
                 .description("Merge adjacent storage."));
 
             add(new BoolSetting("tracers", "Tracers", false).group("Tracers").description("Line to each target"));
+            add(new DoubleSetting("tracer-width", "Tracer Width", 2.0, 1.0, 6.0, 0.25).group("Tracers")
+                .description("Line thickness.").visibleWhen(() -> bool("tracers")));
 
             add(RegistryListSetting.storages("storage-list", "Storage", ModuleStorageEsp.DEFAULT_VALUE)
                 .group("Storage").description("Blocks and entities"));
 
             add(new ColorSetting("chest-color", "Chest", 0xCCFFA000).group("Colors").description("Chest + chest minecart/boat."));
-            add(new ColorSetting("trapped-chest-color", "Trapped Chest", 0xCCFF2020).group("Colors"));
-            add(new ColorSetting("ender-chest-color", "Ender Chest", 0xCC7800FF).group("Colors"));
-            add(new ColorSetting("barrel-color", "Barrel", 0xCCFFA000).group("Colors"));
-            add(new ColorSetting("shulker-color", "Shulker Box", 0xCCB766FF).group("Colors"));
+            add(new ColorSetting("trapped-chest-color", "Trapped Chest", 0xCCFF2020).group("Colors").description("Trapped chests."));
+            add(new ColorSetting("ender-chest-color", "Ender Chest", 0xCC7800FF).group("Colors").description("Ender chests."));
+            add(new ColorSetting("barrel-color", "Barrel", 0xCCFFA000).group("Colors").description("Barrels."));
+            add(new ColorSetting("shulker-color", "Shulker Box", 0xCCB766FF).group("Colors").description("Shulker boxes."));
             add(new ColorSetting("hopper-color", "Hopper", 0xCC7C8AFF).group("Colors").description("Hopper + minecart."));
             add(new ColorSetting("dispenser-color", "Dispenser", 0xCCB04848).group("Colors").description("Dispenser + dropper."));
             add(new ColorSetting("furnace-color", "Furnace", 0xCCCCB266).group("Colors").description("Furnaces + brewing stand."));
@@ -4841,7 +5836,8 @@ public final class BuiltinModules {
             add(new ColorSetting("other-color", "Other", 0xFF8C8C8C).group("Colors").description("Fallback."));
 
             for (ModuleStorageStructures.Structure structure : ModuleStorageStructures.ALL) {
-                add(new BoolSetting(structure.settingId(), structure.label(), false).group("Ignore Structures"));
+                add(new BoolSetting(structure.settingId(), structure.label(), false).group("Ignore Structures")
+                    .description("Hides storage generated in this structure."));
             }
         }
     }
@@ -4851,15 +5847,23 @@ public final class BuiltinModules {
             super("spawner-esp", "SpawnerESP", ModuleCategory.RENDER, "Highlights monster spawners by spawned mob.");
 
             add(new BoolSetting("fill", "Fill", false).group("General").description("Draw translucent filled boxes."));
+            add(new IntSetting("fill-opacity", "Fill Opacity", 30, 5, 100, 5).unit("%").group("General")
+                .description("How solid the fill is.").visibleWhen(() -> bool("fill")));
+            add(new BoolSetting("outline", "Outline", true).group("General").description("Draw the box edges."));
+            add(new DoubleSetting("line-width", "Line Width", 1.5, 0.5, 6.0, 0.25).group("General")
+                .description("Edge thickness.").visibleWhen(() -> bool("outline")));
             add(new BoolSetting("meshing", "Meshing", true).group("General")
                 .description("Merge adjacent spawners."));
             add(new BoolSetting("tracers", "Tracers", false).group("Tracers").description("Line to each spawner"));
+            add(new DoubleSetting("tracer-width", "Tracer Width", 2.0, 1.0, 6.0, 0.25).group("Tracers")
+                .description("Line thickness.").visibleWhen(() -> bool("tracers")));
             add(RegistryListSetting.entityTypes("spawner-list", "Spawners", ModuleSpawnerEsp.NATURAL_DEFAULT_VALUE)
                 .group("Spawners").description("Mobs to highlight."));
 
             for (ModuleSpawnerEsp.NaturalTarget target : ModuleSpawnerEsp.NATURAL) {
                 String id = target.id();
                 add(new ColorSetting("color-" + id, target.label(), target.color()).group("Colors")
+                    .description("Spawners of this mob.")
                     .visibleWhen(() -> ModuleSpawnerEsp.enabledContains(this, id)));
             }
         }
@@ -4890,12 +5894,19 @@ public final class BuiltinModules {
             add(new BoolSetting("fill", "Fill", false)
                 .group("General")
                 .description("Draw translucent filled boxes."));
+            add(new IntSetting("fill-opacity", "Fill Opacity", 30, 5, 100, 5).unit("%").group("General")
+                .description("How solid the fill is.").visibleWhen(() -> bool("fill")));
+            add(new BoolSetting("outline", "Outline", true).group("General").description("Draw the box edges."));
+            add(new DoubleSetting("line-width", "Line Width", 1.5, 0.5, 6.0, 0.25).group("General")
+                .description("Edge thickness.").visibleWhen(() -> bool("outline")));
             add(new BoolSetting("meshing", "Meshing", true)
                 .group("General")
                 .description("Merge adjacent targets."));
             add(new BoolSetting("tracers", "Tracers", false)
                 .group("Tracers")
                 .description("Line to each target"));
+            add(new DoubleSetting("tracer-width", "Tracer Width", 2.0, 1.0, 6.0, 0.25).group("Tracers")
+                .description("Line thickness.").visibleWhen(() -> bool("tracers")));
             add(RegistryListSetting.blocks("blocks", "Blocks", "minecraft:diamond_ore")
                 .group("Blocks")
                 .description("Blocks to highlight."));
@@ -5270,14 +6281,9 @@ public final class BuiltinModules {
         }
 
         public void loadForceOpPasswords() {
-            org.lwjgl.system.MemoryStack stack = org.lwjgl.system.MemoryStack.stackPush();
-            try {
-                org.lwjgl.PointerBuffer filters = stack.mallocPointer(1);
-                java.nio.ByteBuffer txt = org.lwjgl.system.MemoryUtil.memASCII("*.txt");
-                filters.put(txt).rewind();
+            DihFileDialogs.openFile("Load Passwords", null, java.util.List.of("txt"), "Text files", selected -> {
                 try {
-                    String selected = org.lwjgl.util.tinyfd.TinyFileDialogs.tinyfd_openFileDialog("Load Passwords", null, filters, "Text files", false);
-                    if (selected != null && !selected.isBlank()) {
+                    {
                         java.util.List<String> loadedPWs = java.nio.file.Files.readAllLines(java.nio.file.Paths.get(selected), java.nio.charset.StandardCharsets.UTF_8);
                         java.util.Set<String> parsed = new java.util.LinkedHashSet<>();
                         for (String line : loadedPWs) {
@@ -5297,12 +6303,8 @@ public final class BuiltinModules {
                     DihClientMessaging.sendPrefixed("Admin Tools: Failed to load passwords.");
                     forceOpPasswords = defaultForceOpList;
                     forceOpIndex = 0;
-                } finally {
-                    org.lwjgl.system.MemoryUtil.memFree(txt);
                 }
-            } finally {
-                stack.close();
-            }
+            });
         }
 
         public void unloadForceOpPasswords() {
@@ -5920,7 +6922,7 @@ public final class BuiltinModules {
         private <T> T explicitComponent(ItemStack stack, net.minecraft.core.component.DataComponentType<T> type) {
             if (stack == null || stack.isEmpty() || type == null) return null;
             for (Map.Entry<net.minecraft.core.component.DataComponentType<?>, Optional<?>> entry
-                : stack.getComponentsPatch().entrySet()) {
+                : DihItems.patchEntries(stack.getComponentsPatch()).entrySet()) {
                 if (entry.getKey() == type) return (T) entry.getValue().orElse(null);
             }
             return null;

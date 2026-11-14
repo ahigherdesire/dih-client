@@ -21,19 +21,19 @@ public final class Scrollbar {
         render(context, metrics, false, dragging);
     }
 
-    private static final int THUMB_GRAY = 0xFF9BA0A8;
+    private static final int THUMB_GRAY = 0xB09BA0A8;
     private static final int THUMB_GRAY_ACTIVE = 0xFFC9CDD4;
 
     public static void render(UiContext context, Metrics metrics, boolean hovered, boolean dragging) {
         if (metrics == null || metrics.maxScroll() <= 0) return;
 
-        UiRenderer.rect(context.graphics(), metrics.track(), 0x2EFFFFFF);
+        UiBounds track = metrics.track();
         UiBounds thumb = metrics.thumb();
         boolean active = hovered || dragging;
-
-        int width = active ? thumb.width() : Math.max(2, thumb.width() - 2);
+        int width = active ? Math.max(3, thumb.width() - 2) : Math.max(2, thumb.width() - 3);
         int x = thumb.x() + (thumb.width() - width) / 2;
-        UiRenderer.rect(context.graphics(), UiBounds.of(x, thumb.y(), width, thumb.height()),
+        UiRenderer.rounded(context.graphics(), UiBounds.of(x, track.y(), width, track.height()), width / 2, 0x14FFFFFF);
+        UiRenderer.rounded(context.graphics(), UiBounds.of(x, thumb.y(), width, thumb.height()), width / 2,
             active ? THUMB_GRAY_ACTIVE : THUMB_GRAY);
     }
 

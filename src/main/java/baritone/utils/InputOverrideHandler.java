@@ -22,6 +22,7 @@ import baritone.api.BaritoneAPI;
 import baritone.api.event.events.TickEvent;
 import baritone.api.utils.IInputOverrideHandler;
 import baritone.api.utils.input.Input;
+import baritone.parkour.exec.ParkourExecutor;
 import baritone.behavior.Behavior;
 import net.minecraft.client.player.KeyboardInput;
 
@@ -94,7 +95,8 @@ public final class InputOverrideHandler extends Behavior implements IInputOverri
         blockPlaceHelper.tick(isInputForcedDown(Input.CLICK_RIGHT));
 
         if (inControl()) {
-            if (ctx.player().input.getClass() != PlayerMovementInput.class) {
+            // A solved parkour jump plays its own input for its few ticks; leave it be.
+            if (ctx.player().input.getClass() != PlayerMovementInput.class && !ParkourExecutor.isPlanInput(ctx.player().input)) {
                 ctx.player().input = new PlayerMovementInput(this);
             }
         } else {

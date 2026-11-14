@@ -1,0 +1,83 @@
+# Builds the Fabric jars on every push to beta. When the push brings a mod-version with no release yet
+# (gradle/libs.versions.toml), it publishes them as release v<version>, creating the tag, with the
+# notes from .github/release-notes/<version>.md. A pushed v* tag publishes that tag the same way.
+# Betas are Fabric only (Forge and NeoForge stay on beta 3), so those nodes are not built here.
+# Versions with a hyphen (5.1-beta.2) become pre-releases, which the in-game update checker ignores.
+name: Release
+
+on:
+  push:
+    branches: [beta]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+env:
+  MC_VERSIONS: "26.2 26.3"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: |
+          set -o pipefail
+          tasks=""
+          for mc in $MC_VERSIONS; do tasks="$tasks :$mc-fabric:build"; done
+          ./gradlew $tasks -Prelease --console=plain 2>&1 | tee build.log
+
+      - name: Report build errors
+        if: failure()
+        run: |
+          # One annotation with the compiler errors, readable without the full log.
+          errors=$(grep -E -A3 "error:|What went wrong|FAILED|Test.*>.*FAILED" build.log | head -120 | sed ':a;N;$!ba;s/%/%25/g;s/\r/%0D/g;s/\n/%0A/g')
+          echo "::error title=Build failed::$errors"
+
+      - name: Collect the jars
+        id: jars
+        run: |
+          version=$(sed -n 's/^mod-version = "\(.*\)"/\1/p' gradle/libs.versions.toml)
+          mkdir dist
+          printf '\nSHA-256\n' > sha256.md
+          for mc in $MC_VERSIONS; do
+            name="DIH-Client-$version-$mc.jar"
+            cp "versions/$mc-fabric/build/libs/DIH Client-$version-$mc.jar" "dist/$name"
+            sha=$(sha256sum "dist/$name" | cut -d' ' -f1)
+            printf -- '- `%s` `%s`\n' "$name" "$sha" >> sha256.md
+            echo "$name  $(stat -c %s "dist/$name") bytes  sha256 $sha" >> "$GITHUB_STEP_SUMMARY"
+          done
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DIH-Client-${{ steps.jars.outputs.version }}
+          path: dist/*.jar
+
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.jars.outputs.version }}
+        run: |
+          if [ "$GITHUB_REF_TYPE" = tag ]; then tag="$GITHUB_REF_NAME"; else tag="v$VERSION"; fi
+          if gh release view "$tag" >/dev/null 2>&1; then
+            echo "Release $tag already exists; nothing to publish."
+            exit 0
+          fi
+          flags=""
+          case "$tag" in *-*) flags="--prerelease --latest=false" ;; esac
+          notes_file=".github/release-notes/${tag#v}.md"
+          if [ -f "$notes_file" ]; then cp "$notes_file" notes.md; else echo "DIH Client ${tag#v}" > notes.md; fi
+          cat sha256.md >> notes.md
+          gh release create "$tag" dist/*.jar --target "$GITHUB_SHA" \
+            --title "DIH Client ${tag#v}" --notes-file notes.md $flags

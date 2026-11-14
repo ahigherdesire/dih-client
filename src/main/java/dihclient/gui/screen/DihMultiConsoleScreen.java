@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.commands.DihCommands;
 import dihclient.gui.multi.MultiChatPresentation;
 import dihclient.gui.multi.MultiMacroPresentation;
@@ -39,7 +40,6 @@ import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
@@ -908,18 +908,18 @@ public final class DihMultiConsoleScreen extends DihScreen {
             return true;
         }
 
-        if (event.key() == GLFW.GLFW_KEY_C && event.hasControlDown() && chatSel.hasSelection()
+        if (event.key() == InputConstants.KEY_C && event.hasControlDown() && chatSel.hasSelection()
             && (chatInput == null || !chatInput.isFocused())
             && (delayField == null || !delayField.isFocused())) {
             copyChatSelection();
             return true;
         }
 
-        if (event.key() == GLFW.GLFW_KEY_ESCAPE && chatSel.hasSelection()) {
+        if (event.key() == InputConstants.KEY_ESCAPE && chatSel.hasSelection()) {
             chatSel.clear();
             return true;
         }
-        if (isViewing() && event.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (isViewing() && event.key() == InputConstants.KEY_ESCAPE) {
             exitView();
             return true;
         }
@@ -939,14 +939,14 @@ public final class DihMultiConsoleScreen extends DihScreen {
         }
 
         if (isViewing() && !chatFocused && hoveredViewHotbar >= 0
-            && (event.key() == GLFW.GLFW_KEY_U || event.key() == GLFW.GLFW_KEY_I)) {
+            && (event.key() == InputConstants.KEY_U || event.key() == InputConstants.KEY_I)) {
             if (cachedView == null || !cachedView.interactive()) {
                 resultText = cachedView != null && cachedView.synchronizationBlocked()
                     ? "Inventory is waiting for a server update" : "Inventory is synchronizing";
                 resultColor = MUTED;
                 return true;
             }
-            boolean use = event.key() == GLFW.GLFW_KEY_I;
+            boolean use = event.key() == InputConstants.KEY_I;
             if (sharedView) {
                 applyFanout(use ? MultiManager.get().useBotHotbars(sharedIds(), hoveredViewHotbar)
                     : MultiManager.get().selectBotHotbars(sharedIds(), hoveredViewHotbar));
@@ -964,24 +964,24 @@ public final class DihMultiConsoleScreen extends DihScreen {
         if (delayField != null && delayField.keyPressed(event)) return true;
         if (chatInput != null && chatInput.isFocused()) {
             switch (event.key()) {
-                case GLFW.GLFW_KEY_ENTER, GLFW.GLFW_KEY_KP_ENTER -> {
+                case InputConstants.KEY_RETURN, InputConstants.KEY_NUMPADENTER -> {
                     sendChat();
                     return true;
                 }
-                case GLFW.GLFW_KEY_TAB -> {
+                case InputConstants.KEY_TAB -> {
 
-                    cycleSuggestion((event.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0);
+                    cycleSuggestion((event.modifiers() & InputConstants.MOD_SHIFT) != 0);
                     return true;
                 }
-                case GLFW.GLFW_KEY_UP -> {
+                case InputConstants.KEY_UP -> {
                     recallHistory(-1);
                     return true;
                 }
-                case GLFW.GLFW_KEY_DOWN -> {
+                case InputConstants.KEY_DOWN -> {
                     recallHistory(1);
                     return true;
                 }
-                case GLFW.GLFW_KEY_ESCAPE -> {
+                case InputConstants.KEY_ESCAPE -> {
                     if (!suggestions.isEmpty()) {
                         clearSuggestions();
                         return true;
@@ -1134,7 +1134,7 @@ public final class DihMultiConsoleScreen extends DihScreen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         MouseButtonEvent virtualEvent = virtualEvent(event);
-        if (virtualEvent.button() == 0 && suggestionsFresh()) {
+        if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT && suggestionsFresh()) {
             for (int[] rect : suggestRects) {
                 if (virtualEvent.x() >= rect[0] && virtualEvent.x() < rect[0] + rect[2] && virtualEvent.y() >= rect[1] && virtualEvent.y() < rect[1] + rect[3]) {
                     suggestionIndex = rect[4];
@@ -1146,7 +1146,7 @@ public final class DihMultiConsoleScreen extends DihScreen {
                 }
             }
         }
-        if (sharedView && virtualEvent.button() == 0) {
+        if (sharedView && virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             for (int[] rect : sharedTabRects) {
                 if (virtualEvent.x() >= rect[0] && virtualEvent.x() < rect[0] + rect[2]
                     && virtualEvent.y() >= rect[1] && virtualEvent.y() < rect[1] + rect[3]
@@ -1159,7 +1159,7 @@ public final class DihMultiConsoleScreen extends DihScreen {
             }
         }
         if (isViewing()) {
-            if (virtualEvent.button() == 0) {
+            if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT) {
                 for (MultiMenuRenderer.MenuHit hit : viewWidgetHits) {
                     if (virtualEvent.x() < hit.x() || virtualEvent.x() >= hit.x() + hit.w()
                         || virtualEvent.y() < hit.y() || virtualEvent.y() >= hit.y() + hit.h()) continue;
@@ -1183,7 +1183,7 @@ public final class DihMultiConsoleScreen extends DihScreen {
                 return true;
             }
         }
-        if (virtualEvent.button() == 1) {
+        if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
             for (int[] rect : presetRects) {
                 if (virtualEvent.x() >= rect[0] && virtualEvent.x() < rect[0] + rect[2] && virtualEvent.y() >= rect[1] && virtualEvent.y() < rect[1] + rect[3]) {
                     openQuickEditor(rect[4]);
@@ -1192,17 +1192,17 @@ public final class DihMultiConsoleScreen extends DihScreen {
             }
         }
 
-        if (virtualEvent.button() == 0 && macroDelayBox != null && delayField != null
+        if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT && macroDelayBox != null && delayField != null
             && delayField.mouseClicked(virtualEvent.x(), virtualEvent.y(), 0)) {
             if (chatInput != null) chatInput.setFocused(false);
             this.setFocused(null);
             return true;
         }
-        if (virtualEvent.button() == 0 && macroDelayAt(virtualEvent.x(), virtualEvent.y(), true)) {
+        if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT && macroDelayAt(virtualEvent.x(), virtualEvent.y(), true)) {
             macroDelayDragging = true;
             return true;
         }
-        if (virtualEvent.button() == 0) {
+        if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             for (SessionRow row : sessionRows) {
                 int ax = actionX();
                 int ay = row.y() + 2;
@@ -1245,7 +1245,7 @@ public final class DihMultiConsoleScreen extends DihScreen {
             if (beginChatSelection(virtualEvent.x(), virtualEvent.y())) return true;
         }
         boolean handled = super.mouseClicked(virtualEvent, doubled);
-        if (!handled && virtualEvent.button() == 0) {
+        if (!handled && virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             clearInputFocus();
             if (!selectedIds.isEmpty()) chatScroll = 0;
             selectedIds.clear();
@@ -1678,7 +1678,7 @@ public final class DihMultiConsoleScreen extends DihScreen {
     private void handleViewClick(int handler, int button, boolean shift, boolean ctrl) {
         if (handler < 0) return;
         ItemStack stack = viewStackAt(handler);
-        if (button == 1 && ctrl && shift) {
+        if (button == InputConstants.MOUSE_BUTTON_RIGHT && ctrl && shift) {
             if (stack != null && !stack.isEmpty()) openNbt(stack);
             return;
         }

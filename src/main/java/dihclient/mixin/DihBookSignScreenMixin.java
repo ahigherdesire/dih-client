@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihKeys;
 import dihclient.modules.DihModule;
 import dihclient.util.DihClientMessaging;
 import dihclient.util.DihCustomFilterOverlay;
@@ -15,7 +16,6 @@ import dihclient.util.DihPacketLoggerOverlay;
 import dihclient.util.DihQueueEditorOverlay;
 import dihclient.util.DihSharedState;
 import dihclient.util.DihSpecialGuiActions;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.BookSignScreen;
@@ -126,7 +126,7 @@ public abstract class DihBookSignScreenMixin extends Screen implements DihSpecia
         manager.register(launcherOverlay);
 
         Screen screen = (Screen) (Object) this;
-        ScreenEvents.afterExtract(screen).register((scrn, drawContext, mouseX, mouseY, tickDelta) -> {
+        dihclient.platform.DihPlatform.afterScreenExtract(screen, (scrn, drawContext, mouseX, mouseY, tickDelta) -> {
             if (dih$isDihActive()) {
                 DihOverlayManager.get().renderAll(drawContext, mouseX, mouseY, tickDelta);
             }
@@ -186,7 +186,7 @@ public abstract class DihBookSignScreenMixin extends Screen implements DihSpecia
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void dih$keyPressed(KeyEvent input, CallbackInfoReturnable<Boolean> cir) {
         if (!dih$isDihActive()) return;
-        if (DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) {
+        if (DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) {
             cir.setReturnValue(true);
         }
     }

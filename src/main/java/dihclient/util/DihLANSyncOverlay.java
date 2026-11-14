@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.components.CompactControlGlyphs;
 import dihclient.gui.vanillaui.direct.DirectLayout;
@@ -1075,7 +1076,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
         CompactListRenderer.drawHeader(ctx, textRenderer, "Local Macros", lx, cy);
         cy += 14;
 
-        List<DihMacro> localMacros = DihMacroManager.get().getAll();
+        List<DihMacro> localMacros = MacroFolderView.ordered(DihMacroManager.get().getAll());
         if (localMacros.isEmpty()) {
             clearSameMacrolistViewport();
             drawUiText(ctx, "No macros", UiTone.MUTED, DihColors.textDim(), lx, cy);
@@ -1091,7 +1092,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
                 || sameMacroList.getWidth() != sameMacroListWidth || sameMacroList.getHeight() != sameMacroListHeight) {
                 sameMacroList = new DirectScrollList<>(sameMacroListX, sameMacroListY, sameMacroListWidth, sameMacroListHeight,
                     sameMacroListRowPitch(), SAME_MACRO_LIST_SCROLLBAR_WIDTH,
-                    macro -> macro.name,
+                    MacroFolderView::label,
                     (macro, selected) -> {
                         if (selected) selectedMacroName = macro.name;
                     });
@@ -1304,7 +1305,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
 
                     if (isMe) {
 
-                        for (DihMacro macro : myMacroList) {
+                        for (DihMacro macro : MacroFolderView.ordered(myMacroList)) {
                             cy = renderPickerRowClipped(ctx, mx, my, cy, detailLx, detailRx, rowW,
                                 macro.name, assigned, null, peerKey, sync, false, clipTop, clipBottom, rowPitch);
                         }
@@ -1647,7 +1648,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!visible) return false;
 
-        if (button == 0 && mouseX >= panelX && mouseX <= panelX + PANEL_WIDTH
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && mouseX >= panelX && mouseX <= panelX + PANEL_WIDTH
             && mouseY >= panelY && mouseY <= panelY + HEADER_HEIGHT) {
             DihWindowLayout bounds = new DihWindowLayout(panelX, panelY, PANEL_WIDTH, collapsed ? HEADER_HEIGHT : getPanelHeight(), visible, collapsed);
 
@@ -1674,7 +1675,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
         }
 
         DihLANSync sync = DihLANSync.getInstance();
-        if (button == 0 && hasScrollableSessionContent(sync)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && hasScrollableSessionContent(sync)) {
             int panelHeight = getPanelHeight();
             int tabContentY = getTabContentY();
             int tabContentH = getTabContentHeight(panelHeight);
@@ -1689,7 +1690,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
             }
         }
 
-        if (button == 0 && activeTab == 2 && !perUserMode && hasSameMacrolistViewport() && sameMacroList.contains(mouseX, mouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && activeTab == 2 && !perUserMode && hasSameMacrolistViewport() && sameMacroList.contains(mouseX, mouseY)) {
 
             if (sameMacroList.mouseClicked(mouseX, mouseY, button)) {
 
@@ -1704,13 +1705,13 @@ public class DihLANSyncOverlay extends DihOverlayBase {
             }
         }
 
-        if (button == 0 && activeTab == 2 && perUserMode && hasperUserlistViewport() && perUserlistViewport.contains(mouseX, mouseY)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && activeTab == 2 && perUserMode && hasperUserlistViewport() && perUserlistViewport.contains(mouseX, mouseY)) {
             if (perUserlistViewport.mouseClicked(mouseX, mouseY, button)) {
                 return true;
             }
         }
 
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (ClickRegion region : clickRegions) {
                 if (region.contains(mouseX, mouseY)) {
                     region.action.run();
@@ -1723,7 +1724,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
     }
 
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             if (hasSameMacrolistViewport()) sameMacroList.mouseReleased();
             if (hasperUserlistViewport()) perUserlistViewport.mouseReleased();
             if (scrollbarDragging) saveState();
@@ -1769,7 +1770,7 @@ public class DihLANSyncOverlay extends DihOverlayBase {
     public boolean keyPressed(int key, int scancode, int modifiers) {
         if (!visible || collapsed) return false;
         if (lanChatField != null && lanChatField.isFocused()) {
-            if (key == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+            if (key == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) {
                 lanChatField.setFocused(false);
                 return true;
             }

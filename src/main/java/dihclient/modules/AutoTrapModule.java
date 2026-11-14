@@ -4,6 +4,7 @@ package dihclient.modules;
 
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ChoiceSetting;
+import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.api.module.RegistryListSetting;
 import dihclient.util.DihCombatClicker;
@@ -98,7 +99,6 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
 
     private static final float ROTATION_MATCH_EPSILON = 0.05F;
 
-    private static final double MIN_DISTANCE_SQR = 1.0D * 1.0D;
 
     private static final Set<Item> WEB_ITEMS = Set.of(Items.COBWEB);
     private static final Set<Block> WEB_BLOCKS = Set.of(Blocks.COBWEB);
@@ -162,20 +162,71 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
     AutoTrapModule() {
         super("auto-trap", "AutoTrap", ModuleCategory.COMBAT, "Traps enemies in blocks.");
         add(new IntSetting("delay", "Delay", 20, 0, 400, 5)
+            .group("General")
             .unit("ticks")
             .description("Cooldown after a placed trap")
             .build());
         add(new BoolSetting("switch-back", "Switch Back", true)
+            .group("General")
             .description("Return to previous hotbar slot")
             .build());
+        add(new IntSetting("switch-back-delay", "Switch Back Delay", SWITCH_BACK_TICKS, 1, 20, 1)
+            .group("General")
+            .unit("ticks")
+            .description("Ticks to wait after the last trap before switching back")
+            .visibleWhen(() -> bool("switch-back"))
+            .build());
+        add(new BoolSetting("wait-for-hits", "Wait For Hits", true)
+            .group("General")
+            .description("Hold a trap while KillAura is about to swing, so the hit goes first")
+            .build());
+        add(new DoubleSetting("range", "Range", 6.0D, 1.0D, 6.0D, 0.1D)
+            .group("General")
+            .unit("blocks")
+            .description("Farthest trap placement, capped by your reach")
+            .build());
+        add(new DoubleSetting("min-distance", "Min Distance", 1.0D, 0.0D, 3.0D, 0.25D)
+            .group("General")
+            .unit("blocks")
+            .description("Never traps a target or block closer to your eyes than this")
+            .build());
+
         add(new BoolSetting("web", "AutoWeb", true)
             .group("AutoWeb")
             .description("Place cobwebs; tried before Ignite")
             .build());
+        add(new BoolSetting("web-then-ignite", "Web Then Ignite", true)
+            .group("AutoWeb")
+            .description("Right after a web, set the same target on fire")
+            .visibleWhen(() -> bool("web") && bool("ignite"))
+            .build());
+
         add(new BoolSetting("ignite", "Ignite", true)
             .group("Ignite")
             .description("Place lava or set fire")
             .build());
+        add(new BoolSetting("use-lava", "Lava Buckets", true)
+            .group("Ignite")
+            .description("Ignite by pouring lava")
+            .visibleWhen(() -> bool("ignite"))
+            .build());
+        add(new BoolSetting("use-flint", "Flint And Steel", true)
+            .group("Ignite")
+            .description("Ignite by lighting fire")
+            .visibleWhen(() -> bool("ignite"))
+            .build());
+        add(new BoolSetting("pickup-lava", "Pick Up Lava", true)
+            .group("Ignite")
+            .description("Scoop poured lava back up once the target burns")
+            .visibleWhen(() -> bool("ignite") && bool("use-lava"))
+            .build());
+        add(new IntSetting("pickup-delay", "Pickup Delay", LAVA_PICKUP_TICKS, 0, 100, 5)
+            .group("Ignite")
+            .unit("ticks")
+            .description("Longest wait for the target to catch fire before the lava comes back")
+            .visibleWhen(() -> bool("ignite") && bool("use-lava") && bool("pickup-lava"))
+            .build());
+
         add(new BoolSetting("predict", "Predict Landing", true)
             .group("Target")
             .description("Trap the predicted landing spot")
@@ -197,6 +248,14 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
         add(new ChoiceSetting("priority", "Priority", "Type", "Type", "Health", "Distance")
             .group("Target")
             .description("Main target sort key")
+            .build());
+        add(new BoolSetting("ignore-invisible", "Ignore Invisible", false)
+            .group("Target")
+            .description("Skip invisible entities")
+            .build());
+        add(new BoolSetting("ignore-sleeping", "Ignore Sleeping", true)
+            .group("Target")
+            .description("Skip players in bed")
             .build());
     }
 
@@ -312,7 +371,7 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
                 if (plan.pickup()) {
 
                     comboTargetId = -1;
-                } else if (plan.web() && bool("ignite") && findSlot(IGNITE_ITEMS) != null
+                } else if (plan.web() && bool("ignite") && bool("web-then-ignite") && findSlot(igniteItems()) != null
                     && !targetOnFire(plan.targetId())) {
 
                     comboTargetId = plan.targetId();
@@ -392,7 +451,7 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
     }
 
     private boolean waitForCombatTiming() {
-        boolean wait = killAuraHasTarget()
+        boolean wait = bool("wait-for-hits") && killAuraHasTarget()
             && (MC.player.getAttackStrengthScale(0.5F) > 0.9F || wouldDoCriticalHit());
         combatWaitTicks = wait ? combatWaitTicks + 1 : 0;
         return wait && combatWaitTicks < MAX_COMBAT_WAIT_TICKS;
@@ -471,7 +530,7 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
         }
         if (!targetOnFire(source.targetId())
             && MC.level.getEntity(source.targetId()) != null
-            && tick - source.placedTick() < LAVA_PICKUP_TICKS) {
+            && tick - source.placedTick() < integer("pickup-delay")) {
             return null;
         }
         ItemStack stack = source.hand() == InteractionHand.OFF_HAND
@@ -511,7 +570,7 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
         if (!(entity instanceof LivingEntity living) || !living.isAlive()) return true;
         boolean webDone = !bool("web") || findSlot(WEB_ITEMS) == null
             || boxTouchesWeb(living.getBoundingBox());
-        boolean igniteDone = !bool("ignite") || findSlot(IGNITE_ITEMS) == null || living.isOnFire();
+        boolean igniteDone = !bool("ignite") || findSlot(igniteItems()) == null || living.isOnFire();
         return webDone && igniteDone;
     }
 
@@ -525,7 +584,7 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
     }
 
     private Plan planTrap(List<LivingEntity> enemies, boolean web) {
-        TrapSlot slot = findSlot(web ? WEB_ITEMS : IGNITE_ITEMS);
+        TrapSlot slot = findSlot(trapItems(web));
         if (slot == null) return null;
         Set<Block> trapBlocks = web ? WEB_BLOCKS : IGNITE_BLOCKS;
         BlockState placedState = placedState(web, slot.stack());
@@ -566,7 +625,12 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
     }
 
     private double reach() {
-        return MC.player.blockInteractionRange();
+        return Math.min(MC.player.blockInteractionRange(), decimal("range"));
+    }
+
+    private double minDistanceSqr() {
+        double minimum = Math.max(0.0D, decimal("min-distance"));
+        return minimum * minimum;
     }
 
     private BlockState placedState(boolean web, ItemStack stack) {
@@ -605,7 +669,7 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
 
     private List<LivingEntity> targets() {
 
-        double minimum = MIN_DISTANCE_SQR;
+        double minimum = minDistanceSqr();
         double reach = reach();
         double maximum = reach * reach;
         Vec3 eyes = MC.player.getEyePosition();
@@ -631,7 +695,8 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
 
         if (TeamsModule.combatExcluded(entity, "killaura")) return false;
 
-        if (entity instanceof Player player && player.isSleeping()) return false;
+        if (bool("ignore-sleeping") && entity instanceof Player player && player.isSleeping()) return false;
+        if (bool("ignore-invisible") && entity.isInvisible()) return false;
         if (!matchesEntity(entity)) return false;
         double distanceSqr = boxedDistanceToPlayerSqr(entity);
 
@@ -937,7 +1002,7 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
 
         if (placedState.is(Blocks.COBWEB) && !cellState.getFluidState().isEmpty()) return null;
 
-        if (Vec3.atCenterOf(cell).distanceToSqr(eye) < MIN_DISTANCE_SQR) return null;
+        if (Vec3.atCenterOf(cell).distanceToSqr(eye) < minDistanceSqr()) return null;
 
         if (!MC.level.isUnobstructed(placedState, cell, CollisionContext.empty())) return null;
 
@@ -1034,7 +1099,7 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
 
         if (plan.web() && !MC.level.getBlockState(placed).getFluidState().isEmpty()) return null;
 
-        if (Vec3.atCenterOf(placed).distanceToSqr(MC.player.getEyePosition()) < MIN_DISTANCE_SQR) {
+        if (Vec3.atCenterOf(placed).distanceToSqr(MC.player.getEyePosition()) < minDistanceSqr()) {
             return null;
         }
         if (!MC.level.isUnobstructed(
@@ -1046,7 +1111,8 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
         placeJitterMs = random.nextInt(PLACE_JITTER_MS + 1);
 
         if (!dispatch(plan, ray, stack)) return null;
-        if (!plan.web() && stack.is(Items.LAVA_BUCKET) && !MC.player.hasInfiniteMaterials()) {
+        if (!plan.web() && stack.is(Items.LAVA_BUCKET) && !MC.player.hasInfiniteMaterials()
+            && bool("pickup-lava")) {
 
             lavaSource =
                 new LavaSource(placed, plan.targetId(), plan.hotbarSlot(), plan.hand(), tick);
@@ -1112,7 +1178,16 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
     }
 
     private Set<Item> trapItems(boolean web) {
-        return web ? WEB_ITEMS : IGNITE_ITEMS;
+        return web ? WEB_ITEMS : igniteItems();
+    }
+
+    /** The ignite items the Lava Buckets and Flint And Steel settings allow. */
+    private Set<Item> igniteItems() {
+        boolean lava = bool("use-lava");
+        boolean flint = bool("use-flint");
+        if (lava && flint) return IGNITE_ITEMS;
+        if (lava) return Set.of(Items.LAVA_BUCKET);
+        return flint ? Set.of(Items.FLINT_AND_STEEL) : Set.of();
     }
 
     private Set<Block> trapBlocks(boolean web) {
@@ -1185,7 +1260,7 @@ public final class AutoTrapModule extends Module implements DihSilentAim.Owner {
 
     private void armSwitchBack() {
         if (previousSlot >= 0 && currentPlan == null && switchBackTicks <= 0) {
-            switchBackTicks = SWITCH_BACK_TICKS;
+            switchBackTicks = Math.max(1, integer("switch-back-delay"));
         }
     }
 

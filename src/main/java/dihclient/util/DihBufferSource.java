@@ -80,7 +80,7 @@ public final class DihBufferSource implements AutoCloseable {
     private void draw(RenderType type, StagedVertexBuffer.Draw draw) {
         StagedVertexBuffer.ExecuteInfo info = stagedBuffer.getExecuteInfo(draw);
         if (info != null) {
-            type.prepare().drawFromBuffer(info);
+            DihRender.drawFromBuffer(type, info);
         }
     }
 }

@@ -3,7 +3,6 @@ package baritone.util;
 import baritone.api.utils.Helper;
 import baritone.command.defaults.ClientStructureFinder;
 import kaptainwutax.seedcrackerX.api.SeedCrackerAPI;
-import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -39,7 +38,7 @@ public final class DihSeedCrackerPlugin implements SeedCrackerAPI, Helper {
     private int lookupCooldown;
 
     public DihSeedCrackerPlugin() {
-        ClientTickEvents.END_CLIENT_TICK.register(this::tick);
+        dihclient.platform.DihPlatform.onEndClientTick(this::tick);
     }
 
     @Override

@@ -1,5 +1,7 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihFileDialogs;
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.components.CompactOverlayButton;
 import dihclient.gui.vanillaui.direct.DirectLayout;
 import dihclient.gui.vanillaui.components.CompactScrollbar;
@@ -27,9 +29,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.PointerBuffer;
-import org.lwjgl.glfw.GLFW;
 import org.lwjgl.system.MemoryUtil;
-import org.lwjgl.util.tinyfd.TinyFileDialogs;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -437,20 +437,14 @@ public class DihProxiesScreen extends DihScreen {
     private void importFromFile() {
         importChooserOpen = false;
         DihProxyManager manager = DihProxyManager.get();
-        PointerBuffer filters = BufferUtils.createPointerBuffer(1);
-        ByteBuffer txtFilter = MemoryUtil.memASCII("*.txt");
-        filters.put(txtFilter);
-        filters.rewind();
-        String selectedFile = TinyFileDialogs.tinyfd_openFileDialog("Import Proxies", null, filters, null, false);
-        if (selectedFile != null) {
+        DihFileDialogs.openFile("Import Proxies", null, java.util.List.of("txt"), null, selectedFile -> {
             File file = new File(selectedFile);
             if (!manager.startImport(file)) {
                 toast("Proxy import could not start.", WARN);
             } else {
                 watchImport(manager, manager.importStatus().generation());
             }
-        }
-        MemoryUtil.memFree(txtFilter);
+        });
     }
 
     private void importFromClipboard() {
@@ -682,7 +676,7 @@ public class DihProxiesScreen extends DihScreen {
 
     @Override
     public boolean keyPressed(KeyEvent input) {
-        if (importChooserOpen && input.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (importChooserOpen && input.key() == InputConstants.KEY_ESCAPE) {
             importChooserOpen = false;
             return true;
         }
@@ -693,7 +687,7 @@ public class DihProxiesScreen extends DihScreen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         MouseButtonEvent virtualEvent = virtualEvent(event);
         if (importChooserOpen) {
-            if (virtualEvent.button() == 0) {
+            if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT) {
                 ensureImportChooserButtons();
                 positionImportChooserButtons(importChooserRects());
                 if (CompactOverlayButton.fireIfHit(importFileButton, virtualEvent.x(), virtualEvent.y(), virtualEvent.button())) return true;
@@ -703,7 +697,7 @@ public class DihProxiesScreen extends DihScreen {
             }
             return true;
         }
-        if (virtualEvent.button() != 0) return super.mouseClicked(virtualEvent, doubleClick);
+        if (virtualEvent.button() != InputConstants.MOUSE_BUTTON_LEFT) return super.mouseClicked(virtualEvent, doubleClick);
         if (compactLayout()) return super.mouseClicked(virtualEvent, doubleClick);
         CompactScrollbar.Metrics scrollbar = proxyScrollbarMetrics(displayProxies().size());
         if (scrollbar.hasScroll() && scrollbar.contains(virtualEvent.x(), virtualEvent.y())) {

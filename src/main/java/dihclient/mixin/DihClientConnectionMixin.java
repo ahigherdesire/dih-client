@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihPackets;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelHandlerContext;
 import org.spongepowered.asm.mixin.Mixin;
@@ -169,8 +170,8 @@ public abstract class DihClientConnectionMixin implements MultiConnectionMarker 
         if (PackHideState.isHardLocked()) return packet;
         if (dih$isMultiConnectionOrChannel()
             || !(packet instanceof ServerboundUseItemPacket usePacket)) return packet;
-        float yaw = usePacket.getYRot();
-        float pitch = usePacket.getXRot();
+        float yaw = DihPackets.yRot(usePacket);
+        float pitch = DihPackets.xRot(usePacket);
         if (dihclient.util.DihInputClicker.isFastExpUseInProgress()) {
             yaw = dihclient.modules.BuiltinModules.manualFastExpUseYaw(yaw);
             pitch = dihclient.modules.BuiltinModules.manualFastExpUsePitch(pitch);
@@ -182,10 +183,10 @@ public abstract class DihClientConnectionMixin implements MultiConnectionMarker 
                 pitch = rotation.pitch();
             }
         }
-        if (Float.compare(yaw, usePacket.getYRot()) == 0
-            && Float.compare(pitch, usePacket.getXRot()) == 0) return packet;
+        if (Float.compare(yaw, DihPackets.yRot(usePacket)) == 0
+            && Float.compare(pitch, DihPackets.xRot(usePacket)) == 0) return packet;
         return new ServerboundUseItemPacket(
-            usePacket.getHand(), usePacket.getSequence(), yaw, pitch);
+            DihPackets.hand(usePacket), DihPackets.sequence(usePacket), yaw, pitch);
     }
 
     @Inject(method = "send(Lnet/minecraft/network/protocol/Packet;Lio/netty/channel/ChannelFutureListener;)V", at = @At("HEAD"), cancellable = true)
@@ -258,7 +259,7 @@ public abstract class DihClientConnectionMixin implements MultiConnectionMarker 
         DihSharedState shared = DihSharedState.get();
 
         if (packet instanceof ServerboundUseItemOnPacket pibp) {
-            if (shared.consumeBlockCaptureCallback(pibp.getHitResult().getBlockPos(), pibp.getHitResult().getDirection())) {
+            if (shared.consumeBlockCaptureCallback(DihPackets.hitResult(pibp).getBlockPos(), DihPackets.hitResult(pibp).getDirection())) {
                 ScaffoldModule.onPacketAbandoned(packet);
                 ci.cancel();
                 return;
@@ -291,8 +292,8 @@ public abstract class DihClientConnectionMixin implements MultiConnectionMarker 
         if (!normalLoggerPath) return;
 
         if (packet instanceof ServerboundUseItemOnPacket pibp) {
-            shared.setLastInteractedBlockPos(pibp.getHitResult().getBlockPos());
-            shared.setLastContainerTarget(DihContainerTarget.forBlockHit(pibp.getHitResult(), pibp.getHand()));
+            shared.setLastInteractedBlockPos(DihPackets.hitResult(pibp).getBlockPos());
+            shared.setLastContainerTarget(DihContainerTarget.forBlockHit(DihPackets.hitResult(pibp), DihPackets.hand(pibp)));
         }
 
         if (packet instanceof ServerboundInteractPacket entityPacket) {

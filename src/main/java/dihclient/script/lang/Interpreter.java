@@ -75,6 +75,7 @@ public final class Interpreter {
     private volatile int currentLine;
     private volatile String currentFunction = "";
     private boolean ignoreCancel;
+    private final long startedNanos = System.nanoTime();
 
     public Interpreter(Program program, Library library, ScriptHost host) {
         this.program = program;
@@ -83,6 +84,9 @@ public final class Interpreter {
     }
 
     public ScriptHost host() { return host; }
+
+    /** {@link System#nanoTime()} when this script was created; chat from before it is ignored. */
+    public long startedNanos() { return startedNanos; }
 
     public int currentLine() { return currentLine; }
 
@@ -200,6 +204,8 @@ public final class Interpreter {
 
     /** Runs one loop iteration; returns true when the loop should end ({@code break}). */
     private boolean runLoopBody(Block body, Env env) {
+        // Empty bodies still need to yield and observe cancellation.
+        checkpoint(body.line());
         try {
             executeBlock(body, new Env(env));
             return false;

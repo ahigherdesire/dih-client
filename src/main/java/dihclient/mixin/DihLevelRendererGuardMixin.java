@@ -16,7 +16,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(LevelRenderer.class)
 public class DihLevelRendererGuardMixin {
     @Inject(method = "render", at = @At("HEAD"), cancellable = true)
+    //? if >=26.3 {
+    /*private void dih$skipRenderWithoutPlayer(GraphicsResourceAllocator graphicsResourceAllocator, boolean renderBlockOutline, CameraRenderState cameraRenderState, GpuBufferSlice fog, Vector4f clearColor, boolean renderSky, boolean renderWeather, CallbackInfo ci) {
+    *///?} else {
     private void dih$skipRenderWithoutPlayer(GraphicsResourceAllocator graphicsResourceAllocator, DeltaTracker deltaTracker, boolean renderBlockOutline, CameraRenderState cameraRenderState, Matrix4fc frustumMatrix, GpuBufferSlice fog, Vector4f clearColor, boolean renderSky, CallbackInfo ci) {
+    //?}
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player == null || minecraft.level == null) {
             ci.cancel();

@@ -1,0 +1,20 @@
+function main() {
+    // while: repeat as long as the condition is true
+    while (food() < 20 && eat()) {
+        print("ate, hunger " + food());
+    }
+
+    // repeat: a set number of times (the number is rounded down; 0 or less runs nothing)
+    repeat (3) {
+        print("tick");
+        wait(20);
+    }
+
+    // for-in: once per item of a list, or per character of text
+    for (let name in playersNearby(64)) {
+        print("nearby: " + name);
+    }
+    for (let i in range(1, 4)) {
+        print(i);                  // 1 2 3
+    }
+}

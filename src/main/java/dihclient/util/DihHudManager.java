@@ -833,7 +833,7 @@ public final class DihHudManager {
             case ACTIVE_MODULES -> activeModuleLines(lines);
             case TPS -> lines.add(tpsLine());
             case COORDINATES -> { Vec3 v = viewFootPos();
-                                  double[] p = DihFakeCoords.apply(v.x, v.y, v.z);
+                                  double[] p = DihFakeCoords.applyHud(v.x, v.y, v.z);
                                   lines.add(row(id, "Pos", blockPositionText(p[0], p[1], p[2]))); }
             case NETHER_COORDS -> lines.add(oppositeCoordsLine());
             case FPS -> lines.add(metricsLine());
@@ -980,7 +980,7 @@ public final class DihHudManager {
         Identifier dimension = MC.level.dimension().identifier();
         String path = dimension.getPath();
         Vec3 v = viewFootPos();
-        double[] p = DihFakeCoords.apply(v.x, v.y, v.z);
+        double[] p = DihFakeCoords.applyHud(v.x, v.y, v.z);
         double x = p[0];
         double y = p[1];
         double z = p[2];

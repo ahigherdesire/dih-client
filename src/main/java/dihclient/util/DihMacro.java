@@ -15,6 +15,8 @@ public class DihMacro {
     public boolean loop = false;
     public int loopCount = -1;
     public int keyCode = -1;
+    /** The folder this macro is filed under in the macro lists; empty for none. */
+    public String folder = "";
     public List<MacroAction> actions = new ArrayList<>();
 
     public DihMacro() {}
@@ -100,6 +102,8 @@ public class DihMacro {
         tag.putBoolean("loop", loop);
         tag.putInt("loopCount", loopCount);
         tag.putInt("keyCode", keyCode);
+        tag.putString("keyCodes", DihKeyCodes.CURRENT);
+        if (folder != null && !folder.isBlank()) tag.putString("folder", folder);
 
         ListTag actionsList = new ListTag();
         if (actions != null) {
@@ -117,7 +121,9 @@ public class DihMacro {
         if (tag.contains("description")) description = tag.getStringOr("description", "");
         if (tag.contains("loop")) loop = tag.getBooleanOr("loop", false);
         if (tag.contains("loopCount")) loopCount = tag.getIntOr("loopCount", -1);
-        if (tag.contains("keyCode")) keyCode = tag.getIntOr("keyCode", -1);
+        // Renumbered when the macro was saved by the other Minecraft version (see DihKeyCodes).
+        if (tag.contains("keyCode")) keyCode = DihKeyCodes.toCurrent(tag.getIntOr("keyCode", -1), tag.getStringOr("keyCodes", ""));
+        folder = normalizeFolder(tag.getStringOr("folder", ""));
 
         Tag rawActions = tag.get("actions");
         if (rawActions instanceof ListTag actionsList) {
@@ -131,6 +137,17 @@ public class DihMacro {
             migrateLegacyRaceGroups();
         }
         return this;
+    }
+
+    /** Folder names are trimmed, single-level (no slashes) and at most 40 characters; blank means no folder. */
+    public static String normalizeFolder(String folder) {
+        if (folder == null) return "";
+        String cleaned = folder.replace('/', ' ').replace('\\', ' ').replaceAll("\\s+", " ").trim();
+        return cleaned.length() > 40 ? cleaned.substring(0, 40).trim() : cleaned;
+    }
+
+    public boolean hasFolder() {
+        return folder != null && !folder.isBlank();
     }
 
     public static MacroAction createActionFromTag(CompoundTag actionTag) {
@@ -247,6 +264,8 @@ public class DihMacro {
             case INSTA_BREAK -> new InstaBreakAction();
             case BREAK -> new BreakAction();
             case PAY -> new PayAction();
+            case TRADE -> new dihclient.util.macro.TradeAction();
+            case AI_TOOL -> new dihclient.util.macro.AiToolAction();
             case NBT_BOOK -> new NbtBookAction();
             case SEND_CHAT -> new SendChatAction();
             case WAIT_LAN_STEP -> new WaitForLanStepAction();

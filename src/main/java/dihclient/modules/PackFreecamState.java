@@ -25,6 +25,7 @@ public final class PackFreecamState {
     private static boolean reloadChunks;
 
     private static boolean interactEnabled = true;
+    private static double turnSpeed = 0.15;
 
     private PackFreecamState() {
     }
@@ -77,6 +78,19 @@ public final class PackFreecamState {
     }
 
     public static void tickMovement(double speed, double verticalSpeed) {
+        tickMovement(speed, verticalSpeed, 0.5, false);
+    }
+
+    /** Mouse turn per count, as a share of vanilla's 0.15 degrees. */
+    public static void setSensitivity(double share) {
+        turnSpeed = 0.15 * Math.max(0.05, share);
+    }
+
+    /**
+     * Moves the camera one tick. {@code walkShare} is the speed without sprint, as a share of the full speed;
+     * {@code followPitch} moves along where the camera looks instead of level.
+     */
+    public static void tickMovement(double speed, double verticalSpeed, double walkShare, boolean followPitch) {
         if (!active) return;
         if (MC == null || MC.player == null || MC.level == null) {
             active = false;
@@ -99,9 +113,10 @@ public final class PackFreecamState {
 
         if (MC.gui.screen() != null) return;
 
-        double horizontal = Math.max(0.0, speed) * (sprint ? 1.0 : 0.5);
-        double vertical = Math.max(0.0, verticalSpeed) * (sprint ? 1.0 : 0.5);
-        Vec3 forwardVec = Vec3.directionFromRotation(0.0F, yaw);
+        double share = sprint ? 1.0 : Mth.clamp(walkShare, 0.05, 1.0);
+        double horizontal = Math.max(0.0, speed) * share;
+        double vertical = Math.max(0.0, verticalSpeed) * share;
+        Vec3 forwardVec = Vec3.directionFromRotation(followPitch ? pitch : 0.0F, yaw);
         Vec3 rightVec = Vec3.directionFromRotation(0.0F, yaw + 90.0F);
         double dx = 0.0;
         double dy = 0.0;
@@ -111,11 +126,13 @@ public final class PackFreecamState {
 
         if (forward) {
             dx += forwardVec.x * horizontal;
+            dy += forwardVec.y * horizontal;
             dz += forwardVec.z * horizontal;
             movedForward = true;
         }
         if (backward) {
             dx -= forwardVec.x * horizontal;
+            dy -= forwardVec.y * horizontal;
             dz -= forwardVec.z * horizontal;
             movedForward = true;
         }
@@ -149,8 +166,13 @@ public final class PackFreecamState {
         if (!active || scrollY == 0.0) return false;
         if (MC == null || MC.player == null || MC.gui.screen() != null || MC.gui.overlay() != null) return false;
         Module freecam = ModuleRegistry.get("freecam");
-        if (freecam == null) return false;
-        double step = scrollY > 0.0 ? SCROLL_SPEED_STEP : -SCROLL_SPEED_STEP;
+        if (freecam == null || "false".equals(freecam.value("scroll-speed"))) return false;
+        double stepSize = SCROLL_SPEED_STEP;
+        try {
+            stepSize = Mth.clamp(Double.parseDouble(freecam.value("scroll-step")), 0.05, 5.0);
+        } catch (NumberFormatException ignored) {
+        }
+        double step = scrollY > 0.0 ? stepSize : -stepSize;
         double speed = snapSpeed(parseSpeed(freecam.value("speed")) + step);
         double vertical = snapSpeed(parseSpeed(freecam.value("vertical-speed")) + step);
         freecam.setValueTransient("speed", formatSpeed(speed));
@@ -197,8 +219,8 @@ public final class PackFreecamState {
 
     public static void turn(double deltaYaw, double deltaPitch) {
         if (!active) return;
-        yaw += (float) (deltaYaw * 0.15);
-        pitch += (float) (deltaPitch * 0.15);
+        yaw += (float) (deltaYaw * turnSpeed);
+        pitch += (float) (deltaPitch * turnSpeed);
         pitch = Mth.clamp(pitch, -90.0F, 90.0F);
     }
 

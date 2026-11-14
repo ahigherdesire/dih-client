@@ -1,8 +1,12 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import dihclient.util.DihLinks;
 import dihclient.addons.AddonManager;
 import dihclient.addons.AddonManager.AddonLoadStatus;
 import dihclient.addons.AddonManager.AddonReport;
+import dihclient.addons.AddonUninstaller;
+import dihclient.addons.store.AddonStore;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContexts;
 import dihclient.gui.vanillaui.UiRenderer;
@@ -55,6 +59,7 @@ public final class DihAddonsScreen extends DihScreen {
     private String pendingSearchQuery = "";
     private boolean searchDirty;
     private String selectedAddonId = "";
+    private String confirmUninstallId = "";
     private int scrollOffset;
     private boolean scrollbarDragging;
     private int scrollbarGrabOffset;
@@ -69,6 +74,7 @@ public final class DihAddonsScreen extends DihScreen {
 
     @Override
     protected void init() {
+        AddonStore.refreshIfStale(); // so the store opens with the list ready
         reportsSnapshot = List.copyOf(AddonManager.reports());
         cachedFilterQuery = "\u0000";
         cachedFilteredReports = List.of();
@@ -91,6 +97,11 @@ public final class DihAddonsScreen extends DihScreen {
         int backX = panelX() + panelWidth() - 22 - backW;
         buttons.add(CompactOverlayButton.create(backX, TOP_PANEL_Y + 12, backW, 18, Component.literal("Back"),
             b -> this.minecraft.gui.setScreen(parent)).setVariant(CompactOverlayButton.Variant.SECONDARY));
+        int browseW = 104;
+        // When the store opened this library, going to the store is going back (no growing stack of screens).
+        buttons.add(CompactOverlayButton.create(backX - browseW - 8, TOP_PANEL_Y + 12, browseW, 18, Component.literal("Addon Store"),
+            b -> this.minecraft.gui.setScreen(parent instanceof DihAddonStoreScreen ? parent : new DihAddonStoreScreen(this)))
+            .setVariant(CompactOverlayButton.Variant.PRIMARY));
 
         AddonReport selected = selectedReport();
         int pad = 12;
@@ -102,6 +113,18 @@ public final class DihAddonsScreen extends DihScreen {
         int rightX = btnLeft + halfW + gap;
         int row2Y = bodyBottom() - 26;
         int row1Y = row2Y - 24;
+        int row0Y = row1Y - 24;
+
+        boolean canUninstall = selected != null && AddonUninstaller.canUninstall(selected.modId());
+        boolean sure = canUninstall && selected.modId().equals(confirmUninstallId);
+        String uninstallLabel = selected != null && AddonUninstaller.isRemoved(selected.modId()) ? "Uninstalled (deleted when you close the game)"
+            : selected != null && selected.bundled() ? "Built in (turn off instead)"
+            : sure ? "Click again to uninstall" : "Uninstall";
+        CompactOverlayButton uninstall = CompactOverlayButton.create(btnLeft, row0Y, areaW, 18,
+            Component.literal(uninstallLabel), b -> uninstallSelected());
+        uninstall.setVariant(CompactOverlayButton.Variant.DANGER);
+        uninstall.active = canUninstall;
+        buttons.add(uninstall);
 
         buttons.add(CompactOverlayButton.create(btnLeft, row1Y, halfW, 18, Component.literal("Copy ID"),
             b -> copyId()).setVariant(CompactOverlayButton.Variant.SECONDARY));
@@ -156,7 +179,7 @@ public final class DihAddonsScreen extends DihScreen {
             drawPanel(graphics, listX(), BODY_TOP, LEFT_WIDTH, bodyHeight(), PANEL_BG_SOFT);
             drawPanel(graphics, detailX(), BODY_TOP, detailWidth(), bodyHeight(), PANEL_BG_SOFT);
 
-            drawText(graphics, "Addons", panelX() + 22, TOP_PANEL_Y + 10, TEXT, false);
+            drawText(graphics, "My Addons", panelX() + 22, TOP_PANEL_Y + 10, TEXT, false);
             drawText(graphics, summaryText(), panelX() + 22, TOP_PANEL_Y + 28, MUTED, false, panelWidth() - 44);
             drawText(graphics, "Addon Library", listX() + 12, BODY_TOP + 10, TEXT, false);
 
@@ -185,7 +208,7 @@ public final class DihAddonsScreen extends DihScreen {
             y += ROW_HEIGHT;
         }
         if (reports.isEmpty()) {
-            drawText(graphics, reportsSnapshot.isEmpty() ? "No DIH addons discovered." : "No addons match the search.",
+            drawText(graphics, reportsSnapshot.isEmpty() ? "No addons yet. Press Addon Store to get some." : "No addons match the search.",
                 listX() + 12, rowsTop() + 12, MUTED, false, LEFT_WIDTH - 24);
         }
     }
@@ -199,8 +222,9 @@ public final class DihAddonsScreen extends DihScreen {
         UiRenderer.rect(graphics, UiBounds.of(rowX(), y, 2, ROW_HEIGHT - 3), status);
         UiRenderer.rect(graphics, UiBounds.of(rowX() + 4, y + 5, 3, ROW_HEIGHT - 13), report.color());
         drawText(graphics, report.name(), rowX() + 12, y + 4, TEXT, false, rowWidth() - 92);
-        drawText(graphics, report.modId() + (report.version().isBlank() ? "" : "  v" + report.version()),
-            rowX() + 12, y + 16, MUTED, false, rowWidth() - 92);
+        String subtitle = !report.description().isBlank() ? report.description()
+            : report.modId() + (report.version().isBlank() ? "" : "  v" + report.version());
+        drawText(graphics, subtitle, rowX() + 12, y + 16, MUTED, false, rowWidth() - 92);
         drawText(graphics, displayStatus(report), rowRight() - 78, y + 10, statusColor(report), false, 70);
     }
 
@@ -217,18 +241,29 @@ public final class DihAddonsScreen extends DihScreen {
         }
         drawText(graphics, report.name(), x, y, TEXT, false, width);
         y += 12;
-        drawText(graphics, report.modId(), x, y, MUTED, false, width);
-        y += 16;
+        drawText(graphics, report.modId() + (report.version().isBlank() ? "" : "  v" + report.version()), x, y, MUTED, false, width);
+        y += 14;
+        if (!report.description().isBlank()) {
+            drawText(graphics, report.description(), x, y, TEXT, false, width);
+            y += 14;
+        }
+        y += 2;
         y = detailLine(graphics, x, y, width, "Status", displayStatus(report), statusColor(report));
         y = detailLine(graphics, x, y, width, "API", apiText(report), INFO);
         y = detailLine(graphics, x, y, width, "Version", report.version().isBlank() ? "unknown" : report.version(), TEXT);
         y = detailLine(graphics, x, y, width, "Authors", report.authors().isBlank() ? "unknown" : report.authors(), TEXT);
+        if (report.bundled()) y = detailLine(graphics, x, y, width, "Source", "Built into DIH", INFO);
         y = detailLine(graphics, x, y, width, "Extensions", report.summaryCounts(), SUCCESS);
         if (report.rejectedTotal() > 0) y = detailLine(graphics, x, y, width, "Rejected", Integer.toString(report.rejectedTotal()), WARN);
         if (report.runtimeErrors() > 0) y = detailLine(graphics, x, y, width, "Runtime Errors", Integer.toString(report.runtimeErrors()), ERROR);
-        if (AddonManager.isDisabledOnRestart(report.modId())) {
+        if (AddonUninstaller.isRemoved(report.modId())) {
             y += 4;
-            drawText(graphics, "Will be disabled after restart.", x, y, WARN, false, width);
+            drawText(graphics, "Uninstalled. Its jar is deleted when you close Minecraft.", x, y, WARN, false, width);
+            y += 12;
+        } else if (AddonManager.isDisabledOnRestart(report.modId())) {
+            y += 4;
+            drawText(graphics, report.bundled() ? "Off. Click Enable Restart, then restart." : "Will be disabled after restart.",
+                x, y, WARN, false, width);
             y += 12;
         }
         if (!report.failureReason().isBlank()) {
@@ -256,7 +291,7 @@ public final class DihAddonsScreen extends DihScreen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         MouseButtonEvent virtual = virtualEvent(event);
-        if (virtual.button() != 0) return super.mouseClicked(virtual, doubleClick);
+        if (virtual.button() != InputConstants.MOUSE_BUTTON_LEFT) return super.mouseClicked(virtual, doubleClick);
         for (CompactOverlayButton button : buttons) {
             if (CompactOverlayButton.fireIfHit(button, virtual.x(), virtual.y(), virtual.button())) return true;
         }
@@ -350,8 +385,26 @@ public final class DihAddonsScreen extends DihScreen {
         rebuildButtons();
     }
 
+    private void uninstallSelected() {
+        AddonReport report = selectedReport();
+        if (report == null || !AddonUninstaller.canUninstall(report.modId())) return;
+        if (!report.modId().equals(confirmUninstallId)) {
+            confirmUninstallId = report.modId();
+            rebuildButtons();
+            return;
+        }
+        confirmUninstallId = "";
+        try {
+            AddonUninstaller.uninstall(report.modId());
+            DihNotifications.show("Uninstalled " + report.name() + ". It is removed when you close Minecraft.", WARN);
+        } catch (AddonUninstaller.UninstallException e) {
+            DihNotifications.show(e.getMessage(), ERROR);
+        }
+        rebuildButtons();
+    }
+
     private void openModsFolder() {
-        Util.getPlatform().openFile(AddonManager.modsFolder());
+        DihLinks.openPath(AddonManager.modsFolder().toPath());
     }
 
     private List<AddonReport> filteredReports() {
@@ -386,16 +439,26 @@ public final class DihAddonsScreen extends DihScreen {
         int loaded = 0;
         int issues = 0;
         int disabled = 0;
+        int builtInOff = 0;
         for (AddonReport report : reportsSnapshot) {
             if (report.status() == AddonLoadStatus.LOADED) loaded++;
             if (report.status().isIssue()) issues++;
-            if (AddonManager.isDisabledOnRestart(report.modId()) || report.status() == AddonLoadStatus.DISABLED) disabled++;
+            boolean off = AddonManager.isDisabledOnRestart(report.modId()) || report.status() == AddonLoadStatus.DISABLED;
+            if (off && report.bundled()) builtInOff++;
+            else if (off) disabled++;
         }
-        return total + " discovered  " + loaded + " loaded  " + issues + " issue(s)  " + disabled + " disabled/restart";
+        String text = total + " discovered  " + loaded + " loaded  " + issues + " issue(s)";
+        if (builtInOff > 0) text += "  " + builtInOff + " built-in off";
+        if (disabled > 0) text += "  " + disabled + " disabled/restart";
+        return text;
     }
 
     private String displayStatus(AddonReport report) {
         if (report == null) return "";
+        if (AddonUninstaller.isRemoved(report.modId())) return "Removed";
+        if (report.bundled() && report.status() == AddonLoadStatus.DISABLED) {
+            return AddonManager.isDisabledOnRestart(report.modId()) ? "Off" : "On (restart)";
+        }
         if (AddonManager.isDisabledOnRestart(report.modId()) && report.status() == AddonLoadStatus.LOADED) return "Disables";
         return report.status().label();
     }
@@ -403,6 +466,7 @@ public final class DihAddonsScreen extends DihScreen {
     private int statusColor(AddonReport report) {
         if (report == null) return MUTED;
         if (report.status().isIssue()) return ERROR;
+        if (AddonUninstaller.isRemoved(report.modId())) return WARN;
         if (AddonManager.isDisabledOnRestart(report.modId()) || report.status() == AddonLoadStatus.DISABLED) return WARN;
         return SUCCESS;
     }

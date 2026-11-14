@@ -5,10 +5,8 @@ import dihclient.util.DihAccountManager;
 import dihclient.util.DihAccountSessionSwitcher;
 import dihclient.util.DihAccountType;
 import dihclient.util.DihAuthNetwork;
-import com.mojang.authlib.Environment;
-import com.mojang.authlib.minecraft.MinecraftSessionService;
+import dihclient.util.DihAuthServices;
 import com.mojang.authlib.minecraft.UserApiService;
-import com.mojang.authlib.yggdrasil.YggdrasilAuthenticationService;
 import com.mojang.util.UndashedUuid;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
@@ -20,18 +18,11 @@ import net.minecraft.util.SignatureValidator;
 import java.util.Optional;
 
 final class MultiIdentityResolver {
-    private static final Environment ALTENING_ENVIRONMENT = new Environment(
-        "http://sessionserver.thealtening.com",
-        "http://authserver.thealtening.com",
-        "https://api.mojang.com",
-        "The Altening"
-    );
-
     record Identity(
         String accountId,
         DihAccountType type,
         User user,
-        MinecraftSessionService sessionService,
+        Services services,
         ProfileKeyPairManager keyPairManager,
 
         SignatureValidator profileKeyValidator
@@ -45,14 +36,13 @@ final class MultiIdentityResolver {
         Minecraft minecraft = Minecraft.getInstance();
         if (MultiProfile.DEFAULT_ACCOUNT_ID.equals(accountId)) {
             User user = DihAccountSessionSwitcher.getOriginalUser();
-            YggdrasilAuthenticationService authentication =
-                new YggdrasilAuthenticationService(DihAuthNetwork.directProxy());
-            Services services = Services.create(authentication, minecraft.gameDirectory);
+            DihAuthServices authentication = DihAuthServices.mojang(DihAuthNetwork.directProxy());
+            Services services = authentication.services(minecraft.gameDirectory);
             return new Identity(
                 accountId,
                 user.getAccessToken().isBlank() ? DihAccountType.Cracked : DihAccountType.Session,
                 user,
-                services.sessionService(),
+                services,
                 keyManager(minecraft, authentication, user),
                 profileKeyValidator(services)
             );
@@ -73,21 +63,20 @@ final class MultiIdentityResolver {
             Optional.empty(),
             Optional.empty()
         );
-        YggdrasilAuthenticationService authentication = account.type == DihAccountType.TheAltening
-            ? new YggdrasilAuthenticationService(minecraft.getProxy(), ALTENING_ENVIRONMENT)
-            : new YggdrasilAuthenticationService(DihAuthNetwork.directProxy());
+        DihAuthServices authentication = account.type == DihAccountType.TheAltening
+            ? DihAuthServices.theAltening(minecraft.getProxy())
+            : DihAuthServices.mojang(DihAuthNetwork.directProxy());
 
-        YggdrasilAuthenticationService mojangAuth =
-            new YggdrasilAuthenticationService(DihAuthNetwork.directProxy());
-        Services services = Services.create(authentication, minecraft.gameDirectory);
-        return new Identity(account.id, account.type, user, services.sessionService(),
+        DihAuthServices mojangAuth = DihAuthServices.mojang(DihAuthNetwork.directProxy());
+        Services services = authentication.services(minecraft.gameDirectory);
+        return new Identity(account.id, account.type, user, services,
             keyManager(minecraft, mojangAuth, user), profileKeyValidator(services));
     }
 
-    private static ProfileKeyPairManager keyManager(Minecraft minecraft, YggdrasilAuthenticationService auth, User user) {
+    private static ProfileKeyPairManager keyManager(Minecraft minecraft, DihAuthServices auth, User user) {
         if (user.getAccessToken() == null || user.getAccessToken().isBlank()) return ProfileKeyPairManager.EMPTY_KEY_MANAGER;
         try {
-            UserApiService userApi = auth.createUserApiService(user.getAccessToken());
+            UserApiService userApi = auth.userApi(user.getAccessToken());
             return ProfileKeyPairManager.create(userApi, user, minecraft.gameDirectory.toPath());
         } catch (RuntimeException ignored) {
             return ProfileKeyPairManager.EMPTY_KEY_MANAGER;

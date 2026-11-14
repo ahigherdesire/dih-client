@@ -1,5 +1,6 @@
 package dihclient.modules;
 
+import dihclient.api.module.BoolSetting;
 import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.api.module.RangeSetting;
@@ -9,6 +10,7 @@ import net.minecraft.client.player.ClientInput;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.player.Input;
+import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.CollisionContext;
@@ -38,14 +40,38 @@ public final class SafeWalkModule extends Module {
     public SafeWalkModule() {
         super("safe-walk", "SafeWalk", ModuleCategory.MOVEMENT, "Sneaks at ledges.");
         add(new IntSetting("look-down", "Look Down", 25, 0, 90, 1)
+            .group("General")
             .unit("deg")
-            .description("Minimum downward look"));
+            .description("Minimum downward look")
+            .build());
         add(new DoubleSetting("edge-distance", "Edge Distance", 0.30D, MIN_EDGE_DISTANCE, 1.50D, 0.05D)
+            .group("General")
             .unit("blocks")
-            .description("Ledge probe distance"));
+            .description("Ledge probe distance")
+            .build());
+        add(new IntSetting("min-drop", "Min Drop", 1, 1, 6, 1)
+            .group("General")
+            .unit("blocks")
+            .description("Only stops you at drops at least this deep, so you can walk down steps")
+            .build());
         add(new RangeSetting("hold-time", "Hold Time", new ValueRange(100, 200), 0, 500, 5)
+            .group("General")
             .unit("ms")
-            .description("Random sneak hold time"));
+            .description("Random sneak hold time")
+            .build());
+
+        add(new BoolSetting("pause-when-jumping", "Pause When Jumping", false)
+            .group("Conditions")
+            .description("Lets go while you hold jump, so you can leap off the edge")
+            .build());
+        add(new BoolSetting("only-backwards", "Only Backwards", false)
+            .group("Conditions")
+            .description("Only while you walk backwards, as when bridging")
+            .build());
+        add(new BoolSetting("only-with-blocks", "Only With Blocks", false)
+            .group("Conditions")
+            .description("Only while you hold a block in either hand")
+            .build());
     }
 
     @Override
@@ -63,14 +89,14 @@ public final class SafeWalkModule extends Module {
             safeWalk.holding = false;
             return original;
         }
-        if (!safeWalk.sneakRequested()) return original;
+        if (!safeWalk.sneakRequested(original)) return original;
         if (original.shift()) return original;
         return new Input(original.forward(), original.backward(), original.left(), original.right(),
             original.jump(), true, original.sprint());
     }
 
-    private boolean sneakRequested() {
-        if (scaffoldOwnsTheEdge()) {
+    private boolean sneakRequested(Input input) {
+        if (scaffoldOwnsTheEdge() || pausedFor(input)) {
             holding = false;
             return false;
         }
@@ -87,6 +113,21 @@ public final class SafeWalkModule extends Module {
         if (holdsThroughFlicker(holding, clearTicks, RELEASE_CLEAR_TICKS)) return true;
         holding = false;
         return false;
+    }
+
+    private boolean pausedFor(Input input) {
+        if (bool("pause-when-jumping") && input.jump()) return true;
+        if (bool("only-backwards") && !(input.backward() && !input.forward())) return true;
+        if (bool("only-with-blocks")) {
+            LocalPlayer player = MC.player;
+            return !(player.getMainHandItem().getItem() instanceof BlockItem)
+                && !(player.getOffhandItem().getItem() instanceof BlockItem);
+        }
+        return false;
+    }
+
+    static double dropProbeDepth(int minDrop) {
+        return DROP_PROBE_DEPTH + Math.max(0, minDrop - 1);
     }
 
     static boolean holdsThroughFlicker(boolean holding, int clearTicks, int releaseTicks) {
@@ -123,7 +164,7 @@ public final class SafeWalkModule extends Module {
         }
         double half = Math.max(0.05D, player.getBbWidth() / 2.0D - PROBE_INSET);
         AABB below = new AABB(
-            probe.x - half, probe.y - DROP_PROBE_DEPTH, probe.z - half,
+            probe.x - half, probe.y - dropProbeDepth(integer("min-drop")), probe.z - half,
             probe.x + half, probe.y, probe.z + half);
         return MC.level.noCollision(player, below);
     }

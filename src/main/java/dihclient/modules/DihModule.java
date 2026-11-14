@@ -54,7 +54,7 @@ public final class DihModule {
         net.minecraft.network.protocol.game.ServerboundChunkBatchReceivedPacket.class,
         net.minecraft.network.protocol.game.ServerboundClientCommandPacket.class,
         net.minecraft.network.protocol.game.ServerboundContainerClosePacket.class,
-        net.minecraft.network.protocol.game.ServerboundSwingPacket.class,
+        dihclient.util.DihPackets.SWING,
         net.minecraft.network.protocol.game.ServerboundPlayerInputPacket.class,
         net.minecraft.network.protocol.game.ServerboundMovePlayerPacket.class,
         net.minecraft.network.protocol.game.ServerboundMovePlayerPacket.PosRot.class,
@@ -71,6 +71,7 @@ public final class DihModule {
     private boolean toggleLoggerKeyPressed;
     private boolean toggleSendKeyPressed;
     private boolean toggleDelayKeyPressed;
+    private boolean paletteKeyPressed;
     private boolean moduleMenuKeyPressed;
     private final java.util.Map<String, Boolean> macroKeyStates = new java.util.HashMap<>();
     private List<DihMacro> cachedKeyboundMacros = List.of();
@@ -278,6 +279,7 @@ public final class DihModule {
             ModuleRegistry.tick();
             DihPerf.endJoinSpike("join.modules.tick", perf, 8_000_000L);
         }
+        if (hidden) ModuleRegistry.tickPanicKeybind();
         if (!hidden) PackAutoReconnectState.tickCurrentScreen();
         updatePassiveXCarryState();
         DihServerInfoOverlay serverInfo = getServerDataOverlayIfExists();
@@ -292,6 +294,8 @@ public final class DihModule {
         } else {
             autoSendTickCounter = 0;
         }
+
+        dihclient.gui.screen.DihTour.tickInWorld(MC);
 
         if (DihInputGate.canRunDihKeybinds()) {
             tickKeybinds();
@@ -359,6 +363,7 @@ public final class DihModule {
         if (!PackHideState.isActive() && config != null && config.packetLoggerCapturing) {
             getPacketLoggerOverlay();
         }
+        if (!PackHideState.isActive()) restorePinnedWindows();
 
         if (config.lanSyncEnabled && !PackHideState.isActive() && !DihLANSync.getInstance().isRunning()) {
             DihLANSync.getInstance().start();
@@ -967,6 +972,17 @@ public final class DihModule {
             hydratePassivePayloads(packetLoggerOverlay);
         }
         return packetLoggerOverlay;
+    }
+
+    /** Puts windows that were pinned (and open) when the game last closed back on screen. */
+    private void restorePinnedWindows() {
+        if (DihSharedState.get().isWindowPinned(DihPacketLoggerOverlay.OVERLAY_ID) && DihPacketLoggerOverlay.shouldRestoreSavedVisible()) {
+            DihPacketLoggerOverlay logger = getPacketLoggerOverlay();
+            if (logger != null) {
+                logger.setVisible(true);
+                DihOverlayManager.get().register(logger);
+            }
+        }
     }
 
     public DihPacketLoggerOverlay getPacketLoggerOverlayIfExists() {
@@ -1657,6 +1673,13 @@ public final class DihModule {
             moduleMenuKeyPressed = pressed;
         }
 
+        if (cfg.keybindCommandPalette != -1) {
+            boolean pressed = isBindPressed(cfg.keybindCommandPalette)
+                && (!dihclient.palette.DihCommandPalette.needsCtrl(cfg.keybindCommandPalette) || isCtrlDown());
+            if (pressed && !paletteKeyPressed && MC.gui.screen() == null) dihclient.palette.DihCommandPalette.openFromKey();
+            paletteKeyPressed = pressed;
+        }
+
         if (PackHideState.isActive()) {
             loadGuiKeyPressed = false;
             flushQueueKeyPressed = false;
@@ -1767,6 +1790,10 @@ public final class DihModule {
 
     private boolean isAnyTextFieldFocused() {
         return DihOverlayManager.get().isAnyTextFieldFocused();
+    }
+
+    private boolean isCtrlDown() {
+        return isBindPressed(com.mojang.blaze3d.platform.InputConstants.KEY_LCONTROL) || isBindPressed(com.mojang.blaze3d.platform.InputConstants.KEY_RCONTROL);
     }
 
     private boolean isBindPressed(int bindCode) {

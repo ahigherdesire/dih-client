@@ -114,7 +114,7 @@ public final class DihDiscordLogin {
             + "&redirect_uri=" + enc(REDIRECT)
             + "&scope=identify"
             + "&prompt=consent";
-        Util.getPlatform().openUri(url);
+        DihLinks.openUri(url);
     }
 
     public static synchronized void signOut() {
@@ -360,8 +360,7 @@ public final class DihDiscordLogin {
 
     private static String modVersion() {
         try {
-            return net.fabricmc.loader.api.FabricLoader.getInstance().getModContainer("dih")
-                .map(m -> m.getMetadata().getVersion().getFriendlyString()).orElse("unknown");
+            return dihclient.platform.DihLoader.modVersion("dih").orElse("unknown");
         } catch (Throwable t) { return "unknown"; }
     }
 

@@ -1,0 +1,30 @@
+name: Acquire client tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  client-game-test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Install virtual display
+        run: sudo apt-get update && sudo apt-get install -y xvfb
+      - name: Run acquire scenarios in the client
+        run: xvfb-run -a ./gradlew runClientGameTest
+      - name: Upload game-test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: acquire-client-test-results
+          path: |
+            build/run/clientGameTest/
+            build/reports/
+          if-no-files-found: ignore

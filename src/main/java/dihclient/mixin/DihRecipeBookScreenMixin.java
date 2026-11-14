@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihKeys;
 import dihclient.modules.DihModule;
 import dihclient.util.DihOverlayManager;
 import net.minecraft.client.input.MouseButtonEvent;
@@ -44,7 +45,7 @@ public abstract class DihRecipeBookScreenMixin {
     private void dih$handleOverlayKeys(KeyEvent input, CallbackInfoReturnable<Boolean> cir) {
         if (!dih$isActive()) return;
 
-        if (DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) {
+        if (DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) {
             cir.setReturnValue(true);
         }
     }

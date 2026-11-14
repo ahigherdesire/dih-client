@@ -90,8 +90,10 @@ public abstract class Module implements SettingOwner {
         save();
         String message = replacementToggleMessage;
         replacementToggleMessage = null;
-        if (emitsToggleMessage() && !PackHideState.isSilenced()) {
-            DihClientMessaging.sendPrefixed(message == null || message.isBlank()
+        // A replacement message explains an automatic stop, so it shows even with Chat Feedback off.
+        boolean plainToggle = message == null || message.isBlank();
+        if (emitsToggleMessage() && !PackHideState.isSilenced() && (!plainToggle || toggleChatEnabled())) {
+            DihClientMessaging.sendPrefixed(plainToggle
                 ? name + ": " + (isEnabled() ? "enabled" : "disabled")
                 : message);
         }
@@ -232,6 +234,10 @@ public abstract class Module implements SettingOwner {
     public void onNetworkMovementTickPre() {
     }
 
+    /** After the player's movement packet for the tick has gone out: the last packet the server reads this tick. */
+    public void onNetworkMovementTickPost() {
+    }
+
     public void onPacketProcessFrame() {
     }
 
@@ -240,6 +246,10 @@ public abstract class Module implements SettingOwner {
     }
 
     public void onRenderLevel(float partialTick) {
+    }
+
+    /** Draws on the HUD in vanilla GUI coordinates, under chat and screens; skipped while the HUD is hidden. */
+    public void onRenderOverlay(net.minecraft.client.gui.GuiGraphicsExtractor context, float partialTick) {
     }
 
     public void onMouseRotation(double deltaYaw, double deltaPitch) {
@@ -585,6 +595,16 @@ public abstract class Module implements SettingOwner {
 
     private void save() {
         DihConfig.getGlobal().save();
+    }
+
+    /** The Chat Feedback setting: whether plain "Module: enabled/disabled" lines go to chat. */
+    static boolean toggleChatEnabled() {
+        try {
+            DihConfig config = DihConfig.getGlobal();
+            return config == null || config.moduleToggleChat;
+        } catch (Throwable t) {
+            return true;
+        }
     }
 
     private static double clamp(double value, double min, double max) {

@@ -1,0 +1,12 @@
+function main() {
+    while (true) {
+        if (chatSeen("has requested to teleport")) {
+            command("/tpaccept");
+        }
+        if (chatSeen("stop mining")) {
+            stopBaritone();
+            say("Stopped.");
+        }
+        waitSeconds(1);
+    }
+}

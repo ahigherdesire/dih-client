@@ -1,0 +1,12 @@
+function main() {
+    let ores = ["gold_ore", "iron_ore"];
+    push(ores, "coal_ore");        // add to the end
+    print(len(ores), ores[0], ores[-1]);   // 3 gold_ore coal_ore
+    ores[1] = "copper_ore";        // replace an item
+    let last = pop(ores);          // remove and return the last item
+    print(contains(ores, "gold_ore"), last);
+    print(join(ores, " + "));      // gold_ore + copper_ore
+
+    let parts = split("a,b,c", ",");   // ["a", "b", "c"]
+    print(upper(parts[1]), "abc"[0], len("hello"));
+}

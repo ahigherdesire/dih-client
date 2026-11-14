@@ -1,5 +1,7 @@
 package dihclient.gui.multi;
 
+import dihclient.util.DihKeys;
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.screen.DihAccountsScreen;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
@@ -38,7 +40,6 @@ import net.minecraft.client.renderer.RenderPipelines;
 import net.minecraft.network.chat.ClickEvent;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -965,7 +966,7 @@ public final class MultiPanel {
         for (DihMacro macro : macros) {
             if (ry + ROW > y && ry < y + listH) {
                 boolean selected = macro.name.equals(selectedMacroName);
-                row(g, x, ry, listW, ROW - 2, macro.name, selected ? success() : border(), mx, my,
+                row(g, x, ry, listW, ROW - 2, dihclient.util.MacroFolderView.label(macro), selected ? success() : border(), mx, my,
                     () -> { selectedMacroName = macro.name; pendingMacroDelete = ""; });
             }
             ry += ROW;
@@ -1684,7 +1685,7 @@ public final class MultiPanel {
         }
 
         if (!contextMenuId.isBlank()) {
-            if (button == 0) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT) {
                 for (int[] rect : contextItemRects) {
                     if (mx >= rect[0] && mx < rect[0] + rect[2] && my >= rect[1] && my < rect[1] + rect[3]) {
                         runContextAction(rect[4]);
@@ -1696,7 +1697,7 @@ public final class MultiPanel {
             return true;
         }
 
-        if (button == 1 && tab == Tab.CONSOLE) {
+        if (button == InputConstants.MOUSE_BUTTON_RIGHT && tab == Tab.CONSOLE) {
             for (RowHit row : sessionRowHits) {
                 if (row.hit(mx, my)) {
                     contextMenuId = row.id();
@@ -1707,7 +1708,7 @@ public final class MultiPanel {
             }
         }
 
-        if (button == 0 && tab == Tab.CONSOLE) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && tab == Tab.CONSOLE) {
             for (int[] rect : chatSuggestRects) {
                 if (mx >= rect[0] && mx < rect[0] + rect[2] && my >= rect[1] && my < rect[1] + rect[3]) {
                     applyChatSuggestionAt(rect[4]);
@@ -1723,13 +1724,13 @@ public final class MultiPanel {
                 return true;
             }
         }
-        if (button == 0 && tab == Tab.CONSOLE) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && tab == Tab.CONSOLE) {
 
             if (handleChatClick(mx, my)) return true;
             if (beginChatSelection(mx, my)) return true;
         }
         clearFocus();
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (int i = hotspots.size() - 1; i >= 0; i--) {
                 Hotspot hit = hotspots.get(i);
                 if (!hit.hit(mx, my)) continue;
@@ -1829,12 +1830,12 @@ public final class MultiPanel {
 
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
 
-        if (keyCode == GLFW.GLFW_KEY_C && (modifiers & GLFW.GLFW_MOD_CONTROL) != 0
+        if (keyCode == InputConstants.KEY_C && (modifiers & InputConstants.MOD_CONTROL) != 0
             && chatSel.hasSelection() && !chatInput.isFocused()) {
             copyChatSelection();
             return true;
         }
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if (keyCode == InputConstants.KEY_ESCAPE) {
             if (chatSel.hasSelection()) { chatSel.clear(); return true; }
             if (CompactDropdown.closeOpenMenu(frameDropdowns)) return true;
             if (quickEdit >= 0) { closeQuickEditor(); return true; }
@@ -1843,9 +1844,9 @@ public final class MultiPanel {
 
             if (chatInput.isFocused() && !chatSuggests.isEmpty()) { clearChatSuggests(); return true; }
         }
-        if (chatInput.isFocused() && keyCode == GLFW.GLFW_KEY_TAB) {
+        if (chatInput.isFocused() && keyCode == InputConstants.KEY_TAB) {
 
-            applyChatTab((modifiers & GLFW.GLFW_MOD_SHIFT) != 0);
+            applyChatTab((modifiers & InputConstants.MOD_SHIFT) != 0);
             return true;
         }
         DirectRenderContext ctx = ctx(null, lastMx, lastMy);
@@ -2229,9 +2230,10 @@ public final class MultiPanel {
         cachedMacroRevision = revision;
         cachedMacroQuery = query;
 
-        cachedMacros = DihMacroManager.get().getAll().stream()
-            .filter(m -> m != null && m.name != null && m.name.toLowerCase(Locale.ROOT).contains(query))
-            .toList();
+        cachedMacros = dihclient.util.MacroFolderView.ordered(DihMacroManager.get().getAll().stream()
+            .filter(m -> m != null && m.name != null && (m.name.toLowerCase(Locale.ROOT).contains(query)
+                || m.folder != null && m.folder.toLowerCase(Locale.ROOT).contains(query)))
+            .toList());
         return cachedMacros;
     }
 
@@ -2397,16 +2399,14 @@ public final class MultiPanel {
 
     private boolean ctrlDown() {
         if (mc == null || mc.getWindow() == null) return false;
-        long window = mc.getWindow().handle();
-        return GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_CONTROL) == GLFW.GLFW_PRESS
-            || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_CONTROL) == GLFW.GLFW_PRESS;
+        return DihKeys.isKeyDown(InputConstants.KEY_LCONTROL)
+            || DihKeys.isKeyDown(InputConstants.KEY_RCONTROL);
     }
 
     private boolean shiftDown() {
         if (mc == null || mc.getWindow() == null) return false;
-        long window = mc.getWindow().handle();
-        return GLFW.glfwGetKey(window, GLFW.GLFW_KEY_LEFT_SHIFT) == GLFW.GLFW_PRESS
-            || GLFW.glfwGetKey(window, GLFW.GLFW_KEY_RIGHT_SHIFT) == GLFW.GLFW_PRESS;
+        return DihKeys.isKeyDown(InputConstants.KEY_LSHIFT)
+            || DihKeys.isKeyDown(InputConstants.KEY_RSHIFT);
     }
 
     private record Hotspot(int x, int y, int w, int h, Runnable action) {

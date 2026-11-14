@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.gui.vanillaui.components.CompactOverlayButton;
@@ -301,7 +302,7 @@ public final class DihMultiProxyPickerScreen extends DihScreen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         MouseButtonEvent virtualEvent = virtualEvent(event);
-        if (virtualEvent.button() == 0) {
+        if (virtualEvent.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             CompactScrollbar.Metrics scrollbar = scrollbarMetrics();
             if (scrollbar.hasScroll() && scrollbar.contains(virtualEvent.x(), virtualEvent.y())) {
                 scrollbarDragging = true;

@@ -235,7 +235,8 @@ public class PathExecutor implements IPathExecutor, Helper {
             return true;
         } else {
             sprintNextTick = shouldSprintNextTick();
-            if (!sprintNextTick) {
+            boolean solvedJump = movement instanceof MovementSolvedJump jump && jump.playing();
+            if (!sprintNextTick && !solvedJump) {
                 ctx.player().setSprinting(false); // letting go of control doesn't make you stop sprinting actually
             }
             ticksOnCurrent++;
@@ -303,6 +304,10 @@ public class PathExecutor implements IPathExecutor, Helper {
     private boolean possiblyOffPath(Tuple<Double, BlockPos> status, double leniency) {
         double distanceFromPath = status.getA();
         if (distanceFromPath > leniency) {
+            // a solved jump round a wall swings well wide of both ends; its own executor reports a miss
+            if (path.movements().get(pathPosition) instanceof MovementSolvedJump jump && jump.playing()) {
+                return false;
+            }
             // when we're midair in the middle of a fall, we're very far from both the beginning and the end, but we aren't actually off path
             if (path.movements().get(pathPosition) instanceof MovementFall) {
                 BlockPos fallDest = path.positions().get(pathPosition + 1); // .get(pathPosition) is the block we fell off of

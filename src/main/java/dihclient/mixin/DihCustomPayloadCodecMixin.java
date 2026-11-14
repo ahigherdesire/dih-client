@@ -15,8 +15,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(targets = "net.minecraft.network.protocol.common.custom.CustomPacketPayload$1")
 public abstract class DihCustomPayloadCodecMixin {
     @Unique
-    private static final ThreadLocal<CaptureCursor> DIH_CAPTURE_CURSOR =
-        ThreadLocal.withInitial(CaptureCursor::new);
+    private static final ThreadLocal<dihclient.util.DihPayloadCaptureCursor> DIH_CAPTURE_CURSOR =
+        ThreadLocal.withInitial(dihclient.util.DihPayloadCaptureCursor::new);
 
     @Inject(method = "encode(Lnet/minecraft/network/FriendlyByteBuf;Lnet/minecraft/network/protocol/common/custom/CustomPacketPayload;)V",
             at = @At("HEAD"),
@@ -28,7 +28,7 @@ public abstract class DihCustomPayloadCodecMixin {
         long captureState = DihNetworkCaptureState.codecState();
         boolean capturePayload = DihNetworkCaptureState.capturesPayloads(captureState);
         if (capturePayload && buf != null) {
-            CaptureCursor cursor = DIH_CAPTURE_CURSOR.get();
+            dihclient.util.DihPayloadCaptureCursor cursor = DIH_CAPTURE_CURSOR.get();
             cursor.encodeStartIndex = buf.writerIndex();
             cursor.encodeState = captureState;
         }
@@ -57,7 +57,7 @@ public abstract class DihCustomPayloadCodecMixin {
     private void dih$captureEncodedCustomPacketPayload(FriendlyByteBuf buf, CustomPacketPayload payload, CallbackInfo ci) {
         long captureState = DihNetworkCaptureState.codecState();
         if (!DihNetworkCaptureState.capturesPayloads(captureState)) return;
-        CaptureCursor cursor = DIH_CAPTURE_CURSOR.get();
+        dihclient.util.DihPayloadCaptureCursor cursor = DIH_CAPTURE_CURSOR.get();
         int startIndex = cursor.encodeState == captureState ? cursor.encodeStartIndex : -1;
         cursor.encodeStartIndex = -1;
         cursor.encodeState = 0L;
@@ -74,7 +74,7 @@ public abstract class DihCustomPayloadCodecMixin {
     private void dih$captureDecodeStart(FriendlyByteBuf buf, CallbackInfoReturnable<CustomPacketPayload> cir) {
         long captureState = DihNetworkCaptureState.codecState();
         if (!DihNetworkCaptureState.capturesPayloads(captureState) || buf == null) return;
-        CaptureCursor cursor = DIH_CAPTURE_CURSOR.get();
+        dihclient.util.DihPayloadCaptureCursor cursor = DIH_CAPTURE_CURSOR.get();
         cursor.decodeStartIndex = buf.readerIndex();
         cursor.decodeState = captureState;
     }
@@ -84,7 +84,7 @@ public abstract class DihCustomPayloadCodecMixin {
     private void dih$captureDecodedCustomPacketPayload(FriendlyByteBuf buf, CallbackInfoReturnable<CustomPacketPayload> cir) {
         long captureState = DihNetworkCaptureState.codecState();
         if (!DihNetworkCaptureState.capturesPayloads(captureState)) return;
-        CaptureCursor cursor = DIH_CAPTURE_CURSOR.get();
+        dihclient.util.DihPayloadCaptureCursor cursor = DIH_CAPTURE_CURSOR.get();
         int startIndex = cursor.decodeState == captureState ? cursor.decodeStartIndex : -1;
         cursor.decodeStartIndex = -1;
         cursor.decodeState = 0L;
@@ -104,13 +104,5 @@ public abstract class DihCustomPayloadCodecMixin {
             if (type != null && type.id() != null) return type.id().toString();
         } catch (Throwable ignored) {  }
         return "";
-    }
-
-    @Unique
-    private static final class CaptureCursor {
-        private int encodeStartIndex = -1;
-        private int decodeStartIndex = -1;
-        private long encodeState;
-        private long decodeState;
     }
 }

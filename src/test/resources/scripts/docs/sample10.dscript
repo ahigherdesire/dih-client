@@ -1,0 +1,9 @@
+function main() {
+    baritone("mine diamond_ore");
+    while (true) { wait(20); }
+}
+
+function onStop() {
+    stopBaritone();          // never leave Baritone running after the script ends
+    print("Stopped mining.");
+}

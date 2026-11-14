@@ -73,6 +73,14 @@ public class PathingControlManager implements IPathingControlManager {
         }
     }
 
+    /** Whether a job is running: an active process other than {@code except} that isn't a temporary pause. */
+    public boolean hasActiveJob(IBaritoneProcess except) {
+        for (IBaritoneProcess proc : processes) {
+            if (proc != except && !proc.isTemporary() && proc.isActive()) return true;
+        }
+        return false;
+    }
+
     @Override
     public Optional<IBaritoneProcess> mostRecentInControl() {
         return Optional.ofNullable(inControlThisTick);

@@ -2,10 +2,9 @@ package dihclient.util;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import dihclient.modules.PackHideState;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.rendertype.DihRenderTypes;
+import dihclient.render.mc.DihRenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.phys.BlockHitResult;
@@ -24,7 +23,7 @@ public final class DihInstaBreakRenderer {
     }
 
     public static void initialize() {
-        LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
+        dihclient.platform.DihPlatform.onCollectSubmits(context -> {
             if (PackHideState.isHardLocked()) return;
             BlockPos pos = targetPos;
             String shape = targetShape;

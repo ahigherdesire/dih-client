@@ -1,0 +1,18 @@
+// Tries to open the nearest chest up to 3 times.
+function openChestWithRetries() {
+    repeat (3) {
+        if (openNearest("chest")) {
+            return true;
+        }
+        waitSeconds(1);
+    }
+    return false;
+}
+
+function main() {
+    if (!openChestWithRetries()) {
+        error("No chest in reach");
+    }
+    print("Stored " + deposit("*") + " items");
+    closeGui();
+}

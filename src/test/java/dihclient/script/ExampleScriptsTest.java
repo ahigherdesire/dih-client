@@ -32,6 +32,27 @@ class ExampleScriptsTest {
     }
 
     @Test
+    void flowchartGoldMinerChecksClean() throws Exception {
+        try (var in = ExampleScriptsTest.class.getResourceAsStream("/scripts/gold_miner_flowchart.dscript")) {
+            assertClean(new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8));
+        }
+    }
+
+    /** Every complete code sample in the manual (exported to scripts/docs) must pass the checker. */
+    @Test
+    void manualSamplesCheckClean() throws Exception {
+        var dir = java.nio.file.Path.of(ExampleScriptsTest.class.getResource("/scripts/docs").toURI());
+        try (var files = java.nio.file.Files.list(dir)) {
+            var paths = files.filter(p -> p.toString().endsWith(".dscript")).sorted().toList();
+            org.junit.jupiter.api.Assertions.assertFalse(paths.isEmpty(), "no exported samples");
+            for (var p : paths) {
+                List<ScriptException> problems = Checker.check(java.nio.file.Files.readString(p), LIBRARY);
+                assertEquals(List.of(), problems.stream().map(ScriptException::describe).toList(), p.getFileName().toString());
+            }
+        }
+    }
+
+    @Test
     void helloChecksClean() {
         assertClean(ExampleScripts.HELLO);
     }

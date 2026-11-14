@@ -4,7 +4,6 @@ import dihclient.DihClientAddon;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.ChatFormatting;
 import net.minecraft.SharedConstants;
 import net.minecraft.network.chat.ClickEvent;
@@ -164,33 +163,45 @@ public final class DihUpdateChecker {
         }
     }
 
-    /** The jar asset built for this Minecraft version, else the first jar. */
+    /**
+     * The jar asset built for this Minecraft version and loader ({@code -26.2.jar} for Fabric, {@code -26.2-neoforge.jar}
+     * for NeoForge). Fabric falls back to the first Fabric jar (releases from before the Minecraft suffix); other
+     * loaders get nothing rather than a Fabric jar.
+     */
     private static JsonObject pickJarAsset(JsonArray assets) {
         if (assets == null) return null;
         String mc = minecraftVersion();
+        String loaderSuffix = loaderSuffix();
         JsonObject firstJar = null;
         for (JsonElement e : assets) {
             if (!e.isJsonObject()) continue;
             JsonObject asset = e.getAsJsonObject();
             String name = string(asset, "name", "").toLowerCase(Locale.ROOT);
             if (!name.endsWith(".jar") || name.contains("sources") || name.contains("lite")) continue;
-            if (firstJar == null) firstJar = asset;
-            if (!mc.isEmpty() && name.contains("-" + mc.toLowerCase(Locale.ROOT) + ".jar")) return asset;
+            boolean otherLoader = name.endsWith("-neoforge.jar") || name.endsWith("-forge.jar");
+            if (firstJar == null && !otherLoader) firstJar = asset;
+            if (!mc.isEmpty() && name.endsWith("-" + mc.toLowerCase(Locale.ROOT) + loaderSuffix + ".jar")) return asset;
         }
-        return firstJar;
+        return loaderSuffix.isEmpty() ? firstJar : null;
+    }
+
+    /** "" on Fabric, "-neoforge" on NeoForge: the jar-name suffix after the Minecraft version. */
+    private static String loaderSuffix() {
+        String loader = dihclient.platform.DihLoader.loaderName();
+        return "fabric".equals(loader) ? "" : "-" + loader;
     }
 
     /** Mod version without the Minecraft suffix: {@code 5.0-26.2} -> {@code 5.0}. */
     public static String currentVersion() {
         String full;
         try {
-            full = FabricLoader.getInstance().getModContainer("dih")
-                .map(m -> m.getMetadata().getVersion().getFriendlyString()).orElse("0");
+            full = dihclient.platform.DihLoader.modVersion("dih").orElse("0");
         } catch (Throwable t) {
             full = "0";
         }
         String mc = minecraftVersion();
-        if (!mc.isEmpty() && full.endsWith("-" + mc)) full = full.substring(0, full.length() - mc.length() - 1);
+        String suffix = "-" + mc + loaderSuffix();
+        if (!mc.isEmpty() && full.endsWith(suffix)) full = full.substring(0, full.length() - suffix.length());
         return full;
     }
 
@@ -207,13 +218,27 @@ public final class DihUpdateChecker {
         return t.startsWith("v") || t.startsWith("V") ? t.substring(1) : t;
     }
 
-    /** Numeric, dot by dot: 5.0.1 > 5.0, 5.10 > 5.9. Non-numeric parts count as 0. */
+    /**
+     * Numeric, dot by dot: 5.0.1 > 5.0, 5.10 > 5.9. A pre-release comes before its release
+     * (5.1-beta.2 < 5.1 < 5.1.1), and pre-releases compare part by part: beta.2 < beta.10, beta < rc.
+     */
     static int compareVersions(String a, String b) {
-        String[] x = a.split("[.-]"), y = b.split("[.-]");
+        String[] x = a.trim().split("-", 2), y = b.trim().split("-", 2);
+        int core = compareParts(x[0].split("\\."), y[0].split("\\."));
+        if (core != 0) return core;
+        boolean preX = x.length > 1, preY = y.length > 1;
+        if (preX != preY) return preX ? -1 : 1;
+        return preX ? compareParts(x[1].split("[.-]"), y[1].split("[.-]")) : 0;
+    }
+
+    /** Part by part; numbers numerically, words alphabetically (a missing part counts as 0). */
+    private static int compareParts(String[] x, String[] y) {
         for (int i = 0; i < Math.max(x.length, y.length); i++) {
-            int p = i < x.length ? leadingInt(x[i]) : 0;
-            int q = i < y.length ? leadingInt(y[i]) : 0;
-            if (p != q) return Integer.compare(p, q);
+            String p = i < x.length ? x[i] : "0", q = i < y.length ? y[i] : "0";
+            boolean numP = !p.isEmpty() && Character.isDigit(p.charAt(0)), numQ = !q.isEmpty() && Character.isDigit(q.charAt(0));
+            int c = numP && numQ ? Integer.compare(leadingInt(p), leadingInt(q))
+                : numP != numQ ? (numP ? -1 : 1) : p.compareToIgnoreCase(q);
+            if (c != 0) return c;
         }
         return 0;
     }
@@ -226,8 +251,7 @@ public final class DihUpdateChecker {
 
     private static String ownJarSha256() {
         try {
-            Path jar = FabricLoader.getInstance().getModContainer("dih")
-                .flatMap(c -> c.getOrigin().getPaths().stream().findFirst())
+            Path jar = dihclient.platform.DihLoader.modPath("dih")
                 .filter(p -> p.toString().toLowerCase(Locale.ROOT).endsWith(".jar"))
                 .filter(Files::isRegularFile)
                 .orElse(null);

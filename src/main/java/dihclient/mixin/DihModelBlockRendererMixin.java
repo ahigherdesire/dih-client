@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihRender;
 import com.mojang.blaze3d.vertex.QuadInstance;
 import dihclient.modules.GoldenLeverModule;
 import dihclient.modules.ModuleRenderUtil;
@@ -81,14 +82,7 @@ public class DihModelBlockRendererMixin {
         if (alpha <= 0 || alpha >= 255) return quad;
         BakedQuad.MaterialInfo materialInfo = quad.materialInfo();
         if (materialInfo.layer() == ChunkSectionLayer.TRANSLUCENT) return quad;
-        BakedQuad.MaterialInfo translucentInfo = new BakedQuad.MaterialInfo(
-            materialInfo.sprite(),
-            ChunkSectionLayer.TRANSLUCENT,
-            materialInfo.itemRenderType(),
-            materialInfo.tintIndex(),
-            materialInfo.shade(),
-            materialInfo.lightEmission()
-        );
+        BakedQuad.MaterialInfo translucentInfo = DihRender.copyMaterial(materialInfo, ChunkSectionLayer.TRANSLUCENT, materialInfo.tintIndex());
         return new BakedQuad(
             quad.position0(),
             quad.position1(),
@@ -104,7 +98,12 @@ public class DihModelBlockRendererMixin {
     }
 
     @Inject(method = "shouldRenderFace", at = @At("RETURN"), cancellable = true)
+    //? if neoforge {
+    /*// NeoForge's shouldRenderFace also takes the block's own position.
+    private void dih$xrayFaces(BlockAndTintGetter level, BlockPos pos, BlockState state, Direction direction, BlockPos neighborPos, CallbackInfoReturnable<Boolean> cir) {
+    *///?} else {
     private void dih$xrayFaces(BlockAndTintGetter level, BlockState state, Direction direction, BlockPos neighborPos, CallbackInfoReturnable<Boolean> cir) {
+    //?}
         if (!ModuleRenderUtil.hasXrayRenderWork()) return;
         BlockPos originalPos = neighborPos.relative(direction.getOpposite());
         cir.setReturnValue(ModuleRenderUtil.modifyXrayFace(level, state, direction, originalPos, cir.getReturnValue()));

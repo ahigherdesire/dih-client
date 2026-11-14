@@ -1,0 +1,6 @@
+// a comment runs to the end of the line
+/* a block comment
+   can span lines */
+function main() {
+    print("one"); print("two");   // two statements on one line is fine
+}

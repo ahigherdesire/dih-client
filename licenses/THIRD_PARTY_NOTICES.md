@@ -9,6 +9,7 @@ It contains or is derived from the following works. License texts are in this fo
 |---|---|---|---|
 | [Autism Client](https://github.com/AutismDevelopment/Autism-Client) (the upstream this is a fork of, including its artwork such as the title-screen panorama) | Melonik, simeonvartik, AutismDevelopment contributors | GPL-3.0 | `LICENSE` |
 | [Baritone](https://github.com/cabaletta/baritone) / MinecraftAI (`baritone.*` packages) | cabaletta and contributors | LGPL-3.0 | `LGPL-3.0.txt` + `LICENSE` |
+| [Litematica](https://github.com/maruohon/litematica) (schematic reading: region bounds, the bit array, the legacy-block conversion fixers, the overlay kinds and colours; in `baritone.utils.schematic` and `dihclient.schematic`) | maruohon | LGPL-3.0 | `LGPL-3.0.txt` |
 | [Meteor Client](https://github.com/MeteorDevelopment/meteor-client) | MeteorDevelopment | GPL-3.0 | `LICENSE` |
 | [Wurst7](https://github.com/Wurst-Imperium/Wurst7) | Wurst-Imperium | GPL-3.0 | `LICENSE` |
 | [OpSec](https://github.com/aurickk/OpSec) | aurickk | GPL-3.0 | `LICENSE` |

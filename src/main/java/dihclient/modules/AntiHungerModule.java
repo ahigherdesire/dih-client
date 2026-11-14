@@ -14,11 +14,15 @@ public final class AntiHungerModule extends Module {
         super("anti-hunger", "AntiHunger", ModuleCategory.MISC,
             "Prevents hunger from decreasing. Will flag anticheats.");
         add(new BoolSetting("no-sprint", "NoSprint", true)
-            .description("Hide sprint from server."));
+            .group("Sprint")
+            .description("Hide sprinting from the server so it doesn't drain hunger."));
         add(new BoolSetting("sprint-while-swimming", "While Swimming", false)
-            .description("Keep sprinting while swimming."));
+            .group("Sprint")
+            .description("Also hide sprinting while you swim.")
+            .visibleWhen(() -> Boolean.parseBoolean(value("no-sprint"))));
         add(new BoolSetting("keep-floating", "KeepFloating", true)
-            .description("Spoof onGround as false."));
+            .group("Ground")
+            .description("Tell the server you're never on the ground, which stops some hunger drain."));
     }
 
     boolean noSprintActive() {

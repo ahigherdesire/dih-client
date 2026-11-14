@@ -17,13 +17,23 @@ public final class PayAllModule extends Module {
     public PayAllModule() {
         super("pay-all", "PayAll", ModuleCategory.MISC, "Pay every listed player.");
 
-        add(new StringListSetting("players", "Players", "").playerRankPicker().build());
-        add(new BoolSetting("probe", "Probe Hidden", true).description("Include hidden players.").build());
-        add(new StringSetting("amount", "Amount", "1000").description("Supports K, M, B.").build());
-        add(new BoolSetting("divide", "Split Total", false).description("Split across players.").build());
-        add(new IntSetting("delay", "Delay (ms)", 1000, 0, 10000, 100).description("Gap between payments.").build());
-        add(new StringSetting("command", "Command", "/pay <player> <amount>").description("<player> and <amount>.").build());
-        add(new StringSetting("confirm-macro", "Confirm Macro", "")
+        add(new StringListSetting("players", "Players", "").group("Targets")
+            .description("Who to pay. Empty means everyone visible.").playerRankPicker().build());
+        add(new BoolSetting("probe", "Probe Hidden", true).group("Targets")
+            .description("When paying everyone, also scan for hidden players.").build());
+        add(new BoolSetting("shuffle", "Shuffle Order", false).group("Targets")
+            .description("Pay in a random order instead of list order.").build());
+        add(new StringSetting("amount", "Amount", "1000").group("Payment")
+            .description("Amount per player. Supports K, M, B.").build());
+        add(new BoolSetting("divide", "Split Total", false).group("Payment")
+            .description("Treat the amount as a total and split it across players.").build());
+        add(new StringSetting("command", "Command", "/pay <player> <amount>").group("Payment")
+            .description("Command template with <player> and <amount>.").build());
+        add(new IntSetting("delay", "Delay (ms)", 1000, 0, 10000, 100).group("Timing")
+            .description("Gap between payments.").build());
+        add(new BoolSetting("dry-run", "Dry Run", false).group("Advanced")
+            .description("Log each command instead of sending it, to preview the run.").build());
+        add(new StringSetting("confirm-macro", "Confirm Macro", "").group("Advanced")
             .macroPicker().description("Run after every pay.").build());
     }
 
@@ -63,6 +73,8 @@ public final class PayAllModule extends Module {
                 }
             }
 
+            if (bool("shuffle")) java.util.Collections.shuffle(targets);
+
             long amount = Math.max(0L, PayAction.parseAmount(text("amount")));
             long[] divided = bool("divide") ? PayAction.distribute(amount, targets.size()) : null;
             int sent = 0;
@@ -93,7 +105,7 @@ public final class PayAllModule extends Module {
                 sendLatch.await(2000, java.util.concurrent.TimeUnit.MILLISECONDS);
                 if (cancelled(generation)) return;
                 String confirm = text("confirm-macro");
-                if (confirm != null && !confirm.isBlank()) {
+                if (!bool("dry-run") && confirm != null && !confirm.isBlank()) {
                     PayAction.runConfirmMacro(confirm, () -> cancelled(generation));
                 }
             }
@@ -110,6 +122,10 @@ public final class PayAllModule extends Module {
     private void sendPayment(String player, String command, String label, int index, int total) {
         try {
             if (PackHideState.isHardLocked() || MC == null || MC.getConnection() == null) return;
+            if (bool("dry-run")) {
+                chat("§7[dry] §f" + player + " §e" + label + " §8» §7" + command + " §7(" + index + "/" + total + ")");
+                return;
+            }
             if (command.startsWith("/") && command.length() > 1) {
                 MC.getConnection().sendCommand(command.substring(1));
             } else {

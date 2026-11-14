@@ -18,7 +18,6 @@ import dihclient.util.DihMacroManager;
 import dihclient.util.multi.MultiManager;
 import java.util.Locale;
 import net.minecraft.client.gui.screens.multiplayer.ServerSelectionList;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.AbstractWidget;
 import net.minecraft.client.gui.components.Button;
@@ -91,7 +90,7 @@ public abstract class DihMultiplayerScreenMixin extends Screen implements DihExt
         if (dih$voicePromptChecked) return;
         dih$voicePromptChecked = true;
         if (PackHideState.isActive()) return;
-        if (!FabricLoader.getInstance().isModLoaded("voicechat")) return;
+        if (!dihclient.platform.DihLoader.isModLoaded("voicechat")) return;
         DihModule module = DihModule.get();
         if (module == null || !module.isSpoofClientVanilla()) return;
         DihConfig config = DihConfig.getGlobal();
@@ -182,11 +181,11 @@ public abstract class DihMultiplayerScreenMixin extends Screen implements DihExt
 
         int rightX = Math.min(this.width - MARGIN - STACK_WIDTH, (this.width / 2) + 154 + GAP);
         int rightWidth = Math.max(60, Math.min(STACK_WIDTH, this.width - MARGIN - rightX));
-        int count = (FabricLoader.getInstance().isModLoaded("replaymod") ? 1 : 0) + (via != null ? 1 : 0) + (opsec != null ? 1 : 0);
+        int count = (dihclient.platform.DihLoader.isModLoaded("replaymod") ? 1 : 0) + (via != null ? 1 : 0) + (opsec != null ? 1 : 0);
         int rightY = Math.max(MARGIN, this.height - 8 - Math.max(0, count * BUTTON_HEIGHT + Math.max(0, count - 1) * GAP));
         int slot = 0;
 
-        if (FabricLoader.getInstance().isModLoaded("replaymod")) {
+        if (dihclient.platform.DihLoader.isModLoaded("replaymod")) {
             dih$recordButton.setMessage(dih$replayServerLabel(rightWidth));
             dih$place(dih$recordButton, rightX, rightY + slot++ * (BUTTON_HEIGHT + GAP), rightWidth, BUTTON_HEIGHT);
         } else {
@@ -337,8 +336,8 @@ public abstract class DihMultiplayerScreenMixin extends Screen implements DihExt
         String label = widget.getMessage().getString();
         String normalized = label.toLowerCase(Locale.ROOT).replace(" ", "").replace("_", "").replace(".", "");
         String className = widget.getClass().getName().toLowerCase(Locale.ROOT);
-        if (FabricLoader.getInstance().isModLoaded("viafabricplus") && "ViaFabricPlus".equals(label)) return EXTERNAL_VIA_FABRIC_PLUS;
-        if (FabricLoader.getInstance().isModLoaded("replaymod")
+        if (dihclient.platform.DihLoader.isModLoaded("viafabricplus") && "ViaFabricPlus".equals(label)) return EXTERNAL_VIA_FABRIC_PLUS;
+        if (dihclient.platform.DihLoader.isModLoaded("replaymod")
             && (className.contains("replaymod") || normalized.contains("recordserver") || normalized.contains("replaymodguisettingsrecordserver"))) {
             return EXTERNAL_REPLAY_RECORD;
         }
@@ -348,7 +347,7 @@ public abstract class DihMultiplayerScreenMixin extends Screen implements DihExt
 
     @Unique
     private void dih$suppressMeteorWidgets() {
-        if (!FabricLoader.getInstance().isModLoaded("meteor-client")) return;
+        if (!dihclient.platform.DihLoader.isModLoaded("meteor-client")) return;
         if (!dih$meteorUiConfigSuppressed) {
             dih$meteorUiConfigSuppressed = true;
             dih$disableMeteorMultiplayerUiConfig();

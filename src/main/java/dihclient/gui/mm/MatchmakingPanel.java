@@ -1,5 +1,6 @@
 package dihclient.gui.mm;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.gui.vanillaui.UiScissorStack;
@@ -59,7 +60,6 @@ import net.minecraft.client.multiplayer.resolver.ServerAddress;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -756,11 +756,13 @@ public final class MatchmakingPanel {
         if (sharePicker == null) sharePicker = new DihSharePickerOverlay(font);
         sharePicker.open("Share Macro", "Search macros...", filter -> {
             List<DihSharePickerOverlay.Row> out = new ArrayList<>();
-            String f = filter.toLowerCase(Locale.ROOT);
-            for (DihMacro m : DihMacroManager.get().getAll()) {
-                if (!f.isEmpty() && !m.name.toLowerCase(Locale.ROOT).contains(f)) continue;
-                DihMacro macro = m;
-                out.add(DihSharePickerOverlay.Row.item(m.name, m.actions.size() + " steps", () -> shareMacro(macro)));
+            for (dihclient.util.MacroFolderView.Row row : dihclient.util.MacroFolderView.build(DihMacroManager.get().getAll(), filter, java.util.Set.of())) {
+                if (row instanceof dihclient.util.MacroFolderView.FolderRow folder) {
+                    out.add(DihSharePickerOverlay.Row.header(folder.folder()));
+                } else if (row instanceof dihclient.util.MacroFolderView.MacroRow entry) {
+                    DihMacro macro = entry.macro();
+                    out.add(DihSharePickerOverlay.Row.item(macro.name, macro.actions.size() + " steps", () -> shareMacro(macro)));
+                }
             }
             return out;
         });
@@ -1461,7 +1463,7 @@ public final class MatchmakingPanel {
     public boolean mouseClicked(int mx, int my, int button) {
         this.lastMx = mx; this.lastMy = my;
 
-        if (ctxOpen && button == 0) {
+        if (ctxOpen && button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (CtxItem it : ctxItems) {
                 if (it.hit(mx, my)) {
                     try { it.action.run(); } catch (Throwable t) { DihNotifications.show("Action failed: " + t.getClass().getSimpleName(), ERROR); }
@@ -1473,12 +1475,12 @@ public final class MatchmakingPanel {
             return true;
         }
 
-        if (button == 1) {
+        if (button == InputConstants.MOUSE_BUTTON_RIGHT) {
             for (MemberRow r : memberRows) if (r.hit(mx, my)) { openContextMenu(r.fp(), mx, my); return true; }
             if (ctxOpen) { closeContextMenu(); return true; }
             return mx >= bx && mx < bx + bw && my >= by && my < by + bh;
         }
-        if (button == 0 && activeTab == Tab.CHAT && chatScrollbar != null && chatScrollbar.contains(mx, my)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && activeTab == Tab.CHAT && chatScrollbar != null && chatScrollbar.contains(mx, my)) {
             chatScrollbarDragging = true;
             chatScrollGrab = my - chatScrollbar.thumbY();
             clearFocus();
@@ -1493,7 +1495,7 @@ public final class MatchmakingPanel {
             }
         }
         clearFocus();
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (Hotspot h : hotspots) {
                 if (h.hit(mx, my)) {
 

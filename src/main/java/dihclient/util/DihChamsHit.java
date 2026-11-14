@@ -59,10 +59,15 @@ public final class DihChamsHit {
     }
 
     public static boolean isFlashing(Entity entity) {
+        return isFlashing(entity, FLASH_MS);
+    }
+
+    /** Whether {@code entity} was hit less than {@code durationMs} ago. */
+    public static boolean isFlashing(Entity entity, long durationMs) {
         if (entity == null) return false;
         Long at = FLASH.get(entity.getId());
         if (at == null) return false;
-        if (System.currentTimeMillis() - at < FLASH_MS) return true;
+        if (System.currentTimeMillis() - at < durationMs) return true;
         FLASH.remove(entity.getId());
         return false;
     }

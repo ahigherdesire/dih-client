@@ -19,6 +19,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Inventory;
@@ -170,6 +171,29 @@ public final class GameLibrary {
             });
             return null;
         });
+        lib.define("Chat", "chatSeen(text)", "True if a chat message containing text (capitals ignored) arrived since the script started or since chatSeen last found one for the same text. Use it in a loop: if (chatSeen(\"tpa\")) { ... }", 1, 1, a -> {
+            String text = chatNeedle(a);
+            return ScriptChat.next(a.interpreter(), text) != null;
+        });
+        lib.define("Chat", "waitForChat(text, seconds)", "Wait until a chat message containing text arrives and return the whole message. Gives up after seconds (wait forever if left out) and returns null.", 1, 2, a -> {
+            String text = chatNeedle(a);
+            double seconds = a.number(1, -1);
+            int limit = seconds < 0 ? -1 : (int) Math.ceil(seconds * 20);
+            for (int waited = 0; ; waited++) {
+                String line = ScriptChat.next(a.interpreter(), text);
+                if (line != null) return line;
+                if (limit >= 0 && waited >= limit) return null;
+                a.interpreter().waitTicks(1);
+            }
+        });
+        lib.define("Chat", "lastChat()", "The newest chat message since the script started, or null.", 0, 0,
+            a -> ScriptChat.last(a.interpreter()));
+    }
+
+    private static String chatNeedle(Library.Args a) {
+        String text = a.string(0);
+        if (text.isBlank()) throw a.error("give the text to look for, e.g. chatSeen(\"tpa\")");
+        return text.strip();
     }
 
     private static void runCommand(String raw, Library.Args a) {
@@ -218,6 +242,55 @@ public final class GameLibrary {
             onClient(() -> baritoneExecute("goto " + target, a));
             return waitForBaritone(a.interpreter(), -1);
         });
+        lib.define("Baritone", "gotoWaypoint(name)", "Walk to one of your saved Baritone waypoints and wait until you arrive. A name like \"home\" or \"death\" that no waypoint has goes to the newest waypoint with that tag. Returns false if there's no such waypoint or you didn't get there.", 1, 1, a -> {
+            String name = a.string(0).trim();
+            if (name.isEmpty()) throw a.error("give a waypoint name, e.g. gotoWaypoint(\"home\")");
+            BlockPos target = onClient(() -> {
+                baritone.api.IBaritone b = primaryBaritone();
+                if (b == null) throw a.error("Baritone is not available");
+                BlockPos pos = findWaypoint(b, name);
+                if (pos != null) {
+                    b.getCustomGoalProcess().setGoalAndPath(new baritone.api.pathing.goals.GoalBlock(pos));
+                }
+                return pos;
+            });
+            if (target == null) return false;
+            waitForBaritone(a.interpreter(), -1);
+            return onPlayer(p -> p.blockPosition().distSqr(target) <= 2);
+        });
+    }
+
+    /**
+     * The waypoint called {@code name} (capitals ignored, newest first), else the newest waypoint
+     * with that tag (home, death, bed, user), else null. {@code #wp goto} checks tags first, so
+     * a waypoint the user named "home" would never be found by it.
+     */
+    static BlockPos findWaypoint(baritone.api.IBaritone b, String name) {
+        java.util.Collection<baritone.api.cache.IWaypoint> all;
+        try {
+            all = b.getWorldProvider().getCurrentWorld().getWaypoints().getAllWaypoints();
+        } catch (RuntimeException e) {
+            return null; // no world loaded
+        }
+        return findWaypoint(all, name);
+    }
+
+    static BlockPos findWaypoint(java.util.Collection<baritone.api.cache.IWaypoint> all, String name) {
+        baritone.api.cache.IWaypoint best = null;
+        for (baritone.api.cache.IWaypoint w : all) {
+            if (w.getName().equalsIgnoreCase(name)
+                && (best == null || w.getCreationTimestamp() > best.getCreationTimestamp())) best = w;
+        }
+        if (best == null) {
+            baritone.api.cache.IWaypoint.Tag tag = baritone.api.cache.IWaypoint.Tag.getByName(name.toLowerCase(Locale.ROOT));
+            if (tag != null) {
+                for (baritone.api.cache.IWaypoint w : all) {
+                    if (w.getTag() == tag
+                        && (best == null || w.getCreationTimestamp() > best.getCreationTimestamp())) best = w;
+                }
+            }
+        }
+        return best == null ? null : best.getLocation();
     }
 
     private static boolean waitForBaritone(Interpreter it, int timeoutTicks) {
@@ -281,10 +354,14 @@ public final class GameLibrary {
             for (ItemStack s : p.getInventory().getNonEquipmentItems()) if (s.isEmpty()) n++;
             return (double) n;
         }));
-        lib.define("Inventory", "inventoryFull()", "True when there is no empty slot left.", 0, 0, a -> onPlayer(p -> {
-            for (ItemStack s : p.getInventory().getNonEquipmentItems()) if (s.isEmpty()) return false;
-            return true;
-        }));
+        lib.define("Inventory", "inventoryFull(item)", "True when there is no empty slot left. With an item, e.g. inventoryFull(\"raw_gold\"), only true once no slot is empty AND every stack of that item is full, so stacks with room don't count as full.", 0, 1, a -> {
+            String item = a.has(0) ? a.string(0) : null;
+            return onPlayer(p -> roomFor(p, item) == 0);
+        });
+        lib.define("Inventory", "roomFor(item)", "How many more of item fit in your main inventory: empty slots plus the space left on stacks of it.", 1, 1, a -> {
+            String item = a.string(0);
+            return onPlayer(p -> (double) roomFor(p, item));
+        });
         lib.define("Inventory", "heldItem()", "Id of the item in your main hand, e.g. \"diamond_pickaxe\" (\"air\" if empty).", 0, 0,
             a -> onPlayer(p -> BuiltInRegistries.ITEM.getKey(p.getMainHandItem().getItem()).getPath()));
         lib.define("Inventory", "heldDurability()", "Uses left on the item in your main hand before it breaks, or -1 if it can't break.", 0, 0,
@@ -329,6 +406,36 @@ public final class GameLibrary {
                 return false;
             });
         });
+    }
+
+    /**
+     * Free space in the 36 main slots: with no item, the number of empty slots; with an item, how many more
+     * of it fit (a full stack's worth per empty slot plus the room left on its partial stacks).
+     */
+    static int roomFor(LocalPlayer p, String item) {
+        return roomFor(p.getInventory(), item);
+    }
+
+    static int roomFor(Inventory inv, String item) {
+        int room = 0;
+        int emptySlots = 0;
+        for (int i = 0; i < 36; i++) {
+            ItemStack s = inv.getItem(i);
+            if (item == null) {
+                if (s.isEmpty()) room++;
+            } else if (s.isEmpty()) {
+                emptySlots++;
+            } else if (matches(s, item)) {
+                room += Math.max(0, s.getMaxStackSize() - s.getCount());
+            }
+        }
+        if (emptySlots > 0) {
+            Identifier id = Identifier.tryParse(item.trim().toLowerCase(Locale.ROOT).replace(' ', '_'));
+            int stackSize = id == null ? 64 : BuiltInRegistries.ITEM.get(id)
+                .map(holder -> holder.value().getDefaultInstance().getMaxStackSize()).orElse(64);
+            room += emptySlots * stackSize;
+        }
+        return room;
     }
 
     /** Uses left before {@code stack} breaks, or -1 when it can't break (or is empty). */
@@ -487,24 +594,33 @@ public final class GameLibrary {
             int count = onClient(() -> {
                 AbstractContainerMenu menu = menu();
                 if (menu == null) return -1;
-                for (int i = 0; i < menu.slots.size(); i++) {
-                    Slot slot = menu.slots.get(i);
-                    boolean playerSide = slot.container instanceof Inventory;
-                    if (playerSide != toContainer) continue;
-                    ItemStack stack = slot.getItem();
-                    if (stack.isEmpty() || !matches(stack, item)) continue;
-                    int n = stack.getCount();
-                    if (!DihInventoryClickHelper.click(mc(), i, 0, ContainerInput.QUICK_MOVE)) return -1;
-                    // nothing moved (destination full): stop instead of spinning
-                    return slot.getItem().getCount() == n && ItemStack.isSameItem(slot.getItem(), stack) ? 0 : n;
-                }
-                return -1;
+                return transferNext(menu, item, toContainer,
+                    slot -> DihInventoryClickHelper.click(mc(), slot, 0, ContainerInput.QUICK_MOVE));
             });
             if (count <= 0) break;
             moved += count;
             a.interpreter().waitTicks(1);
         }
         return moved;
+    }
+
+    /** Tries source stacks in menu order, returning the count moved by the first successful transfer. */
+    static int transferNext(AbstractContainerMenu menu, String item, boolean toContainer,
+                            java.util.function.IntPredicate quickMove) {
+        for (int i = 0; i < menu.slots.size(); i++) {
+            Slot slot = menu.slots.get(i);
+            boolean playerSide = slot.container instanceof Inventory;
+            if (playerSide != toContainer) continue;
+            ItemStack stack = slot.getItem().copy();
+            if (stack.isEmpty() || !matches(stack, item)) continue;
+            if (!quickMove.test(i)) return -1;
+            ItemStack remaining = slot.getItem();
+            int left = ItemStack.isSameItemSameComponents(stack, remaining) ? remaining.getCount() : 0;
+            int moved = Math.max(0, stack.getCount() - left);
+            if (moved > 0) return moved;
+            // A blocked stack does not mean later item types have no room.
+        }
+        return 0;
     }
 
     /**

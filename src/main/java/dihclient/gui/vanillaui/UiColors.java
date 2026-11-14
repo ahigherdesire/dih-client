@@ -14,6 +14,7 @@ public final class UiColors {
     public int rowHover;
     public int field;
     public int fieldFocused;
+    public int windowEdge;
     public int border;
     public int borderSoft;
     public int buttonBorder;
@@ -35,10 +36,11 @@ public final class UiColors {
 
     public void recompute() {
         screenScrim = 0x66000000;
-        window = 0xD80B0C10;
-        windowStrong = 0xEE0A0A0D;
-        header = 0xF0181A20;
-        headerHover = 0xFF242832;
+        window = 0xE60D0F13;
+        windowStrong = 0xF20B0C10;
+        windowEdge = 0x26FFFFFF;
+        header = 0xF2151820;
+        headerHover = 0xF21C2029;
 
         row = 0xB012141A;
         rowAlt = 0x94161A21;
@@ -46,10 +48,10 @@ public final class UiColors {
         field = 0xD9121419;
         fieldFocused = 0xE81A1E26;
         border = DihTheme.recolor(0xFFCE4949, Channel.OUTLINE);
-        borderSoft = DihTheme.recolor(0xCC9F3A3A, Channel.OUTLINE);
+        borderSoft = DihTheme.recolor(0x4C9F3A3A, Channel.OUTLINE);
 
-        buttonBorder = DihTheme.recolor(0xE0A85E5E, Channel.OUTLINE);
-        hairline = 0x2BFFFFFF;
+        buttonBorder = DihTheme.recolor(0x5CA85E5E, Channel.OUTLINE);
+        hairline = 0x1FFFFFFF;
         hoverVeil = 0x10FFFFFF;
         accent = DihTheme.recolor(0xFFFF3B3B, Channel.ACCENT);
         accentDark = DihTheme.recolor(0xFF8F1F24, Channel.ACCENT);

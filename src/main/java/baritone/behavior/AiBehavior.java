@@ -20,9 +20,12 @@ package baritone.behavior;
 import baritone.Baritone;
 import baritone.ai.AiBrain;
 import baritone.ai.AiConfig;
+import baritone.ai.AiMemories;
 import baritone.ai.AiMemory;
 import baritone.api.event.events.ChatReceivedEvent;
 import baritone.api.event.events.TickEvent;
+import baritone.api.event.events.WorldEvent;
+import baritone.api.event.events.type.EventState;
 import baritone.api.event.listener.AbstractGameEventListener;
 import net.minecraft.client.player.LocalPlayer;
 
@@ -36,7 +39,7 @@ import net.minecraft.client.player.LocalPlayer;
 public final class AiBehavior extends Behavior implements AbstractGameEventListener {
 
     private AiConfig config;
-    private AiMemory memory;
+    private AiMemories memories;
     private AiBrain brain;
 
     public AiBehavior(Baritone baritone) {
@@ -48,9 +51,15 @@ public final class AiBehavior extends Behavior implements AbstractGameEventListe
         return this.config;
     }
 
+    /** This world's memory. */
     public AiMemory getMemory() {
         ensureLoaded();
-        return this.memory;
+        return this.memories.world();
+    }
+
+    public AiMemories getMemories() {
+        ensureLoaded();
+        return this.memories;
     }
 
     public AiBrain getBrain() {
@@ -63,8 +72,9 @@ public final class AiBehavior extends Behavior implements AbstractGameEventListe
             return;
         }
         this.config = AiConfig.load(this.baritone.getDirectory().resolve("ai.json"));
-        this.memory = new AiMemory(this.baritone.getDirectory().resolve("ai_memory.json"));
-        this.brain = new AiBrain(this.baritone, this.config, this.memory);
+        this.memories = new AiMemories(this.baritone.getDirectory().resolve("ai_memory"),
+                this.baritone.getDirectory().resolve("ai_memory.json"));
+        this.brain = new AiBrain(this.baritone, this.config, this.memories);
     }
 
     @Override
@@ -85,6 +95,17 @@ public final class AiBehavior extends Behavior implements AbstractGameEventListe
                 && this.config.isTrusted(sender);
 
         this.brain.onChat(sender, text, trusted);
+    }
+
+    @Override
+    public void onWorldEvent(WorldEvent event) {
+        // Leaving the world (not a dimension change) ends whatever acquire the AI was tracking.
+        if (event.getState() == EventState.POST && event.getWorld() == null && this.brain != null) {
+            this.brain.onWorldUnloaded();
+        } else if (event.getState() == EventState.POST && event.getWorld() != null) {
+            ensureLoaded();
+            this.brain.onWorldLoaded();
+        }
     }
 
     @Override

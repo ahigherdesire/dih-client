@@ -49,7 +49,7 @@ import java.util.concurrent.atomic.AtomicLong;
  *
  * <p>Every method here blocks. Call it from the AI worker thread, never from the game thread.
  */
-public final class LlmClient {
+public final class LlmClient implements ChatModel {
 
     private static final Gson GSON = new Gson();
     private static final List<Integer> RETRYABLE = Arrays.asList(408, 409, 425, 429, 500, 502, 503, 504);
@@ -59,13 +59,20 @@ public final class LlmClient {
     private static final int READ_TIMEOUT_MILLIS = 90_000;
 
     private final AiConfig config;
+    private final int attempts;
 
     private final AtomicLong promptTokens = new AtomicLong();
     private final AtomicLong completionTokens = new AtomicLong();
     private final AtomicLong calls = new AtomicLong();
 
     public LlmClient(AiConfig config) {
+        this(config, MAX_ATTEMPTS);
+    }
+
+    /** {@code attempts} tries per request (1 for a quick setup check that shouldn't wait on retries). */
+    public LlmClient(AiConfig config, int attempts) {
         this.config = config;
+        this.attempts = Math.max(1, attempts);
     }
 
     public long getPromptTokens() {
@@ -76,11 +83,22 @@ public final class LlmClient {
         return this.completionTokens.get();
     }
 
+    @Override
+    public long promptTokens() {
+        return this.promptTokens.get();
+    }
+
+    @Override
+    public long completionTokens() {
+        return this.completionTokens.get();
+    }
+
     public long getCalls() {
         return this.calls.get();
     }
 
     /** One request/response round trip. */
+    @Override
     public Reply chat(JsonArray messages, JsonArray tools) throws IOException {
         JsonObject body = new JsonObject();
         body.addProperty("model", this.config.model);
@@ -93,13 +111,14 @@ public final class LlmClient {
         mergeExtraBody(body);
 
         IOException last = null;
-        for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+        for (int attempt = 0; attempt < this.attempts; attempt++) {
             if (attempt > 0) {
                 sleep(700L * (1L << (attempt - 1)));
             }
             try {
                 return parse(post(body));
-            } catch (RetryableException e) {
+            } catch (RequestFailed e) {
+                if (!e.retryable) throw e;
                 last = e;
             }
         }
@@ -129,7 +148,7 @@ public final class LlmClient {
         try {
             connection = (HttpURLConnection) URI.create(url).toURL().openConnection();
         } catch (IllegalArgumentException e) {
-            throw new IOException("bad base URL \"" + this.config.baseUrl + "\"");
+            throw new RequestFailed(RequestFailed.BAD_URL, false, "bad base URL \"" + this.config.baseUrl + "\"");
         }
 
         try {
@@ -140,34 +159,45 @@ public final class LlmClient {
             connection.setRequestProperty("Content-Type", "application/json");
             connection.setRequestProperty("Accept", "application/json");
             connection.setRequestProperty("Authorization", "Bearer " + this.config.resolveKey());
-            connection.setFixedLengthStreamingMode(payload.length);
+            // No streaming mode: with it, a 401 leaves no error stream and the provider's reason is lost.
 
             try (OutputStream out = connection.getOutputStream()) {
                 out.write(payload);
             } catch (IOException e) {
-                throw new RetryableException("could not send request: " + e.getMessage());
+                throw new RequestFailed(RequestFailed.NETWORK, true, "could not send request: " + e.getMessage());
             }
 
             int status;
             try {
                 status = connection.getResponseCode();
             } catch (IOException e) {
-                throw new RetryableException("no response: " + e.getMessage());
+                throw new RequestFailed(RequestFailed.NETWORK, true, "no response: " + e.getMessage());
             }
 
             String responseBody = read(status / 100 == 2 ? connection.getInputStream() : connection.getErrorStream());
             if (status / 100 != 2) {
                 String snippet = responseBody.length() > 400 ? responseBody.substring(0, 400) : responseBody;
-                String message = "model returned HTTP " + status + ": " + snippet;
-                if (RETRYABLE.contains(status)) {
-                    throw new RetryableException(message);
-                }
-                throw new IOException(message);
+                String message = Redact.text("model returned HTTP " + status + ": " + snippet + hint(status, this.config),
+                        this.config.resolveKey());
+                throw new RequestFailed(status, RETRYABLE.contains(status), message);
             }
             return responseBody;
         } finally {
             connection.disconnect();
         }
+    }
+
+    /** What to check for the errors a setup mistake causes. */
+    static String hint(int status, AiConfig config) {
+        return switch (status) {
+            case 401 -> {
+                String reason = AiProviders.refusedKeyReason(config.resolveKey(), config.baseUrl);
+                yield reason.isEmpty() ? " (the key was refused: check #ai key)" : " (the key was refused: " + reason + ")";
+            }
+            case 403 -> " (the key can't use this: check the key and #ai model)";
+            case 404 -> " (nothing there: check #ai url and #ai model)";
+            default -> "";
+        };
     }
 
     private static String read(InputStream stream) throws IOException {
@@ -183,7 +213,7 @@ public final class LlmClient {
             }
             return buffer.toString(StandardCharsets.UTF_8);
         } catch (IOException e) {
-            throw new RetryableException("could not read response: " + e.getMessage());
+            throw new RequestFailed(RequestFailed.NETWORK, true, "could not read response: " + e.getMessage());
         }
     }
 
@@ -258,7 +288,7 @@ public final class LlmClient {
         public final String name;
         public final JsonObject arguments;
 
-        ToolCall(String id, String name, JsonObject arguments) {
+        public ToolCall(String id, String name, JsonObject arguments) {
             this.id = id;
             this.name = name;
             this.arguments = arguments;
@@ -290,7 +320,7 @@ public final class LlmClient {
         /** The assistant message verbatim, to be appended to the transcript. */
         public final JsonObject rawMessage;
 
-        Reply(String content, List<ToolCall> toolCalls, JsonObject rawMessage) {
+        public Reply(String content, List<ToolCall> toolCalls, JsonObject rawMessage) {
             this.content = content;
             this.toolCalls = toolCalls;
             this.rawMessage = rawMessage;
@@ -301,9 +331,17 @@ public final class LlmClient {
         }
     }
 
-    private static final class RetryableException extends IOException {
-        RetryableException(String message) {
+    /** A request that didn't get a reply: an HTTP status, or {@link #NETWORK} when the server couldn't be reached. */
+    public static final class RequestFailed extends IOException {
+        public static final int NETWORK = -1;
+        public static final int BAD_URL = -2;
+        public final int status;
+        public final boolean retryable;
+
+        RequestFailed(int status, boolean retryable, String message) {
             super(message);
+            this.status = status;
+            this.retryable = retryable;
         }
     }
 }

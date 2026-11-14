@@ -1,5 +1,6 @@
 package dihclient.modules;
 
+import dihclient.util.DihPackets;
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.api.module.StringListSetting;
@@ -161,50 +162,50 @@ public final class AntiVanishModule extends Module {
         add(new BoolSetting("completion-probe", "Tab Probe", true).group("Detection")
             .description("Active tab probe.").build());
         add(new StringSetting("probe-command", "Probe Command", "minecraft:msg").group("Detection")
-            .description("Command for probe.")
-            .visibleWhen(() -> false).build());
+            .description("Command whose tab-completion is used to list online players for the probe.")
+            .visibleWhen(() -> bool("completion-probe")).build());
         add(new BoolSetting("gamemode-alerts", "Gamemode Alerts", false).group("Detection")
-            .description("Notify gamemode switches.").build());
+            .description("Warn when a player's gamemode changes, a common staff tell.").build());
         add(new BoolSetting("player-filter", "Player Filter", false).group("Detection")
-            .description("Scan listed names only.").build());
+            .description("Only watch the players you list, ignoring everyone else.").build());
         add(new StringListSetting("players", "Players", "").group("Detection")
+            .description("Names watched when Player Filter is on.")
             .playerNameList()
             .visibleWhen(() -> bool("player-filter")).build());
 
         add(new BoolSetting("environmental", "Environmental", true).group("Sensors")
-            .description("Sounds, blocks, particles.").build());
+            .description("Master switch for the world sensors below.").build());
         add(new BoolSetting("sound-sensor", "Suspicious Sounds", true).group("Sensors")
-            .description("Detect unexplained sounds.")
-            .visibleWhen(() -> false).build());
+            .description("Flag sounds with no visible source, like a hidden player's steps.")
+            .visibleWhen(() -> bool("environmental")).build());
         add(new BoolSetting("particle-sensor", "Ghost Particles", true).group("Sensors")
-            .description("Detect ghost particles.")
-            .visibleWhen(() -> false).build());
+            .description("Flag particles that appear with nothing there to make them.")
+            .visibleWhen(() -> bool("environmental")).build());
         add(new BoolSetting("block-sensor", "Block Updates", true).group("Sensors")
-            .description("Detect unseen interactions.")
-            .visibleWhen(() -> false).build());
+            .description("Flag block places and breaks you never saw a player do.")
+            .visibleWhen(() -> bool("environmental")).build());
         add(new BoolSetting("invisible-sensor", "Invisible Entities", true).group("Sensors")
-            .description("Detect invisible players.")
-            .visibleWhen(() -> false).build());
+            .description("Flag players who are present but rendered invisible.")
+            .visibleWhen(() -> bool("environmental")).build());
         add(new BoolSetting("camera-sensor", "Camera Aberrations", true).group("Sensors")
-            .description("Detect forced camera resets.")
-            .visibleWhen(() -> false).build());
+            .description("Flag forced camera resets a spectator can cause.")
+            .visibleWhen(() -> bool("environmental")).build());
         add(new BoolSetting("chunk-sensor", "Chunk Re-sends", true).group("Sensors")
-            .description("Detect nearby chunk resends.")
-            .visibleWhen(() -> false).build());
+            .description("Flag nearby chunks the server quietly re-sends.")
+            .visibleWhen(() -> bool("environmental")).build());
         add(new IntSetting("range", "Detection Range", 64, 8, 160, 8).group("Sensors")
-            .description("Sensor watch distance.")
-            .visibleWhen(() -> false).build());
+            .description("How far out, in blocks, the sensors watch.")
+            .visibleWhen(() -> bool("environmental")).build());
 
         add(new BoolSetting("critical-alert", "Critical Alert", true).group("Alerts")
-            .description("Combine recent signals.")
-            .visibleWhen(() -> false).build());
+            .description("Raise a louder alert when several signals line up at once.").build());
         add(new BoolSetting("alert-sound", "Warning Sound", true).group("Alerts")
-            .description("Play critical warning.")
-            .visibleWhen(() -> false).build());
+            .description("Play a sound on a critical alert.")
+            .visibleWhen(() -> bool("critical-alert")).build());
         add(new BoolSetting("hud-list", "Vanish HUD", true).group("Alerts")
-            .description("Show detections.").build());
+            .description("List suspected vanished players on the HUD.").build());
         add(new BoolSetting("chat-alerts", "Chat Alerts", true).group("Alerts")
-            .description("Log detections to chat.").build());
+            .description("Log each detection to your chat.").build());
     }
 
     @Override
@@ -291,16 +292,16 @@ public final class AntiVanishModule extends Module {
         }
         if (packet instanceof ServerboundUseItemOnPacket useOn) {
             lastLocalActionMs = System.currentTimeMillis();
-            if (useOn.getHitResult() != null && useOn.getHitResult().getBlockPos() != null) {
+            if (DihPackets.hitResult(useOn) != null && DihPackets.hitResult(useOn).getBlockPos() != null) {
                 long until = System.currentTimeMillis() + SELF_PLACE_TTL_MS;
-                BlockPos hit = useOn.getHitResult().getBlockPos();
+                BlockPos hit = DihPackets.hitResult(useOn).getBlockPos();
 
-                BlockPos adjacent = hit.relative(useOn.getHitResult().getDirection());
+                BlockPos adjacent = hit.relative(DihPackets.hitResult(useOn).getDirection());
                 selfPlacedBlocks.put(hit.asLong(), until);
                 selfPlacedBlocks.put(adjacent.asLong(), until);
                 String itemPath = "";
-                if (MC.player != null && useOn.getHand() != null) {
-                    Identifier itemId = BuiltInRegistries.ITEM.getKey(MC.player.getItemInHand(useOn.getHand()).getItem());
+                if (MC.player != null && DihPackets.hand(useOn) != null) {
+                    Identifier itemId = BuiltInRegistries.ITEM.getKey(MC.player.getItemInHand(DihPackets.hand(useOn)).getItem());
                     itemPath = AntiVanishHeuristics.path(itemId == null ? "" : itemId.toString());
                 }
                 markSelfMultiBlockFootprint(hit, itemPath, selfPlacedBlocks, until, false);
@@ -311,7 +312,7 @@ public final class AntiVanishModule extends Module {
         String name = packet.getClass().getSimpleName();
         if (name.equals("ServerboundUseItemPacket")
             || name.equals("ServerboundInteractPacket")
-            || name.equals("ServerboundSwingPacket")) {
+            || name.equals(DihPackets.SWING.getSimpleName())) {
             lastLocalActionMs = System.currentTimeMillis();
         }
         return false;
@@ -406,23 +407,21 @@ public final class AntiVanishModule extends Module {
         } else if (packet instanceof ClientboundBlockDestructionPacket destruction) {
             observations.offer(Observation.blockActor(ObservationType.BLOCK_DIG, destruction.getPos(),
                 destruction.getId(), destruction.getProgress()));
-        } else if (packet instanceof ClientboundAnimatePacket animation
-            && (animation.getAction() == ClientboundAnimatePacket.SWING_MAIN_HAND
-                || animation.getAction() == ClientboundAnimatePacket.SWING_OFF_HAND)) {
+        } else if (DihPackets.swingAnimationEntity(packet) >= 0) {
             observations.offer(Observation.entityAction(ObservationType.ENTITY_SWING,
-                animation.getId(), animation.getAction()));
+                DihPackets.swingAnimationEntity(packet), DihPackets.swingAnimationAction(packet)));
         } else if (packet instanceof ClientboundSoundEntityPacket sound) {
             observations.offer(Observation.entitySound(sound.getId(), soundId(sound.getSound().value().location())));
         } else if (packet instanceof ClientboundLevelParticlesPacket particles) {
-            Identifier id = BuiltInRegistries.PARTICLE_TYPE.getKey(particles.getParticle().getType());
-            observations.offer(Observation.position(ObservationType.PARTICLE, particles.getX(), particles.getY(),
-                particles.getZ(), id == null ? "" : id.toString()));
+            Identifier id = BuiltInRegistries.PARTICLE_TYPE.getKey(DihPackets.particle(particles).getType());
+            observations.offer(Observation.position(ObservationType.PARTICLE, DihPackets.x(particles), DihPackets.y(particles),
+                DihPackets.z(particles), id == null ? "" : id.toString()));
         } else if (packet instanceof ClientboundBlockEventPacket blockEvent) {
             Identifier id = BuiltInRegistries.BLOCK.getKey(blockEvent.getBlock());
             observations.offer(Observation.block(ObservationType.BLOCK_EVENT, blockEvent.getPos(),
                 id == null ? "" : id.toString()));
         } else if (packet instanceof ClientboundLevelChunkWithLightPacket chunk) {
-            observations.offer(Observation.chunk(chunk.getX(), chunk.getZ()));
+            observations.offer(Observation.chunk(DihPackets.chunkX(chunk), DihPackets.chunkZ(chunk)));
         }
         return false;
     }

@@ -113,6 +113,7 @@ public final class DihInventoryMoveHelper {
 
     private static boolean pass(KeyMapping binding, KeyEvent input, boolean pressed) {
         if (binding == null || !binding.matches(input)) return false;
+        if (!keyAllowed(binding)) return false;
         binding.setDown(pressed);
         if (pressed) OWNED_KEYS.add(binding);
         else OWNED_KEYS.remove(binding);
@@ -121,7 +122,7 @@ public final class DihInventoryMoveHelper {
 
     private static void sync(KeyMapping binding) {
         if (binding == null) return;
-        boolean physical = DihKeyMappingBridge.of(binding).dih$isActuallyDown();
+        boolean physical = keyAllowed(binding) && DihKeyMappingBridge.of(binding).dih$isActuallyDown();
 
         boolean pressed = physical
             || binding == MC.options.keyShift && ModuleRegistry.sneakHoldsShift();
@@ -146,7 +147,29 @@ public final class DihInventoryMoveHelper {
         if (screen instanceof StructureBlockEditScreen) return false;
 
         if (screen.getFocused() instanceof net.minecraft.client.gui.components.EditBox) return false;
+        boolean ownInventory = screen instanceof net.minecraft.client.gui.screens.inventory.InventoryScreen
+            || screen instanceof net.minecraft.client.gui.screens.inventory.CreativeModeInventoryScreen;
+        return option(ownInventory ? "player-inventory" : "containers");
+    }
+
+    public static boolean handlesCurrentScreen() {
+        return shouldHandleCurrentScreen() && !DihOverlayManager.get().isAnyTextFieldFocused();
+    }
+
+    private static boolean keyAllowed(KeyMapping binding) {
+        if (MC == null || MC.options == null) return true;
+        if (binding == MC.options.keyJump) return option("jump");
+        if (binding == MC.options.keyShift) return option("sneak");
+        if (binding == MC.options.keySprint) return option("sprint");
         return true;
+    }
+
+    /** InvMove's own toggles; true when the module or setting is missing so old behavior holds. */
+    private static boolean option(String id) {
+        dihclient.modules.Module module = ModuleRegistry.get("inv-move");
+        if (module == null) return true;
+        String value = module.value(id);
+        return value == null || value.isEmpty() || Boolean.parseBoolean(value);
     }
 
     private static boolean canHandleMovementKeys() {

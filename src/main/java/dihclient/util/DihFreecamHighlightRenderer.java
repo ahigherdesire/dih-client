@@ -4,9 +4,8 @@ import dihclient.modules.PackFreecamState;
 import dihclient.modules.PackHideState;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.rendertype.DihRenderTypes;
+import dihclient.render.mc.DihRenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntitySelector;
@@ -40,7 +39,7 @@ public final class DihFreecamHighlightRenderer {
     }
 
     public static void initialize() {
-        LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
+        dihclient.platform.DihPlatform.onCollectSubmits(context -> {
             if (!isReplacingVanillaOutline()) return;
 
             Minecraft mc = Minecraft.getInstance();

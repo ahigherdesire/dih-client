@@ -54,7 +54,25 @@ public final class DihClientMessaging {
         return buildBodyText(message == null ? "" : message);
     }
 
+    /** Listeners that see every client message as it is sent, e.g. to hand a command's output to the AI. */
+    private static final java.util.List<java.util.function.Consumer<Component>> TAPS = new java.util.concurrent.CopyOnWriteArrayList<>();
+
+    /** Sees every client message until the returned handle is closed. */
+    public static AutoCloseable tap(java.util.function.Consumer<Component> listener) {
+        TAPS.add(listener);
+        return () -> TAPS.remove(listener);
+    }
+
     public static void send(Component text) {
+        if (text != null) {
+            for (java.util.function.Consumer<Component> tap : TAPS) {
+                try {
+                    tap.accept(text);
+                } catch (RuntimeException ignored) {
+                    // A listener must never stop the message itself.
+                }
+            }
+        }
         if (MC == null || text == null) return;
         if (PackHideState.shouldSuppressClientOutput()) return;
 

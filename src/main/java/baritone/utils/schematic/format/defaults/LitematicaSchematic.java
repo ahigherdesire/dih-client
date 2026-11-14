@@ -17,199 +17,188 @@
 
 package baritone.utils.schematic.format.defaults;
 
-import baritone.api.schematic.CompositeSchematic;
-import baritone.api.schematic.IStaticSchematic;
-import baritone.utils.schematic.StaticSchematic;
-import net.minecraft.core.Holder;
+import baritone.utils.schematic.LoadedSchematic;
+import baritone.utils.schematic.format.BlockStateReader;
+import baritone.utils.schematic.format.LegacyStateFixer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.Vec3i;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.resources.Identifier;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.Property;
-import org.apache.commons.lang3.Validate;
 
-import javax.annotation.Nullable;
-import java.util.Collections;
-import java.util.Optional;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
+ * The Litematica format (".litematic"), versions 1 to 7. Every region is read, each at its own position, into one
+ * schematic whose origin is the lowest corner of all of them. Cells between regions are not part of the schematic.
+ * Where regions overlap, a block wins over air and otherwise the region later in name order wins.
+ * <p>
  * Based on EmersonDove's work
- * <a href="https://github.com/cabaletta/baritone/pull/2544">...</a>
+ * <a href="https://github.com/cabaletta/baritone/pull/2544">...</a>, and on Litematica's own reader
+ * ({@code fi.dy.masa.litematica.schematic.LitematicaSchematic#readSubRegionsFromNBT}, LGPLv3) for the region bounds,
+ * the bits per entry, the tile entity layouts of versions 1 and 2+, and the 1.12 default data version.
  *
  * @author rycbar
  * @since 22.09.2022
  */
-public final class LitematicaSchematic extends CompositeSchematic implements IStaticSchematic {
+public final class LitematicaSchematic extends LoadedSchematic {
 
     /**
-     * @param nbtTagCompound a decompressed file stream aka nbt data.
-     * @param rotated        if the schematic is rotated by 90°.
+     * The newest version this reader knows, the one Litematica writes for 1.20.5 and later.
+     */
+    public static final int MAX_VERSION = 7;
+    /**
+     * Versions before this were written by 1.12 Litematica, with pre-flattening block states.
+     */
+    private static final int FIRST_1_13_VERSION = 5;
+
+    private record Region(String name, int minX, int minY, int minZ, int sizeX, int sizeY, int sizeZ, CompoundTag tag) {}
+
+    /**
+     * @param nbt the decompressed file
      */
     public LitematicaSchematic(CompoundTag nbt) {
-        super(0, 0, 0);
-        fillInSchematic(nbt);
-    }
-
-    /**
-     * @return Array of subregion tags.
-     */
-    private static CompoundTag[] getRegions(CompoundTag nbt) {
-        return nbt.getCompound("Regions")
-            .map(CompoundTag::values)
-            .map(r -> r.stream()
-                .filter(v -> v instanceof CompoundTag)
-                .map(CompoundTag.class::cast)
-                .toArray(CompoundTag[]::new)
-            ).orElse(new CompoundTag[0]);
-    }
-
-    /**
-     * Gets both ends from a region box for a given axis and returns the lower one.
-     *
-     * @param s axis that should be read.
-     * @return the lower coord of the requested axis.
-     */
-    private static int getMinOfSubregion(CompoundTag subReg, String s) {
-        int a = subReg.getCompound("Position").flatMap(position -> position.getInt(s)).orElse(0);
-        int b = subReg.getCompound("Size").flatMap(size -> size.getInt(s)).orElse(0);
-        return Math.min(a, a + b + 1);
-    }
-
-    /**
-     * @param blockStatePalette List of all different block types used in the schematic.
-     * @return Array of BlockStates.
-     */
-    private static BlockState[] getBlockList(ListTag blockStatePalette) {
-        BlockState[] blockList = new BlockState[blockStatePalette.size()];
-
-        for (int i = 0; i < blockStatePalette.size(); i++) {
-            CompoundTag tag = (CompoundTag) blockStatePalette.get(i);
-            Identifier blockKey = Identifier.tryParse(tag.getString("Name").orElse(""));
-            Block block = blockKey == null
-                ? Blocks.AIR
-                : BuiltInRegistries.BLOCK.get(blockKey)
-                    .map(Holder.Reference::value)
-                    .orElse(Blocks.AIR);
-            CompoundTag properties = tag.getCompound("Properties").orElse(new CompoundTag());
-
-            blockList[i] = getBlockState(block, properties);
+        int version = nbt.getIntOr("Version", -1);
+        if (version == -1) {
+            throw new IllegalArgumentException("it records no Litematica version");
         }
-        return blockList;
-    }
+        if (version < 1 || version > MAX_VERSION) {
+            throw new IllegalArgumentException("Litematica schematic version " + version + " is not supported (1 to "
+                + MAX_VERSION + " are)");
+        }
+        this.dataVersion = nbt.getIntOr("MinecraftDataVersion", BlockStateReader.DEFAULT_LEGACY);
+        int statesVersion = version < FIRST_1_13_VERSION
+            ? Math.min(this.dataVersion, BlockStateReader.DEFAULT_LEGACY) : this.dataVersion;
+        this.format = "Litematica v" + version;
+        CompoundTag metadata = nbt.getCompoundOrEmpty("Metadata");
+        this.name = metadata.getStringOr("Name", "");
+        this.author = metadata.getStringOr("Author", "");
+        this.description = metadata.getStringOr("Description", "");
 
-    /**
-     * @param block      block.
-     * @param properties List of Properties the block has.
-     * @return A blockState.
-     */
-    private static BlockState getBlockState(Block block, CompoundTag properties) {
-        BlockState blockState = block.defaultBlockState();
+        List<Region> regions = regions(nbt.getCompoundOrEmpty("Regions"));
+        if (regions.isEmpty()) {
+            throw new IllegalArgumentException("it has no regions");
+        }
+        int minX = Integer.MAX_VALUE, minY = Integer.MAX_VALUE, minZ = Integer.MAX_VALUE;
+        int maxX = Integer.MIN_VALUE, maxY = Integer.MIN_VALUE, maxZ = Integer.MIN_VALUE;
+        for (Region r : regions) {
+            minX = Math.min(minX, r.minX);
+            minY = Math.min(minY, r.minY);
+            minZ = Math.min(minZ, r.minZ);
+            maxX = Math.max(maxX, r.minX + r.sizeX - 1);
+            maxY = Math.max(maxY, r.minY + r.sizeY - 1);
+            maxZ = Math.max(maxZ, r.minZ + r.sizeZ - 1);
+        }
+        allocate(maxX - minX + 1, maxY - minY + 1, maxZ - minZ + 1, regions.size() > 1);
 
-        for (String key : properties.keySet()) {
-            Property<?> property = block.getStateDefinition().getProperty(key);
-            String propertyValue = properties.getString(key).orElse(null);
-            if (property != null) {
-                blockState = setPropertyValue(blockState, property, propertyValue);
+        BlockStateReader reader = new BlockStateReader(statesVersion);
+        Map<BlockPos, CompoundTag> tiles = new HashMap<>();
+        for (Region r : regions) {
+            int offX = r.minX - minX, offY = r.minY - minY, offZ = r.minZ - minZ;
+            readBlocks(r, offX, offY, offZ, reader);
+            readTileEntities(r, version, offX, offY, offZ, tiles);
+            addRegion(r.name, new BlockPos(offX, offY, offZ), new Vec3i(r.sizeX, r.sizeY, r.sizeZ));
+        }
+        boolean legacy = version < FIRST_1_13_VERSION;
+        if (legacy) {
+            LegacyStateFixer.fix(this.states, tiles);
+        }
+        tiles.forEach((pos, data) -> {
+            if (!legacy || getDirect(pos.getX(), pos.getY(), pos.getZ()).hasBlockEntity()) {
+                putBlockEntity(pos, reader.blockEntity(data, this.dataVersion));
             }
+        });
+        reader.warnings().forEach(this::warn);
+    }
+
+    private static List<Region> regions(CompoundTag regionsTag) {
+        List<Region> regions = new ArrayList<>();
+        for (String name : regionsTag.keySet()) {
+            if (!(regionsTag.get(name) instanceof CompoundTag tag)) {
+                continue;
+            }
+            CompoundTag pos = tag.getCompoundOrEmpty("Position");
+            CompoundTag size = tag.getCompoundOrEmpty("Size");
+            int[] min = new int[3];
+            int[] abs = new int[3];
+            String[] axes = {"x", "y", "z"};
+            for (int i = 0; i < 3; i++) {
+                int p = pos.getIntOr(axes[i], 0);
+                int s = size.getIntOr(axes[i], 0);
+                if (s == 0) {
+                    throw new IllegalArgumentException("region '" + name + "' has no size along " + axes[i]);
+                }
+                // a negative size extends from the position towards lower coordinates
+                min[i] = s > 0 ? p : p + s + 1;
+                abs[i] = Math.abs(s);
+            }
+            regions.add(new Region(name, min[0], min[1], min[2], abs[0], abs[1], abs[2], tag));
         }
-        return blockState;
+        regions.sort(Comparator.comparing(Region::name));
+        return regions;
     }
 
-    /**
-     * @author Emerson
-     */
-    private static <T extends Comparable<T>> BlockState setPropertyValue(BlockState state, Property<T> property, String value) {
-        Optional<T> parsed = property.getValue(value);
-        if (parsed.isPresent()) {
-            return state.setValue(property, parsed.get());
-        } else {
-            throw new IllegalArgumentException("Invalid value for property " + property);
+    private void readBlocks(Region r, int offX, int offY, int offZ, BlockStateReader reader) {
+        ListTag paletteTag = r.tag.getListOrEmpty("BlockStatePalette");
+        if (paletteTag.isEmpty()) {
+            throw new IllegalArgumentException("region '" + r.name + "' has no block palette");
         }
-    }
-
-    /**
-     * @param amountOfBlockTypes amount of block types in the schematic.
-     * @return amount of bits used to encode a block.
-     */
-    private static int getBitsPerBlock(int amountOfBlockTypes) {
-        return (int) Math.max(2, Math.ceil(Math.log(amountOfBlockTypes) / Math.log(2)));
-    }
-
-    /**
-     * Calculates the volume of the subregion. As size can be a negative value we take the absolute value of the
-     * multiplication as the volume still holds a positive amount of blocks.
-     *
-     * @return the volume of the subregion.
-     */
-    private static long getVolume(CompoundTag subReg) {
-        CompoundTag size = subReg.getCompound("Size").orElse(new CompoundTag());
-        return Math.abs(size.getInt("x").orElse(0) * size.getInt("y").orElse(0) * size.getInt("z").orElse(0));
-    }
-
-    /**
-     * @param s axis.
-     * @return the lowest coordinate of that axis of the schematic.
-     */
-    private static int getMinOfSchematic(CompoundTag nbt, String s) {
-        int n = Integer.MAX_VALUE;
-        for (CompoundTag subReg : getRegions(nbt)) {
-            n = Math.min(n, getMinOfSubregion(subReg, s));
+        BlockState[] palette = new BlockState[paletteTag.size()];
+        for (int i = 0; i < palette.length; i++) {
+            palette[i] = reader.read(paletteTag.getCompoundOrEmpty(i));
         }
-        return n;
-    }
-
-    /**
-     * reads the file data.
-     */
-    private void fillInSchematic(CompoundTag nbt) {
-        Vec3i offsetMinCorner = new Vec3i(getMinOfSchematic(nbt, "x"), getMinOfSchematic(nbt, "y"), getMinOfSchematic(nbt, "z"));
-        for (CompoundTag subReg : getRegions(nbt)) {
-            ListTag usedBlockTypes = subReg.getListOrEmpty("BlockStatePalette");
-            BlockState[] blockList = getBlockList(usedBlockTypes);
-
-            int bitsPerBlock = getBitsPerBlock(usedBlockTypes.size());
-            long regionVolume = getVolume(subReg);
-            long[] blockStateArray = subReg.getLongArray("BlockStates").orElse(new long[0]);
-
-            LitematicaBitArray bitArray = new LitematicaBitArray(bitsPerBlock, regionVolume, blockStateArray);
-            writeSubregionIntoSchematic(subReg, offsetMinCorner, blockList, bitArray);
+        int bits = Math.max(2, Integer.SIZE - Integer.numberOfLeadingZeros(palette.length - 1));
+        long volume = (long) r.sizeX * r.sizeY * r.sizeZ;
+        long[] packed = r.tag.getLongArray("BlockStates").orElse(new long[0]);
+        long needed = (volume * bits + 63) / 64;
+        if (packed.length < needed) {
+            throw new IllegalArgumentException("region '" + r.name + "' stores " + packed.length
+                + " longs of block states, but its size needs " + needed);
         }
-    }
-
-    /**
-     * Writes the file data in to the IBlockstate array.
-     *
-     * @param blockList list with the different block types used in the schematic.
-     * @param bitArray  bit array that holds the placement pattern.
-     */
-    private void writeSubregionIntoSchematic(CompoundTag subReg, Vec3i offsetMinCorner, BlockState[] blockList, LitematicaBitArray bitArray) {
-        int offsetX = getMinOfSubregion(subReg, "x") - offsetMinCorner.getX();
-        int offsetY = getMinOfSubregion(subReg, "y") - offsetMinCorner.getY();
-        int offsetZ = getMinOfSubregion(subReg, "z") - offsetMinCorner.getZ();
-        CompoundTag size = subReg.getCompound("Size").orElse(new CompoundTag());
-        int sizeX = Math.abs(size.getInt("x").orElse(0));
-        int sizeY = Math.abs(size.getInt("y").orElse(0));
-        int sizeZ = Math.abs(size.getInt("z").orElse(0));
-        BlockState[][][] states = new BlockState[sizeX][sizeZ][sizeY];
-        int index = 0;
-        for (int y = 0; y < sizeY; y++) {
-            for (int z = 0; z < sizeZ; z++) {
-                for (int x = 0; x < sizeX; x++) {
-                    states[x][z][y] = blockList[bitArray.getAt(index)];
-                    index++;
+        LitematicaBitArray array = new LitematicaBitArray(bits, volume, packed);
+        long index = 0;
+        for (int y = 0; y < r.sizeY; y++) {
+            for (int z = 0; z < r.sizeZ; z++) {
+                for (int x = 0; x < r.sizeX; x++) {
+                    int value = array.getAt(index++);
+                    if (value >= palette.length) {
+                        throw new IllegalArgumentException("region '" + r.name + "' uses palette index " + value
+                            + ", but its palette has " + palette.length + " entries");
+                    }
+                    BlockState state = palette[value];
+                    int sx = offX + x, sy = offY + y, sz = offZ + z;
+                    if (state.isAir() && contains(sx, sy, sz) && !getDirect(sx, sy, sz).isAir()) {
+                        continue;
+                    }
+                    setBlock(sx, sy, sz, state);
                 }
             }
         }
-        this.put(new StaticSchematic(states), offsetX, offsetY, offsetZ);
     }
 
-    @Override
-    public BlockState getDirect(int x, int y, int z) {
-        return desiredState(x, y, z, null, Collections.emptyList());
+    private static void readTileEntities(Region r, int version, int offX, int offY, int offZ, Map<BlockPos, CompoundTag> tiles) {
+        for (Tag entry : r.tag.getListOrEmpty("TileEntities")) {
+            if (!(entry instanceof CompoundTag tile)) {
+                continue;
+            }
+            // version 1 wraps the data in "TileNBT", with the position outside it
+            CompoundTag data = (version == 1 ? tile.getCompoundOrEmpty("TileNBT") : tile).copy();
+            int x = tile.getIntOr("x", -1);
+            int y = tile.getIntOr("y", -1);
+            int z = tile.getIntOr("z", -1);
+            if (data.isEmpty() || x < 0 || y < 0 || z < 0 || x >= r.sizeX || y >= r.sizeY || z >= r.sizeZ) {
+                continue;
+            }
+            data.remove("x");
+            data.remove("y");
+            data.remove("z");
+            tiles.put(new BlockPos(offX + x, offY + y, offZ + z), data);
+        }
     }
 
     /**
@@ -237,37 +226,17 @@ public final class LitematicaSchematic extends CompositeSchematic implements ISt
          */
         private final long arraySize;
 
-        public LitematicaBitArray(int bitsPerEntryIn, long arraySizeIn, @Nullable long[] longArrayIn) {
-            Validate.inclusiveBetween(1L, 32L, bitsPerEntryIn);
+        public LitematicaBitArray(int bitsPerEntryIn, long arraySizeIn, long[] longArrayIn) {
+            if (bitsPerEntryIn < 1 || bitsPerEntryIn > 32) {
+                throw new IllegalArgumentException("bits per entry " + bitsPerEntryIn + " is outside 1 to 32");
+            }
             this.arraySize = arraySizeIn;
             this.bitsPerEntry = bitsPerEntryIn;
             this.maxEntryValue = (1L << bitsPerEntryIn) - 1L;
-
-            if (longArrayIn != null) {
-                this.longArray = longArrayIn;
-            } else {
-                this.longArray = new long[(int) (roundUp(arraySizeIn * (long) bitsPerEntryIn, 64L) / 64L)];
-            }
-        }
-
-        public static long roundUp(long number, long interval) {
-            int sign = 1;
-            if (interval == 0) {
-                return 0;
-            } else if (number == 0) {
-                return interval;
-            } else {
-                if (number < 0) {
-                    sign = -1;
-                }
-
-                long i = number % (interval * sign);
-                return i == 0 ? number : number + (interval * sign) - i;
-            }
+            this.longArray = longArrayIn;
         }
 
         public int getAt(long index) {
-            Validate.inclusiveBetween(0L, this.arraySize - 1L, index);
             long startOffset = index * (long) this.bitsPerEntry;
             int startArrIndex = (int) (startOffset >> 6); // startOffset / 64
             int endArrIndex = (int) (((index + 1L) * (long) this.bitsPerEntry - 1L) >> 6);

@@ -16,6 +16,21 @@ import java.util.Map;
 public class DihModelManagerMixin {
     @Unique private static long dih$lastBrokenItemModelWarningMs;
 
+    // NeoForge patches getItemModel to Map.get plus its own missing-model fallback (taken when the model is null).
+    //? if neoforge {
+    /*@WrapOperation(
+        method = "getItemModel",
+        at = @At(value = "INVOKE", target = "Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"))
+    private Object dih$guardBrokenDynamicItemModel(Map<Identifier, ItemModel> models, Object id, Operation<Object> original) {
+        try {
+            return original.call(models, id);
+        } catch (RuntimeException error) {
+            if (!dih$isNullDynamicModelLoad(error)) throw error;
+            dih$warnBrokenModel(id);
+            return null;
+        }
+    }
+    *///?} else {
     @WrapOperation(
         method = "getItemModel",
         at = @At(value = "INVOKE", target = "Ljava/util/Map;getOrDefault(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;"))
@@ -30,12 +45,18 @@ public class DihModelManagerMixin {
         } catch (RuntimeException error) {
             if (!dih$isNullDynamicModelLoad(error)) throw error;
 
-            long now = System.currentTimeMillis();
-            if (now - dih$lastBrokenItemModelWarningMs > 10_000L) {
-                dih$lastBrokenItemModelWarningMs = now;
-                DihClientAddon.LOG.warn("[DIH] Resource/model pack returned a null item model for {}. Falling back to Minecraft's missing item model.", id);
-            }
+            dih$warnBrokenModel(id);
             return fallback;
+        }
+    }
+    //?}
+
+    @Unique
+    private static void dih$warnBrokenModel(Object id) {
+        long now = System.currentTimeMillis();
+        if (now - dih$lastBrokenItemModelWarningMs > 10_000L) {
+            dih$lastBrokenItemModelWarningMs = now;
+            DihClientAddon.LOG.warn("[DIH] Resource/model pack returned a null item model for {}. Falling back to Minecraft's missing item model.", id);
         }
     }
 

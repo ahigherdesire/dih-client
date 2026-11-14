@@ -1,5 +1,6 @@
 package dihclient.gui.profiles;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.gui.vanillaui.UiScissorStack;
@@ -21,7 +22,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -383,7 +383,7 @@ public final class ProfilesPanel {
 
     public boolean mouseClicked(int mx, int my, int button) {
         this.lastMx = mx; this.lastMy = my;
-        if (button == 0 && !suppressInput && listScrollbar != null && listScrollbar.contains(mx, my)) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && !suppressInput && listScrollbar != null && listScrollbar.contains(mx, my)) {
             listDragging = true;
             listGrab = my - listScrollbar.thumbY();
             clearFocus();
@@ -398,7 +398,7 @@ public final class ProfilesPanel {
             }
         }
         clearFocus();
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             for (Hotspot hsp : hotspots) {
                 if (hsp.hit(mx, my)) {
                     try { hsp.action.run(); }
@@ -444,7 +444,7 @@ public final class ProfilesPanel {
     }
 
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if (keyCode == InputConstants.KEY_ESCAPE) {
             if (showPrompt) { showPrompt = false; pendingLoad = null; return true; }
             if (nameMode != NameMode.NONE) { closeName(); return true; }
         }

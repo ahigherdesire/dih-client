@@ -2,6 +2,7 @@ package dihclient.modules;
 
 import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ChoiceSetting;
+import dihclient.api.module.IntSetting;
 import net.minecraft.client.CameraType;
 import net.minecraft.util.Mth;
 
@@ -12,13 +13,23 @@ public final class FreeLookModule extends Module {
 
     public FreeLookModule() {
         super("free-look", "FreeLook", ModuleCategory.RENDER, "Look around without rotating the player.");
-        add(new ChoiceSetting("perspective", "Perspective", "Back", "Back", "Front").build());
-        add(new BoolSetting("no-pitch-limit", "No Pitch Limit", true).build());
+        add(new BoolSetting("hold", "Hold Key", true).group("General")
+            .description("Only while the key is held; off makes the key toggle it.").build());
+        add(new ChoiceSetting("perspective", "Perspective", "Back", "Back", "Front").group("General")
+            .description("Camera behind you or facing you.").build());
+        add(new BoolSetting("restore-perspective", "Restore View", true).group("General")
+            .description("Goes back to your previous camera view when released.").build());
+        add(new IntSetting("sensitivity", "Sensitivity", 100, 10, 300, 5).unit("%").group("Mouse")
+            .description("How fast the camera turns.").build());
+        add(new BoolSetting("invert-y", "Invert Y", false).group("Mouse")
+            .description("Flips up and down for the free camera.").build());
+        add(new BoolSetting("no-pitch-limit", "No Pitch Limit", true).group("Mouse")
+            .description("Lets the camera look past straight up and down.").build());
     }
 
     @Override
     public boolean holdToActivate() {
-        return true;
+        return bool("hold");
     }
 
     @Override
@@ -35,7 +46,7 @@ public final class FreeLookModule extends Module {
 
     @Override
     public void onDisable() {
-        if (MC.options != null && previousPerspective != null) {
+        if (MC.options != null && previousPerspective != null && bool("restore-perspective")) {
             MC.options.setCameraType(previousPerspective);
         }
         previousPerspective = null;
@@ -87,8 +98,9 @@ public final class FreeLookModule extends Module {
     public static boolean consumeMouseTurn(double deltaX, double deltaY) {
         FreeLookModule freeLook = activeInstance();
         if (freeLook == null || MC.player == null) return false;
-        freeLook.cameraYaw += (float) (deltaX * 0.15D);
-        freeLook.cameraPitch += (float) (deltaY * 0.15D);
+        double speed = 0.15D * freeLook.integer("sensitivity") / 100.0D;
+        freeLook.cameraYaw += (float) (deltaX * speed);
+        freeLook.cameraPitch += (float) ((freeLook.bool("invert-y") ? -deltaY : deltaY) * speed);
         if (!freeLook.bool("no-pitch-limit")) {
             freeLook.cameraPitch = Mth.clamp(freeLook.cameraPitch, -90.0F, 90.0F);
         }

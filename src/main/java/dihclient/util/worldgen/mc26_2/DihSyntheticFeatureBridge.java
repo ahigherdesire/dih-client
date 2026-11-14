@@ -15,9 +15,11 @@ import net.minecraft.world.level.block.Mirror;
 import net.minecraft.world.level.block.Rotation;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap;
+//? if <26.3 {
 import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.feature.FossilFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.configurations.TemplateFeatureConfiguration;
+//?}
 import net.minecraft.world.level.levelgen.feature.treedecorators.TreeDecorator;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
@@ -34,6 +36,7 @@ public final class DihSyntheticFeatureBridge {
     private DihSyntheticFeatureBridge() {
     }
 
+    //? if <26.3 {
     public static boolean placeFossil(FeaturePlaceContext<FossilFeatureConfiguration> context,
                                       DihSyntheticLevel synthetic) {
         RandomSource random = context.random();
@@ -112,9 +115,13 @@ public final class DihSyntheticFeatureBridge {
     private static Vec3i rotatedOffset(Rotation rotation, Direction.Axis axis, StructureTemplate template) {
         return rotation.rotate(axis.getNegative()).getUnitVec3i().multiply(template.getSize().get(axis) / 2);
     }
+    //?}
 
     public static void placePaleMoss(TreeDecorator.Context context, DihSyntheticLevel synthetic,
                                      float leavesProbability, float trunkProbability, float groundProbability) {
+        //? if >=26.3 {
+        /*// OreSim (the only caller) is 26.2-only for now; 26.3 has no configured-feature registry to place from.
+        *///?} else {
         RandomSource random = context.random();
         WorldGenLevel level = context.level();
         List<BlockPos> logs = Util.shuffledCopy(context.logs(), random);
@@ -140,6 +147,7 @@ public final class DihSyntheticFeatureBridge {
                 if (context.isAir(down)) addMossHanger(down, context);
             }
         });
+        //?}
     }
 
     private static void addMossHanger(BlockPos pos, TreeDecorator.Context context) {

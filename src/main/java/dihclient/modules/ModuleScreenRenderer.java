@@ -59,16 +59,16 @@ public final class ModuleScreenRenderer {
         );
         float tickDelta = MC.getDeltaTracker().getGameTimeDeltaPartialTick(false);
         Module espModule = ModuleRegistry.get("esp");
-        boolean fill = espModule != null && espModule.bool("fill");
+        Box2dStyle style = Box2dStyle.of(espModule);
 
         for (Entity entity : MC.level.entitiesForRendering()) {
             try {
                 if (!ModuleRenderUtil.shouldEsp(entity)) continue;
                 ScreenBox box = projectBox(entity, tickDelta, projection);
                 if (box == null) continue;
-                box = smoothBox(entity, box, frame);
+                if (style.smooth()) box = smoothBox(entity, box, frame);
                 int color = ModuleRenderUtil.espColor(entity);
-                drawDIH2dBox(context, box, color, entity, fill);
+                drawDIH2dBox(context, box, color, entity, style);
             } catch (Throwable t) {
 
             }
@@ -123,7 +123,22 @@ public final class ModuleScreenRenderer {
         }
     }
 
-    private static void drawDIH2dBox(GuiGraphicsExtractor context, ScreenBox box, int color, Entity entity, boolean fill) {
+    /** The ESP module's 2D box options, read once per frame. */
+    private record Box2dStyle(boolean fill, int fillAlpha, boolean border, boolean corners, boolean healthBar,
+                              boolean smooth) {
+        static Box2dStyle of(Module esp) {
+            if (esp == null) return new Box2dStyle(false, 50, true, false, true, true);
+            return new Box2dStyle(
+                esp.bool("fill"),
+                Mth.clamp(esp.integer("fill-alpha"), 0, 255),
+                !"false".equals(esp.value("border")),
+                "Corners".equals(esp.value("box-style")),
+                !"false".equals(esp.value("health-bar")),
+                !"false".equals(esp.value("smooth")));
+        }
+    }
+
+    private static void drawDIH2dBox(GuiGraphicsExtractor context, ScreenBox box, int color, Entity entity, Box2dStyle style) {
         int x = Mth.floor(box.minX);
         int y = Mth.floor(box.minY);
         int w = Mth.ceil(box.maxX) - x;
@@ -131,14 +146,36 @@ public final class ModuleScreenRenderer {
         if (w <= 0 || h <= 0) return;
         int rgb = color & 0x00FFFFFF;
         int outline = 0xFF000000 | rgb;
-        if (fill) {
-            int fillColor = (50 << 24) | rgb;
+        if (style.fill()) {
+            int fillColor = (style.fillAlpha() << 24) | rgb;
             UiRenderer.rect(context, UiBounds.of(x, y, w, h), fillColor);
         }
-        drawBorderedRectOutline(context, x, y, w, h, outline);
-        if (entity instanceof LivingEntity living) {
+        if (style.corners()) {
+            drawCornerOutline(context, x, y, w, h, outline, style.border());
+        } else if (style.border()) {
+            drawBorderedRectOutline(context, x, y, w, h, outline);
+        } else {
+            UiRenderer.outline(context, UiBounds.of(x, y, w, h), outline);
+        }
+        if (style.healthBar() && entity instanceof LivingEntity living) {
             drawHealthBar(context, x, y, h, living);
         }
+    }
+
+    /** Only the four corners of the box, each a quarter of the side long, with an optional black backing. */
+    private static void drawCornerOutline(GuiGraphicsExtractor context, int x, int y, int w, int h, int color, boolean border) {
+        int cw = Math.max(2, w / 4);
+        int ch = Math.max(2, h / 4);
+        int[][] segments = {
+            {x, y, cw, 1}, {x, y, 1, ch},
+            {x + w - cw, y, cw, 1}, {x + w - 1, y, 1, ch},
+            {x, y + h - 1, cw, 1}, {x, y + h - ch, 1, ch},
+            {x + w - cw, y + h - 1, cw, 1}, {x + w - 1, y + h - ch, 1, ch}
+        };
+        if (border) {
+            for (int[] s : segments) UiRenderer.rect(context, UiBounds.of(s[0] - 1, s[1] - 1, s[2] + 2, s[3] + 2), 0xFF000000);
+        }
+        for (int[] s : segments) UiRenderer.rect(context, UiBounds.of(s[0], s[1], s[2], s[3]), color);
     }
 
     private static void drawBorderedRectOutline(GuiGraphicsExtractor context, int x, int y, int w, int h, int color) {

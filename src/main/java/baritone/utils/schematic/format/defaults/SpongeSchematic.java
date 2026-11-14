@@ -17,146 +17,129 @@
 
 package baritone.utils.schematic.format.defaults;
 
-import baritone.utils.schematic.StaticSchematic;
-import baritone.utils.type.VarInt;
-import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
-import net.minecraft.core.Holder;
-import net.minecraft.core.registries.BuiltInRegistries;
+import baritone.utils.schematic.LoadedSchematic;
+import baritone.utils.schematic.format.BlockStateReader;
+import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.Identifier;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
+import net.minecraft.nbt.Tag;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.block.state.properties.Property;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
+ * The Sponge schematic format (".schem"), versions 1 to 3, as written by WorldEdit 7 and FAWE.
+ *
  * @author Brady
+ * @see <a href="https://github.com/SpongePowered/Schematic-Specification">Sponge Schematic Specification</a>
  * @since 12/27/2019
  */
-public final class SpongeSchematic extends StaticSchematic {
+public final class SpongeSchematic extends LoadedSchematic {
 
-    public SpongeSchematic(CompoundTag nbt) {
-        this.x = nbt.getInt("Width").orElse(0);
-        this.y = nbt.getInt("Height").orElse(0);
-        this.z = nbt.getInt("Length").orElse(0);
-        this.states = new BlockState[this.x][this.z][this.y];
+    /**
+     * Version 1 records no data version; it was written by 1.13 tools.
+     */
+    private static final int V1_DATA_VERSION = 1519;
 
-        Int2ObjectArrayMap<BlockState> palette = new Int2ObjectArrayMap<>();
-        CompoundTag paletteTag = nbt.getCompound("Palette").orElse(new CompoundTag());
-        for (String tag : paletteTag.keySet()) {
-            int index = paletteTag.getInt(tag).orElse(0);
+    /**
+     * @param root the file's root tag; for version 3 the data sits in its "Schematic" child
+     */
+    public SpongeSchematic(CompoundTag root) {
+        CompoundTag nbt = root.getCompound("Schematic").filter(SpongeSchematic::isV3).orElse(root);
+        int version = nbt.getIntOr("Version", nbt.getCompound("Blocks").isPresent() ? 3 : 2);
+        if (version < 1 || version > 3) {
+            throw new IllegalArgumentException("Sponge schematic version " + version + " is not supported (1 to 3 are)");
+        }
+        int width = size(nbt, "Width");
+        int height = size(nbt, "Height");
+        int length = size(nbt, "Length");
+        this.dataVersion = nbt.getIntOr("DataVersion", V1_DATA_VERSION);
+        this.format = "Sponge v" + version;
+        CompoundTag metadata = nbt.getCompoundOrEmpty("Metadata");
+        this.name = metadata.getStringOr("Name", "");
+        this.author = metadata.getStringOr("Author", "");
 
-            SerializedBlockState serializedState = SerializedBlockState.getFromString(tag);
-            if (serializedState == null) {
-                throw new IllegalArgumentException("Unable to parse palette tag");
+        CompoundTag blocksTag = version >= 3 ? nbt.getCompoundOrEmpty("Blocks") : nbt;
+        CompoundTag paletteTag = blocksTag.getCompound("Palette")
+            .orElseThrow(() -> new IllegalArgumentException("it has no block palette"));
+        byte[] data = blocksTag.getByteArray(version >= 3 ? "Data" : "BlockData")
+            .orElseThrow(() -> new IllegalArgumentException("it has no block data"));
+
+        BlockStateReader reader = new BlockStateReader(this.dataVersion);
+        int highest = -1;
+        for (String key : paletteTag.keySet()) {
+            highest = Math.max(highest, paletteTag.getIntOr(key, -1));
+        }
+        BlockState[] palette = new BlockState[highest + 1];
+        for (String key : paletteTag.keySet()) {
+            int index = paletteTag.getIntOr(key, -1);
+            if (index >= 0) {
+                palette[index] = reader.read(key);
             }
-
-            BlockState state = serializedState.deserialize();
-            if (state == null) {
-                throw new IllegalArgumentException("Unable to deserialize palette tag");
-            }
-
-            palette.put(index, state);
         }
 
-        // BlockData is stored as an NBT byte[], however, the actual data that is represented is a varint[]
-        byte[] rawBlockData = nbt.getByteArray("BlockData").orElseThrow();
-        int[] blockData = new int[this.x * this.y * this.z];
+        allocate(width, height, length, false);
+        int volume = width * height * length;
         int offset = 0;
-        for (int i = 0; i < blockData.length; i++) {
-            if (offset >= rawBlockData.length) {
-                throw new IllegalArgumentException("No remaining bytes in BlockData for complete schematic");
-            }
-
-            VarInt varInt = VarInt.read(rawBlockData, offset);
-            blockData[i] = varInt.getValue();
-            offset += varInt.getSize();
-        }
-
-        for (int y = 0; y < this.y; y++) {
-            for (int z = 0; z < this.z; z++) {
-                for (int x = 0; x < this.x; x++) {
-                    int index = (y * this.z + z) * this.x + x;
-                    BlockState state = palette.get(blockData[index]);
-                    if (state == null) {
-                        throw new IllegalArgumentException("Invalid Palette Index " + index);
-                    }
-
-                    this.states[x][z][y] = state;
+        for (int index = 0; index < volume; index++) {
+            // VarInts, 7 bits per byte, low bits first
+            int value = 0;
+            int shift = 0;
+            while (true) {
+                if (offset >= data.length) {
+                    throw new IllegalArgumentException("its block data ends after " + index + " of " + volume + " blocks");
+                }
+                byte b = data[offset++];
+                value |= (b & 0x7F) << shift;
+                if ((b & 0x80) == 0) {
+                    break;
+                }
+                shift += 7;
+                if (shift > 28) {
+                    throw new IllegalArgumentException("its block data has a malformed VarInt at byte " + offset);
                 }
             }
+            if (value < 0 || value >= palette.length || palette[value] == null) {
+                throw new IllegalArgumentException("block " + index + " uses palette index " + value
+                    + ", which the palette (" + paletteTag.size() + " entries) does not have");
+            }
+            int y = index / (width * length);
+            int z = (index % (width * length)) / width;
+            int x = index % width;
+            setBlock(x, y, z, palette[value]);
         }
+
+        String entitiesKey = version == 1 ? "TileEntities" : "BlockEntities";
+        for (Tag entry : blocksTag.getListOrEmpty(entitiesKey)) {
+            if (!(entry instanceof CompoundTag tile)) {
+                continue;
+            }
+            int[] pos = tile.getIntArray("Pos").orElse(new int[0]);
+            if (pos.length < 3 || !contains(pos[0], pos[1], pos[2])) {
+                continue;
+            }
+            CompoundTag out;
+            if (version >= 3) {
+                out = tile.getCompoundOrEmpty("Data").copy();
+            } else {
+                out = tile.copy();
+                out.remove("Pos");
+                out.remove("Id");
+                out.remove("ContentVersion");
+            }
+            out.putString("id", tile.getStringOr("Id", ""));
+            putBlockEntity(new BlockPos(pos[0], pos[1], pos[2]), reader.blockEntity(out, this.dataVersion));
+        }
+        reader.warnings().forEach(this::warn);
     }
 
-    private static final class SerializedBlockState {
+    private static boolean isV3(CompoundTag tag) {
+        return tag.getIntOr("Version", 0) >= 3 || tag.getCompound("Blocks").isPresent();
+    }
 
-        private static final Pattern REGEX = Pattern.compile("(?<location>(\\w+:)?\\w+)(\\[(?<properties>(\\w+=\\w+,?)+)])?");
-
-        private final Identifier identifier;
-        private final Map<String, String> properties;
-        private BlockState blockState;
-
-        private SerializedBlockState(Identifier identifier, Map<String, String> properties) {
-            this.identifier = identifier;
-            this.properties = properties;
+    private static int size(CompoundTag nbt, String key) {
+        int value = nbt.getIntOr(key, -1);
+        if (value == -1 && !nbt.contains(key)) {
+            throw new IllegalArgumentException("it has no " + key);
         }
-
-        private BlockState deserialize() {
-            if (this.blockState == null) {
-                Block block = BuiltInRegistries.BLOCK.get(this.identifier)
-                    .map(Holder.Reference::value)
-                    .orElse(Blocks.AIR);
-                this.blockState = block.defaultBlockState();
-
-                this.properties.keySet().stream().sorted(String::compareTo).forEachOrdered(key -> {
-                    Property<?> property = block.getStateDefinition().getProperty(key);
-                    if (property != null) {
-                        this.blockState = setPropertyValue(this.blockState, property, this.properties.get(key));
-                    }
-                });
-            }
-            return this.blockState;
-        }
-
-        private static SerializedBlockState getFromString(String s) {
-            Matcher m = REGEX.matcher(s);
-            if (!m.matches()) {
-                return null;
-            }
-
-            try {
-                String location = m.group("location");
-                String properties = m.group("properties");
-
-                Identifier identifier = Identifier.parse(location);
-                Map<String, String> propertiesMap = new HashMap<>();
-                if (properties != null) {
-                    for (String property : properties.split(",")) {
-                        String[] split = property.split("=");
-                        propertiesMap.put(split[0], split[1]);
-                    }
-                }
-
-                return new SerializedBlockState(identifier, propertiesMap);
-            } catch (Exception e) {
-                e.printStackTrace();
-                return null;
-            }
-        }
-
-        private static <T extends Comparable<T>> BlockState setPropertyValue(BlockState state, Property<T> property, String value) {
-            Optional<T> parsed = property.getValue(value);
-            if (parsed.isPresent()) {
-                return state.setValue(property, parsed.get());
-            } else {
-                throw new IllegalArgumentException("Invalid value for property " + property);
-            }
-        }
+        // unsigned shorts
+        return value < 0 ? value & 0xFFFF : value;
     }
 }

@@ -36,6 +36,7 @@ public final class DihCommands {
         if (initialized) return;
         initialized = true;
         register(new dihclient.commands.impl.MacroCommand());
+        register(new dihclient.commands.impl.EnchantCommand());
         register(new dihclient.commands.impl.ScriptsCommand());
         register(new dihclient.commands.impl.SyncCommand());
         register(new dihclient.commands.impl.DelayCommand());
@@ -66,6 +67,7 @@ public final class DihCommands {
         register(new dihclient.commands.impl.GuiCommand());
         register(new dihclient.commands.impl.GateCommand());
         register(new dihclient.commands.impl.UpdateCommand());
+        register(new dihclient.commands.impl.AddonsCommand());
 
         if (!dihclient.util.DihLiteVariant.enabled()) {
             register(new dihclient.commands.impl.SettingCommand());
@@ -78,11 +80,17 @@ public final class DihCommands {
             register(new dihclient.commands.impl.GhostBlockCommand());
             register(new dihclient.commands.impl.FriendCommand());
             register(new dihclient.commands.impl.WaypointsCommand());
+            register(new dihclient.commands.impl.ShowRegionCommand());
+            register(new dihclient.commands.impl.SchematicCommand());
             register(new dihclient.commands.impl.GamemodeCommand());
             register(new dihclient.commands.impl.FakeGmCommand());
             register(new dihclient.commands.impl.XCarryCommand());
             register(new dihclient.commands.impl.RemoteViewCommand());
+            register(new dihclient.commands.impl.InvSeeCommand());
             register(new dihclient.commands.impl.NameScrapeCommand());
+            register(new dihclient.commands.impl.ToolsCommand());
+            register(new dihclient.commands.impl.AiRunCommand());
+            dihclient.ai.ClientToolCatalog.install();
         }
     }
 

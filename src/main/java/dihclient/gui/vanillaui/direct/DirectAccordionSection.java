@@ -1,5 +1,6 @@
 package dihclient.gui.vanillaui.direct;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.components.*;
 
 import dihclient.gui.vanillaui.direct.DirectUiColumn;
@@ -141,7 +142,7 @@ public class DirectAccordionSection extends DirectUiContainer {
     @Override
     public boolean mouseClicked(DirectRenderContext context, float mouseX, float mouseY, int button) {
         int scaledHeaderHeight = Math.max(context.theme().scale(headerHeight), context.theme().lineHeight(UiTone.LABEL, 4));
-        if (button == 0 && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + scaledHeaderHeight) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && mouseX >= x && mouseX <= x + width && mouseY >= y && mouseY <= y + scaledHeaderHeight) {
             expanded = !expanded;
             markLayoutDirty();
             return true;

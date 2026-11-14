@@ -362,6 +362,16 @@ public final class Settings {
     public final Setting<Boolean> allowParkour = new Setting<>(false);
 
     /**
+     * With allowParkour on, also plan jumps Baritone's own parkour can't do (diagonal and odd-angled jumps, round a
+     * wall, onto fences and slabs) and make them with DIH's exact jump solver. A jump the solver rules out is dropped
+     * and the path recalculated.
+     */
+    public final Setting<Boolean> allowHardParkour = new Setting<>(false);
+
+    /** Draw the line a solved parkour jump will follow, and outline where it lands, while it is being made. */
+    public final Setting<Boolean> parkourPreview = new Setting<>(true);
+
+    /**
      * Actually pretty reliable.
      * <p>
      * Doesn't make it any more dangerous compared to just normal allowParkour th
@@ -415,6 +425,12 @@ public final class Settings {
      * How many degrees to randomize the pitch and yaw every tick. Set to 0 to disable
      */
     public final Setting<Double> randomLooking = new Setting<>(0.01d);
+
+    /**
+     * The most degrees yaw and pitch may each turn in one tick. 0 turns at once. A cap makes the turns look like a
+     * mouse, which anticheats such as Grim expect; actions that need a rotation wait until it is reached.
+     */
+    public final Setting<Float> maxRotationPerTick = new Setting<>(0f);
 
     /**
      * This is the big A* setting.
@@ -1619,6 +1635,82 @@ public final class Settings {
      * Sneak when magma blocks are under feet
      */
     public final Setting<Boolean> allowWalkOnMagmaBlocks = new Setting<>(false);
+
+    /**
+     * Let {@code #acquire} place a crafting table or furnace from your inventory when none is within
+     * {@link #acquireStationRadius}. When off it only uses stations that already exist.
+     */
+    public final Setting<Boolean> acquirePlaceStations = new Setting<>(true);
+
+    /**
+     * Let {@code #acquire} kill mobs for their drops (string, leather, ...). It only attacks the mob type
+     * the step names, never players, babies, named mobs or tamed pets.
+     */
+    public final Setting<Boolean> acquireKillMobs = new Setting<>(true);
+
+    /** Plan a stone sword before ore trips and affordable iron armor and shield after obtaining iron. */
+    public final Setting<Boolean> acquireGearUp = new Setting<>(true);
+
+    /**
+     * How far, in blocks, {@code #acquire} looks for an existing crafting table or furnace before it
+     * places its own.
+     */
+    public final Setting<Integer> acquireStationRadius = new Setting<>(32);
+
+    /**
+     * How many times one {@code #acquire} may re-plan from your real inventory (after a step comes up short,
+     * fails, times out, a tool breaks or you die) before it gives up.
+     */
+    public final Setting<Integer> acquireMaxReplans = new Setting<>(8);
+
+    /**
+     * Seconds one {@code #acquire} step may take before it counts as stuck and the plan is redone.
+     */
+    public final Setting<Integer> acquireStepTimeoutSeconds = new Setting<>(300);
+
+    /**
+     * When the inventory fills up during {@code #acquire}, drop one stack of filler (dirt, gravel, spare
+     * cobblestone, ...) that the rest of the plan doesn't need. Off by default: with it off, {@code #acquire}
+     * stops and tells you the inventory is full.
+     */
+    public final Setting<Boolean> acquireDropJunk = new Setting<>(false);
+
+    /**
+     * Let {@code #acquire} look after your health while it runs: eat when hurt and below 18 food (natural
+     * regeneration needs it) or at 6 food and below, eat a golden apple at {@link #acquireEmergencyHealth},
+     * and fetch food first when there is none to eat. Only while {@code #acquire} runs; {@code #eat} eats on request.
+     */
+    public final Setting<Boolean> acquireHeal = new Setting<>(true);
+
+    /**
+     * Health, in half-hearts (12 = 6 hearts), at or below which {@code #acquire} gets food before carrying on
+     * when you hold nothing safe to eat. Needs {@link #acquireHeal}.
+     */
+    public final Setting<Integer> acquireHealHealth = new Setting<>(12);
+
+    /**
+     * Health, in half-hearts, at or below which {@code #acquire} (and {@code #eat}) eats a golden apple even on
+     * a full food bar, may eat food the plan needs, and stops fighting to back off and eat. Needs {@link #acquireHeal}.
+     */
+    public final Setting<Integer> acquireEmergencyHealth = new Setting<>(6);
+
+    /**
+     * The Guardian: while any Baritone job runs ({@code #acquire}, {@code #mine}, goals, ...), step in when
+     * something endangers you (lava, a long fall, a creeper, an attacking mob, arrows, drowning, low health), deal
+     * with it, then let the job carry on. It never acts while no job runs.
+     */
+    public final Setting<Boolean> guardianEnabled = new Setting<>(true);
+
+    /**
+     * Health, in half-hearts (10 = 5 hearts), at or below which the Guardian stops fighting and retreats instead.
+     */
+    public final Setting<Integer> guardianFleeHealth = new Setting<>(10);
+
+    /**
+     * Stop the running job and give you control when a player who isn't on your friends list comes within 12
+     * blocks.
+     */
+    public final Setting<Boolean> guardianStopForPlayers = new Setting<>(true);
 
     /**
      * A map of lowercase setting field names to their respective setting

@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContexts;
 import dihclient.gui.vanillaui.UiRenderer;
@@ -17,7 +18,6 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -171,10 +171,10 @@ public class DihForceOpPreviewScreen extends DihScreen {
 
         for (Hit hit : hits) {
             if (hit.contains(mx, my)) {
-                if (hit.type == HitType.CLOSE && event.button() == 0) {
+                if (hit.type == HitType.CLOSE && event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
                     onClose();
                     return true;
-                } else if (hit.type == HitType.SCROLLBAR && event.button() == 0) {
+                } else if (hit.type == HitType.SCROLLBAR && event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
                     int innerH = panelH() - HEADER_H - 24;
                     CompactScrollbar.Metrics metrics = CompactScrollbar.compute(visiblePasswords.size() * ROW_H, innerH, hit.x, hit.y, hit.w, hit.h, scroll);
                     if (metrics.overThumb(mx, my)) {
@@ -236,7 +236,7 @@ public class DihForceOpPreviewScreen extends DihScreen {
 
     @Override
     public boolean keyPressed(KeyEvent event) {
-        if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (event.key() == InputConstants.KEY_ESCAPE) {
             onClose();
             return true;
         }

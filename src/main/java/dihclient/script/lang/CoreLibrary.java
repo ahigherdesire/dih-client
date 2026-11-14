@@ -60,7 +60,7 @@ public final class CoreLibrary {
             int lo = a.integer(0);
             int hi = a.integer(1);
             if (hi < lo) throw a.error("max must be >= min");
-            return (double) ThreadLocalRandom.current().nextInt(lo, hi + 1);
+            return (double) ThreadLocalRandom.current().nextLong(lo, (long) hi + 1);
         });
 
         // ---- conversion / strings

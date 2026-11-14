@@ -44,7 +44,11 @@ final class SeedStructureScannerTest {
             net.minecraft.server.packs.repository.ServerPacksSource.createVanillaPackSource();
         net.minecraft.server.packs.resources.ResourceManager resources =
             new net.minecraft.server.packs.resources.MultiPackResourceManager(
+                //? if >=26.3 {
+                /*net.minecraft.server.packs.PackType.SERVER_DATA, java.util.List.of(vanilla.fullResources()));
+                *///?} else {
                 net.minecraft.server.packs.PackType.SERVER_DATA, java.util.List.of(vanilla));
+                //?}
         net.minecraft.core.RegistryAccess builtIn =
             net.minecraft.core.RegistryAccess.fromRegistryOfRegistries(net.minecraft.core.registries.BuiltInRegistries.REGISTRY);
         net.minecraft.tags.TagLoader.loadTagsForExistingRegistries(resources, builtIn)

@@ -46,6 +46,25 @@ public final class DihHttp {
         }
     }
 
+    /** GETs a binary body, following redirects; null on any failure or when it exceeds {@code maxBytes}. */
+    public static byte[] getBytes(String url, long maxBytes) {
+        try {
+            HttpURLConnection connection = open(url, 30000);
+            connection.setRequestMethod("GET");
+            connection.setInstanceFollowRedirects(true);
+            int code = connection.getResponseCode();
+            if (code < 200 || code >= 300) return null;
+            long declared = connection.getContentLengthLong();
+            if (declared > maxBytes) return null;
+            try (InputStream input = connection.getInputStream()) {
+                byte[] body = input.readNBytes((int) Math.min(Integer.MAX_VALUE - 8, maxBytes + 1));
+                return body.length > maxBytes ? null : body;
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     public static JsonResult getJsonResult(String url, String bearerToken) {
         return getJsonResult(url, bearerToken, Map.of());
     }

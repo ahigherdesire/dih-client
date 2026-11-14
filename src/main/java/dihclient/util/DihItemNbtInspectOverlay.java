@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.direct.DirectLayout;
 import dihclient.gui.vanillaui.components.CompactListRenderer;
 import dihclient.gui.vanillaui.components.CompactOverlayButton;
@@ -17,7 +18,6 @@ import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.ItemStack;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -179,7 +179,7 @@ public class DihItemNbtInspectOverlay extends DihOverlayBase {
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (!visible) return false;
         DihWindowLayout bounds = getBounds();
-        if (button == 0 && mouseY >= panelY && mouseY <= panelY + HEADER_HEIGHT && mouseX >= panelX && mouseX <= panelX + panelWidth) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && mouseY >= panelY && mouseY <= panelY + HEADER_HEIGHT && mouseX >= panelX && mouseX <= panelX + panelWidth) {
             if (isOverCloseButton(mouseX, mouseY, bounds)) {
                 close();
                 return true;
@@ -190,7 +190,7 @@ public class DihItemNbtInspectOverlay extends DihOverlayBase {
             return true;
         }
         if (collapsed) return true;
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             int tabY = panelY + HEADER_HEIGHT + 6;
             for (FooterButton tab : tabButtons(tabY)) {
                 if (tab.contains(mouseX, mouseY, buttonHeight())) {
@@ -214,12 +214,12 @@ public class DihItemNbtInspectOverlay extends DihOverlayBase {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
-        if (button == 0 && dragging) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && dragging) {
             dragging = false;
             saveLayout();
             return true;
         }
-        if (button == 0 && viewport != null) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && viewport != null) {
             viewport.mouseReleased();
             return true;
         }
@@ -230,7 +230,7 @@ public class DihItemNbtInspectOverlay extends DihOverlayBase {
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
         if (viewport != null) viewport.mouseDragged(mouseX, mouseY);
-        if (!visible || button != 0 || !dragging) return false;
+        if (!visible || button != InputConstants.MOUSE_BUTTON_LEFT || !dragging) return false;
         setBounds(new DihWindowLayout((int) Math.round(mouseX - dragOffsetX), (int) Math.round(mouseY - dragOffsetY), panelWidth, panelHeight, visible, collapsed));
         return true;
     }
@@ -244,7 +244,7 @@ public class DihItemNbtInspectOverlay extends DihOverlayBase {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!visible) return false;
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE) {
+        if (keyCode == InputConstants.KEY_ESCAPE) {
             close();
             return true;
         }

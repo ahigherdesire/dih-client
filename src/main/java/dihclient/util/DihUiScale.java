@@ -28,7 +28,7 @@ public final class DihUiScale {
     private static ScreenMetrics currentMetrics(Minecraft mc) {
         int rawW = mc.getWindow().getWidth();
         int rawH = mc.getWindow().getHeight();
-        double multiplier = getOverlayScaleMultiplier();
+        double multiplier = effectiveScaleMultiplier();
         ScreenMetrics m = metrics;
         if (m != null && m.rawW == rawW && m.rawH == rawH && m.multiplier == multiplier) return m;
         double scale = FIXED_GUI_SCALE * multiplier;
@@ -137,7 +137,64 @@ public final class DihUiScale {
     }
 
     private static double getFixedGuiScale() {
-        return FIXED_GUI_SCALE * getOverlayScaleMultiplier();
+        return FIXED_GUI_SCALE * effectiveScaleMultiplier();
+    }
+
+    /**
+     * Overlay Scale times Text Size. DIH layouts are laid out in fixed virtual pixels, so text is enlarged by
+     * scaling whole windows with it: rows, buttons and panels grow together and nothing clips.
+     */
+    private static double effectiveScaleMultiplier() {
+        return getOverlayScaleMultiplier() * getTextScale();
+    }
+
+    public static final double MIN_TEXT_SCALE = 0.8;
+    public static final double MAX_TEXT_SCALE = 1.5;
+    private static final double TEXT_SCALE_STEP = 0.1;
+
+    public static double getTextScale() {
+        try {
+            return normalizeTextScale(DihConfig.getGlobal().uiTextScale);
+        } catch (Throwable ignored) {
+            return 1.0;
+        }
+    }
+
+    /** Rounds to the 0.1 step and clamps to 0.8-1.5; anything unusable becomes 1.0. */
+    public static double normalizeTextScale(double scale) {
+        if (!Double.isFinite(scale) || scale <= 0) return 1.0;
+        double stepped = Math.round(scale / TEXT_SCALE_STEP) * TEXT_SCALE_STEP;
+        stepped = Math.round(stepped * 10.0) / 10.0;
+        return Math.max(MIN_TEXT_SCALE, Math.min(MAX_TEXT_SCALE, stepped));
+    }
+
+    /** The next Text Size up, wrapping from the largest back to the smallest. */
+    public static double nextTextScale(double current) {
+        double normalized = normalizeTextScale(current);
+        return normalized >= MAX_TEXT_SCALE - EPSILON ? MIN_TEXT_SCALE : normalizeTextScale(normalized + TEXT_SCALE_STEP);
+    }
+
+    /** The next Text Size down, wrapping from the smallest to the largest. */
+    public static double previousTextScale(double current) {
+        double normalized = normalizeTextScale(current);
+        return normalized <= MIN_TEXT_SCALE + EPSILON ? MAX_TEXT_SCALE : normalizeTextScale(normalized - TEXT_SCALE_STEP);
+    }
+
+    public static String formatTextScale(double scale) {
+        return Math.round(normalizeTextScale(scale) * 100) + "%";
+    }
+
+    public static void setTextScale(double scale) {
+        double normalized = normalizeTextScale(scale);
+        DihConfig config = DihConfig.getGlobal();
+        if (Math.abs(config.uiTextScale - normalized) < EPSILON) return;
+        config.uiTextScale = normalized;
+        config.save();
+        try {
+            DihOverlayManager.get().reclampAllOverlays();
+        } catch (Throwable ignored) {
+
+        }
     }
 
     public static boolean isOverlayScaleActive() {

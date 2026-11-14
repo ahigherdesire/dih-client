@@ -44,7 +44,8 @@ public final class OverlayTopBar {
     public static void render(UiContext context, UiBounds windowBounds, int headerHeight, String title,
                               boolean collapsed, boolean hasCollapse, boolean hasClose,
                               boolean headerHovered, boolean active, int titleLeftInset, int titleRightInset) {
-        TopBar.render(context, barBounds(windowBounds, headerHeight), title, collapsed, hasCollapse, hasClose, active && headerHovered,
-            titleLeftInset, titleRightInset);
+        UiBounds bar = barBounds(windowBounds, headerHeight);
+        TopBar.render(context, bar, title, collapsed, hasCollapse, hasClose, active && headerHovered,
+            titleLeftInset, titleRightInset, bar.bottom() >= windowBounds.bottom() - 1);
     }
 }

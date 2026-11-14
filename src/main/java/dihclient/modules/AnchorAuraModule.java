@@ -11,6 +11,7 @@ import dihclient.util.DihCombatClicker;
 import dihclient.util.DihExplosionDamage;
 import dihclient.util.DihFaceScan;
 import dihclient.util.DihHandArbiter;
+import dihclient.util.DihInstantClick;
 import dihclient.util.DihInventoryHelper;
 import dihclient.util.DihKillAuraRotation;
 import dihclient.util.DihPlacementTick;
@@ -31,6 +32,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.attribute.EnvironmentAttributes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -100,6 +102,9 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
 
     private static final int SHIELD_CELLS_PER_ANCHOR = 4;
 
+    /** Most steps Instant mode sends in one tick: place, shield, charge and detonate. */
+    private static final int MAX_STEPS_PER_TICK = 4;
+
     private static int[] sphereCache = new int[0];
     private static int sphereRadius = -1;
 
@@ -116,6 +121,8 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
     private int lastActionTick = Integer.MIN_VALUE;
     private long lastActionNanos = Long.MIN_VALUE;
     private long actionFloorNanos;
+    /** Instant mode: the first tick the next step may go out. */
+    private int nextStepTick = Integer.MIN_VALUE;
 
     private String cachedEntityListSource;
     private Set<String> cachedEntityIds = Set.of();
@@ -172,29 +179,64 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
 
         add(new BoolSetting("place", "Place", true)
             .description("Place new respawn anchors.")
+            .group("General")
             .build());
         add(new BoolSetting("charge", "Charge", true)
             .description("Charge anchors with glowstone.")
+            .group("General")
             .build());
         add(new BoolSetting("detonate", "Detonate", true)
             .description("Detonate charged anchors.")
+            .group("General")
             .build());
+        add(new IntSetting("pause-health", "Pause Health", 0, 0, 36, 1)
+            .description("Stops while your health and absorption are at or below this; 0 never pauses.")
+            .unit("HP")
+            .group("General")
+            .build());
+        add(new BoolSetting("pause-mining", "Pause While Mining", false)
+            .description("Stops while you break a block.")
+            .group("General")
+            .build());
+
         add(new DoubleSetting("target-range", "Target Range", 8.0D, 1.0D, 16.0D, 0.5D)
             .description("Enemy search radius.")
+            .group("Targets")
             .build());
         add(new ChoiceSetting("targeting", "Targeting", "Distance", "Distance", "HP", "FOV")
             .description("How the enemy is picked.")
+            .group("Targets")
             .build());
         add(RegistryListSetting.entityTypes("entities", "Entities", "minecraft:player")
             .description("Entity types to blast.")
+            .group("Targets")
             .build());
         add(new IntSetting("hurt-time", "Hurt Time", 10, 0, 10, 1)
             .description("Maximum hurt time.")
+            .group("Targets")
+            .build());
+        add(new BoolSetting("ignore-invisible", "Ignore Invisible", false)
+            .description("Skip invisible entities.")
+            .group("Targets")
+            .build());
+        add(new BoolSetting("ignore-naked", "Ignore Naked", false)
+            .description("Skip players wearing no armor.")
+            .group("Targets")
             .build());
 
+        add(new DoubleSetting("place-range", "Range", 6.0D, 1.0D, 6.0D, 0.1D)
+            .description("Farthest anchor to place, charge or detonate, capped by your reach.")
+            .unit("blocks")
+            .group("Place")
+            .build());
+        add(new BoolSetting("switch-back", "Switch Back", true)
+            .description("Return to your previous hotbar slot once idle.")
+            .group("Place")
+            .build());
         add(new IntSetting("switch-back-delay", "Switch Back Delay", 20, 1, 100, 1)
             .description("Idle ticks before switching back.")
             .group("Place")
+            .visibleWhen(() -> bool("switch-back"))
             .build());
         add(new BoolSetting("only-above", "Only Above", false)
             .description("Place above target.")
@@ -225,16 +267,43 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
             .description("Shield yourself with glowstone when self damage is too high.")
             .group("Damage")
             .build());
+        add(new BoolSetting("face-place", "Face Place", false)
+            .description("Accept weaker blasts against a target that is almost dead.")
+            .group("Damage")
+            .build());
+        add(new DoubleSetting("face-place-health", "Face Place Health", 8.0D, 1.0D, 36.0D, 0.5D)
+            .description("Target health and absorption at or below which Face Place starts.")
+            .group("Damage")
+            .visibleWhen(() -> bool("face-place"))
+            .build());
+        add(new DoubleSetting("face-place-damage", "Face Place Damage", 2.0D, 0.0D, 20.0D, 0.5D)
+            .description("Minimum blast damage while face placing.")
+            .group("Damage")
+            .visibleWhen(() -> bool("face-place"))
+            .build());
 
+        add(new ChoiceSetting("speed", "Speed", "Instant", "Instant", "Smooth")
+            .description("Instant: snap the look and click at once; with no step delay a whole anchor goes off in "
+                + "one tick. Smooth: turn like a player between clicks (slower, quieter to anticheats).")
+            .group("Timing")
+            .build());
+        add(new IntSetting("step-ticks", "Step Delay", 0, 0, 20, 1)
+            .description("Ticks between two anchor clicks. 0 places, charges and detonates in the same tick.")
+            .unit("ticks")
+            .group("Timing")
+            .visibleWhen(this::instant)
+            .build());
         add(new IntSetting("step-delay", "Step Delay", 75, 0, 1000, 10)
             .description("Floor between two anchor clicks.")
             .unit("ms")
             .group("Timing")
+            .visibleWhen(() -> !instant())
             .build());
         add(new IntSetting("step-jitter", "Step Jitter", 20, 0, 200, 5)
             .description("Random extra delay per click.")
             .unit("ms")
             .group("Timing")
+            .visibleWhen(() -> !instant())
             .build());
 
     }
@@ -265,6 +334,7 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
         lastActionTick = Integer.MIN_VALUE;
         lastActionNanos = Long.MIN_VALUE;
         actionFloorNanos = 0L;
+        nextStepTick = Integer.MIN_VALUE;
         previousSlot = -1;
         switchedToSlot = -1;
         switchBackTicks = 0;
@@ -379,8 +449,15 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
             && !ScaffoldModule.reservesRageInput()
 
             && !AutoTotemModule.operationActive()
-            && !AutoArmorModule.operationActive();
+            && !AutoArmorModule.operationActive()
+            && !(bool("pause-mining") && MC.gameMode.isDestroying())
+            && !lowHealthPause();
 
+    }
+
+    private boolean lowHealthPause() {
+        int floor = integer("pause-health");
+        return floor > 0 && MC.player.getHealth() + MC.player.getAbsorptionAmount() <= floor;
     }
 
     private static boolean higherRungAiming() {
@@ -424,7 +501,7 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
 
         if (enemy == null) clearPending();
 
-        double range = MC.player.blockInteractionRange();
+        double range = Math.min(MC.player.blockInteractionRange(), decimal("place-range"));
         DihFaceScan.Budget budget = new DihFaceScan.Budget(RAY_BUDGET);
         rebuildDamageOptions();
 
@@ -447,6 +524,10 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
 
         if (plan == null) {
             standDown();
+            return;
+        }
+        if (instant()) {
+            runInstant(plan, tick, range, higherRung, caCommitted);
             return;
         }
         status = plan.step().name().toLowerCase(Locale.ROOT);
@@ -485,6 +566,42 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
         DihRotationUtil.Rotation outgoing = DihSilentAim.activeOutgoingRotation(MC.player);
         if (outgoing == null || !sameRotation(outgoing, wire)) return;
         execute(plan, hit, tick);
+    }
+
+    /**
+     * Instant mode: each step looks at its face with a packet and clicks right away, switching slots in the same tick.
+     * After a step the next one is planned against the world the click predicted, so with no step delay an anchor
+     * is placed, charged and detonated in one tick.
+     */
+    private void runInstant(Plan first, int tick, double range, boolean higherRung, boolean caCommitted) {
+        if (ID.equals(DihKillAuraRotation.currentOwner())) DihKillAuraRotation.beginWindDown(ID);
+        Plan plan = first;
+        for (int steps = 0; plan != null && steps < MAX_STEPS_PER_TICK; steps++) {
+            status = plan.step().name().toLowerCase(Locale.ROOT);
+            boolean finishing = finishesCommittedWork(plan);
+            if ((higherRung || caCommitted) && !finishing) return;
+            reservedTick = tick;
+            activityTick = tick;
+            DihHandArbiter.holdHand(ID);
+            if (!instantReady() || !ensureSlot(plan.slot(), finishing)) return;
+            DihRotationUtil.Rotation goal = plan.candidate().aim().goal();
+            BlockHitResult hit = gateHit(plan, goal);
+            if (hit == null) return;
+            DihInstantClick.face(goal);
+            if (!execute(plan, hit, tick)) return;
+            try (DihExplosionDamage.ScanPass pass = DihExplosionDamage.beginScan()) {
+                plan = planCycle(tick, range, new DihFaceScan.Budget(RAY_BUDGET));
+            }
+        }
+    }
+
+    private boolean instant() {
+        return "Instant".equals(choice("speed"));
+    }
+
+    private boolean instantReady() {
+        int tick = DihSharedState.get().getClientTickCounter();
+        return nextStepTick == Integer.MIN_VALUE || tick - nextStepTick >= 0;
     }
 
     private static boolean sameRotation(DihRotationUtil.Rotation first,
@@ -528,6 +645,7 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
     private void bookAction() {
         lastActionTick = DihSharedState.get().getClientTickCounter();
         lastActionNanos = System.nanoTime();
+        nextStepTick = lastActionTick + integer("step-ticks");
         int jitter = integer("step-jitter");
         long extra = jitter > 0 ? random.nextInt(jitter + 1) : 0;
         actionFloorNanos = (integer("step-delay") + extra) * 1_000_000L;
@@ -982,17 +1100,21 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
         return DihFaceScan.confirm(plan.candidate(), wire, player.getEyePosition(), plan.range(), gate);
     }
 
-    private void execute(Plan plan, BlockHitResult hit, int tick) {
+    private boolean execute(Plan plan, BlockHitResult hit, int tick) {
 
-        if (!stepStillLegal(plan)) return;
+        if (!stepStillLegal(plan)) return false;
 
-        if (ModuleRegistry.shouldCancelUseExcept(hit, InteractionHand.MAIN_HAND, ID)) return;
-        if (!DihCombatClicker.queueUse(hit, InteractionHand.MAIN_HAND)) return;
+        if (ModuleRegistry.shouldCancelUseExcept(hit, InteractionHand.MAIN_HAND, ID)) return false;
+        if (instant()) {
+            if (!DihPlacementTick.claim(ID) || !DihInstantClick.use(hit, InteractionHand.MAIN_HAND)) return false;
+        } else {
+            if (!DihCombatClicker.queueUse(hit, InteractionHand.MAIN_HAND)) return false;
 
-        if (!DihPlacementTick.claim(ID)) {
+            if (!DihPlacementTick.claim(ID)) {
 
-            DihCombatClicker.cancel();
-            return;
+                DihCombatClicker.cancel();
+                return false;
+            }
         }
 
         bookAction();
@@ -1014,6 +1136,7 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
             detonateSent = true;
             detonateTick = tick;
         }
+        return true;
     }
 
     private boolean stepStillLegal(Plan plan) {
@@ -1063,6 +1186,8 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
 
                 && !TeamsModule.combatExcluded(entity, "killaura")
                 && DihExplosionDamage.effectiveHealth(entity) > 0.0D
+                && !(bool("ignore-invisible") && entity.isInvisible())
+                && !(bool("ignore-naked") && entity instanceof Player && CombatFilters.wearsNoArmor(entity))
 
                 && entity.hurtTime <= integer("hurt-time"));
         if (found.isEmpty()) return null;
@@ -1121,7 +1246,7 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
         int[] offsets = sphere(Mth.ceil(range));
         BlockState anchor = Blocks.RESPAWN_ANCHOR.defaultBlockState();
 
-        double damageFloor = decimal("min-target-damage");
+        double damageFloor = minTargetDamage(enemy);
         double rangeSq = range * range;
         AABB nextBox = nextTickBox();
 
@@ -1242,7 +1367,7 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
         BlockPos origin = player.blockPosition();
         int[] offsets = sphere(Mth.ceil(range));
         BlockState anchor = Blocks.RESPAWN_ANCHOR.defaultBlockState();
-        double damageFloor = decimal("min-target-damage");
+        double damageFloor = minTargetDamage(enemy);
         double selfCeiling = decimal("max-self-damage");
         double rangeSq = range * range;
         AABB nextBox = nextTickBox();
@@ -1485,12 +1610,14 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
             switchBackTicks = integer("switch-back-delay");
             return true;
         }
-        if (changeHotbarSlot(slot, finishingWork)) {
+        boolean switched = changeHotbarSlot(slot, finishingWork);
+        if (switched) {
             if (previousSlot < 0) previousSlot = held;
             switchedToSlot = slot;
         }
         switchBackTicks = integer("switch-back-delay");
-        return false;
+        // The switch goes out at once, so an Instant click can follow it in the same tick.
+        return switched && instant() && player.getInventory().getSelectedSlot() == slot;
     }
 
     private boolean changeHotbarSlot(int slot, boolean finishingWork) {
@@ -1504,7 +1631,8 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
             return false;
         }
         int tick = DihSharedState.get().getClientTickCounter();
-        if (tick == hotbarChangeTick) return false;
+        // Instant mode switches up to three times in a tick (anchor, fuel, trigger).
+        if (tick == hotbarChangeTick && !instant()) return false;
         if (!DihHandArbiter.beginHandPacketGroup(ID)) return false;
         try {
             DihInventoryHelper.selectHotbarSlot(MC, slot);
@@ -1536,6 +1664,12 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
 
     private void tickSwitchBack() {
         if (previousSlot < 0) return;
+        if (!bool("switch-back")) {
+            previousSlot = -1;
+            switchedToSlot = -1;
+            switchBackTicks = 0;
+            return;
+        }
 
         if (MC.gui.screen() != null || MC.gui.overlay() != null) return;
 
@@ -1622,9 +1756,19 @@ public final class AnchorAuraModule extends Module implements DihSilentAim.Owner
         return new DihExplosionDamage.Ranking(target, self);
     }
 
+    /** The damage floor for {@code enemy}: Min Target Damage, lowered to Face Place Damage when it is almost dead. */
+    private double minTargetDamage(LivingEntity enemy) {
+        double floor = decimal("min-target-damage");
+        if (bool("face-place") && enemy != null
+            && DihExplosionDamage.effectiveHealth(enemy) <= decimal("face-place-health")) {
+            floor = Math.min(floor, decimal("face-place-damage"));
+        }
+        return floor;
+    }
+
     private boolean damagePasses(DihExplosionDamage.Ranking rank) {
         if (DihExplosionDamage.killsSelf(rank.selfDamage())) return false;
-        if (rank.targetDamage() < decimal("min-target-damage")) return false;
+        if (rank.targetDamage() < minTargetDamage(target)) return false;
         if (rank.selfDamage() > decimal("max-self-damage")) return false;
 
         return !bool("efficient") || rank.isEfficient();

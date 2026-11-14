@@ -3,9 +3,8 @@ package dihclient.util;
 import dihclient.modules.PackHideState;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.rendertype.DihRenderTypes;
+import dihclient.render.mc.DihRenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
@@ -26,6 +25,8 @@ public final class DihWorldHighlightRenderer {
     private static volatile boolean fill;
 
     private static volatile boolean progressDynamic;
+    private static volatile int progressStart = 0xFF35D873;
+    private static volatile int progressEnd = 0xFFFF3B3B;
 
     private DihWorldHighlightRenderer() {}
 
@@ -42,6 +43,12 @@ public final class DihWorldHighlightRenderer {
         progressDynamic = dynamic;
     }
 
+    /** Colours the outline fades between while a block breaks. */
+    public static void pushProgressColors(int start, int end) {
+        progressStart = start;
+        progressEnd = end;
+    }
+
     public static void disable() {
         on = false;
     }
@@ -51,7 +58,7 @@ public final class DihWorldHighlightRenderer {
     }
 
     public static void initialize() {
-        LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
+        dihclient.platform.DihPlatform.onCollectSubmits(context -> {
             if (!isActive()) return;
 
             if (DihFreecamHighlightRenderer.isReplacingVanillaOutline()) return;
@@ -71,10 +78,10 @@ public final class DihWorldHighlightRenderer {
                 ? Math.max(0.0f, Math.min(1.0f, accessor.dih$getDestroyProgress()))
                 : 0.0f;
             boolean dynamic = progress > 0.0f;
-            int line = dynamic ? lerpColor(0xFF35D873, 0xFFFF3B3B, progress) : lineColor;
+            int line = dynamic ? lerpColor(progressStart, progressEnd, progress) : lineColor;
             if (fill) {
                 int fc = dynamic
-                    ? (fillColor & 0xFF000000) | (lerpColor(0xFF35D873, 0xFFFF3B3B, progress) & 0x00FFFFFF)
+                    ? (fillColor & 0xFF000000) | (lerpColor(progressStart, progressEnd, progress) & 0x00FFFFFF)
                     : fillColor;
                 context.submitNodeCollector().submitCustomGeometry(poseStack,
                     DihRenderTypes.storageEspFillSeeThrough(), (pose, buffer) -> fillBox(pose, buffer, box, fc));

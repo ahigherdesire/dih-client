@@ -1,6 +1,7 @@
 
 
 package dihclient.modules;
+import dihclient.util.DihPackets;
 import dihclient.api.module.*;
 
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -39,21 +40,22 @@ public final class EntityControlModule extends Module {
     private double lastPacketY = Double.MAX_VALUE;
     private boolean restorePacketPending;
     private boolean sendingSyntheticPacket;
+    private boolean ridingControlled;
 
     public EntityControlModule() {
         super("entity-control", "EntityControl", ModuleCategory.MOVEMENT, "Controls selected rideable entities.");
         instance = this;
 
         add(RegistryListSetting.entityTypes("entities", "Entities", defaultEntities())
-            .group("Control").description("Choose controlled mounts.").build());
+            .group("General").description("Choose controlled mounts.").build());
         add(new BoolSetting("spoof-saddle", "Spoof Saddle", true)
-            .group("Control").description("Control without saddles.").build());
+            .group("General").description("Control without saddles.").build());
         add(new BoolSetting("max-jump", "Max Jump", true)
-            .group("Control").description("Always charge fully.").build());
+            .group("General").description("Always charge fully.").build());
         add(new BoolSetting("lock-yaw", "Lock Yaw", true)
-            .group("Control").description("Match your view.").build());
+            .group("General").description("Match your view.").build());
         add(new BoolSetting("cancel-server-packets", "Cancel Server Packets", true)
-            .group("Control").description("Ignore server corrections.").build());
+            .group("General").description("Ignore server corrections.").build());
 
         add(new BoolSetting("speed", "Speed", false)
             .group("Speed").description("Boost mount speed.").build());
@@ -78,12 +80,16 @@ public final class EntityControlModule extends Module {
         add(new IntSetting("anti-kick-delay", "Anti Kick Delay", 40, 1, 80, 1)
             .group("Flight").visibleWhen(() -> bool("fly") && bool("anti-kick"))
             .description("Sets anti-kick interval.").build());
+
+        add(new BoolSetting("disable-on-dismount", "Disable On Dismount", false)
+            .group("Conditions").description("Turns EntityControl off when you get off a controlled mount").build());
     }
 
     @Override
     public void onEnable() {
         resetAntiKick();
         refreshSelectedEntities();
+        ridingControlled = false;
     }
 
     @Override
@@ -112,10 +118,18 @@ public final class EntityControlModule extends Module {
     public void preMovementTick() {
         if (MC.player == null || MC.getConnection() == null) return;
 
+        boolean riding = isControlledVehicle(MC.player.getVehicle());
+        if (ridingControlled && !riding && bool("disable-on-dismount")) {
+            ridingControlled = false;
+            disableWithToggleMessage("EntityControl disabled: you got off your mount.");
+            return;
+        }
+        ridingControlled = riding;
+
         if (restorePacketPending) {
             Entity vehicle = MC.player.getVehicle();
             if (isControlledVehicle(vehicle)) {
-                sendSynthetic(new ServerboundMoveVehiclePacket(
+                sendSynthetic(DihPackets.moveVehicle(
                     new Vec3(vehicle.getX(), lastPacketY, vehicle.getZ()),
                     vehicle.getYRot(), vehicle.getXRot(), vehicle.onGround()));
             }
@@ -132,16 +146,16 @@ public final class EntityControlModule extends Module {
 
         Entity vehicle = MC.player == null ? null : MC.player.getVehicle();
         if (!isControlledVehicle(vehicle) || vehicle.isFlyingVehicle() || !isOnAir(vehicle)) {
-            lastPacketY = movePacket.position().y;
+            lastPacketY = DihPackets.position(movePacket).y;
             return false;
         }
 
-        double currentY = movePacket.position().y;
+        double currentY = DihPackets.position(movePacket).y;
         if (antiKickTicks <= 0 && !restorePacketPending && shouldFlyDown(currentY)) {
             double baseline = lastPacketY == Double.MAX_VALUE ? currentY : lastPacketY;
-            ServerboundMoveVehiclePacket lowered = new ServerboundMoveVehiclePacket(
-                new Vec3(movePacket.position().x, baseline - 0.03130D, movePacket.position().z),
-                movePacket.yRot(), movePacket.xRot(), movePacket.onGround());
+            ServerboundMoveVehiclePacket lowered = DihPackets.moveVehicle(
+                new Vec3(DihPackets.position(movePacket).x, baseline - 0.03130D, DihPackets.position(movePacket).z),
+                DihPackets.yRot(movePacket), DihPackets.xRot(movePacket), movePacket.onGround());
             sendSynthetic(lowered);
             restorePacketPending = true;
             antiKickTicks = integer("anti-kick-delay");

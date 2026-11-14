@@ -344,18 +344,19 @@ public final class DihProfileManager {
         if (pattern == null) return false;
         String pat = pattern.strip().toLowerCase(Locale.ROOT);
         if (pat.isEmpty()) return false;
+        int colon = pat.lastIndexOf(':');
+        if (colon > 0 && colon < pat.length() - 1) {
+            try {
+                int patPort = Integer.parseInt(pat.substring(colon + 1));
+                if (port != patPort) return false;
+                pat = pat.substring(0, colon);
+            } catch (NumberFormatException ignored) {  }
+        }
         if (pat.endsWith(".")) pat = pat.substring(0, pat.length() - 1);
         if (pat.equals("*")) return true;
         if (pat.startsWith("*.")) {
             String suffix = pat.substring(2);
             return host.equals(suffix) || host.endsWith("." + suffix);
-        }
-        int colon = pat.lastIndexOf(':');
-        if (colon > 0 && colon < pat.length() - 1) {
-            try {
-                int patPort = Integer.parseInt(pat.substring(colon + 1));
-                return host.equals(pat.substring(0, colon)) && port == patPort;
-            } catch (NumberFormatException ignored) {  }
         }
         return host.equals(pat);
     }
@@ -466,6 +467,8 @@ public final class DihProfileManager {
             DihProfile p = gson.fromJson(r, DihProfile.class);
             if (p == null) return null;
             p.normalize();
+            // A profile saved by the other Minecraft version numbers its binds that version's way.
+            if (p.snapshot != null) p.snapshot.migrateKeyCodes();
             return p;
         } catch (Throwable t) {
             DihClientAddon.LOG.error("Failed to read profile {}", f.getName(), t);

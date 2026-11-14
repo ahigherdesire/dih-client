@@ -1,5 +1,6 @@
 package dihclient.gui.vanillaui.components;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiComponent;
 import dihclient.gui.vanillaui.UiContext;
@@ -122,7 +123,7 @@ public final class Dropdown implements UiComponent {
         var colors = context.theme().colors();
         int fill = !enabled ? colors.field : open ? colors.fieldFocused : (hovered ? colors.rowHover : colors.field);
 
-        UiRenderer.frame(context.graphics(), bounds, fill, open && enabled ? colors.accent : colors.borderSoft);
+        UiRenderer.roundedFrame(context.graphics(), bounds, Button.RADIUS, fill, open && enabled ? colors.accent : 0x1CFFFFFF);
         int textColor = enabled ? colors.text : colors.disabled;
         if (centered) {
             context.text().drawCentered(context.graphics(), label, bounds, textColor);
@@ -150,7 +151,7 @@ public final class Dropdown implements UiComponent {
         float fade = openedAtNanos == 0L ? 1.0f
             : Math.max(0.0f, Math.min(1.0f, (System.nanoTime() - openedAtNanos) / 70_000_000.0f));
         UiRenderer.frame(context.graphics(), menuBounds,
-            UiRenderer.applyAlpha(colors.windowStrong, fade), UiRenderer.applyAlpha(colors.borderSoft, fade));
+            UiRenderer.applyAlpha(colors.windowStrong, fade), UiRenderer.applyAlpha(colors.windowEdge, fade));
         int contentWidth = options.size() > visibleRows ? menuBounds.width() - context.theme().spacing().scrollbarWidth - 3 : menuBounds.width() - 2;
         for (int rowIndex = 0; rowIndex < visibleRows; rowIndex++) {
             int optionIndex = scroll + rowIndex;
@@ -184,7 +185,7 @@ public final class Dropdown implements UiComponent {
     @Override
     public UiInputResult mouseClicked(int mouseX, int mouseY, int button) {
         prepareInputLayout();
-        if (button != 0) {
+        if (button != InputConstants.MOUSE_BUTTON_LEFT) {
             if (!open) return UiInputResult.IGNORED;
             if (!bounds.contains(mouseX, mouseY) && !menuBounds.contains(mouseX, mouseY)) close();
             return UiInputResult.HANDLED;
@@ -230,7 +231,7 @@ public final class Dropdown implements UiComponent {
     @Override
     public UiInputResult mouseDragged(int mouseX, int mouseY, int button, double deltaX, double deltaY) {
         prepareInputLayout();
-        if (!draggingScrollbar || button != 0) return open ? UiInputResult.HANDLED : UiInputResult.IGNORED;
+        if (!draggingScrollbar || button != InputConstants.MOUSE_BUTTON_LEFT) return open ? UiInputResult.HANDLED : UiInputResult.IGNORED;
         updateScrollbar(mouseY);
         return UiInputResult.HANDLED;
     }

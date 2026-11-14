@@ -7,6 +7,7 @@ import dihclient.commands.args.MacroArgumentType;
 import dihclient.util.DihClientMessaging;
 import dihclient.util.DihMacro;
 import dihclient.util.DihMacroManager;
+import dihclient.util.MacroShareCode;
 import dihclient.util.macro.MacroAction;
 import dihclient.util.macro.MacroActionType;
 import dihclient.util.macro.MacroExecutor;
@@ -40,6 +41,7 @@ public class MacroCommand extends Command {
             DihClientMessaging.sendPrefixed("§eUsage: §f" + prefix + "macro <name> [times] [delayTicks]");
             DihClientMessaging.sendPrefixed("§7Run/stop: §f" + prefix + "macro stop [name] §7| §f" + prefix + "macro clear");
             DihClientMessaging.sendPrefixed("§7Author: §f" + prefix + "macro new <name> §7| §fadd <name> <TYPE> [k=v…] §7| §fshow <name> §7| §fremoveaction <name> <i> §7| §fdelete <name>");
+            DihClientMessaging.sendPrefixed("§7Share: §f" + prefix + "macro export <macro or folder> §7| §f" + prefix + "macro import [code]");
             return SUCCESS;
         });
 
@@ -103,6 +105,16 @@ public class MacroCommand extends Command {
             .then(RequiredArgumentBuilder.<DihCommandSource, String>argument("name", MacroArgumentType.macroName())
                 .executes(ctx -> deleteMacro(MacroArgumentType.get(ctx, "name")))));
 
+        root.then(LiteralArgumentBuilder.<DihCommandSource>literal("export")
+            .then(RequiredArgumentBuilder.<DihCommandSource, String>argument("macroOrFolder", StringArgumentType.greedyString())
+                .suggests(MacroCommand::suggestMacrosAndFolders)
+                .executes(ctx -> exportCode(StringArgumentType.getString(ctx, "macroOrFolder")))));
+
+        root.then(LiteralArgumentBuilder.<DihCommandSource>literal("import")
+            .executes(ctx -> importCode(null))
+            .then(RequiredArgumentBuilder.<DihCommandSource, String>argument("code", StringArgumentType.greedyString())
+                .executes(ctx -> importCode(StringArgumentType.getString(ctx, "code")))));
+
         root.then(LiteralArgumentBuilder.<DihCommandSource>literal("show")
             .then(RequiredArgumentBuilder.<DihCommandSource, String>argument("name", MacroArgumentType.macroName())
                 .executes(ctx -> showMacro(MacroArgumentType.get(ctx, "name")))));
@@ -152,6 +164,71 @@ public class MacroCommand extends Command {
         if (macro == null) { DihClientMessaging.sendPrefixed("§cMacro not found: §f" + name); return SUCCESS; }
         DihMacroManager.get().delete(macro); // prints its own confirmation
         return SUCCESS;
+    }
+
+    /** Copies a {@code DIHM1:} share code for a macro, or for every macro in a folder, to the clipboard. */
+    private static int exportCode(String macroOrFolder) {
+        String wanted = macroOrFolder.trim();
+        DihMacroManager mgr = DihMacroManager.get();
+        DihMacro macro = mgr.get(wanted);
+        java.util.List<DihMacro> macros;
+        String folder = "";
+        if (macro != null) {
+            macros = java.util.List.of(macro);
+        } else {
+            folder = DihMacro.normalizeFolder(wanted);
+            String key = folder;
+            macros = mgr.getAll().stream().filter(m -> DihMacro.normalizeFolder(m.folder).equalsIgnoreCase(key)).toList();
+            if (macros.isEmpty()) {
+                DihClientMessaging.sendPrefixed("§cNo macro or folder called §f" + wanted);
+                return SUCCESS;
+            }
+            folder = macros.get(0).folder;
+        }
+        try {
+            String code = MacroShareCode.encode(macros, folder);
+            net.minecraft.client.Minecraft.getInstance().keyboardHandler.setClipboard(code);
+            String what = folder.isEmpty() ? "macro §f" + macro.name : "folder §f" + folder + " §a(" + macros.size() + " macros)";
+            DihClientMessaging.sendPrefixed("§aCopied a share code for " + what + "§a to the clipboard (" + code.length()
+                + " characters). Others add it with §f" + DihCommands.effectivePrefix() + "macro import <code>");
+        } catch (MacroShareCode.InvalidCodeException e) {
+            DihClientMessaging.sendPrefixed("§c" + e.getMessage() + ".");
+        }
+        return SUCCESS;
+    }
+
+    /** Adds the macros in a share code (from the argument, or the clipboard), renaming any whose name is taken. */
+    private static int importCode(String code) {
+        String text = code;
+        if (text == null || text.isBlank()) text = net.minecraft.client.Minecraft.getInstance().keyboardHandler.getClipboard();
+        try {
+            MacroShareCode.Decoded decoded = MacroShareCode.decode(text);
+            DihMacroManager mgr = DihMacroManager.get();
+            java.util.List<String> names = new java.util.ArrayList<>();
+            for (DihMacro macro : decoded.macros()) {
+                DihMacro added = mgr.addImportedCopy(macro, macro.name);
+                if (added != null) names.add(added.name);
+            }
+            String where = decoded.folder().isEmpty() ? "" : " §ainto folder §f" + decoded.folder();
+            DihClientMessaging.sendPrefixed("§aImported " + names.size() + " macro" + (names.size() == 1 ? "" : "s") + where
+                + "§a: §f" + String.join(", ", names));
+        } catch (MacroShareCode.InvalidCodeException e) {
+            DihClientMessaging.sendPrefixed("§c" + e.getMessage() + ".");
+        }
+        return SUCCESS;
+    }
+
+    private static CompletableFuture<Suggestions> suggestMacrosAndFolders(CommandContext<DihCommandSource> ctx, SuggestionsBuilder builder) {
+        String remaining = builder.getRemaining().toLowerCase(Locale.ROOT);
+        java.util.Set<String> seen = new java.util.TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+        for (DihMacro macro : DihMacroManager.get().getAll()) {
+            seen.add(macro.name);
+            if (macro.hasFolder()) seen.add(macro.folder);
+        }
+        for (String name : seen) {
+            if (name.toLowerCase(Locale.ROOT).startsWith(remaining)) builder.suggest(name);
+        }
+        return builder.buildFuture();
     }
 
     private static int showMacro(String name) {

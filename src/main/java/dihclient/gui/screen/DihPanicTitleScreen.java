@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihScreens;
 import com.mojang.authlib.minecraft.BanDetails;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -85,7 +86,7 @@ public final class DihPanicTitleScreen extends Screen {
 
         int optionsRowY = iconRowY + spacing;
         this.addRenderableWidget(Button.builder(Component.translatable("menu.options"),
-            b -> this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false)))
+            b -> this.minecraft.gui.setScreen(DihScreens.options(this, this.minecraft.options, false)))
             .bounds(this.width / 2 - 100, optionsRowY, 98, 20).build());
         this.addRenderableWidget(Button.builder(Component.translatable("menu.quit"), b -> this.minecraft.stop())
             .bounds(this.width / 2 + 2, optionsRowY, 98, 20).build());

@@ -1,5 +1,7 @@
 package dihclient.mixin;
 
+import dihclient.util.DihKeys;
+import com.mojang.blaze3d.platform.InputConstants;
 import java.util.Locale;
 
 import org.jetbrains.annotations.Nullable;
@@ -41,7 +43,6 @@ import dihclient.util.DihUiScale;
 
 import dihclient.util.DihSharedState;
 import dihclient.util.DihCursorClickHelper;
-import org.lwjgl.glfw.GLFW;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
@@ -55,7 +56,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.client.input.KeyEvent;
 import org.spongepowered.asm.mixin.Shadow;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 
 @Mixin(AbstractContainerScreen.class)
 public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> extends Screen {
@@ -120,7 +120,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
     private void yang$init(CallbackInfo ci) {
 
         Screen screen = (Screen)(Object)this;
-        ScreenEvents.afterExtract(screen).register((scrn, drawContext, mouseX, mouseY, tickDelta) -> {
+        dihclient.platform.DihPlatform.afterScreenExtract(screen, (scrn, drawContext, mouseX, mouseY, tickDelta) -> {
             if (!isDihActive()) return;
             try {
                 DihOverlayManager.get().renderAll(drawContext, mouseX, mouseY, tickDelta);
@@ -511,7 +511,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
             return;
         }
 
-        if (button == 1 && hoveredSlot != null && click.hasControlDown() && click.hasShiftDown()) {
+        if (button == InputConstants.MOUSE_BUTTON_RIGHT && hoveredSlot != null && click.hasControlDown() && click.hasShiftDown()) {
             net.minecraft.world.item.ItemStack stack = hoveredSlot.getItem();
             if (!stack.isEmpty()) {
                 if (itemNbtInspectOverlay == null) {
@@ -524,7 +524,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
             }
         }
 
-        if (button == 1 && hoveredSlot != null) {
+        if (button == InputConstants.MOUSE_BUTTON_RIGHT && hoveredSlot != null) {
             net.minecraft.world.item.ItemStack captureStack = hoveredSlot.getItem();
             String captureItemName   = captureStack.isEmpty() ? "" : captureStack.getHoverName().getString();
             String captureRegistryId = captureStack.isEmpty() ? "" :
@@ -566,7 +566,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
             }
         }
 
-        if (fabricatorOverlay != null && fabricatorOverlay.isVisible() && button == 1 && hoveredSlot != null) {
+        if (fabricatorOverlay != null && fabricatorOverlay.isVisible() && button == InputConstants.MOUSE_BUTTON_RIGHT && hoveredSlot != null) {
             fabricatorOverlay.onSlotClick(hoveredSlot, button);
             cir.setReturnValue(true);
         }
@@ -614,7 +614,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
             }
         }
 
-        if (DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) {
+        if (DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) {
             cir.setReturnValue(true);
             return;
         }
@@ -624,7 +624,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
             return;
         }
 
-        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (input.key() == InputConstants.KEY_ESCAPE) {
             if (DihSharedState.get().consumeCaptureCancelCallback()) {
                 cir.setReturnValue(true);
                 return;
@@ -662,7 +662,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
         }
     }
 
-    @Inject(method = "slotClicked", at = @At("HEAD"), require = 0)
+    @Inject(method = "slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ContainerInput;)V", at = @At("HEAD"), require = 0)
     private void dih$captureCursorClickOriginBefore(Slot slot, int slotId, int button, ContainerInput actionType, CallbackInfo ci) {
         dih$cursorClickBeforeCarried = ItemStack.EMPTY;
         dih$cursorClickBeforeSlot = ItemStack.EMPTY;
@@ -677,7 +677,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
         }
     }
 
-    @Inject(method = "slotClicked", at = @At("TAIL"), require = 0)
+    @Inject(method = "slotClicked(Lnet/minecraft/world/inventory/Slot;IILnet/minecraft/world/inventory/ContainerInput;)V", at = @At("TAIL"), require = 0)
     private void dih$captureCursorClickOriginAfter(Slot slot, int slotId, int button, ContainerInput actionType, CallbackInfo ci) {
         if (MC.player == null || MC.player.containerMenu == null) return;
         if (slotId != dih$cursorClickBeforeSlotId || button != dih$cursorClickBeforeButton || actionType != dih$cursorClickBeforeInput) return;
@@ -701,7 +701,7 @@ public abstract class DihHandledScreenMixin<T extends AbstractContainerMenu> ext
             return;
         }
 
-        if (click.button() == GLFW.GLFW_MOUSE_BUTTON_LEFT && click.hasShiftDown()
+        if (click.button() == InputConstants.MOUSE_BUTTON_LEFT && click.hasShiftDown()
                 && hoveredSlot != null && !hoveredSlot.getItem().isEmpty()
                 && InventoryTweaksModule.shouldShiftDragMove()
                 && inventoryTweaksLastShiftDragSlot != hoveredSlot.index) {

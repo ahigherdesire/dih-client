@@ -13,8 +13,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(BedBlock.class)
 public class DihBedBlockMixin {
+    // 26.3 beds don't override fallOn; their bounce is a restitution, cancelled in DihEntityMovementMixin.
+    //? if <26.3 {
     @Inject(method = "fallOn", at = @At("HEAD"), cancellable = true)
     private void dih$noFallAntiBounce(Level level, BlockState state, BlockPos pos, Entity entity, double fallDistance, CallbackInfo ci) {
         if (ModuleMovementUtil.shouldCancelNoFallBounce(entity)) ci.cancel();
     }
+    //?}
 }

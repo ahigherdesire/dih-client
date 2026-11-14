@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.components.CompactDropdown;
 import dihclient.gui.vanillaui.components.CompactOverlayButton;
 import dihclient.util.DihConfig;
@@ -38,7 +39,7 @@ import net.minecraft.client.model.Model;
 import net.minecraft.client.model.geom.ModelLayers;
 import net.minecraft.client.renderer.PlayerSkinRenderCache;
 import net.minecraft.client.renderer.RenderPipelines;
-import net.minecraft.client.renderer.rendertype.DihRenderTypes;
+import dihclient.render.mc.DihRenderTypes;
 import net.minecraft.client.resources.DefaultPlayerSkin;
 import net.minecraft.core.UUIDUtil;
 import net.minecraft.network.chat.Component;
@@ -985,7 +986,7 @@ public class DihAccountsScreen extends DihScreen {
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         MouseButtonEvent virtualEvent = virtualEvent(event);
-        if (virtualEvent.button() != 0) return super.mouseClicked(virtualEvent, doubleClick);
+        if (virtualEvent.button() != InputConstants.MOUSE_BUTTON_LEFT) return super.mouseClicked(virtualEvent, doubleClick);
         if (activePopup != POPUP_NONE) {
             handlePopupMouse(virtualEvent, doubleClick);
             return true;
@@ -1348,7 +1349,7 @@ public class DihAccountsScreen extends DihScreen {
     @Override
     public boolean keyPressed(net.minecraft.client.input.KeyEvent event) {
         if (activePopup != POPUP_NONE) {
-            if (event.key() == org.lwjgl.glfw.GLFW.GLFW_KEY_ESCAPE) {
+            if (event.key() == com.mojang.blaze3d.platform.InputConstants.KEY_ESCAPE) {
                 closePopup();
                 return true;
             }

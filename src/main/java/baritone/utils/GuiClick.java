@@ -17,6 +17,7 @@
 
 package baritone.utils;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import baritone.Baritone;
 import baritone.api.BaritoneAPI;
 import baritone.api.pathing.goals.GoalBlock;
@@ -92,7 +93,7 @@ public class GuiClick extends Screen implements Helper {
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
         if (currentMouseOver != null) { //Catch this, or else a click into void will result in a crash
-            if (event.button() == 0) {
+            if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
                 if (clickStart != null && !clickStart.equals(currentMouseOver)) {
                     BaritoneAPI.getProvider().getPrimaryBaritone().getSelectionManager().removeAllSelections();
                     BaritoneAPI.getProvider().getPrimaryBaritone().getSelectionManager().addSelection(BetterBlockPos.from(clickStart), BetterBlockPos.from(currentMouseOver));
@@ -107,7 +108,7 @@ public class GuiClick extends Screen implements Helper {
                 } else {
                     BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(new GoalBlock(currentMouseOver));
                 }
-            } else if (event.button() == 1) {
+            } else if (event.button() == InputConstants.MOUSE_BUTTON_RIGHT) {
                 BaritoneAPI.getProvider().getPrimaryBaritone().getCustomGoalProcess().setGoalAndPath(new GoalBlock(currentMouseOver.above()));
             }
         }

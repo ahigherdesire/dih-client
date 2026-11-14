@@ -1,5 +1,7 @@
 package dihclient.mixin;
 
+import dihclient.util.DihPackets;
+import dihclient.util.DihKeys;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Shadow;
@@ -40,7 +42,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundSignUpdatePacket;
 import net.minecraft.world.level.block.entity.SignBlockEntity;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 
 @Mixin(AbstractSignEditScreen.class)
 public abstract class DihSignEditScreenMixin extends Screen implements DihSpecialGuiActions, DihSignEditAccess {
@@ -48,7 +49,21 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
 
     @Shadow @Final protected SignBlockEntity sign;
     @Shadow @Final private String[] messages;
+    //? if >=26.3 {
+    /*@Shadow @Final private net.minecraft.world.level.block.entity.SignTextSlot slot;
+
+    @Unique
+    private boolean dih$front() {
+        return slot == net.minecraft.world.level.block.entity.SignTextSlot.FRONT;
+    }
+    *///?} else {
     @Shadow @Final private boolean isFrontText;
+
+    @Unique
+    private boolean dih$front() {
+        return isFrontText;
+    }
+    //?}
 
     @Unique private DihLauncherOverlay launcherOverlay;
     @Unique private DihLANSyncOverlay lanSyncOverlay;
@@ -80,23 +95,24 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
             }
         }
 
-        if (!empty && !autoSign.editExisting()) return;
+        boolean hanging = sign instanceof net.minecraft.world.level.block.entity.HangingSignBlockEntity;
+        if (!autoSign.shouldFill(empty, dih$front(), hanging)) return;
 
-        String[] lines = autoSign.signLines();
+        String[] lines = autoSign.fill(java.util.Arrays.copyOf(messages, messages.length));
         int maxWidth = sign == null ? 90 : sign.getMaxTextLineWidth();
         for (int i = 0; i < messages.length && i < lines.length; i++) {
             messages[i] = this.font.plainSubstrByWidth(lines[i], maxWidth);
         }
 
-        yang$autoSignDonePending = autoSign.autoDone();
+        yang$autoSignDoneTicks = autoSign.autoDone() ? autoSign.doneDelay() : -1;
     }
 
-    @Unique private boolean yang$autoSignDonePending;
+    @Unique private int yang$autoSignDoneTicks = -1;
 
     @Inject(method = "tick", at = @At("HEAD"))
     private void yang$autoSignDone(CallbackInfo ci) {
-        if (!yang$autoSignDonePending) return;
-        yang$autoSignDonePending = false;
+        if (yang$autoSignDoneTicks < 0) return;
+        if (yang$autoSignDoneTicks-- > 0) return;
         this.onClose();
     }
 
@@ -175,7 +191,7 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
         manager.register(launcherOverlay);
 
         Screen screen = (Screen) (Object) this;
-        ScreenEvents.afterExtract(screen).register((scrn, drawContext, mouseX, mouseY, tickDelta) -> {
+        dihclient.platform.DihPlatform.afterScreenExtract(screen, (scrn, drawContext, mouseX, mouseY, tickDelta) -> {
             if (yang$isDihActive()) {
                 DihOverlayManager.get().renderAll(drawContext, mouseX, mouseY, tickDelta);
             }
@@ -234,7 +250,7 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
     @Inject(method = "keyPressed", at = @At("HEAD"), cancellable = true)
     private void yang$keyPressed(KeyEvent input, CallbackInfoReturnable<Boolean> cir) {
         if (!yang$isDihActive()) return;
-        if (DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) {
+        if (DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) {
             cir.setReturnValue(true);
         }
     }
@@ -290,9 +306,9 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
             return;
         }
         DihSharedState.get().setForceNextSignUpdatePacket(true);
-        MC.getConnection().send(new ServerboundSignUpdatePacket(
+        MC.getConnection().send(DihPackets.signUpdate(
             sign.getBlockPos(),
-            isFrontText,
+            dih$front(),
             messages[0],
             messages[1],
             messages[2],
@@ -308,11 +324,12 @@ public abstract class DihSignEditScreenMixin extends Screen implements DihSpecia
 
     @Override
     public boolean dih$isFrontText() {
-        return isFrontText;
+        return dih$front();
     }
 
     @Override
     public String[] dih$getSignLines() {
-        return messages == null ? new String[]{"", "", "", ""} : messages.clone();
+        // Arrays.copyOf, not clone(): Forge's Mixin fails on array clone() calls in mixin methods.
+        return messages == null ? new String[]{"", "", "", ""} : java.util.Arrays.copyOf(messages, messages.length);
     }
 }

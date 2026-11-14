@@ -64,7 +64,7 @@ public final class JourneyMapHelper {
     public static String unavailableReason() {
         boolean installed;
         try {
-            installed = net.fabricmc.loader.api.FabricLoader.getInstance().isModLoaded("journeymap");
+            installed = dihclient.platform.DihLoader.isModLoaded("journeymap");
         } catch (Throwable t) {
             installed = false;
         }

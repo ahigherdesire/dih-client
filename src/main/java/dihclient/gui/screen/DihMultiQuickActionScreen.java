@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihKeys;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.gui.vanillaui.components.Button;
@@ -216,7 +217,7 @@ public final class DihMultiQuickActionScreen extends DihScreen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (selector != null && selector.isVisible()) {
-            selector.keyPressed(event.key(), event.scancode(), event.modifiers());
+            selector.keyPressed(event.key(), DihKeys.secondaryCode(event), event.modifiers());
             return true;
         }
         return super.keyPressed(event);

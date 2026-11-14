@@ -1,5 +1,7 @@
 package dihclient.gui.screen;
 
+import dihclient.util.DihKeys;
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
 import dihclient.gui.vanillaui.UiContexts;
@@ -26,7 +28,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
-import org.lwjgl.glfw.GLFW;
 
 public final class DihAdminItemOptionScreen extends DihScreen {
     private static final CompactTheme THEME = new CompactTheme();
@@ -171,31 +172,31 @@ public final class DihAdminItemOptionScreen extends DihScreen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
         int mx = DihUiScale.toVirtualInt(event.x());
         int my = DihUiScale.toVirtualInt(event.y());
-        if (event.button() == 0 && closeBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && closeBounds.contains(mx, my)) {
             onClose();
             return true;
         }
-        if (event.button() == 0 && saveBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && saveBounds.contains(mx, my)) {
             save();
             return true;
         }
-        if (event.button() == 0 && cancelBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && cancelBounds.contains(mx, my)) {
             onClose();
             return true;
         }
-        if (event.button() == 0 && formatBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && formatBounds.contains(mx, my)) {
             formatFullNbt();
             return true;
         }
-        if (event.button() == 0 && validateBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && validateBounds.contains(mx, my)) {
             validateFullNbt();
             return true;
         }
-        if (event.button() == 0 && copyBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && copyBounds.contains(mx, my)) {
             copyRaw();
             return true;
         }
-        if (event.button() == 0 && pasteBounds.contains(mx, my)) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT && pasteBounds.contains(mx, my)) {
             pasteRaw();
             return true;
         }
@@ -222,30 +223,30 @@ public final class DihAdminItemOptionScreen extends DihScreen {
 
     @Override
     public boolean keyPressed(KeyEvent input) {
-        boolean ctrl = (input.modifiers() & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_SUPER)) != 0;
-        boolean shift = (input.modifiers() & GLFW.GLFW_MOD_SHIFT) != 0;
-        if (mode == Mode.FULL_NBT && ctrl && input.key() == GLFW.GLFW_KEY_S) {
+        boolean ctrl = (input.modifiers() & (InputConstants.MOD_CONTROL | InputConstants.MOD_SUPER)) != 0;
+        boolean shift = (input.modifiers() & InputConstants.MOD_SHIFT) != 0;
+        if (mode == Mode.FULL_NBT && ctrl && input.key() == InputConstants.KEY_S) {
             save();
             return true;
         }
-        if (mode == Mode.FULL_NBT && ctrl && shift && input.key() == GLFW.GLFW_KEY_F) {
+        if (mode == Mode.FULL_NBT && ctrl && shift && input.key() == InputConstants.KEY_F) {
             formatFullNbt();
             return true;
         }
         if (mode == Mode.FULL_NBT && ctrl
-            && (input.key() == GLFW.GLFW_KEY_ENTER || input.key() == GLFW.GLFW_KEY_KP_ENTER)) {
+            && (input.key() == InputConstants.KEY_RETURN || input.key() == InputConstants.KEY_NUMPADENTER)) {
             validateFullNbt();
             return true;
         }
-        if (mode == Mode.FULL_NBT && input.key() == GLFW.GLFW_KEY_TAB && editor.isFocused()) {
+        if (mode == Mode.FULL_NBT && input.key() == InputConstants.KEY_TAB && editor.isFocused()) {
             editor.insertText("  ");
             return true;
         }
-        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (input.key() == InputConstants.KEY_ESCAPE) {
             onClose();
             return true;
         }
-        return lastDirectContext == null || editor.keyPressed(lastDirectContext, input.key(), input.scancode(), input.modifiers());
+        return lastDirectContext == null || editor.keyPressed(lastDirectContext, input.key(), DihKeys.secondaryCode(input), input.modifiers());
     }
 
     @Override

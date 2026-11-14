@@ -138,6 +138,11 @@ public abstract class DihClientPlayNetworkHandlerMixin {
 
     @Inject(method = "sendUnattendedCommand", at = @At("HEAD"), cancellable = true)
     private void dih$interceptCardClick(String command, net.minecraft.client.gui.screens.Screen screen, CallbackInfo ci) {
+        if (dihclient.ai.AiConfirmPrompt.handleClick(command)
+            || dihclient.commands.impl.ToolsCommand.handleConfirmClick(command)) {
+            ci.cancel();
+            return;
+        }
 
         if (dihclient.util.DihLiteVariant.enabled()) return;
         if (dihclient.util.mm.MmCardActions.handleClickCommand(command)) ci.cancel();

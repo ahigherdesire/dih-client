@@ -1,6 +1,8 @@
 package dihclient.modules;
 
+import dihclient.api.module.BoolSetting;
 import dihclient.api.module.ChoiceSetting;
+import dihclient.api.module.IntSetting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.shapes.Shapes;
@@ -8,22 +10,50 @@ import net.minecraft.world.phys.shapes.VoxelShape;
 
 public final class AirJumpModule extends Module {
 
-    private boolean doubleJump = true;
+    private int airJumpsLeft = 1;
 
     public AirJumpModule() {
         super("air-jump", "AirJump", ModuleCategory.MOVEMENT, "Jump in mid air.");
-        add(new ChoiceSetting("mode", "Mode", "JumpFreely", "JumpFreely", "DoubleJump", "GhostBlock").build());
+        add(new ChoiceSetting("mode", "Mode", "JumpFreely", "JumpFreely", "DoubleJump", "GhostBlock")
+            .group("General")
+            .description("JumpFreely: jump any time. DoubleJump: a set number per fall. GhostBlock: stand on air while holding jump")
+            .build());
+        add(new IntSetting("air-jumps", "Air Jumps", 1, 1, 10, 1)
+            .group("General")
+            .description("Jumps you get in the air before you have to land again")
+            .visibleWhen(() -> "DoubleJump".equals(choice("mode")))
+            .build());
+
+        add(new BoolSetting("only-falling", "Only Falling", false)
+            .group("Conditions")
+            .description("Only jumps once you are on the way down")
+            .visibleWhen(() -> !"GhostBlock".equals(choice("mode")))
+            .build());
+        add(new BoolSetting("pause-sneaking", "Pause Sneaking", false)
+            .group("Conditions")
+            .description("No air jumps while you sneak")
+            .visibleWhen(() -> !"GhostBlock".equals(choice("mode")))
+            .build());
+    }
+
+    @Override
+    public void onEnable() {
+        airJumpsLeft = Math.max(1, integer("air-jumps"));
     }
 
     @Override
     public void preMovementTick() {
 
-        if (MC.player != null && MC.player.onGround()) doubleJump = true;
+        if (MC.player != null && MC.player.onGround()) airJumpsLeft = Math.max(1, integer("air-jumps"));
     }
 
     private boolean allowJump() {
+        if (MC.player != null) {
+            if (bool("only-falling") && MC.player.getDeltaMovement().y >= 0.0D) return false;
+            if (bool("pause-sneaking") && MC.player.isShiftKeyDown()) return false;
+        }
         return "JumpFreely".equals(choice("mode"))
-            || ("DoubleJump".equals(choice("mode")) && doubleJump);
+            || ("DoubleJump".equals(choice("mode")) && airJumpsLeft > 0);
     }
 
     public static boolean shouldAirJump() {
@@ -35,8 +65,8 @@ public final class AirJumpModule extends Module {
         if (MC == null || MC.player == null || entity != MC.player) return;
         Module module = ModuleRegistry.get("air-jump");
         if (module instanceof AirJumpModule airJump && airJump.isEnabled()
-            && airJump.doubleJump && !MC.player.onGround()) {
-            airJump.doubleJump = false;
+            && airJump.airJumpsLeft > 0 && !MC.player.onGround()) {
+            airJump.airJumpsLeft--;
         }
     }
 

@@ -1,6 +1,7 @@
 package dihclient.compat;
 
-import dihclient.gui.screen.DihAddonsScreen;
+import com.mojang.blaze3d.platform.InputConstants;
+import dihclient.gui.screen.DihAddonStoreScreen;
 import dihclient.gui.screen.DihThemeColorScreen;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiContext;
@@ -26,7 +27,6 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -69,6 +69,7 @@ public class DihModMenuConfigScreen extends Screen {
         keybinds.add(new Keybind("Toggle Logger", () -> cfg.keybindToggleLogger, v -> { cfg.keybindToggleLogger = v; cfg.save(); }));
         keybinds.add(new Keybind("Toggle Send", () -> cfg.keybindToggleSend, v -> { cfg.keybindToggleSend = v; cfg.save(); }));
         keybinds.add(new Keybind("Toggle Delay", () -> cfg.keybindToggleDelay, v -> { cfg.keybindToggleDelay = v; cfg.save(); }));
+        keybinds.add(new Keybind("Command Palette (Ctrl+)", () -> cfg.keybindCommandPalette, v -> { cfg.keybindCommandPalette = v; cfg.save(); }));
     }
 
     @Override
@@ -155,11 +156,20 @@ public class DihModMenuConfigScreen extends Screen {
         out.add(toggleRow("Auto Probe Plugins", () -> cfg.autoProbePlugins, v -> { cfg.autoProbePlugins = v; cfg.save(); }));
         out.add(toggleRow("InfiniChat", () -> cfg.infiniChat, v -> { cfg.infiniChat = v; cfg.save(); }));
         out.add(toggleRow("Stop On Leave", () -> cfg.stopMacroOnLeave, v -> { cfg.stopMacroOnLeave = v; cfg.save(); }));
+        out.add(toggleRow("Chat Feedback", () -> cfg.moduleToggleChat, v -> { cfg.moduleToggleChat = v; cfg.save(); }));
         out.add(toggleRow("Update Check", () -> cfg.updateCheck, v -> { cfg.updateCheck = v; cfg.save(); }));
 
         out.add(cycleRow("Overlay Scale", DihUiScale.getOverlayScaleLabel(),
             () -> DihUiScale.setOverlayScaleMultiplier(DihUiScale.nextOverlayScaleMultiplier()),
             () -> DihUiScale.setOverlayScaleMultiplier(DihUiScale.previousOverlayScaleMultiplier())));
+        out.add(cycleRow("Text Size", DihUiScale.formatTextScale(DihUiScale.getTextScale()),
+            () -> DihUiScale.setTextScale(DihUiScale.nextTextScale(DihUiScale.getTextScale())),
+            () -> DihUiScale.setTextScale(DihUiScale.previousTextScale(DihUiScale.getTextScale()))));
+
+        out.add(cycleRow("Light UI", dihclient.util.DihLightUi.label()
+            + ("AUTO".equals(dihclient.util.DihLightUi.mode()) && dihclient.util.DihLightUi.active() ? " (on)" : ""),
+            () -> dihclient.util.DihLightUi.cycle(true),
+            () -> dihclient.util.DihLightUi.cycle(false)));
 
         List<String> prefixes = new ArrayList<>(DihCompatManager.COMMAND_PREFIX_CHOICES);
         if (DihCompatManager.isMeteorAvailable()) prefixes.remove(".");
@@ -169,8 +179,9 @@ public class DihModMenuConfigScreen extends Screen {
 
         for (int i = 0; i < keybinds.size(); i++) out.add(keybindRow(i));
 
+        out.add(actionRow("Replay Tour", () -> dihclient.gui.screen.DihTour.replay(this)));
         out.add(actionRow("Theme Color", () -> this.minecraft.gui.setScreen(new DihThemeColorScreen(this))));
-        out.add(actionRow("Addons", () -> this.minecraft.gui.setScreen(new DihAddonsScreen(this))));
+        out.add(actionRow("Addon Store", () -> this.minecraft.gui.setScreen(new DihAddonStoreScreen(this))));
         out.add(splitRow("Website", () -> DihLinks.open(DihLinks.WEBSITE),
             "Source", () -> DihLinks.open(DihLinks.SOURCE)));
         return out;
@@ -308,8 +319,8 @@ public class DihModMenuConfigScreen extends Screen {
     public boolean mouseClicked(MouseButtonEvent event, boolean doubled) {
         int mx = DihUiScale.toVirtualInt(event.x());
         int my = DihUiScale.toVirtualInt(event.y());
-        boolean right = event.button() == GLFW.GLFW_MOUSE_BUTTON_RIGHT;
-        if (!right && event.button() != GLFW.GLFW_MOUSE_BUTTON_LEFT) return true;
+        boolean right = event.button() == InputConstants.MOUSE_BUTTON_RIGHT;
+        if (!right && event.button() != InputConstants.MOUSE_BUTTON_LEFT) return true;
         if (capturing >= 0) {
             applyCapture(DihBindUtil.encodeMouseButton(event.button()));
             return true;
@@ -367,10 +378,10 @@ public class DihModMenuConfigScreen extends Screen {
     @Override
     public boolean keyPressed(KeyEvent event) {
         if (capturing >= 0) {
-            applyCapture(event.key() == GLFW.GLFW_KEY_ESCAPE ? -1 : event.key());
+            applyCapture(event.key() == InputConstants.KEY_ESCAPE ? -1 : event.key());
             return true;
         }
-        if (event.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (event.key() == InputConstants.KEY_ESCAPE) {
             if (prefixDropdown != null && prefixDropdown.isOpen()) {
                 prefixDropdown.close();
                 return true;

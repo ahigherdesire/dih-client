@@ -1,9 +1,10 @@
 package dihclient.security;
 
 import dihclient.DihClientAddon;
+//? if fabric {
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.fabricmc.fabric.impl.networking.RegistrationPayload;
-import net.fabricmc.loader.api.FabricLoader;
+//?}
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.common.ServerboundCustomPayloadPacket;
@@ -65,6 +66,8 @@ public final class DihFabricRegisterMimicry {
 
         synthesized = true;
         if (channels.isEmpty()) return;
+        //? if fabric {
+        // Fabric's channel registration only: a NeoForge client has nothing to mimic.
         try {
             listener.send(new ServerboundCustomPayloadPacket(
                 new RegistrationPayload(RegistrationPayload.REGISTER, channels)));
@@ -74,6 +77,7 @@ public final class DihFabricRegisterMimicry {
         } catch (Throwable t) {
             DihClientAddon.LOG.warn("[DihProtector] Late register send failed: {}", t.getMessage());
         }
+        //?}
     }
 
     private static void resetConnectionState() {
@@ -86,7 +90,11 @@ public final class DihFabricRegisterMimicry {
     static List<Identifier> expectedAnnouncementChannels() {
         Collection<Identifier> receivable;
         try {
+            //? if fabric {
             receivable = ClientPlayNetworking.getGlobalReceivers();
+            //?} else {
+            /*throw new UnsupportedOperationException("Fabric networking only");
+            *///?}
         } catch (Throwable t) {
             if (DEBUG) {
                 DihClientAddon.LOG.debug("[DihProtector] getGlobalReceivers unavailable, using stock fallback: {}", t.getMessage());
@@ -110,7 +118,7 @@ public final class DihFabricRegisterMimicry {
 
     private static boolean isVoicechatLoaded() {
         try {
-            return FabricLoader.getInstance().isModLoaded(VOICECHAT_MOD_ID);
+            return dihclient.platform.DihLoader.isModLoaded(VOICECHAT_MOD_ID);
         } catch (Throwable t) {
             return false;
         }

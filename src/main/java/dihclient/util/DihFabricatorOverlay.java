@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.UiContexts;
 import dihclient.gui.vanillaui.components.CompactDropdown;
@@ -630,7 +631,7 @@ public class DihFabricatorOverlay extends DihOverlayBase {
             if (CompactDropdown.isMenuOpen(uiDropdowns)) return true;
         }
 
-        if (button == 0 && mouseX >= panelX && mouseX <= panelX + PANEL_WIDTH &&
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && mouseX >= panelX && mouseX <= panelX + PANEL_WIDTH &&
             mouseY >= panelY && mouseY <= panelY + 20) {
             DihWindowLayout bounds = new DihWindowLayout(panelX, panelY, PANEL_WIDTH, collapsed ? 18 : PANEL_HEIGHT, visible, collapsed);
 
@@ -676,7 +677,7 @@ public class DihFabricatorOverlay extends DihOverlayBase {
             int planListY = getCraftPlanListY();
             int listY = getCraftListY();
 
-            if (button == 0) {
+            if (button == InputConstants.MOUSE_BUTTON_LEFT) {
                 CompactScrollbar.Metrics craftPlanScrollbar = getCraftPlanScrollbarMetrics();
                 if (craftPlanScrollbar.hasScroll() && craftPlanScrollbar.contains((int) mouseX, (int) mouseY)) {
                     activeScrollbarDrag = SCROLLBAR_CRAFT_PLAN;
@@ -701,7 +702,7 @@ public class DihFabricatorOverlay extends DihOverlayBase {
             if (!plannedCraftEntries.isEmpty()
                 && mouseX >= panelX + PANEL_WIDTH - 74 && mouseX < panelX + PANEL_WIDTH - 10
                 && mouseY >= planHeaderY - 2 && mouseY < planHeaderY + 10
-                && button == 0) {
+                && button == InputConstants.MOUSE_BUTTON_LEFT) {
                 plannedCraftEntries.clear();
                 craftPlanSelectedIndex = -1;
                 craftPlanScrollOffset = 0;
@@ -711,7 +712,7 @@ public class DihFabricatorOverlay extends DihOverlayBase {
                 return true;
             }
 
-            if (mouseX >= listX && mouseX <= listX + listWidth && mouseY >= planListY && mouseY <= planListY + CRAFT_PLAN_HEIGHT && button == 0) {
+            if (mouseX >= listX && mouseX <= listX + listWidth && mouseY >= planListY && mouseY <= planListY + CRAFT_PLAN_HEIGHT && button == InputConstants.MOUSE_BUTTON_LEFT) {
                 int maxPlanScrollPx = Math.max(0, plannedCraftEntries.size() * 13 - CRAFT_PLAN_HEIGHT);
                 int drawPlanScroll = craftPlanScrollState.tick(0.0f, maxPlanScrollPx);
                 int firstIndex = drawPlanScroll / 13;
@@ -739,7 +740,7 @@ public class DihFabricatorOverlay extends DihOverlayBase {
                 }
             }
 
-            if (mouseX >= listX && mouseX <= listX + listWidth && mouseY >= listY && mouseY <= listY + CRAFT_LIST_HEIGHT && button == 0) {
+            if (mouseX >= listX && mouseX <= listX + listWidth && mouseY >= listY && mouseY <= listY + CRAFT_LIST_HEIGHT && button == InputConstants.MOUSE_BUTTON_LEFT) {
                 int maxRecipeScrollPx = Math.max(0, filteredCraftableRecipes.size() * LINE_HEIGHT - CRAFT_LIST_HEIGHT);
                 int drawRecipeScroll = craftListScrollState.tick(0.0f, maxRecipeScrollPx);
                 int firstIndex = drawRecipeScroll / LINE_HEIGHT;
@@ -765,7 +766,7 @@ public class DihFabricatorOverlay extends DihOverlayBase {
             int toggleX = getCraftAmountToggleX();
             int toggleY = getCraftAmountRowY();
             int toggleW = getCraftAmountToggleWidth();
-            if (mouseY >= toggleY && mouseY < toggleY + 16 && mouseX >= toggleX && mouseX < toggleX + toggleW && (button == 0 || button == 1)) {
+            if (mouseY >= toggleY && mouseY < toggleY + 16 && mouseX >= toggleX && mouseX < toggleX + toggleW && (button == InputConstants.MOUSE_BUTTON_LEFT || button == InputConstants.MOUSE_BUTTON_RIGHT)) {
                 craftUseMaxAmount = !craftUseMaxAmount;
                 if (timesField != null) timesField.setEditable(!craftUseMaxAmount);
                 if (craftPlanSelectedIndex >= 0 && craftPlanSelectedIndex < plannedCraftEntries.size()) {
@@ -783,7 +784,7 @@ public class DihFabricatorOverlay extends DihOverlayBase {
         int gap = 2;
         int bw = (btnArea - gap * 2) / 3;
         int bx = panelX + 10;
-        if (mouseY >= btnY && mouseY < btnY + BUTTON_HEIGHT && button == 0) {
+        if (mouseY >= btnY && mouseY < btnY + BUTTON_HEIGHT && button == InputConstants.MOUSE_BUTTON_LEFT) {
             if (mouseX >= bx && mouseX < bx + bw) {
                 send(false);
                 for (DihChatField field : textFields) field.setFocused(false);
@@ -820,12 +821,12 @@ public class DihFabricatorOverlay extends DihOverlayBase {
 
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         CompactDropdown.mouseReleased(uiDropdowns);
-        if (button == 0 && activeScrollbarDrag != SCROLLBAR_NONE) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && activeScrollbarDrag != SCROLLBAR_NONE) {
             activeScrollbarDrag = SCROLLBAR_NONE;
             saveState();
             return true;
         }
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             if (isDragging) {
                 saveState();
             }

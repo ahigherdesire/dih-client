@@ -28,29 +28,48 @@ public final class TopBar {
 
     public static void render(UiContext context, UiBounds bounds, String title, boolean collapsed, boolean collapse, boolean close, boolean hovered,
                               int titleLeftInset, int titleRightInset) {
+        render(context, bounds, title, collapsed, collapse, close, hovered, titleLeftInset, titleRightInset, false);
+    }
+
+    /**
+     * A quiet header: a slightly lifted band with the title in body text, the accent only on the chevron (or a dot
+     * when there is none), and a hairline under it. {@code wholeWindow} rounds the bottom corners too, for a
+     * collapsed window that is nothing but its header.
+     */
+    public static void render(UiContext context, UiBounds bounds, String title, boolean collapsed, boolean collapse, boolean close, boolean hovered,
+                              int titleLeftInset, int titleRightInset, boolean wholeWindow) {
         var graphics = context.graphics();
         var colors = context.theme().colors();
-        int fill = hovered ? mix(colors.accent, 0xFFFFFFFF, 0.12f) : colors.accent;
-        UiRenderer.rect(graphics, bounds, (fill & 0x00FFFFFF) | 0xF0000000);
-        int ink = onAccent(colors.accent);
+        int fill = hovered ? colors.headerHover : colors.header;
+        int radius = CompactWindow.RADIUS - 1;
+        if (wholeWindow) UiRenderer.rounded(graphics, bounds, radius, fill);
+        else {
+            UiRenderer.roundedTop(graphics, bounds, radius, fill);
+            UiRenderer.horizontalEdge(graphics, bounds.x(), bounds.bottom(), bounds.width(), colors.hairline);
+        }
         UiBounds collapseBounds = collapseButton(bounds);
-        if (collapse) UiRenderer.chevron(graphics, collapseBounds.inset(1), !collapsed, ink);
+        if (collapse) UiRenderer.chevron(graphics, collapseBounds.inset(2), !collapsed, colors.accent);
         UiBounds closeBounds = close ? closeButton(bounds) : null;
-        int titleLeft = collapse ? collapseBounds.right() + 3 : bounds.x() + Math.max(0, titleLeftInset);
+        int titleLeft;
+        if (collapse) titleLeft = collapseBounds.right() + 2;
+        else {
+            int dotX = bounds.x() + Math.max(4, titleLeftInset + 1);
+            UiRenderer.disc(graphics, dotX + 1.5F, bounds.y() + bounds.height() / 2.0F, 1.5F, colors.accent);
+            titleLeft = dotX + 7;
+        }
         int titleRight = close ? closeBounds.x() - 3 : bounds.right() - Math.max(0, titleRightInset);
-        context.text().drawEllipsized(graphics, title, titleLeft, context.text().centeredY(bounds), Math.max(1, titleRight - titleLeft), ink);
+        context.text().drawEllipsized(graphics, title, titleLeft, context.text().centeredY(bounds), Math.max(1, titleRight - titleLeft), colors.text);
         if (close) {
-
             boolean closeHovered = closeBounds.contains(context.mouseX(), context.mouseY());
-            int icon = 8;
+            int icon = 7;
             int ix = closeBounds.x() + (closeBounds.width() - icon) / 2;
             int iy = closeBounds.y() + (closeBounds.height() - icon) / 2;
             if (closeHovered) {
                 UiRenderer.disc(graphics, closeBounds.x() + closeBounds.width() / 2.0F,
-                    closeBounds.y() + closeBounds.height() / 2.0F, 6.5F, colors.accentSoft);
+                    closeBounds.y() + closeBounds.height() / 2.0F, 6.0F, (colors.bad & 0x00FFFFFF) | 0x66000000);
             }
             dihclient.util.DihUiIcons.blit(graphics, dihclient.util.DihUiIcons.X,
-                ix, iy, icon, icon, closeHovered ? ink : (ink & 0x00FFFFFF) | 0xB0000000);
+                ix, iy, icon, icon, closeHovered ? 0xFFFFFFFF : colors.muted);
         }
     }
 

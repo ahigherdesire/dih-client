@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import dihclient.util.DihKeys;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -25,7 +26,6 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import net.fabricmc.fabric.api.client.screen.v1.ScreenEvents;
 
 @Mixin({DialogScreen.class, net.minecraft.client.gui.screens.dialog.WaitingForResponseScreen.class})
 public abstract class DihDialogScreenMixin extends Screen {
@@ -49,7 +49,7 @@ public abstract class DihDialogScreenMixin extends Screen {
     private void dih$init(CallbackInfo ci) {
 
         Screen screen = (Screen) (Object) this;
-        ScreenEvents.afterExtract(screen).register((scrn, drawContext, mouseX, mouseY, tickDelta) -> {
+        dihclient.platform.DihPlatform.afterScreenExtract(screen, (scrn, drawContext, mouseX, mouseY, tickDelta) -> {
             if (!dih$isDihActive()) return;
             try {
                 DihOverlayManager.get().renderAll(drawContext, mouseX, mouseY, tickDelta);
@@ -57,7 +57,7 @@ public abstract class DihDialogScreenMixin extends Screen {
 
             }
         });
-        ScreenEvents.remove(screen).register(scrn -> {
+        dihclient.platform.DihPlatform.onScreenRemove(screen, scrn -> {
 
             net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getInstance();
             boolean stillOnDialog = mc != null
@@ -232,7 +232,7 @@ public abstract class DihDialogScreenMixin extends Screen {
 
     @Override
     public boolean keyPressed(KeyEvent input) {
-        if (dih$isDihActive() && DihOverlayManager.get().handleKeyPressed(input.key(), input.scancode(), input.modifiers())) {
+        if (dih$isDihActive() && DihOverlayManager.get().handleKeyPressed(input.key(), DihKeys.secondaryCode(input), input.modifiers())) {
             return true;
         }
         return super.keyPressed(input);

@@ -1,6 +1,7 @@
 package dihclient;
 
-import net.fabricmc.loader.api.FabricLoader;
+import dihclient.platform.DihLoader;
+//? if fabric
 import net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,17 +21,21 @@ import java.util.stream.Stream;
  * prefix. Anything that already exists under the new name is left untouched, so this is safe to
  * run on every launch and never overwrites newer data. The old files stay for rollback.
  */
+//? if fabric {
 public final class DihLegacyMigration implements PreLaunchEntrypoint {
+//?} else {
+/*public final class DihLegacyMigration {
+*///?}
 
     private static final Logger LOG = LoggerFactory.getLogger("DIH Client");
     private static final String[] OLD_PREFIXES = {"xinyuan", "autism"};
 
+    //? if fabric
     @Override
     public void onPreLaunch() {
         try {
-            FabricLoader loader = FabricLoader.getInstance();
-            migrateDir(loader.getGameDir());
-            migrateDir(loader.getConfigDir());
+            migrateDir(DihLoader.gameDir());
+            migrateDir(DihLoader.configDir());
         } catch (Throwable t) {
             LOG.warn("Couldn't migrate data from the old client name", t);
         }

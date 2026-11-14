@@ -1,0 +1,16 @@
+let log = [];
+
+function note(text) {
+    push(log, text);
+    print(text);
+}
+
+function main() {
+    note("Health " + health());
+    note("Players: " + join(playersNearby(64), ", "));
+    note("Raw gold: " + count("raw_gold"));
+}
+
+function onStop() {
+    print("Summary: " + len(log) + " notes");
+}

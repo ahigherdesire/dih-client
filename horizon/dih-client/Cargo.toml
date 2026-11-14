@@ -1,0 +1,10 @@
+[package]
+name = "horizon-mod-dihclient"
+version = "0.1.0"
+edition = "2024"
+publish = false
+description = "DIH Client for Horizon, a native mod: Zoom, SafeWalk, AntiAFK and the Active Modules list."
+
+# The mod's logic and its tests: the same file the bundle adds to the game.
+[lib]
+path = "mixins/dih_client/runtime.rs"

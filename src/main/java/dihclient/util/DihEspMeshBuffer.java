@@ -59,7 +59,7 @@ public final class DihEspMeshBuffer implements AutoCloseable {
             if (framePose != null) modelView.mul(framePose);
             modelView.translate((float) offsetX, (float) offsetY, (float) offsetZ);
 
-            type.prepare().drawFromBuffer(vertexBuffer, indices, sequential.type(), 0, 0, indexCount);
+            DihRender.drawFromBuffer(type, vertexBuffer, indices, sequential.type(), indexCount, topology);
         } finally {
             modelView.popMatrix();
         }

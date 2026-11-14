@@ -223,6 +223,13 @@ public final class LookBehavior extends Behavior implements ILookBehavior {
             desiredYaw += this.randomYawOffset;
             desiredPitch += this.randomPitchOffset;
 
+            final float maxStep = Baritone.settings().maxRotationPerTick.value;
+            if (maxStep > 0) {
+                float yawDelta = net.minecraft.util.Mth.wrapDegrees(desiredYaw - prev.getYaw());
+                desiredYaw = prev.getYaw() + net.minecraft.util.Mth.clamp(yawDelta, -maxStep, maxStep);
+                desiredPitch = prev.getPitch() + net.minecraft.util.Mth.clamp(desiredPitch - prev.getPitch(), -maxStep, maxStep);
+            }
+
             return new Rotation(
                     this.calculateMouseMove(prev.getYaw(), desiredYaw),
                     this.calculateMouseMove(prev.getPitch(), desiredPitch)

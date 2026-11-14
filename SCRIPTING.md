@@ -15,6 +15,32 @@ Scripts, or `.scripts edit`) or in any text editor, then:
 [COMMANDS.md](COMMANDS.md#scripts) lists every `.scripts` subcommand. The first time the folder is created DIH
 writes two examples: `hello` and `gold_miner`.
 
+## Build a script without coding
+
+Open **Scripts**, click **+ New**, type a name, and press Enter. New scripts open in **Blocks**.
+Choose **+ Add step**, search for an action, and click it. Select a step to edit its value below;
+press **Apply** or Enter to keep the value. Escape cancels a field edit.
+
+- Steps run from top to bottom. **Up** and **Down** reorder steps within their group.
+- **Copy** duplicates a step and everything inside it; **Remove** deletes the selected step and its children.
+- **Repeat** and **If** blocks contain other steps. Use **+ Add step inside** to put actions in that group.
+- **When started** contains the main routine. **When finished / stopped** contains cleanup actions,
+  such as stopping Baritone, which run when the routine finishes, fails, or is stopped.
+- **Recipes** inserts an example without replacing your current steps. The mining recipe uses `/home`;
+  change that command to one supported by your server before running it.
+- **Save** saves the script; **Run** saves and starts it. **Stop** ends a running script.
+- Ctrl+Z / Ctrl+Y undo and redo block edits when a value field is not focused. In a field they undo typing.
+
+Wait blocks use seconds, including decimals. Health uses points: 2 points is one heart.
+The action picker includes menu clicks, inventory transfers, Baritone, saved macros, conditions and loops.
+Commands, item IDs and waypoint names are ordinary text fields; quotes and punctuation are handled for you.
+
+Click **Blocks | Code** to edit the same script as code. Compatible scripts can switch back to Blocks.
+If the script uses advanced expressions, variables, custom functions or other unsupported constructs,
+the editor explains that it must stay in Code; it does not replace or discard your code.
+Switching views alone leaves the source unchanged. Editing blocks regenerates formatting and comments;
+undo restores the previous source. Block scripts are normal `.dscript` files and use the same runner.
+
 ## A complete script
 
 ```js
@@ -48,7 +74,7 @@ whenever the script ends: it finished, you stopped it, or it hit an error. Use i
 | Type | Examples |
 |---|---|
 | number | `20`, `0.5`, `-3` |
-| string | `"gold_ore"`, `'Badlands'`, `"line\n"`, escapes `\n \t \" \' \\` |
+| string | `"gold_ore"`, `'Badlands'`, `"line\n"`, escapes `\n \r \t \" \' \\` |
 | boolean | `true`, `false` |
 | list | `[1, 2, "three"]`, `items[0]`, `items[-1]` (last) |
 | null | `null` |
@@ -164,6 +190,28 @@ name shown in game (`Raw Gold`).
 |---|---|
 | `command(text)` | Run a command as if typed: `"/home"` goes to the server, `"#mine gold_ore"` to Baritone, `".toggle flee"` to DIH. |
 | `say(text)` | Send a plain chat message. |
+| `chatSeen(text)` | True if a chat message containing `text` arrived since the script started or since `chatSeen` last found one for that text. Capitals and colours are ignored, and each message counts once. |
+| `waitForChat(text, seconds)` | Wait for a chat message containing `text` and return the whole message. After `seconds` (default: wait forever) it gives up and returns `null`. |
+| `lastChat()` | The newest chat message since the script started, or `null`. |
+
+The chat functions read what the server sends: player chat (as `<Name> message`) and server messages, not the
+action bar or DIH's own messages. A script only sees chat from after it started. Your own chat comes back from the
+server too, so a script that says the word it is looking for will see it.
+
+```js
+function main() {
+    while (true) {
+        if (chatSeen("has requested to teleport")) {
+            command("/tpaccept");
+        }
+        if (chatSeen("stop mining")) {
+            stopBaritone();
+            say("Stopped.");
+        }
+        waitSeconds(1);
+    }
+}
+```
 
 ### Baritone
 
@@ -174,6 +222,7 @@ name shown in game (`Raw Gold`).
 | `baritoneBusy()` | True while Baritone is mining, pathing or farming. |
 | `waitForBaritone(timeoutTicks)` | Wait until Baritone is idle. False on timeout (default: none). |
 | `goto("chest")`, `goto(x, y, z)` | Walk there with Baritone and wait until it arrives. |
+| `gotoWaypoint(name)` | Walk to a saved Baritone waypoint and wait. A waypoint with that name wins; otherwise a tag name (`home`, `death`, `bed`) goes to the newest waypoint with that tag. False if there's none or you didn't arrive. |
 
 ### Inventory
 
@@ -182,7 +231,8 @@ name shown in game (`Raw Gold`).
 | `count(item)` | How many you carry. |
 | `hasItem(item)` | True if you carry at least one. |
 | `freeSlots()` | Empty main-inventory slots (0-36). |
-| `inventoryFull()` | True when no slot is empty. |
+| `inventoryFull(item)` | True when no slot is empty. With an item, e.g. `inventoryFull("raw_gold")`, only once every stack of it is also full, so slots holding a few raw gold still count as room. |
+| `roomFor(item)` | How many more of `item` fit: empty slots plus the space left on its stacks. |
 | `heldItem()` | Id of the main-hand item (`"air"` if empty). |
 | `selectSlot(slot)` | Select hotbar slot 1-9. |
 | `selectItem(item)` | Select the hotbar slot holding `item`. False if it isn't in the hotbar. |

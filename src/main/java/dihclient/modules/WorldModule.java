@@ -39,8 +39,17 @@ public final class WorldModule extends Module {
             .description("Full cube or corners.").group("Block Highlight").visibleWhen(() -> bool("block-highlight")).build());
         add(new BoolSetting("highlight-fill", "Fill", false)
             .description("Fill the box faintly.").group("Block Highlight").visibleWhen(() -> bool("block-highlight")).build());
+        add(new IntSetting("highlight-fill-opacity", "Fill Opacity", 25, 5, 100, 5).unit("%")
+            .description("How solid the fill is.").group("Block Highlight")
+            .visibleWhen(() -> bool("block-highlight") && bool("highlight-fill")).build());
         add(new BoolSetting("highlight-progress", "Show Progress", true)
             .description("Damage color shift.").group("Block Highlight").visibleWhen(() -> bool("block-highlight")).build());
+        add(new ColorSetting("progress-start-color", "Progress Start", 0xFF35D873)
+            .description("Colour when breaking starts.").group("Block Highlight")
+            .visibleWhen(() -> bool("block-highlight") && bool("highlight-progress")).build());
+        add(new ColorSetting("progress-end-color", "Progress End", 0xFFFF3B3B)
+            .description("Colour just before the block breaks.").group("Block Highlight")
+            .visibleWhen(() -> bool("block-highlight") && bool("highlight-progress")).build());
 
         add(new BoolSetting("skybox", "Skybox", false)
             .description("Replace the sky with the DIH panorama.").group("Skybox").build());
@@ -94,9 +103,13 @@ public final class WorldModule extends Module {
         float width = (float) decimal("highlight-width");
         boolean corners = "Corners".equals(choice("highlight-style"));
         boolean fill = bool("highlight-fill");
-        int fillColor = (color & 0x00FFFFFF) | 0x40000000;
+        int fillAlpha = Math.round(255.0F * Math.max(0, Math.min(100, integer("highlight-fill-opacity"))) / 100.0F);
+        int fillColor = (color & 0x00FFFFFF) | (fillAlpha << 24);
         DihWorldHighlightRenderer.push(active, color, width, corners, fill, fillColor);
         DihWorldHighlightRenderer.pushProgress(active && bool("highlight-progress"));
+        DihWorldHighlightRenderer.pushProgressColors(
+            ModuleRenderUtil.color(this, "progress-start-color", 0xFF35D873),
+            ModuleRenderUtil.color(this, "progress-end-color", 0xFFFF3B3B));
     }
 
     @Override

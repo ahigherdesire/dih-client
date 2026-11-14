@@ -10,6 +10,12 @@ public interface DihLocalPlayerAccessor {
     @Accessor("positionReminder")
     void dih$setPositionReminder(int ticks);
 
+    @Accessor("yRotLast")
+    void dih$setYRotLast(float yaw);
+
+    @Accessor("xRotLast")
+    void dih$setXRotLast(float pitch);
+
     @Invoker("isSlowDueToUsingItem")
     boolean dih$isSlowDueToUsingItem();
 }

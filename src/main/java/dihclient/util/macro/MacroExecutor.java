@@ -1,5 +1,7 @@
 package dihclient.util.macro;
 
+import dihclient.util.DihPackets;
+import dihclient.util.DihEntities;
 import com.google.gson.Gson;
 import com.google.gson.JsonParser;
 import com.mojang.serialization.JsonOps;
@@ -6416,7 +6418,7 @@ public class MacroExecutor {
                     ServerboundPlayerActionPacket.Action.STOP_DESTROY_BLOCK, blockPos, dir));
             }
 
-            mc.player.swing(InteractionHand.MAIN_HAND);
+            DihEntities.swing(mc.player, InteractionHand.MAIN_HAND);
         }, tickAligned);
     }
 
@@ -6538,7 +6540,7 @@ public class MacroExecutor {
         if (mc.level.isOutsideBuildHeight(pos) || mc.level.getBlockState(pos).isAir()) return 1;
         if (action.sneak) holdMacroSneak(mc, action.sneakMode);
         mc.gameMode.startDestroyBlock(pos, dir);
-        mc.player.swing(InteractionHand.MAIN_HAND);
+        DihEntities.swing(mc.player, InteractionHand.MAIN_HAND);
         started[0] = true;
         return mc.level.getBlockState(pos).isAir() ? 1 : 0;
     }
@@ -6561,7 +6563,7 @@ public class MacroExecutor {
             || (action.interactTiming == InteractTiming.CUSTOM && action.interactCustomMs < 0));
         if (instant && interactFirst) sendBlockInteract(mc, pos, dir);
         mc.gameMode.startDestroyBlock(pos, dir);
-        mc.player.swing(InteractionHand.MAIN_HAND);
+        DihEntities.swing(mc.player, InteractionHand.MAIN_HAND);
         started[0] = true;
         if (instant && action.interact && !interactFirst && action.interactTiming != InteractTiming.AFTER_PLUS) sendBlockInteract(mc, pos, dir);
         return mc.level.getBlockState(pos).isAir() ? 1 : 0;
@@ -6605,7 +6607,7 @@ public class MacroExecutor {
         if (mc.level.getBlockState(pos).isAir()) return 1;
         if (action.sneak) holdMacroSneak(mc, action.sneakMode);
         mc.gameMode.continueDestroyBlock(pos, dir);
-        mc.player.swing(InteractionHand.MAIN_HAND);
+        DihEntities.swing(mc.player, InteractionHand.MAIN_HAND);
         return mc.level.getBlockState(pos).isAir() ? 1 : 0;
     }
 
@@ -6622,7 +6624,7 @@ public class MacroExecutor {
         if (action.interact && t == InteractTiming.WITH && breaksThisTick) sendBlockInteract(mc, pos, dir);
 
         mc.gameMode.continueDestroyBlock(pos, dir);
-        mc.player.swing(InteractionHand.MAIN_HAND);
+        DihEntities.swing(mc.player, InteractionHand.MAIN_HAND);
 
         if (action.interact && t == InteractTiming.AFTER && breaksThisTick) sendBlockInteract(mc, pos, dir);
         return mc.level.getBlockState(pos).isAir() ? 1 : 0;
@@ -6670,7 +6672,7 @@ public class MacroExecutor {
                 if (mc.level.getBlockState(pos).isAir()) return 1;
                 if (action.sneak) holdMacroSneak(mc, action.sneakMode);
                 mc.gameMode.continueDestroyBlock(pos, dir);
-                mc.player.swing(InteractionHand.MAIN_HAND);
+                DihEntities.swing(mc.player, InteractionHand.MAIN_HAND);
                 return mc.level.getBlockState(pos).isAir() ? 1 : 0;
             }, -1, action.isTickAligned());
         }
@@ -6695,7 +6697,7 @@ public class MacroExecutor {
         if (mc.level == null || mc.gameMode == null || mc.player == null) return -1;
         if (mc.level.getBlockState(pos).isAir()) return 1;
         mc.gameMode.continueDestroyBlock(pos, dir);
-        mc.player.swing(InteractionHand.MAIN_HAND);
+        DihEntities.swing(mc.player, InteractionHand.MAIN_HAND);
         return mc.level.getBlockState(pos).isAir() ? 1 : 0;
     }
 
@@ -8180,8 +8182,8 @@ public class MacroExecutor {
 
         if (packet instanceof net.minecraft.network.protocol.game.ClientboundPlayerChatPacket playerChat) {
 
-            Component content = playerChat.unsignedContent() != null
-                ? playerChat.unsignedContent()
+            Component content = DihPackets.unsignedContent(playerChat) != null
+                ? DihPackets.unsignedContent(playerChat)
                 : Component.literal(playerChat.body().content());
             String message = content.getString();
             if (message == null || message.isBlank()) message = playerChat.body().content();

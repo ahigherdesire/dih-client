@@ -70,6 +70,9 @@ public final class ModuleRegistry {
         new RevCache<>(() -> activeRevision, () -> activeOverrideModules("onSoundPacket", ClientboundSoundPacket.class));
     private static final RevCache<List<Module>> RENDER_MODULES =
         new RevCache<>(() -> activeRevision, () -> activeOverrideModules("onRenderLevel", float.class));
+    private static final RevCache<List<Module>> OVERLAY_MODULES =
+        new RevCache<>(() -> activeRevision, () -> activeOverrideModules("onRenderOverlay",
+            net.minecraft.client.gui.GuiGraphicsExtractor.class, float.class));
     private static final RevCache<List<Module>> BLOCK_BREAKING_PROGRESS_MODULES =
         new RevCache<>(() -> activeRevision, () -> activeOverrideModules("onBlockBreakingProgress", BlockPos.class, Direction.class));
     private static final RevCache<List<Module>> START_BREAKING_MODULES = new RevCache<>(() -> activeRevision, () -> {
@@ -87,6 +90,8 @@ public final class ModuleRegistry {
         new RevCache<>(() -> activeRevision, () -> activeOverrideModules("preMovementTick"));
     private static final RevCache<List<Module>> NETWORK_MOVEMENT_MODULES =
         new RevCache<>(() -> activeRevision, () -> activeOverrideModules("onNetworkMovementTickPre"));
+    private static final RevCache<List<Module>> NETWORK_MOVEMENT_POST_MODULES =
+        new RevCache<>(() -> activeRevision, () -> activeOverrideModules("onNetworkMovementTickPost"));
     private static final RevCache<List<Module>> PACKET_PROCESS_FRAME_MODULES =
         new RevCache<>(() -> activeRevision, () -> activeOverrideModules("onPacketProcessFrame"));
     private static final RevCache<List<Module>> PLAYER_TICK_CANCEL_MODULES =
@@ -528,10 +533,12 @@ public final class ModuleRegistry {
             PACKET_RECEIVE_MODULES.invalidate();
             SOUND_MODULES.invalidate();
             RENDER_MODULES.invalidate();
+            OVERLAY_MODULES.invalidate();
             BLOCK_BREAKING_PROGRESS_MODULES.invalidate();
             START_BREAKING_MODULES.invalidate();
             PRE_MOVEMENT_MODULES.invalidate();
             NETWORK_MOVEMENT_MODULES.invalidate();
+            NETWORK_MOVEMENT_POST_MODULES.invalidate();
             PACKET_PROCESS_FRAME_MODULES.invalidate();
             PLAYER_TICK_CANCEL_MODULES.invalidate();
             PLAYER_MOVE_MODULES.invalidate();
@@ -543,6 +550,22 @@ public final class ModuleRegistry {
             ModuleRenderUtil.refreshFastFlags();
             dihclient.util.DihRuntimeActivity.publishModuleRevision(revision);
         }
+    }
+
+    /**
+     * While PanicMode is on nothing else ticks and every DIH command is blocked, so its own keybind is the only way
+     * back; this polls just that one. Without it a player who turned panic on could never turn it off (the state is
+     * saved, so even reinstalling kept them locked out).
+     */
+    public static void tickPanicKeybind() {
+        if (!initialized || MC == null || !PackHideState.isActive()) return;
+        Module hide = get(PackHideState.HIDE_ID);
+        if (hide == null) return;
+        boolean pressed = DihBindUtil.isBindPressed(MC, hide.keybind());
+        boolean wasPressed = KEY_STATES.getOrDefault(hide.id(), false);
+        if (pressed && !wasPressed && DihInputGate.canRunDihKeybinds()) hide.setEnabled(false);
+        // After setEnabled: leaving panic clears KEY_STATES, and a still-held key must not turn it straight back on.
+        KEY_STATES.put(hide.id(), pressed);
     }
 
     public static void tick() {
@@ -608,6 +631,14 @@ public final class ModuleRegistry {
         }
     }
 
+    public static void onNetworkMovementTickPost() {
+        if (!initialized || MC == null || PackHideState.isActive()) return;
+        for (Module module : NETWORK_MOVEMENT_POST_MODULES.get()) {
+            if (module.isAddon()) runGuarded(module, "onNetworkMovementTickPost", module::onNetworkMovementTickPost);
+            else module.onNetworkMovementTickPost();
+        }
+    }
+
     public static void onPacketProcessFrame() {
         if (!initialized || MC == null || PackHideState.isActive()) return;
         for (Module module : packetProcessFrameModules()) {
@@ -633,6 +664,18 @@ public final class ModuleRegistry {
         for (Module module : renderModules()) {
             if (module.isAddon()) runGuarded(module, "onRenderLevel", () -> module.onRenderLevel(partialTick));
             else module.onRenderLevel(partialTick);
+        }
+    }
+
+    public static boolean hasOverlayHooks() {
+        return initialized && !OVERLAY_MODULES.get().isEmpty();
+    }
+
+    public static void onRenderOverlay(net.minecraft.client.gui.GuiGraphicsExtractor context, float partialTick) {
+        if (!initialized || MC == null || MC.level == null || MC.player == null || PackHideState.isActive()) return;
+        for (Module module : OVERLAY_MODULES.get()) {
+            if (module.isAddon()) runGuarded(module, "onRenderOverlay", () -> module.onRenderOverlay(context, partialTick));
+            else module.onRenderOverlay(context, partialTick);
         }
     }
 

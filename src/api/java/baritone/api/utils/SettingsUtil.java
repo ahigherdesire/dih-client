@@ -84,8 +84,13 @@ public class SettingsUtil {
             "automineseeditem", "autominedeposit", "autominedepositblock", "autominekeep");
 
     public static void readAndApply(Settings settings, String settingsName) {
+        readAndApply(settings, settingsByName(settingsName));
+    }
+
+    /** Read settings from a concrete file; also lets compatibility tests load older files without a client window. */
+    public static void readAndApply(Settings settings, Path file) {
         try {
-            forEachLine(settingsByName(settingsName), line -> {
+            forEachLine(file, line -> {
                 Matcher matcher = SETTING_PATTERN.matcher(line);
                 if (!matcher.matches()) {
                     Helper.HELPER.logDirect("Invalid syntax in setting file: " + line);

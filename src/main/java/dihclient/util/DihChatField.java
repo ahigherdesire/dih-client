@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.DihClientAddon;
 import dihclient.commands.DihCommands;
 import dihclient.modules.PackHideState;
@@ -14,7 +15,6 @@ import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -162,7 +162,7 @@ public class DihChatField {
     }
 
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (button != 0) return false;
+        if (button != InputConstants.MOUSE_BUTTON_LEFT) return false;
         syncBounds();
         if (!contains(mouseX, mouseY)) {
             field.setFocused(false);
@@ -195,26 +195,26 @@ public class DihChatField {
         if (!field.isFocused()) return false;
 
         int key = keyInput.key();
-        if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
+        if (key == InputConstants.KEY_RETURN || key == InputConstants.KEY_NUMPADENTER) {
             if (submitOnEnter) {
                 return handleSubmit();
             }
             if (multiline && enterInsertsNewline) {
-                return field.keyPressed(inputContext(), key, keyInput.scancode(), keyInput.modifiers());
+                return field.keyPressed(inputContext(), key, DihKeys.secondaryCode(keyInput), keyInput.modifiers());
             }
             field.setFocused(false);
             return true;
         }
-        if (spaceKeyInsertsSpace && key == GLFW.GLFW_KEY_SPACE) {
+        if (spaceKeyInsertsSpace && key == InputConstants.KEY_SPACE) {
             int mods = keyInput.modifiers();
-            if ((mods & (GLFW.GLFW_MOD_CONTROL | GLFW.GLFW_MOD_ALT | GLFW.GLFW_MOD_SUPER)) == 0) {
+            if ((mods & (InputConstants.MOD_CONTROL | InputConstants.MOD_ALT | InputConstants.MOD_SUPER)) == 0) {
 
                 spaceInsertedFromKey = true;
                 return field.charTyped(inputContext(), ' ', mods);
             }
         }
 
-        return field.keyPressed(inputContext(), key, keyInput.scancode(), keyInput.modifiers());
+        return field.keyPressed(inputContext(), key, DihKeys.secondaryCode(keyInput), keyInput.modifiers());
     }
 
     public boolean charTyped(CharacterEvent charInput) {

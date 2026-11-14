@@ -17,6 +17,10 @@
 
 package baritone;
 
+import baritone.acquire.AcquireControl;
+import baritone.acquire.exec.AcquireProcess;
+import baritone.guardian.GuardianProcess;
+import baritone.acquire.exec.EatBehavior;
 import baritone.api.BaritoneAPI;
 import baritone.api.IBaritone;
 import baritone.api.Settings;
@@ -58,7 +62,18 @@ public class Baritone implements IBaritone {
     private static final ThreadPoolExecutor threadPool;
 
     static {
-        threadPool = new ThreadPoolExecutor(4, Integer.MAX_VALUE, 60L, TimeUnit.SECONDS, new SynchronousQueue<>());
+        threadPool = new ThreadPoolExecutor(
+                4,
+                Integer.MAX_VALUE,
+                60L,
+                TimeUnit.SECONDS,
+                new SynchronousQueue<>(),
+                runnable -> {
+                    Thread thread = new Thread(runnable, "Baritone-Worker");
+                    thread.setDaemon(true);
+                    return thread;
+                }
+        );
     }
 
     private final Minecraft mc;
@@ -71,6 +86,7 @@ public class Baritone implements IBaritone {
     private final InventoryBehavior inventoryBehavior;
     private final AutopilotBehavior autopilotBehavior;
     private final AiBehavior aiBehavior;
+    private final EatBehavior eatBehavior;
     private final InputOverrideHandler inputOverrideHandler;
 
     private final FollowProcess followProcess;
@@ -83,6 +99,11 @@ public class Baritone implements IBaritone {
     private final InventoryPauserProcess inventoryPauserProcess;
     private final MenuClickProcess menuClickProcess;
     private final IElytraProcess elytraProcess;
+    private final AcquireProcess acquireProcess;
+    private baritone.beat.BeatCampaign beatCampaign;
+    private baritone.construct.ConstructJob constructJob;
+    private baritone.parkour.ParkourProcess parkourProcess;
+    private final GuardianProcess guardianProcess;
 
     private final PathingControlManager pathingControlManager;
     private final SelectionManager selectionManager;
@@ -117,6 +138,7 @@ public class Baritone implements IBaritone {
             this.registerBehavior(baritone.behavior.ThreatsBehavior::new);
             this.registerBehavior(baritone.behavior.MineListenerBehavior::new);
             this.aiBehavior           = this.registerBehavior(baritone.behavior.AiBehavior::new);
+            this.eatBehavior          = this.registerBehavior(EatBehavior::new);
         }
 
         this.pathingControlManager = new PathingControlManager(this);
@@ -132,6 +154,19 @@ public class Baritone implements IBaritone {
             this.menuClickProcess        = this.registerProcess(MenuClickProcess::new);
             this.elytraProcess           = this.registerProcess(ElytraProcess::create);
             this.registerProcess(BackfillProcess::new);
+            this.acquireProcess          = this.registerProcess(AcquireProcess::new);
+            this.guardianProcess         = this.registerProcess(GuardianProcess::new);
+            this.parkourProcess          = this.registerProcess(baritone.parkour.ParkourProcess::new);
+            this.pathingControlManager.registerProcess(this.eatBehavior.pauser()); // pauses pathing while #eat or #acquire eats
+            // #beat drives #acquire phase by phase, so it comes after the processes.
+            this.beatCampaign = this.registerBehavior(baritone.beat.BeatCampaign::new);
+            // #construct drives #acquire and the builder in turns.
+            this.constructJob = this.registerBehavior(baritone.construct.ConstructJob::new);
+        }
+        // #acquire for #ai and other callers. The first Baritone built is the primary one (BaritoneProvider
+        // creates it before any other), so only that one is registered.
+        if (AcquireControl.get() == null) {
+            AcquireControl.set(this.acquireProcess);
         }
 
         this.worldProvider = new WorldProvider(this);
@@ -220,6 +255,34 @@ public class Baritone implements IBaritone {
 
     public MenuClickProcess getMenuClickProcess() {
         return this.menuClickProcess;
+    }
+
+    /** {@code #beat}: the campaign that beats the game. */
+    public baritone.beat.BeatCampaign getBeatCampaign() {
+        return this.beatCampaign;
+    }
+
+    /** {@code #construct}: builds a schematic from an empty inventory. */
+    public baritone.construct.ConstructJob getConstructJob() {
+        return this.constructJob;
+    }
+
+    /** {@code #parkour}: runs parkour courses with solved jumps. */
+    public baritone.parkour.ParkourProcess getParkourProcess() {
+        return this.parkourProcess;
+    }
+
+    public AcquireProcess getAcquireProcess() {
+        return this.acquireProcess;
+    }
+
+    /** The Guardian: its status and event log, for UIs and the AI. */
+    public GuardianProcess getGuardianProcess() {
+        return this.guardianProcess;
+    }
+
+    public EatBehavior getEatBehavior() {
+        return this.eatBehavior;
     }
 
     public AutopilotBehavior getAutopilotBehavior() {

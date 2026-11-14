@@ -26,6 +26,7 @@ import baritone.api.utils.SettingsUtil;
 import baritone.pathing.calc.openset.BinaryHeapOpenSet;
 import baritone.pathing.movement.CalculationContext;
 import baritone.pathing.movement.Moves;
+import baritone.pathing.movement.movements.MovementSolvedJump;
 import baritone.utils.pathing.BetterWorldBorder;
 import baritone.utils.pathing.Favoring;
 import baritone.utils.pathing.MutableMoveResult;
@@ -80,6 +81,7 @@ public final class AStarPathFinder extends AbstractNodeCostSearch {
         int pathingMaxChunkBorderFetch = Baritone.settings().pathingMaxChunkBorderFetch.value; // grab all settings beforehand so that changing settings during pathing doesn't cause a crash or unpredictable behavior
         double minimumImprovement = Baritone.settings().minimumImprovementRepropagation.value ? MIN_IMPROVEMENT : 0;
         Moves[] allMoves = Moves.values();
+        boolean hardParkour = calcContext.allowParkour && Baritone.settings().allowHardParkour.value;
         while (!openSet.isEmpty() && numEmptyChunk < pathingMaxChunkBorderFetch && !cancelRequested) {
             if ((numNodes & (timeCheckInterval - 1)) == 0) { // only call this once every 64 nodes (about half a millisecond)
                 long now = System.currentTimeMillis(); // since nanoTime is slow on windows (takes many microseconds)
@@ -185,6 +187,16 @@ public final class AStarPathFinder extends AbstractNodeCostSearch {
                     }
                 }
             }
+            if (hardParkour) {
+                for (int[] offset : MovementSolvedJump.OFFSETS) {
+                    res.reset();
+                    MovementSolvedJump.cost(calcContext, currentNode.x, currentNode.y, currentNode.z, offset[0], offset[1], res);
+                    numMovementsConsidered++;
+                    if (res.cost >= ActionCosts.COST_INF) continue;
+                    if (!calcContext.isLoaded(res.x, res.z) || !worldBorder.entirelyContains(res.x, res.z)) continue;
+                    failing = relax(openSet, currentNode, res, isFavoring, minimumImprovement, bestHeuristicSoFar, bestSoFar, failing);
+                }
+            }
         }
         if (cancelRequested) {
             return Optional.empty();
@@ -198,5 +210,31 @@ public final class AStarPathFinder extends AbstractNodeCostSearch {
             logDebug("Took " + (System.currentTimeMillis() - startTime) + "ms, " + numMovementsConsidered + " movements considered");
         }
         return result;
+    }
+
+    /** Offers {@code res} as a way to its node, as the Moves loop does; returns the updated {@code failing} flag. */
+    private boolean relax(BinaryHeapOpenSet openSet, PathNode currentNode, MutableMoveResult res, boolean isFavoring, double minimumImprovement,
+                          double[] bestHeuristicSoFar, PathNode[] bestSoFar, boolean failing) {
+        double actionCost = res.cost;
+        long hashCode = BetterBlockPos.longHash(res.x, res.y, res.z);
+        if (isFavoring) actionCost *= favoring.calculate(hashCode);
+        PathNode neighbor = getNodeAtPosition(res.x, res.y, res.z, hashCode);
+        double tentativeCost = currentNode.cost + actionCost;
+        if (neighbor.cost - tentativeCost > minimumImprovement) {
+            neighbor.previous = currentNode;
+            neighbor.cost = tentativeCost;
+            neighbor.combinedCost = tentativeCost + neighbor.estimatedCostToGoal;
+            if (neighbor.isOpen()) openSet.update(neighbor);
+            else openSet.insert(neighbor);
+            for (int i = 0; i < COEFFICIENTS.length; i++) {
+                double heuristic = neighbor.estimatedCostToGoal + neighbor.cost / COEFFICIENTS[i];
+                if (bestHeuristicSoFar[i] - heuristic > minimumImprovement) {
+                    bestHeuristicSoFar[i] = heuristic;
+                    bestSoFar[i] = neighbor;
+                    if (failing && getDistFromStartSq(neighbor) > MIN_DIST_PATH * MIN_DIST_PATH) failing = false;
+                }
+            }
+        }
+        return failing;
     }
 }

@@ -1,5 +1,6 @@
 package dihclient.util;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.gui.vanillaui.UiScissorStack;
@@ -10,7 +11,6 @@ import dihclient.gui.vanillaui.direct.DirectRenderContext;
 import dihclient.gui.vanillaui.direct.DirectViewport;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -139,10 +139,10 @@ public final class DihSharePickerOverlay extends DihOverlayBase {
         DihWindowLayout bounds = getBounds();
         if (isOverCloseButton(mx, my, bounds)) { setVisible(false); isDragging = false; return true; }
         CompactScrollbar.Metrics sb = scrollbarMetrics();
-        if (button == 0 && sb.overThumb(mx, my)) { scrollbarDragging = true; scrollGrab = (int) Math.round(my) - sb.thumbY(); return true; }
-        if (button == 0 && isOverDragBar(mx, my)) { isDragging = true; dragOffsetX = mx - panelX; dragOffsetY = my - panelY; return true; }
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && sb.overThumb(mx, my)) { scrollbarDragging = true; scrollGrab = (int) Math.round(my) - sb.thumbY(); return true; }
+        if (button == InputConstants.MOUSE_BUTTON_LEFT && isOverDragBar(mx, my)) { isDragging = true; dragOffsetX = mx - panelX; dragOffsetY = my - panelY; return true; }
         if (search.mouseClicked(ctx(null, mx, my, 0f), (float) mx, (float) my, button)) return true;
-        if (button == 0) {
+        if (button == InputConstants.MOUSE_BUTTON_LEFT) {
             int lt = listTop(), areaH = listAreaH();
             for (int[] h : hits) {
                 int ry = h[0];
@@ -192,7 +192,7 @@ public final class DihSharePickerOverlay extends DihOverlayBase {
     @Override
     public boolean keyPressed(int keyCode, int scanCode, int modifiers) {
         if (!visible) return false;
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE && !search.isFocused()) { setVisible(false); return true; }
+        if (keyCode == InputConstants.KEY_ESCAPE && !search.isFocused()) { setVisible(false); return true; }
         return search.keyPressed(ctx(null, 0, 0, 0f), keyCode, scanCode, modifiers);
     }
 

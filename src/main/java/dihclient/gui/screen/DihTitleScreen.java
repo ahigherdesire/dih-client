@@ -1,5 +1,7 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
+import dihclient.util.DihScreens;
 import dihclient.gui.vanillaui.assets.UiAssets;
 import dihclient.gui.vanillaui.components.UiSizing;
 import dihclient.gui.vanillaui.components.UiText;
@@ -51,7 +53,6 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.Identifier;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.ARGB;
-import net.fabricmc.loader.api.FabricLoader;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -86,14 +87,15 @@ public class DihTitleScreen extends Screen {
     private static final int BIG_LINE_H = 15;
     private static final int CATEGORY_ROW_H = 12;
     private static final int MANAGER_BUTTON_H = 16;
+    private static final int MANAGER_BUTTON_GAP = 3;
 
     private final CompactTheme theme = new CompactTheme();
     private final List<MenuButton> buttons = new ArrayList<>();
     private final String modCountText = createModCountText();
-    private final boolean modMenuLoaded = FabricLoader.getInstance().isModLoaded("modmenu");
-    private final boolean essentialLoaded = FabricLoader.getInstance().isModLoaded("essential");
-    private final boolean replayModLoaded = FabricLoader.getInstance().isModLoaded("replaymod");
-    private final boolean flashbackLoaded = FabricLoader.getInstance().isModLoaded("flashback");
+    private final boolean modMenuLoaded = dihclient.platform.DihLoader.isModLoaded("modmenu");
+    private final boolean essentialLoaded = dihclient.platform.DihLoader.isModLoaded("essential");
+    private final boolean replayModLoaded = dihclient.platform.DihLoader.isModLoaded("replaymod");
+    private final boolean flashbackLoaded = dihclient.platform.DihLoader.isModLoaded("flashback");
     private List<MeteorCreditLine> meteorCredits = List.of();
     private boolean meteorCreditsLoadFailed;
     private int cachedServerCount = -1;
@@ -176,7 +178,7 @@ public class DihTitleScreen extends Screen {
             b -> this.minecraft.gui.setScreen(new LanguageSelectScreen(this, this.minecraft.options, this.minecraft.getLanguageManager())), true));
         language.setPosition(this.width / 2 - 124, rowY);
         this.addRenderableWidget(Button.builder(Component.translatable("menu.options"),
-            b -> this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false)))
+            b -> this.minecraft.gui.setScreen(DihScreens.options(this, this.minecraft.options, false)))
             .bounds(this.width / 2 - 100, rowY, 98, 20).build());
         this.addRenderableWidget(Button.builder(Component.translatable("menu.quit"), b -> this.minecraft.stop())
             .bounds(this.width / 2 + 2, rowY, 98, 20).build());
@@ -287,7 +289,7 @@ public class DihTitleScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        if (event.button() != 0) return false;
+        if (event.button() != InputConstants.MOUSE_BUTTON_LEFT) return false;
 
         float uiMouseX = (float) DihUiScale.toVirtual(event.x());
         float uiMouseY = (float) DihUiScale.toVirtual(event.y());
@@ -363,7 +365,7 @@ public class DihTitleScreen extends Screen {
         buttons.add(realms);
 
         MenuButton options = new MenuButton(rowX, rowTop + (rowH + rowGap) * 3, rowW, rowH, Component.translatable("menu.options"), true,
-            () -> this.minecraft.gui.setScreen(new OptionsScreen(this, this.minecraft.options, false))).asMainRow(4);
+            () -> this.minecraft.gui.setScreen(DihScreens.options(this, this.minecraft.options, false))).asMainRow(4);
         buttons.add(options);
 
         MenuButton quit = new MenuButton(rowX, rowTop + (rowH + rowGap) * 4, rowW, rowH, Component.translatable("menu.quit"), true,
@@ -379,7 +381,7 @@ public class DihTitleScreen extends Screen {
         }
 
         int maxModulesPanelH = screenH - bottomBarH - cardY;
-        int fixedModulesH = PANEL_PAD + BIG_LINE_H + 3 + MANAGER_BUTTON_H + PANEL_PAD;
+        int fixedModulesH = PANEL_PAD + BIG_LINE_H + 3 + MANAGER_BUTTON_H * 2 + MANAGER_BUTTON_GAP + PANEL_PAD;
         int maxCategoryRows = Math.max(1, (maxModulesPanelH - fixedModulesH - 3) / CATEGORY_ROW_H);
         buildCategoryRows(maxCategoryRows);
         buildStatusRows();
@@ -454,7 +456,7 @@ public class DihTitleScreen extends Screen {
         modulesH = fixedModulesH + 3 + categoryRows.size() * CATEGORY_ROW_H;
         modulesX = screenW - margin - modulesW;
         modulesY = cardY;
-        MenuButton openManager = new MenuButton(modulesX + 5, modulesY + modulesH - PANEL_PAD - MANAGER_BUTTON_H,
+        MenuButton openManager = new MenuButton(modulesX + 5, modulesY + modulesH - PANEL_PAD - MANAGER_BUTTON_H * 2 - MANAGER_BUTTON_GAP,
             modulesW - 10, MANAGER_BUTTON_H, Component.literal("OPEN MANAGER"), true,
             () -> {
                 if (!PackHideState.isHardLocked()) {
@@ -462,6 +464,14 @@ public class DihTitleScreen extends Screen {
                 }
             }).asMainRow(0).withIntro(260, true);
         buttons.add(openManager);
+        MenuButton addonStore = new MenuButton(modulesX + 5, modulesY + modulesH - PANEL_PAD - MANAGER_BUTTON_H,
+            modulesW - 10, MANAGER_BUTTON_H, Component.literal("ADDON STORE"), true, this::openAddonStore)
+            .asMainRow(0).withIntro(260, true).withTooltip(Component.literal("Browse, install and manage addons"));
+        buttons.add(addonStore);
+    }
+
+    private void openAddonStore() {
+        if (!PackHideState.isHardLocked()) this.minecraft.gui.setScreen(new DihAddonStoreScreen(this));
     }
 
     private void addSupportRow(int x, int y, int w, int h, String text, Runnable action, String url) {
@@ -489,6 +499,8 @@ public class DihTitleScreen extends Screen {
                 }
             },
             Component.literal("Modules & Macros")));
+        all.add(new UtilityButtonSpec("ADDONS", "", UiAssets.ICON_ADDONS, null,
+            ICON_TEXTURE_SIZE, this::openAddonStore, Component.literal("Addon Store")));
         all.add(new UtilityButtonSpec("MATCHMAKING", "", UiAssets.ICON_MATCHMAKING, null,
             ICON_TEXTURE_SIZE,
             () -> {
@@ -835,7 +847,7 @@ public class DihTitleScreen extends Screen {
 
     private List<MeteorCreditLine> getMeteorCredits() {
         if (!meteorCredits.isEmpty() || meteorCreditsLoadFailed) return meteorCredits;
-        if (!FabricLoader.getInstance().isModLoaded("meteor-client")) return meteorCredits;
+        if (!dihclient.platform.DihLoader.isModLoaded("meteor-client")) return meteorCredits;
 
         try {
             Class<?> addonManagerClass = Class.forName("meteordevelopment.meteorclient.addons.AddonManager");
@@ -902,7 +914,7 @@ public class DihTitleScreen extends Screen {
     }
 
     private static String createModCountText() {
-        int modCount = FabricLoader.getInstance().getAllMods().size();
+        int modCount = dihclient.platform.DihLoader.modIds().size();
         return modCount + (modCount == 1 ? " Mod" : " Mods");
     }
 

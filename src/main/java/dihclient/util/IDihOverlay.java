@@ -71,6 +71,19 @@ public interface IDihOverlay {
         return false;
     }
 
+    /** Windows that return true get a pin button; a pinned window stays on screen in-game. */
+    default boolean supportsPinning() {
+        return false;
+    }
+
+    default boolean isPinned() {
+        return supportsPinning() && DihSharedState.get().isWindowPinned(getOverlayId());
+    }
+
+    default void setPinned(boolean pinned) {
+        DihSharedState.get().setWindowPinned(getOverlayId(), pinned);
+    }
+
     default DihWindowLayout getBounds() {
         return new DihWindowLayout(0, 0, getMinWidth(), getMinHeight(), isVisible(), isCollapsed());
     }

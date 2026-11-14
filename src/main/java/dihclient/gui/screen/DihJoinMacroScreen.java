@@ -1,5 +1,6 @@
 package dihclient.gui.screen;
 
+import com.mojang.blaze3d.platform.InputConstants;
 import dihclient.gui.vanillaui.UiBounds;
 import dihclient.gui.vanillaui.UiRenderer;
 import dihclient.util.DihTheme;
@@ -13,6 +14,7 @@ import dihclient.util.DihJoinMacroController;
 import dihclient.util.DihMacro;
 import dihclient.util.DihMacroEditorOverlay;
 import dihclient.util.DihMacroManager;
+import dihclient.util.MacroFolderView;
 import dihclient.util.DihNotifications;
 import dihclient.util.DihOverlayManager;
 import dihclient.util.DihUiScale;
@@ -23,7 +25,6 @@ import net.minecraft.client.input.CharacterEvent;
 import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
-import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -239,6 +240,11 @@ public final class DihJoinMacroScreen extends DihScreen {
         for (int i = scroll; i < max; i++) {
             Row row = rows.get(i);
             int rowY = rowsTop() + (i - scroll) * ROW_H;
+            if (row.folder) {
+                String heading = row.name + "  (" + row.steps + ")";
+                graphics.text(font, fit(heading, listW - 24 - rowRightInset), listX + 12, rowY + 5, MUTED, false);
+                continue;
+            }
             boolean hovered = mouseX >= listX + 1 && mouseX < listX + listW - 1 && mouseY >= rowY && mouseY < rowY + ROW_H;
             boolean active = row.name.equalsIgnoreCase(selected);
             UiBounds rowBounds = UiBounds.of(listX + 8, rowY, listW - 8 - rowRightInset, ROW_H - 3);
@@ -248,7 +254,8 @@ public final class DihJoinMacroScreen extends DihScreen {
             int stepsW = font.width(stepsText);
             int rightX = listX + listW - rowRightInset - 4 - stepsW;
             int nameW = Math.max(1, rightX - (listX + 20) - 6);
-            graphics.text(font, fit(row.name, nameW), listX + 20, rowY + 5, 0xFFEFE8E4, false);
+            int nameX = listX + 20 + (row.indented ? 6 : 0);
+            graphics.text(font, fit(row.name, nameW - (row.indented ? 6 : 0)), nameX, rowY + 5, 0xFFEFE8E4, false);
             graphics.text(font, stepsText, rightX, rowY + 5, active ? SUCCESS : MUTED, false);
         }
 
@@ -281,7 +288,7 @@ public final class DihJoinMacroScreen extends DihScreen {
         if (searchField != null && searchField.mouseClicked(event.x(), event.y(), event.button())) {
             return true;
         }
-        if (event.button() == 0) {
+        if (event.button() == InputConstants.MOUSE_BUTTON_LEFT) {
             CompactScrollbar.Metrics scrollbar = macroScrollbarMetrics();
             if (scrollbar.hasScroll() && scrollbar.contains(event.x(), event.y())) {
                 macroScrollbarDragging = true;
@@ -301,6 +308,7 @@ public final class DihJoinMacroScreen extends DihScreen {
             int rowIndex = rowAt(event.x(), event.y());
             if (rowIndex >= 0) {
                 Row row = rows.get(rowIndex);
+                if (row.folder) return true;
                 String selected = DihJoinMacroController.selectedMacroName();
                 DihJoinMacroController.setSelectedMacro(row.name.equalsIgnoreCase(selected) ? "" : row.name);
                 return true;
@@ -353,7 +361,7 @@ public final class DihJoinMacroScreen extends DihScreen {
     @Override
     public boolean keyPressed(KeyEvent input) {
         if (searchField != null && searchField.keyPressed(input)) return true;
-        if (input.key() == GLFW.GLFW_KEY_ESCAPE) {
+        if (input.key() == InputConstants.KEY_ESCAPE) {
             if (CompactDropdown.closeOpenMenu(dropdowns)) return true;
             minecraft.gui.setScreen(parent);
             return true;
@@ -385,12 +393,20 @@ public final class DihJoinMacroScreen extends DihScreen {
         lastMacroRevision = DihMacroManager.get().getRevision();
         rowsDirty = false;
         rows.clear();
+        List<DihMacro> macros = new ArrayList<>();
         for (DihMacro macro : DihMacroManager.get().getAll()) {
             if (macro == null || macro.name == null || macro.name.isBlank()) continue;
-            if (!query.isEmpty() && !macro.name.toLowerCase(Locale.ROOT).contains(query)) continue;
-            rows.add(new Row(macro.name, macro.actions == null ? 0 : macro.actions.size()));
+            macros.add(macro);
         }
-        rows.sort(Comparator.comparing(row -> row.name.toLowerCase(Locale.ROOT)));
+        macros.sort(Comparator.comparing(macro -> macro.name.toLowerCase(Locale.ROOT)));
+        for (MacroFolderView.Row row : MacroFolderView.build(macros, query, java.util.Set.of())) {
+            if (row instanceof MacroFolderView.FolderRow folder) {
+                rows.add(new Row(folder.folder(), folder.count(), true, false));
+            } else if (row instanceof MacroFolderView.MacroRow entry) {
+                DihMacro macro = entry.macro();
+                rows.add(new Row(macro.name, macro.actions == null ? 0 : macro.actions.size(), false, entry.inFolder()));
+            }
+        }
         scroll = Math.max(0, Math.min(scroll, Math.max(0, rows.size() - visibleRows())));
     }
 
@@ -513,7 +529,8 @@ public final class DihJoinMacroScreen extends DihScreen {
         return font.plainSubstrByWidth(value, Math.max(1, maxWidth - 4));
     }
 
-    private record Row(String name, int steps) {
+    /** A macro, or (when {@code folder}) a folder heading whose {@code steps} is its macro count. */
+    private record Row(String name, int steps, boolean folder, boolean indented) {
     }
 
     private record HitButton(int x, int y, int w, int h, String label, CompactOverlayButton.Variant variant,

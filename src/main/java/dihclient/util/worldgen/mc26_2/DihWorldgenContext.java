@@ -100,7 +100,11 @@ public final class DihWorldgenContext {
     private static RandomState randomStateFor(ChunkGenerator generator, HolderLookup.Provider lookup, long seed) {
         if (generator instanceof NoiseBasedChunkGenerator noise) {
             NoiseGeneratorSettings settings = noise.generatorSettings().value();
+            //? if >=26.3 {
+            /*return RandomState.create(lookup.lookupOrThrow(Registries.NOISE), seed, settings);
+            *///?} else {
             return RandomState.create(settings, lookup.lookupOrThrow(Registries.NOISE), seed);
+            //?}
         }
 
         throw new IllegalStateException("Unsupported generator: " + generator.getClass().getName());
@@ -124,7 +128,11 @@ public final class DihWorldgenContext {
 
     private static VanillaBootstrap loadVanillaBootstrap() {
         VanillaPackResources vanilla = ServerPacksSource.createVanillaPackSource();
+        //? if >=26.3 {
+        /*CloseableResourceManager resources = new MultiPackResourceManager(PackType.SERVER_DATA, List.of(vanilla.fullResources()));
+        *///?} else {
         CloseableResourceManager resources = new MultiPackResourceManager(PackType.SERVER_DATA, List.of(vanilla));
+        //?}
         Executor direct = Runnable::run;
 
         LayeredRegistryAccess<RegistryLayer> initial = RegistryLayer.createRegistryAccess();
@@ -230,6 +238,27 @@ public final class DihWorldgenContext {
 
     public BiomeSource biomeSource() {
         return generator.getBiomeSource();
+    }
+
+    /**
+     * The climate sampler biome lookups take: the random state's own on 26.2; on 26.3 an uncached one (callers run
+     * on several threads, and cached samplers aren't thread-safe).
+     */
+    public net.minecraft.world.level.biome.Climate.Sampler climateSampler() {
+        //? if >=26.3 {
+        /*return randomState.createClimateSampler(net.minecraft.world.level.levelgen.densityfunction.SamplerContext.EMPTY_UNCACHED);
+        *///?} else {
+        return randomState.sampler();
+        //?}
+    }
+
+    /** The biome at quart coordinates, uncached (a BiomeResolver on 26.3). */
+    public net.minecraft.core.Holder<net.minecraft.world.level.biome.Biome> noiseBiome(int quartX, int quartY, int quartZ) {
+        //? if >=26.3 {
+        /*return biomeSource().createUncachedResolver(randomState).getNoiseBiome(quartX, quartY, quartZ);
+        *///?} else {
+        return biomeSource().getNoiseBiome(quartX, quartY, quartZ, randomState.sampler());
+        //?}
     }
 
     public RandomState randomState() {

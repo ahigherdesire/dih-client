@@ -108,6 +108,12 @@ public class DihLocalPlayerMovementMixin {
         ModuleRegistry.onNetworkMovementTickPre();
     }
 
+    @Inject(method = "sendPosition", at = @At("RETURN"))
+    private void dih$networkMovementTickPost(CallbackInfo ci) {
+        if ((LocalPlayer) (Object) this != Minecraft.getInstance().player) return;
+        ModuleRegistry.onNetworkMovementTickPost();
+    }
+
     @Inject(method = "tick", at = @At(value = "INVOKE",
         target = "Lnet/minecraft/client/player/AbstractClientPlayer;tick()V",
         shift = At.Shift.BEFORE, ordinal = 0), cancellable = true)
