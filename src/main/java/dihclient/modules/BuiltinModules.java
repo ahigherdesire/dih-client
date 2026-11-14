@@ -3652,6 +3652,7 @@ public final class BuiltinModules {
             add(new BoolSetting("stop-macro-enabled", "Auto Stop", false).group("Auto Stop")
                 .description("Silent conditional rule").build());
             add(new StringSetting("stop-macro", "Rule", "").group("Auto Stop")
+                .description("The condition that stops AutoFish, e.g. inventory full")
                 .visibleWhen(() -> Boolean.parseBoolean(value("stop-macro-enabled"))).conditionalMacroPicker());
             add(new ChoiceSetting("stop-macro-trigger", "On Trigger", "Stop AutoFish",
                     "Stop AutoFish", "Run Steps Only", "Stop, Run, Resume").group("Auto Stop")
@@ -4898,19 +4899,36 @@ public final class BuiltinModules {
         private int timer;
         private int index;
 
+        /** The rest of a long message that Auto Split is still sending, piece by piece. */
+        private final java.util.ArrayDeque<String> pendingParts = new java.util.ArrayDeque<>();
+
         SpamModule() {
-            super("spam", "Spam", ModuleCategory.MISC, "Sends timed chat.");
-            add(new StringListSetting("messages", "Messages", "你好，世界！").description("Messages separated by |."));
-            add(new IntSetting("delay", "Delay", 20, 0, 200, 1));
-            add(new BoolSetting("disable-on-leave", "Disable On Leave", true).group("Safety"));
-            add(new BoolSetting("disable-on-disconnect", "Disable On Disconnect", true).group("Safety"));
-            add(new BoolSetting("randomise", "Randomise", false));
-            add(new BoolSetting("auto-split-messages", "Auto Split", false).group("Splitting"));
-            add(new IntSetting("split-length", "Split Length", 256, 8, 256, 8).group("Splitting").visibleWhen(() -> Boolean.parseBoolean(value("auto-split-messages"))).build());
-            add(new IntSetting("split-delay", "Split Delay", 20, 0, 200, 1).group("Splitting").visibleWhen(() -> Boolean.parseBoolean(value("auto-split-messages"))).build());
-            add(new BoolSetting("bypass", "Bypass", false).group("Bypass"));
-            add(new BoolSetting("include-uppercase-characters", "Uppercase", false).group("Bypass").visibleWhen(() -> Boolean.parseBoolean(value("bypass"))).build());
-            add(new IntSetting("length", "Bypass Length", 4, 1, 16, 1).group("Bypass").visibleWhen(() -> Boolean.parseBoolean(value("bypass"))).build());
+            super("spam", "Spam", ModuleCategory.MISC, "Sends your chat messages over and over on a timer.");
+            add(new StringListSetting("messages", "Messages", "Hello, world!")
+                .description("What to send. Separate several messages with |. Start one with / to run it as a command."));
+            add(new IntSetting("delay", "Delay", 20, 0, 200, 1).unit("ticks")
+                .description("Time between messages. 20 ticks = 1 second.").build());
+            add(new BoolSetting("disable-on-leave", "Turn Off On Leave", true).group("Safety")
+                .description("Turns Spam off when you leave the world or get disconnected.").build());
+            add(new BoolSetting("disable-on-disconnect", "Disable On Disconnect", true).group("Safety").visibleWhen(() -> false).build());
+            add(new BoolSetting("randomise", "Random Order", false)
+                .description("Pick a random message each time instead of going in order.").build());
+            add(new BoolSetting("auto-split-messages", "Auto Split", false).group("Splitting")
+                .description("Send messages longer than Split Length in several parts instead of cutting them off.").build());
+            add(new IntSetting("split-length", "Split Length", 256, 8, 256, 8).group("Splitting").unit("characters")
+                .description("Longest part to send. Chat allows 256.")
+                .visibleWhen(() -> Boolean.parseBoolean(value("auto-split-messages"))).build());
+            add(new IntSetting("split-delay", "Split Delay", 20, 0, 200, 1).group("Splitting").unit("ticks")
+                .description("Time between the parts of one message. 20 ticks = 1 second.")
+                .visibleWhen(() -> Boolean.parseBoolean(value("auto-split-messages"))).build());
+            add(new BoolSetting("bypass", "Anti Repeat", false).group("Bypass")
+                .description("Adds random characters to each message so servers don't block it as a repeat.").build());
+            add(new BoolSetting("include-uppercase-characters", "Uppercase", false).group("Bypass")
+                .description("Use capital letters in the random characters too.")
+                .visibleWhen(() -> Boolean.parseBoolean(value("bypass"))).build());
+            add(new IntSetting("length", "Random Length", 4, 1, 16, 1).group("Bypass").unit("characters")
+                .description("How many random characters to add.")
+                .visibleWhen(() -> Boolean.parseBoolean(value("bypass"))).build());
             add(new BoolSetting("uppercase", "Uppercase Legacy", false).group("Bypass").visibleWhen(() -> false).build());
             add(new IntSetting("bypass-length", "Bypass Length Legacy", 4, 1, 16, 1).group("Bypass").visibleWhen(() -> false).build());
         }
@@ -4919,31 +4937,56 @@ public final class BuiltinModules {
         public void onEnable() {
             timer = integer("delay");
             index = 0;
+            pendingParts.clear();
         }
 
         @Override
         public void tick() {
             if (MC.getConnection() == null) return;
             if (timer-- > 0) return;
-            timer = integer("delay");
-            List<String> messages = splitMessages();
-            if (messages.isEmpty()) return;
-            int selected = bool("randomise") ? new Random().nextInt(messages.size()) : index++ % messages.size();
-            String msg = messages.get(selected);
-            if (bool("bypass")) msg += " " + bypassToken();
-            if (bool("auto-split-messages") && msg.length() > integer("split-length")) {
-                int split = Math.max(1, integer("split-length"));
-                msg = msg.substring(0, split);
-                timer = integer("split-delay");
-            } else if (msg.length() > 256) msg = msg.substring(0, 256);
+            String msg;
+            if (!pendingParts.isEmpty()) {
+                msg = pendingParts.removeFirst();
+            } else {
+                List<String> messages = splitMessages();
+                if (messages.isEmpty()) {
+                    timer = integer("delay");
+                    return;
+                }
+                int selected = bool("randomise") ? new Random().nextInt(messages.size()) : index++ % messages.size();
+                msg = messages.get(selected);
+                if (bool("bypass")) msg += " " + bypassToken();
+                if (bool("auto-split-messages") && !msg.startsWith("/")) {
+                    List<String> parts = splitIntoParts(msg, integer("split-length"));
+                    msg = parts.getFirst();
+                    pendingParts.addAll(parts.subList(1, parts.size()));
+                }
+            }
+            if (msg.length() > 256) msg = msg.substring(0, 256);
+            timer = pendingParts.isEmpty() ? integer("delay") : integer("split-delay");
             if (msg.startsWith("/") && msg.length() > 1) MC.getConnection().sendCommand(msg.substring(1));
-
             else dihclient.commands.DihCommands.sendPlainChat(MC.getConnection(), msg);
+        }
+
+        /** Cuts {@code msg} into parts of at most {@code length} characters, at a space when one is close. */
+        static List<String> splitIntoParts(String msg, int length) {
+            int max = Math.max(1, Math.min(256, length));
+            List<String> parts = new ArrayList<>();
+            String rest = msg;
+            while (rest.length() > max) {
+                int cut = rest.lastIndexOf(' ', max);
+                if (cut < max / 2) cut = max;
+                parts.add(rest.substring(0, cut).strip());
+                rest = rest.substring(cut).strip();
+            }
+            if (!rest.isEmpty() || parts.isEmpty()) parts.add(rest);
+            return parts;
         }
 
         @Override
         public void onGameLeft() {
-            if (bool("disable-on-leave") || bool("disable-on-disconnect")) setEnabled(false);
+            pendingParts.clear();
+            if (bool("disable-on-leave")) setEnabled(false);
         }
 
         private List<String> splitMessages() {
@@ -4971,16 +5014,19 @@ public final class BuiltinModules {
         private final Random random = new Random();
 
         BookBotModule() {
-            super("bookbot", "BookBot", ModuleCategory.MISC, "Writes into books.");
-            add(new ChoiceSetting("mode", "Mode", "Random", "Random", "File").description("Random or file text.").build());
-            add(new ChoiceSetting("random-type", "Random Type", "Utf8", "Utf8", "Ascii", "PaperMC").visibleWhen(() -> "Random".equals(value("mode"))).build());
-            add(new IntSetting("pages", "Pages", 100, 1, 100, 1).visibleWhen(() -> "Random".equals(value("mode")) && !"PaperMC".equals(value("random-type"))).build());
-            add(new IntSetting("characters", "Chars/Page", DihBookPayloadBuilder.DEFAULT_CHARS_PER_PAGE, 1, 1024, 16).visibleWhen(() -> "Random".equals(value("mode")) && !"PaperMC".equals(value("random-type"))).build());
-            add(new IntSetting("delay", "Delay", 20, 1, 200, 1));
-            add(new BoolSetting("sign", "Sign", true));
-            add(new StringSetting("name", "Name", "Dih").visibleWhen(() -> Boolean.parseBoolean(value("sign"))).build());
-            add(new BoolSetting("append-count", "Append Count", true).visibleWhen(() -> Boolean.parseBoolean(value("sign"))).build());
-            add(new BoolSetting("word-wrap", "Word Wrap", true).visibleWhen(() -> "File".equals(value("mode"))).build());
+            super("bookbot", "BookBot", ModuleCategory.MISC, "Fills empty book and quills from your inventory with text, one after another.");
+            add(new ChoiceSetting("mode", "Mode", "Random", "Random", "File").description("Random: random characters. File: the text of a .txt file you pick.").build());
+            add(new ChoiceSetting("random-type", "Random Type", "Utf8", "Utf8", "Ascii", "PaperMC")
+                .description("Utf8: any characters (biggest books). Ascii: plain letters and numbers. PaperMC: stays under Paper servers' book size limit.")
+                .visibleWhen(() -> "Random".equals(value("mode"))).build());
+            add(new IntSetting("pages", "Pages", 100, 1, 100, 1).description("Pages per book (a book holds 100).").visibleWhen(() -> "Random".equals(value("mode")) && !"PaperMC".equals(value("random-type"))).build());
+            add(new IntSetting("characters", "Chars/Page", DihBookPayloadBuilder.DEFAULT_CHARS_PER_PAGE, 1, 1024, 16).description("Characters on each page.").visibleWhen(() -> "Random".equals(value("mode")) && !"PaperMC".equals(value("random-type"))).build());
+            add(new IntSetting("delay", "Delay", 20, 1, 200, 1).unit("ticks")
+                .description("Time between books. 20 ticks = 1 second.").build());
+            add(new BoolSetting("sign", "Sign", true).description("Sign each book so it becomes a written book with a title.").build());
+            add(new StringSetting("name", "Name", "Dih").description("Title of the signed books.").visibleWhen(() -> Boolean.parseBoolean(value("sign"))).build());
+            add(new BoolSetting("append-count", "Append Count", true).description("Add #1, #2... to the title so each book is different.").visibleWhen(() -> Boolean.parseBoolean(value("sign"))).build());
+            add(new BoolSetting("word-wrap", "Word Wrap", true).description("Move whole words to the next line instead of breaking them.").visibleWhen(() -> "File".equals(value("mode"))).build());
             add(new StringSetting("file-path", "File", "").visibleWhen(() -> "File".equals(value("mode"))).formatter(BookBotModule::displayFileName).description("Selected file.").filePicker("pick-file"));
             add(new ActionSetting("pick-file", "Pick File", this::pickFile).availableOffline().visibleWhen(() -> false).description("Choose text file.").build());
             add(new StringSetting("text", "Text", "").visibleWhen(() -> false).build());
