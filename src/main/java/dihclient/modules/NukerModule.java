@@ -10,7 +10,6 @@ import dihclient.mixin.accessor.DihMultiPlayerGameModeAccessor;
 import dihclient.util.DihBreakMath;
 import dihclient.util.DihEntities;
 import dihclient.util.RegistryListCodec;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.player.LocalPlayer;
 import dihclient.render.mc.DihRenderTypes;
@@ -290,7 +289,7 @@ public final class NukerModule extends Module {
             MC.player.horizontalCollision));
     }
 
-    private void draw(LevelRenderContext context, Vec3 camera) {
+    private void draw(dihclient.platform.DihPlatform.SubmitContext context, Vec3 camera) {
         if (!bool("render")) return;
         List<BlockPos> boxes = new ArrayList<>(recent);
         if (target != null && !boxes.contains(target)) boxes.add(target);

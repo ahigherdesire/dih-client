@@ -7,7 +7,6 @@ import dihclient.api.module.ColorSetting;
 import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.util.DihWorldGeometry;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import dihclient.render.mc.DihRenderTypes;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
@@ -170,7 +169,7 @@ public final class BreadcrumbsModule extends Module {
         return Math.max(0.0D, Math.min(1.0D, 1.0D - (double) age / alive));
     }
 
-    private void draw(LevelRenderContext context, Vec3 camera) {
+    private void draw(dihclient.platform.DihPlatform.SubmitContext context, Vec3 camera) {
         if (trails.isEmpty()) return;
         long now = System.currentTimeMillis();
         int own = ModuleRenderUtil.color(this, "color", 0x784677FF);

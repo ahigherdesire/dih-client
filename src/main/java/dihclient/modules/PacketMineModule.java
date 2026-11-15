@@ -10,7 +10,6 @@ import dihclient.util.DihAutoTool;
 import dihclient.util.DihBreakMath;
 import dihclient.util.DihKeyMappingBridge;
 import dihclient.util.DihPackets;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.player.LocalPlayer;
 import dihclient.render.mc.DihRenderTypes;
 import net.minecraft.core.BlockPos;
@@ -275,7 +274,7 @@ public final class PacketMineModule extends Module {
         progress = 0.0F;
     }
 
-    private void draw(LevelRenderContext context, Vec3 camera) {
+    private void draw(dihclient.platform.DihPlatform.SubmitContext context, Vec3 camera) {
         BlockPos pos = target;
         if (pos == null || !bool("render")) return;
         double done = Math.min(1.0D, progress / Math.max(0.05D, decimal("break-damage")));

@@ -10,7 +10,6 @@ import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.util.DihPackets;
 import dihclient.util.DihWorldGeometry;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import dihclient.render.mc.DihRenderTypes;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.Packet;
@@ -175,7 +174,7 @@ public final class NewChunksModule extends Module {
         return Math.min(1.0D, weight / 12.0D);
     }
 
-    private void draw(LevelRenderContext context, Vec3 camera) {
+    private void draw(dihclient.platform.DihPlatform.SubmitContext context, Vec3 camera) {
         if (chunks.isEmpty()) return;
         if (bool("fill")) context.submitNodeCollector().submitCustomGeometry(context.poseStack(), DihRenderTypes.storageEspFillSeeThrough(),
             (pose, buffer) -> emit(pose, buffer, camera, false));

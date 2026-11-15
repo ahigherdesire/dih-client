@@ -3,8 +3,7 @@ package dihclient.modules;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import dihclient.util.DihWorldGeometry;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
+import dihclient.platform.DihPlatform;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
@@ -16,14 +15,14 @@ import net.minecraft.world.phys.Vec3;
  */
 final class ModuleWorldHooks {
     interface Drawer {
-        void draw(LevelRenderContext context, Vec3 camera);
+        void draw(DihPlatform.SubmitContext context, Vec3 camera);
     }
 
     private ModuleWorldHooks() {
     }
 
     static void install(Module module, Drawer drawer) {
-        LevelRenderEvents.COLLECT_SUBMITS.register(context -> {
+        DihPlatform.onCollectSubmits(context -> {
             try {
                 if (!module.isEnabled() || PackHideState.isActive()) return;
                 Minecraft mc = Minecraft.getInstance();

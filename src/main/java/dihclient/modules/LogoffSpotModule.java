@@ -7,7 +7,6 @@ import dihclient.api.module.DoubleSetting;
 import dihclient.api.module.IntSetting;
 import dihclient.util.DihClientMessaging;
 import dihclient.util.DihScreenProjection;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import dihclient.render.mc.DihRenderTypes;
@@ -186,7 +185,7 @@ public final class LogoffSpotModule extends Module {
         return MC.player.position().distanceToSqr(spot.box().getCenter()) <= max * max;
     }
 
-    private void draw(LevelRenderContext context, Vec3 camera) {
+    private void draw(dihclient.platform.DihPlatform.SubmitContext context, Vec3 camera) {
         if (spots.isEmpty()) return;
         int color = ModuleRenderUtil.color(this, "color", 0xC0FFAA00);
         int fill = ModuleWorldHooks.withAlpha(color, integer("fill-opacity") / 100.0D);
