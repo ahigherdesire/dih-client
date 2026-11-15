@@ -34,10 +34,10 @@
     {
       "id": "leaf-dupe-addon",
       "name": "Leaf Dupe",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": "numberz",
-      "summary": "Universal small-dripleaf dupe with Paper and Grim modes",
-      "description": "Bone meals a small dripleaf and re-breaks a block every cycle to duplicate it. Normal mode for Paper, Grim mode with silent rotations for Grim servers. Detect finds the leaf, shulker and reset block for you. Port of numberz's AUTISM Client addon.",
+      "summary": "Universal small-dripleaf dupe for Spigot and older Paper",
+      "description": "Bone meals an upper-half small dripleaf and re-breaks a block every cycle to duplicate it. Works on Spigot, and on Paper and forks up to 26.1.2 (Paper fixed it in 26.2); not vanilla. Normal and Grim modes, Detect sets it up. Port of numberz's AUTISM Client addon.",
       "apiVersion": 3,
       "license": "MIT",
       "categories": [
@@ -48,9 +48,15 @@
       "files": [
         {
           "minecraft": "26.2",
-          "jar": "https://github.com/ahigherdesire/dih-leaf-dupe/releases/download/v1.0.0/leaf-dupe-addon-1.0.0-26.2.jar",
-          "size": 36281,
-          "sha256": "b190de55534716fa5b0cbda897ad52ee85e0415649c2279342469c2caa417e6e"
+          "jar": "https://github.com/ahigherdesire/dih-leaf-dupe/releases/download/v1.1.0/leaf-dupe-addon-1.1.0-26.2.jar",
+          "size": 36388,
+          "sha256": "61c33025ddc8e6afdf63e04d53e0ba9fa61b571f3f2424f6ecea159e42eac0b3"
+        },
+        {
+          "minecraft": "26.3",
+          "jar": "https://github.com/ahigherdesire/dih-leaf-dupe/releases/download/v1.1.0/leaf-dupe-addon-1.1.0-26.3.jar",
+          "size": 36387,
+          "sha256": "7b18b384935d6064493a34529af548d069a52fee02ff9bc50db068009cd81f4f"
         }
       ]
     }
