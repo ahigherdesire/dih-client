@@ -30,6 +30,29 @@
         }
       ],
       "image": "https://raw.githubusercontent.com/ahigherdesire/dih-dogs-basehunting/main/docs/card.png"
+    },
+    {
+      "id": "leaf-dupe-addon",
+      "name": "Leaf Dupe",
+      "version": "1.0.0",
+      "author": "numberz",
+      "summary": "Universal small-dripleaf dupe with Paper and Grim modes",
+      "description": "Bone meals a small dripleaf and re-breaks a block every cycle to duplicate it. Normal mode for Paper, Grim mode with silent rotations for Grim servers. Detect finds the leaf, shulker and reset block for you. Port of numberz's AUTISM Client addon.",
+      "apiVersion": 3,
+      "license": "MIT",
+      "categories": [
+        "automation",
+        "world"
+      ],
+      "source": "https://github.com/ahigherdesire/dih-leaf-dupe",
+      "files": [
+        {
+          "minecraft": "26.2",
+          "jar": "https://github.com/ahigherdesire/dih-leaf-dupe/releases/download/v1.0.0/leaf-dupe-addon-1.0.0-26.2.jar",
+          "size": 36281,
+          "sha256": "b190de55534716fa5b0cbda897ad52ee85e0415649c2279342469c2caa417e6e"
+        }
+      ]
     }
   ]
 }
