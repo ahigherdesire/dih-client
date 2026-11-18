@@ -53,8 +53,9 @@ public final class ShowRegionCommand extends Command {
         int y1 = IntegerArgumentType.getInteger(ctx, "y1");
         int z1 = IntegerArgumentType.getInteger(ctx, "z1");
         DihRegionHighlight.show(mc.level, x, y, z, x1, y1, z1);
+        dihclient.modules.RegionHighlightRenderer.installRenderHook();
         DihClientMessaging.sendPrefixed("§aHighlighting region §f(" + x + " " + y + " " + z
-            + ") §ato §f(" + x1 + " " + y1 + " " + z1 + ")§a.");
+            + ") §ato §f(" + x1 + " " + y1 + " " + z1 + ")§a. §7First corner §agreen§7, second §6orange§7.");
         return SUCCESS;
     }
 }

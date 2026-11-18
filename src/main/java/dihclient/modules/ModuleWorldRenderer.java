@@ -102,7 +102,7 @@ public final class ModuleWorldRenderer {
     private static boolean pendingEspGhostFill;
     private static boolean pendingEspGhostWire;
     private static AABB pendingEspTpClickBox;
-    private static AABB pendingEspRegionBox;
+    private static dihclient.util.DihRegionHighlight.Region pendingEspRegionBox;
     private static int pendingEspTpClickColor;
     private static boolean pendingEspTpClickFill;
     private static boolean pendingEspTpClickWire;
@@ -297,7 +297,7 @@ public final class ModuleWorldRenderer {
             pendingEspGhostBoxes = List.of();
             pendingGhostCount = 0;
             Minecraft mc = Minecraft.getInstance();
-            AABB regionBox = dihclient.util.DihRegionHighlight.box(mc == null ? null : mc.level);
+            dihclient.util.DihRegionHighlight.Region regionBox = dihclient.util.DihRegionHighlight.region(mc == null ? null : mc.level);
             if (PackHideState.isActive()) return;
             if (mc == null || mc.level == null || mc.player == null || mc.gui.hud.isHidden()) return;
             boolean drawTracers = ModuleRenderUtil.hasWorldTracerWork();
@@ -518,7 +518,7 @@ public final class ModuleWorldRenderer {
         AABB airBox = pendingEspAirBox;
         int airColor = pendingEspAirColor;
         AABB tpClickBox = pendingEspTpClickBox;
-        AABB regionBox = pendingEspRegionBox;
+        dihclient.util.DihRegionHighlight.Region regionBox = pendingEspRegionBox;
         pendingEspRegionBox = null;
         int tpClickColor = pendingEspTpClickColor;
         List<AABB> ghostBoxes = pendingEspGhostBoxes;
@@ -537,7 +537,7 @@ public final class ModuleWorldRenderer {
             xrayFill, xrayWire, storageFill, storageWire, blockFill, blockWire,
             barrierFill, spawnerFill, spawnerWire, xrayFillAlpha);
         if (oreGhosts > 0) renderOreGhosts(pose, bufferSource, oreGhosts, cam);
-        if (storageFill || blockFill || barrierFill || spawnerFill || xrayFill || airFill || tpClickFill || ghostFill || regionBox != null) {
+        if (storageFill || blockFill || barrierFill || spawnerFill || xrayFill || airFill || tpClickFill || ghostFill) {
             VertexConsumer buffer = bufferSource.getBuffer(DihRenderTypes.storageEspFillSeeThrough());
             if (!meshed) {
                 if (xrayFill && xrayFrame != null) xrayFrame.renderFill(pose, buffer, cam, xrayFillAlpha);
@@ -556,10 +556,6 @@ public final class ModuleWorldRenderer {
             }
             if (tpClickFill && tpClickBox != null) {
                 fillBox(pose, buffer, tpClickBox.move(-cam.x, -cam.y, -cam.z), withAlpha(tpClickColor, 0.12F));
-            }
-            if (regionBox != null) {
-                fillBox(pose, buffer, regionBox.move(-cam.x, -cam.y, -cam.z),
-                    withAlpha(dihclient.util.DihRegionHighlight.COLOR, 0.12F));
             }
             if (ghostFill) {
                 int color = withAlpha(ghostColor, 0.15F);
@@ -630,8 +626,14 @@ public final class ModuleWorldRenderer {
                     withAlpha(tpClickColor, 0.80F), 1.5F);
             }
             if (regionBox != null) {
-                renderStorageBox(pose, buffer, regionBox.move(-cam.x, -cam.y, -cam.z),
-                    dihclient.util.DihRegionHighlight.COLOR, 2.0F);
+                // Faint see-through copy only; RegionHighlightRenderer draws the bright, depth-tested
+                // edges on top, so hidden edges read as hidden rather than as near as visible ones.
+                renderStorageBox(pose, buffer, regionBox.box().move(-cam.x, -cam.y, -cam.z),
+                    withAlpha(dihclient.util.DihRegionHighlight.COLOR, 0.28F), 1.0F);
+                renderStorageBox(pose, buffer, RegionHighlightRenderer.cornerBox(regionBox.first()).move(-cam.x, -cam.y, -cam.z),
+                    withAlpha(dihclient.util.DihRegionHighlight.FIRST_CORNER_COLOR, 0.45F), 1.0F);
+                renderStorageBox(pose, buffer, RegionHighlightRenderer.cornerBox(regionBox.second()).move(-cam.x, -cam.y, -cam.z),
+                    withAlpha(dihclient.util.DihRegionHighlight.SECOND_CORNER_COLOR, 0.45F), 1.0F);
             }
             if (ghostWire) {
                 int color = withAlpha(ghostColor, 0.85F);
