@@ -1,12 +1,15 @@
 package dihclient.util;
 
+//? if >=26.2 {
 import com.mojang.blaze3d.IndexType;
 import com.mojang.blaze3d.PrimitiveTopology;
 import com.mojang.blaze3d.buffers.GpuBuffer;
+//?}
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.Model;
 import net.minecraft.client.renderer.OrderedSubmitNodeCollector;
+//? if >=26.2
 import net.minecraft.client.renderer.StagedVertexBuffer;
 import net.minecraft.client.renderer.chunk.ChunkSectionLayer;
 import net.minecraft.client.renderer.rendertype.RenderType;
@@ -51,6 +54,7 @@ public final class DihRender {
         //?}
     }
 
+    //? if >=26.2 {
     /**
      * Draws staged vertices with {@code type}. 26.2's {@code drawFromBuffer} opens its own render pass; 26.3 wants
      * one from the caller, so this opens it on the main render target, as 26.2 did.
@@ -88,7 +92,9 @@ public final class DihRender {
         type.prepare().drawFromBuffer(vertices, indices, indexType, 0, 0, indexCount);
         //?}
     }
+    //?}
 
+    //? if >=26.1 {
     /** {@code info} with another layer and tint index; everything else (shading, emission, sprite) kept. */
     public static BakedQuad.MaterialInfo copyMaterial(BakedQuad.MaterialInfo info, ChunkSectionLayer layer, int tintIndex) {
         //? if >=26.3 {
@@ -99,6 +105,7 @@ public final class DihRender {
             info.lightEmission());
         //?}
     }
+    //?}
 
     /**
      * The face {@code quad} is shaded as, or null when it isn't shaded. 26.2 has a shade flag; 26.3 an optional
@@ -108,9 +115,11 @@ public final class DihRender {
         //? if >=26.3 {
         /*Direction override = quad.materialInfo().shadeDirectionOverride();
         return override != null ? override : quad.direction();
-        *///?} else {
+        *///?} else if >=26.1 {
         return quad.materialInfo().shade() ? quad.direction() : null;
-        //?}
+        //?} else {
+        /*return quad.shade() ? quad.direction() : null;
+        *///?}
     }
 
     /**

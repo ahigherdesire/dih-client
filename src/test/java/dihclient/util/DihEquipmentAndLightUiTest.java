@@ -2,7 +2,7 @@ package dihclient.util;
 
 //? if >=26.3 {
 /*import com.mojang.renderpearl.api.device.DeviceType;
-*///?} else {
+*///?} else if >=26.2 {
 import com.mojang.blaze3d.systems.DeviceType;
 //?}
 import org.junit.jupiter.api.Test;
@@ -50,6 +50,7 @@ class DihEquipmentAndLightUiTest {
         assertEquals("OFF", DihLightUi.next("AUTO", false));
     }
 
+    //? if >=26.2 {
     @Test
     void autoLightUiTargetsWeakHardware() {
         assertTrue(DihLightUi.isWeak(DeviceType.INTEGRATED, 8));
@@ -57,4 +58,5 @@ class DihEquipmentAndLightUiTest {
         assertTrue(DihLightUi.isWeak(DeviceType.DISCRETE, 2));
         assertFalse(DihLightUi.isWeak(DeviceType.DISCRETE, 8));
     }
+    //?}
 }

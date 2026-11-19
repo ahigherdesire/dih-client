@@ -218,6 +218,7 @@ import net.minecraft.world.item.component.UseCooldown;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.scores.DisplaySlot;
+//? if >=26.2
 import net.minecraft.world.scores.TeamColor;
 import org.jspecify.annotations.Nullable;
 
@@ -704,7 +705,7 @@ public final class MultiSession implements MultiMacroHost {
     private record TrackedScore(int score, String display, Optional<NumberFormat> numberFormat) {
     }
 
-    private record ScoreTeam(String prefix, String suffix, Optional<TeamColor> color) {
+    private record ScoreTeam(String prefix, String suffix, Optional<DisplaySlot> colorSlot) {
     }
 
     private record SavedMenu(
@@ -2880,7 +2881,11 @@ public final class MultiSession implements MultiMacroHost {
                 scoreTeams.put(teamName, new ScoreTeam(
                     componentText(parameters.playerPrefix()),
                     componentText(parameters.playerSuffix()),
-                    parameters.color()
+                    //? if >=26.2 {
+                    parameters.color().map(TeamColor::displaySlot)
+                    //?} else {
+                    /*Optional.ofNullable(DisplaySlot.teamColorToSlot(parameters.getColor()))
+                    *///?}
                 ));
             });
             ClientboundSetPlayerTeamPacket.Action playerAction = packet.getPlayerAction();
@@ -5183,8 +5188,8 @@ public final class MultiSession implements MultiMacroHost {
     private String displayedSidebarObjective() {
         String selfName = identity == null || identity.user() == null ? "" : identity.user().getName();
         ScoreTeam team = scoreTeams.get(scoreOwnerTeams.get(selfName));
-        if (team != null && team.color().isPresent()) {
-            String teamObjective = displayedObjectives.get(team.color().get().displaySlot());
+        if (team != null && team.colorSlot().isPresent()) {
+            String teamObjective = displayedObjectives.get(team.colorSlot().get());
             if (teamObjective != null && !teamObjective.isBlank()) return teamObjective;
         }
         return displayedObjectives.getOrDefault(DisplaySlot.SIDEBAR, "");

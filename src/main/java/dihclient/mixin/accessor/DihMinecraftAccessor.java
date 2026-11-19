@@ -5,6 +5,7 @@ import com.mojang.authlib.yggdrasil.ProfileResult;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
 import net.minecraft.client.gui.screens.social.PlayerSocialManager;
+//? if >=26.2
 import net.minecraft.client.gui.screens.social.RemoteFriendListUpdateHandler;
 import net.minecraft.client.multiplayer.ProfileKeyPairManager;
 import net.minecraft.client.multiplayer.chat.report.ReportingContext;
@@ -39,9 +40,11 @@ public interface DihMinecraftAccessor {
     @Accessor("playerSocialManager")
     void dih$setPlayerSocialManager(PlayerSocialManager manager);
 
+    //? if >=26.2 {
     @Mutable
     @Accessor("remoteFriendListUpdateHandler")
     void dih$setRemoteFriendListUpdateHandler(RemoteFriendListUpdateHandler handler);
+    //?}
 
     @Mutable
     @Accessor("reportingContext")

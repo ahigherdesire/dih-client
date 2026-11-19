@@ -21,6 +21,9 @@ stonecutter parameters {
     // Minecraft 26.3 renames, applied as text to the 26.3 builds (and undone when switching the IDE back to 26.2).
     // Keep every entry qualified enough to be unique: a bare word would also rewrite unrelated text on the way back.
     replacements {
+        // Rules for builds OLDER than these sources (26.1, 1.21.11) are not Stonecutter replacements: Stonecutter runs a
+        // replacement backwards on every node where its condition is false, which would rewrite the 26.2/26.3 builds.
+        // They are a one-way pass over the generated sources instead (legacyRewrites in build.fabric.gradle.kts).
         string(current.parsed >= "26.3") {
             // The render API moved from com.mojang.blaze3d to com.mojang.renderpearl.api.
             replace("com.mojang.blaze3d.IndexType", "com.mojang.renderpearl.api.pipeline.IndexType")

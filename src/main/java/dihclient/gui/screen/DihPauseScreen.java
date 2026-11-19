@@ -4,6 +4,7 @@ import dihclient.util.DihScreens;
 import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CommonButtons;
+//? if >=26.2
 import net.minecraft.client.gui.components.FriendsButton;
 import net.minecraft.client.gui.components.SpriteIconButton;
 import net.minecraft.client.gui.components.StringWidget;
@@ -11,11 +12,12 @@ import net.minecraft.client.gui.layouts.FrameLayout;
 import net.minecraft.client.gui.layouts.GridLayout;
 import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.ConfirmLinkScreen;
-//? if <26.3
+//? if >=26.2 && <26.3
 import net.minecraft.client.gui.screens.MultiplayerOptionsScreen;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.achievement.StatsScreen;
 import net.minecraft.client.gui.screens.advancements.AdvancementsScreen;
+//? if >=26.2
 import net.minecraft.client.gui.screens.friends.FriendsOverlayScreen;
 import net.minecraft.client.gui.screens.options.OnlineOptionsScreen;
 import net.minecraft.client.gui.screens.options.OptionsScreen;
@@ -39,6 +41,7 @@ public class DihPauseScreen extends Screen {
     private static final Component PLAYER_REPORTING = Component.translatable("menu.playerReporting");
     private static final Component GAME = Component.translatable("menu.game");
 
+    //? if >=26.2
     private FriendsButton friends;
 
     public DihPauseScreen() {
@@ -81,12 +84,14 @@ public class DihPauseScreen extends Screen {
             .withTootip()
             .build();
         iconButtonRow.addChild(feedbackButton);
+        //? if >=26.2 {
         this.friends = CommonButtons.friends(
             20,
             b -> OnlineOptionsScreen.confirmFriendsListEnabled(this.minecraft, () -> this.minecraft.gui.setScreen(new FriendsOverlayScreen(this)), this),
             !this.minecraft.isDemo()
         );
         iconButtonRow.addChild(this.friends);
+        //?}
         SpriteIconButton playerReportingButton = SpriteIconButton.builder(PLAYER_REPORTING, b -> this.minecraft.gui.setScreen(new SocialInteractionsScreen(this)), true)
             .width(20)
             .sprite(Identifier.withDefaultNamespace("pause_menu/player_reporting"), 15, 15)
@@ -100,9 +105,12 @@ public class DihPauseScreen extends Screen {
             //? if >=26.3 {
             /*helper.addChild(openScreenButton(MULTIPLAYER_OPTIONS,
                 () -> new net.minecraft.client.gui.screens.options.OnlineOptionsScreen(this, this.minecraft.options)));
-            *///?} else {
+            *///?} else if >=26.2 {
             helper.addChild(openScreenButton(MULTIPLAYER_OPTIONS, () -> new MultiplayerOptionsScreen(this)));
-            //?}
+            //?} else {
+            /*helper.addChild(openScreenButton(Component.translatable("menu.shareToLan"),
+                () -> new net.minecraft.client.gui.screens.ShareToLanScreen(this)));
+            *///?}
         } else {
             helper.addChild(Button.builder(OPTIONS, b -> this.minecraft.gui.setScreen(DihScreens.options(this, this.minecraft.options, true))).width(204).build(), 2);
         }
@@ -123,6 +131,7 @@ public class DihPauseScreen extends Screen {
 
     @Override
     public void tick() {
+        //? if >=26.2
         if (this.friends != null) this.friends.refreshIncomingRequestCount();
     }
 

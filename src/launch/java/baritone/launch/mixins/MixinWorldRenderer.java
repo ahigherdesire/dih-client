@@ -56,6 +56,13 @@ public class MixinWorldRenderer {
         final DeltaTracker deltaTracker = net.minecraft.client.Minecraft.getInstance().getDeltaTracker();
         if (cameraState == null || cameraState.pos == null) return;
         final Matrix4fc positionMatrix = cameraState.viewRotationMatrix;
+    *///?} else if <26.1 {
+    /*// 1.21.11: renderLevel takes the camera and its matrices directly.
+    @Inject(method = "renderLevel", at = @At("RETURN"))
+    private void baritone$renderPass(GraphicsResourceAllocator allocator, DeltaTracker deltaTracker, boolean renderBlockOutline,
+        net.minecraft.client.Camera camera, org.joml.Matrix4f positionMatrix, org.joml.Matrix4f projectionMatrix,
+        org.joml.Matrix4f cullingProjectionMatrix, GpuBufferSlice fog, Vector4f fogColor, boolean renderSky, CallbackInfo ci) {
+        if (camera == null) return;
     *///?} else {
     @Inject(
             method = "render(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;Lnet/minecraft/client/DeltaTracker;ZLnet/minecraft/client/renderer/state/level/CameraRenderState;Lorg/joml/Matrix4fc;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lorg/joml/Vector4f;Z)V",
@@ -64,7 +71,10 @@ public class MixinWorldRenderer {
     private void baritone$renderPass(final GraphicsResourceAllocator allocator, final DeltaTracker deltaTracker,
                                      final boolean renderBlockOutline, final CameraRenderState cameraState,
                                      final Matrix4fc positionMatrix, final GpuBufferSlice fog, final Vector4f fogColor,
-                                     final boolean renderSky, final CallbackInfo ci) {
+                                     final boolean renderSky,
+                                     //? if <26.2
+                                     /*final net.minecraft.client.renderer.chunk.ChunkSectionsToRender sections,*/
+                                     final CallbackInfo ci) {
         if (cameraState == null || cameraState.pos == null) return;
     //?}
         BaritoneRenderBuffer.begin();

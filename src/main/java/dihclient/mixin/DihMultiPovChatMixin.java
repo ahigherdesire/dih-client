@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+//? if >=26.1 {
 import dihclient.util.multi.MultiPovChat;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.multiplayer.chat.GuiMessageSource;
@@ -56,3 +57,11 @@ public class DihMultiPovChatMixin {
         MultiPovChat.endRenderedClientMutation((ChatComponent) (Object) this, state);
     }
 }
+//?} else {
+/*import org.spongepowered.asm.mixin.Mixin;
+
+// Minecraft 1.21.11 has no target for this mixin; it is skipped there (DihMixinPlugin) and kept empty.
+@Mixin(net.minecraft.client.Minecraft.class)
+public abstract class DihMultiPovChatMixin {
+}
+*///?}

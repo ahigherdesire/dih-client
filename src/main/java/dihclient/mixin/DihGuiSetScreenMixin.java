@@ -20,11 +20,17 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+//? if >=26.2 {
 @Mixin(Gui.class)
+//?} else {
+/*@Mixin(Minecraft.class)
+*///?}
 public class DihGuiSetScreenMixin {
+    //? if >=26.2 {
     @Shadow
     @Final
     private Minecraft minecraft;
+    //?}
 
     @Unique
     private boolean dih$replacingScreen;
@@ -73,7 +79,11 @@ public class DihGuiSetScreenMixin {
     private void dih$setScreen(Screen screen) {
         dih$replacingScreen = true;
         try {
+            //? if >=26.2 {
             minecraft.gui.setScreen(screen);
+            //?} else {
+            /*((Minecraft) (Object) this).setScreen(screen);
+            *///?}
         } finally {
             dih$replacingScreen = false;
         }

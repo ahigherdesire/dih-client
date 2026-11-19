@@ -77,13 +77,24 @@ public class MixinMinecraft {
     // passEvents), so Baritone would stop ticking whenever a furnace, chest or chat screen is open.
     // Keep this required (no require = 0): if it ever drifts again it must fail loudly, not silently
     // disable all of Baritone.
+    // MC 26.1: overlay is still a field; the matching read is the third one after missTime (the first two tick
+    // the overlay).
     @Inject(
             method = "tick",
+            //? if >=26.2 {
             at = @At(
                     value = "INVOKE",
                     target = "Lnet/minecraft/client/gui/Gui;overlay()Lnet/minecraft/client/gui/screens/Overlay;",
                     ordinal = 0
             ),
+            //?} else {
+            /*at = @At(
+                    value = "FIELD",
+                    opcode = Opcodes.GETFIELD,
+                    target = "Lnet/minecraft/client/Minecraft;overlay:Lnet/minecraft/client/gui/screens/Overlay;",
+                    ordinal = 2
+            ),
+            *///?}
             slice = @Slice(
                     from = @At(
                             value = "FIELD",
@@ -180,6 +191,7 @@ public class MixinMinecraft {
     // slice reads it right before the "Keybindings" profiler constant; disambiguate from the earlier
     // Gui.screen() call (near Gui.tick()) by slicing from Gui.overlay(). require = 0 keeps the mod
     // loadable if this injection point drifts again — the feature just no-ops until re-derived.
+    //? if >=26.2 {
     @Redirect(
             method = "tick",
             require = 0,
@@ -192,18 +204,43 @@ public class MixinMinecraft {
                             value = "INVOKE",
                             target = "Lnet/minecraft/client/gui/Gui;overlay()Lnet/minecraft/client/gui/screens/Overlay;"
                     ),
+    //?} else {
+    /*@Redirect(
+            method = "tick",
+            require = 0,
+            at = @At(
+                    value = "FIELD",
+                    opcode = Opcodes.GETFIELD,
+                    target = "Lnet/minecraft/client/Minecraft;screen:Lnet/minecraft/client/gui/screens/Screen;"
+            ),
+            slice = @Slice(
+                    from = @At(
+                            value = "FIELD",
+                            opcode = Opcodes.GETFIELD,
+                            target = "Lnet/minecraft/client/Minecraft;overlay:Lnet/minecraft/client/gui/screens/Overlay;",
+                            ordinal = 2
+                    ),
+    *///?}
                     to = @At(
                             value = "CONSTANT",
                             args = "stringValue=Keybindings"
                     )
             )
     )
+    //? if >=26.2 {
     private Screen passEvents(Gui instance) {
+    //?} else {
+    /*private Screen passEvents(Minecraft instance) {
+    *///?}
         // allow user input is only the primary baritone
         if (BaritoneAPI.getProvider().getPrimaryBaritone().getPathingBehavior().isPathing() && player != null) {
             return null;
         }
+        //? if >=26.2 {
         return instance.screen();
+        //?} else {
+        /*return instance.screen;
+        *///?}
     }
 
     // ── Chest content memory ─────────────────────────────────────────────────
@@ -220,7 +257,11 @@ public class MixinMinecraft {
 
     // MC 26.2: Minecraft.setScreen(Screen) was renamed to setScreenAndShow(Screen), and the current
     // screen moved to Gui.screen().
+    //? if >=26.2 {
     @Inject(method = "setScreenAndShow", at = @At("HEAD"), require = 0)
+    //?} else {
+    /*@Inject(method = "setScreen", at = @At("HEAD"), require = 0)
+    *///?}
     private void onSetScreen(Screen newScreen, CallbackInfo ci) {
         Minecraft mc  = Minecraft.getInstance();
         Screen    old = mc.gui.screen();

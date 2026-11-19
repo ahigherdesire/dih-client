@@ -9,6 +9,8 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 
 @Mixin(ChatComponent.class)
 public class DihChatComponentCensorMixin {
+    // 1.21.11 has only addMessage (the fallback below), not the 26.1 per-source entry points.
+    //? if >=26.1 {
     @ModifyVariable(method = "addClientSystemMessage", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private Component dih$censorClientSystemChat(Component component) {
         return NameCensorModule.censorComponent(component);
@@ -23,6 +25,7 @@ public class DihChatComponentCensorMixin {
     private Component dih$censorPlayerChat(Component component) {
         return NameCensorModule.censorServerComponent(component);
     }
+    //?}
 
     @ModifyVariable(method = "addMessage", at = @At("HEAD"), argsOnly = true, ordinal = 0, require = 0)
     private Component dih$censorPrivateChatFallback(Component component) {

@@ -31,8 +31,10 @@ public class DihEntityNameTagMixin {
         if (state.nameTag != null && !DihComponentSanity.isSafe(state.nameTag)) {
             state.nameTag = Component.literal("[unsafe name removed]").withStyle(ChatFormatting.DARK_GRAY);
         }
+        //? if >=26.1 {
         if (state.scoreText != null && !DihComponentSanity.isSafe(state.scoreText)) {
             state.scoreText = Component.literal("[unsafe score removed]").withStyle(ChatFormatting.DARK_GRAY);
         }
+        //?}
     }
 }

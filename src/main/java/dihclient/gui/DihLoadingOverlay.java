@@ -112,6 +112,7 @@ public class DihLoadingOverlay extends LoadingOverlay {
             UiRenderer.rect(graphics, UiBounds.of(0, 0, width, height), replaceAlpha(BG_COLOR, alpha));
             logoAlpha = Mth.clamp(fadeInAnim, 0.0F, 1.0F);
         } else {
+            //? if >=26.1
             this.dih$minecraft.gameRenderer.gameRenderState().guiRenderState.clearColorOverride = colorVector(BG_COLOR);
             logoAlpha = 1.0F;
         }

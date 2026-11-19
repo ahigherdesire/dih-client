@@ -21,6 +21,7 @@ public class DihEntityMovementMixin {
         return ModuleMovementUtil.onPlayerMove((Entity) (Object) this, type, movement);
     }
 
+    //? if >=26.2 {
     @Redirect(
         method = "getBlockBounciness",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/world/level/block/Block;getBounceRestitution()F")
@@ -33,6 +34,7 @@ public class DihEntityMovementMixin {
         }
         return block.getBounceRestitution();
     }
+    //?}
 
     @Inject(method = "turn", at = @At("HEAD"), cancellable = true)
     private void dih$freecamTurn(double deltaYaw, double deltaPitch, CallbackInfo ci) {

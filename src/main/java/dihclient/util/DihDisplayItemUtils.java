@@ -31,6 +31,10 @@ public final class DihDisplayItemUtils {
             .set(DataComponents.ITEM_MODEL, model)
             .set(DataComponents.ITEM_NAME, Component.translatable(item.getDescriptionId()))
             .build();
+        //? if >=26.1 {
         return Holder.direct(item, components);
+        //?} else {
+        /*return Holder.direct(item);
+        *///?}
     }
 }

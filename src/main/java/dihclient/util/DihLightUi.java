@@ -3,10 +3,12 @@ package dihclient.util;
 //? if >=26.3 {
 /*import com.mojang.renderpearl.api.device.DeviceType;
 import com.mojang.renderpearl.api.device.GpuDevice;
-*///?} else {
+*///?} else if >=26.2 {
 import com.mojang.blaze3d.systems.DeviceType;
 import com.mojang.blaze3d.systems.GpuDevice;
-//?}
+//?} else {
+/*import com.mojang.blaze3d.systems.GpuDevice;
+*///?}
 import com.mojang.blaze3d.systems.RenderSystem;
 
 import java.util.List;
@@ -71,7 +73,14 @@ public final class DihLightUi {
         if (device == null) return false;
         boolean weak;
         try {
+            //? if >=26.2 {
             weak = isWeak(device.getDeviceInfo().type(), Runtime.getRuntime().availableProcessors());
+            //?} else {
+            /*// 26.1 has no device type; judge integrated / software renderers by name.
+            String renderer = (device.getVendor() + " " + device.getRenderer()).toLowerCase(java.util.Locale.ROOT);
+            weak = renderer.contains("intel") || renderer.contains("llvmpipe") || renderer.contains("swiftshader")
+                || renderer.contains("basic render") || Runtime.getRuntime().availableProcessors() <= 2;
+            *///?}
         } catch (Throwable t) {
             weak = false;
         }
@@ -79,7 +88,9 @@ public final class DihLightUi {
         return weak;
     }
 
+    //? if >=26.2 {
     static boolean isWeak(DeviceType type, int cores) {
         return type == DeviceType.INTEGRATED || type == DeviceType.CPU || type == DeviceType.VIRTUAL || cores <= 2;
     }
+    //?}
 }

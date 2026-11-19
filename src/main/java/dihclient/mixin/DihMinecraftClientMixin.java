@@ -41,7 +41,24 @@ import java.util.Optional;
 import java.util.function.Consumer;
 
 @Mixin(Minecraft.class)
+//? if >=26.1 {
 public class DihMinecraftClientMixin {
+//?} else {
+/*public class DihMinecraftClientMixin implements dihclient.util.DihPickHooks {
+    // 1.21.11 picks in GameRenderer.pick; DihGameRendererPickMixin calls these around it.
+    @Override
+    public void dih$pickHead(float partialTicks) {
+        dih$remoteViewPickHead(partialTicks, null);
+        dih$freecamPickHead(partialTicks, null);
+    }
+
+    @Override
+    public void dih$pickReturn(float partialTicks) {
+        dih$remoteViewPickReturn(partialTicks, null);
+        dih$freecamPickReturn(partialTicks, null);
+        dih$multiPovAuthoritativePick(partialTicks, null);
+    }
+*///?}
     @Unique
     private static final String PACKUTIL_WINDOW_TITLE = DihWindowBranding.WINDOW_TITLE;
 
@@ -55,11 +72,13 @@ public class DihMinecraftClientMixin {
     @Unique private float dih$fcYRot, dih$fcXRot, dih$fcYRotO, dih$fcXRotO;
     @Unique private Entity dih$remoteViewPickCamera;
 
+    //? if >=26.1
     @Inject(method = "pick", at = @At("HEAD"))
     private void dih$remoteViewPickHead(float partialTicks, CallbackInfo ci) {
         dih$remoteViewPickCamera = dihclient.util.DihRemoteView.beginMainPlayerPick((Minecraft) (Object) this);
     }
 
+    //? if >=26.1
     @Inject(method = "pick", at = @At("RETURN"))
     private void dih$remoteViewPickReturn(float partialTicks, CallbackInfo ci) {
         Entity restore = dih$remoteViewPickCamera;
@@ -73,6 +92,7 @@ public class DihMinecraftClientMixin {
         if (multi != null) multi.shutdown();
     }
 
+    //? if >=26.1
     @Inject(method = "pick", at = @At("HEAD"))
     private void dih$freecamPickHead(float partialTicks, CallbackInfo ci) {
         if (!PackFreecamState.isActive() || !PackFreecamState.interactEnabled()) return;
@@ -96,6 +116,7 @@ public class DihMinecraftClientMixin {
         dih$freecamPickSwapped = true;
     }
 
+    //? if >=26.1
     @Inject(method = "pick", at = @At("RETURN"))
     private void dih$freecamPickReturn(float partialTicks, CallbackInfo ci) {
         if (!dih$freecamPickSwapped) return;
@@ -108,6 +129,7 @@ public class DihMinecraftClientMixin {
         cam.yRotO = dih$fcYRotO; cam.xRotO = dih$fcXRotO;
     }
 
+    //? if >=26.1
     @Inject(method = "pick", at = @At("RETURN"))
     private void dih$multiPovAuthoritativePick(float partialTicks, CallbackInfo ci) {
         if (!MultiPilot.isActive()) return;

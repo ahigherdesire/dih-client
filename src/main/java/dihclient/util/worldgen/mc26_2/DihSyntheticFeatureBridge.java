@@ -18,8 +18,9 @@ import net.minecraft.world.level.levelgen.Heightmap;
 //? if <26.3 {
 import net.minecraft.world.level.levelgen.feature.FeaturePlaceContext;
 import net.minecraft.world.level.levelgen.feature.FossilFeatureConfiguration;
-import net.minecraft.world.level.levelgen.feature.configurations.TemplateFeatureConfiguration;
 //?}
+//? if >=26.2 && <26.3
+import net.minecraft.world.level.levelgen.feature.configurations.TemplateFeatureConfiguration;
 import net.minecraft.world.level.levelgen.feature.treedecorators.TreeDecorator;
 import net.minecraft.world.level.levelgen.structure.BoundingBox;
 import net.minecraft.world.level.levelgen.structure.templatesystem.StructurePlaceSettings;
@@ -97,6 +98,9 @@ public final class DihSyntheticFeatureBridge {
         return count.intValue();
     }
 
+    //?}
+
+    //? if >=26.2 && <26.3 {
     public static boolean placeTemplate(FeaturePlaceContext<TemplateFeatureConfiguration> context,
                                         DihSyntheticLevel synthetic) {
         RandomSource random = context.random();

@@ -37,6 +37,7 @@ import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundPlayerInputPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCommandBlockPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCreativeModeSlotPacket;
+//? if >=26.1
 import net.minecraft.network.protocol.game.ServerboundSetGameRulePacket;
 import net.minecraft.network.protocol.game.ServerboundSeenAdvancementsPacket;
 import net.minecraft.network.protocol.game.ServerboundSelectBundleItemPacket;
@@ -443,10 +444,12 @@ public final class DihPacketArgumentBuilder {
                     boolArg(args, false, "automatic")
                 ), "typed constructor");
             }
+            //? if >=26.1 {
             if (packetClass == ServerboundSetGameRulePacket.class) {
                 requireOnly(args, "entries", "rules", "rule", "value");
                 return Result.ok(new ServerboundSetGameRulePacket(gameRuleEntries(args)), "typed constructor");
             }
+            //?}
             if (packetClass == ServerboundSeenAdvancementsPacket.class) {
                 requireOnly(args, "action", "tab");
                 ServerboundSeenAdvancementsPacket.Action action = enumArg(ServerboundSeenAdvancementsPacket.Action.class, args, "action");
@@ -737,6 +740,7 @@ public final class DihPacketArgumentBuilder {
         if (packetClass == ServerboundContainerClickPacket.class) return List.of("slot", "input", "button", "containerId", "stateId", "changed", "carried");
         if (packetClass == ServerboundSignUpdatePacket.class) return List.of("pos", "front", "lines", "line0", "line1", "line2", "line3");
         if (packetClass == ServerboundEditBookPacket.class) return List.of("slot", "pages", "title");
+        //? if >=26.1
         if (packetClass == ServerboundSetGameRulePacket.class) return List.of("rule", "value", "entries");
         if (packetClass == ServerboundSetCreativeModeSlotPacket.class) return List.of("slot", "item");
         if (packetClass == ServerboundPlayerInputPacket.class) return List.of("forward", "backward", "left", "right", "jump", "shift", "sprint");
@@ -878,6 +882,7 @@ public final class DihPacketArgumentBuilder {
         if (packetClass == ServerboundEditBookPacket.class) return List.of(prefix + "slot=0 pages=\"page one|page two\" title=\"title\"");
         if (packetClass == ServerboundSignUpdatePacket.class) return List.of(prefix + "pos=0,64,0 lines=\"one|two|three|four\"");
         if (packetClass == ServerboundSetCreativeModeSlotPacket.class) return List.of(prefix + "slot=0 item=held", prefix + "slot=0 item=empty");
+        //? if >=26.1
         if (packetClass == ServerboundSetGameRulePacket.class) return List.of(prefix + "rule=doDaylightCycle value=false");
         if (packetClass == ServerboundCustomPayloadPacket.class) return List.of(prefix + "brand=vanilla");
         if (packetClass == ServerboundMoveVehiclePacket.class) return List.of(prefix + "dry", prefix + "pos=current yaw=current pitch=current");
@@ -1248,6 +1253,7 @@ public final class DihPacketArgumentBuilder {
         return value == null || isNone(value) ? Optional.empty() : Optional.of(value);
     }
 
+    //? if >=26.1 {
     private static List<ServerboundSetGameRulePacket.Entry> gameRuleEntries(Map<String, String> args) {
         String packed = firstArg(args, "entries", "rules");
         if (packed == null) {
@@ -1265,6 +1271,7 @@ public final class DihPacketArgumentBuilder {
         }
         return List.copyOf(entries);
     }
+    //?}
 
     private static Identifier parseIdentifierDefault(String value) {
         return value.contains(":") ? Identifier.parse(value) : Identifier.withDefaultNamespace(value);

@@ -1,4 +1,4 @@
-# Builds the Fabric, NeoForge and Forge jars on every push to beta. When the push brings a mod-version with no
+# Builds the Fabric, NeoForge and Forge jars (plus Fabric-only jars for older Minecraft) on every push to beta. When the push brings a mod-version with no
 # release yet (gradle/libs.versions.toml), it publishes them as release v<version>, creating the tag, with the
 # notes from .github/release-notes/<version>.md. A pushed v* tag publishes that tag the same way.
 # Versions with a hyphen (5.1-beta.2) become pre-releases, which the in-game update checker ignores.
@@ -15,6 +15,8 @@ permissions:
 
 env:
   MC_VERSIONS: "26.2 26.3"
+  # Older Minecraft versions built for Fabric only.
+  FABRIC_ONLY_VERSIONS: "1.21.11 26.1.2"
   # Fabric jars have no loader suffix; the others end in -neoforge / -forge.
   LOADERS: "fabric neoforge forge"
 
@@ -38,6 +40,7 @@ jobs:
           for mc in $MC_VERSIONS; do
             for loader in $LOADERS; do tasks="$tasks :$mc-$loader:build"; done
           done
+          for mc in $FABRIC_ONLY_VERSIONS; do tasks="$tasks :$mc-fabric:build"; done
           ./gradlew $tasks -Prelease --console=plain 2>&1 | tee build.log
 
       - name: Report build errors
@@ -63,6 +66,14 @@ jobs:
               printf -- '- `%s` `%s`\n' "$name" "$sha" >> sha256.md
               echo "$name  $(stat -c %s "dist/$name") bytes  sha256 $sha" >> "$GITHUB_STEP_SUMMARY"
             done
+          done
+          for mc in $FABRIC_ONLY_VERSIONS; do
+            name="DIH-Client-$version-$mc.jar"
+            cp "versions/$mc-fabric/build/libs/DIH Client-$version-$mc.jar" "dist/$name"
+            sha=$(sha256sum "dist/$name" | cut -d' ' -f1)
+            printf -- '- `%s` `%s`
+' "$name" "$sha" >> sha256.md
+            echo "$name  $(stat -c %s "dist/$name") bytes  sha256 $sha" >> "$GITHUB_STEP_SUMMARY"
           done
           echo "version=$version" >> "$GITHUB_OUTPUT"
 

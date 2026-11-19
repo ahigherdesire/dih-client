@@ -12,7 +12,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(GameRenderer.class)
 public abstract class DihNoRenderHurtcamMixin {
     @Inject(method = "bobHurt", at = @At("HEAD"), cancellable = true, require = 0)
+    //? if >=26.1 {
     private void dih$noHurtcam(CameraRenderState cameraState, PoseStack poseStack, CallbackInfo ci) {
+    //?} else {
+    /*private void dih$noHurtcam(PoseStack poseStack, float partialTicks, CallbackInfo ci) {
+    *///?}
         if (NoRenderState.noHurtcam()) {
             ci.cancel();
         }

@@ -30,6 +30,7 @@ public abstract class DihNoRenderFogMixin {
         data.renderDistanceEnd = 2.0e7F;
         data.skyEnd = 2.0e7F;
         data.cloudEnd = 2.0e7F;
+        //? if >=26.1
         if (data.color != null) data.color.w = 0.0F;
     }
 

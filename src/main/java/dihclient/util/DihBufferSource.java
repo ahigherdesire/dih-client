@@ -1,5 +1,6 @@
 package dihclient.util;
 
+//? if >=26.2 {
 import java.util.ArrayList;
 import java.util.List;
 
@@ -84,3 +85,56 @@ public final class DihBufferSource implements AutoCloseable {
         }
     }
 }
+//?} else {
+/*import com.mojang.blaze3d.vertex.ByteBufferBuilder;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.rendertype.RenderType;
+
+// 26.1: no StagedVertexBuffer yet, so this batches through vanilla's immediate buffer source.
+public final class DihBufferSource implements AutoCloseable {
+    private final ByteBufferBuilder byteBuffer;
+    private final MultiBufferSource.BufferSource source;
+
+    public DihBufferSource() {
+        this(RenderType.BIG_BUFFER_SIZE);
+    }
+
+    public DihBufferSource(int bufferSize) {
+        byteBuffer = new ByteBufferBuilder(bufferSize);
+        source = MultiBufferSource.immediate(byteBuffer);
+    }
+
+    public VertexConsumer getBuffer(RenderType renderType) {
+        return source.getBuffer(renderType);
+    }
+
+    public void uploadAndDraw() {
+        source.endBatch();
+    }
+
+    @Override
+    public void close() {
+        byteBuffer.close();
+    }
+
+    public static final class Holder {
+        private final int bufferSize;
+        private DihBufferSource source;
+
+        public Holder(int bufferSize) {
+            this.bufferSize = bufferSize;
+        }
+
+        public DihBufferSource get() {
+            DihBufferSource current = source;
+            if (current == null) {
+                current = new DihBufferSource(bufferSize);
+                source = current;
+            }
+            return current;
+        }
+    }
+}
+*///?}

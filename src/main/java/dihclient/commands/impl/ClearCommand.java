@@ -13,7 +13,7 @@ public class ClearCommand extends Command {
     public void build(LiteralArgumentBuilder<DihCommandSource> root) {
         root.executes(ctx -> {
             Minecraft mc = Minecraft.getInstance();
-            if (mc.gui == null || mc.gui.hud == null || mc.gui.hud.getChat() == null) {
+            if (mc.gui == null /*? if >=26.2 {*/|| mc.gui.hud == null/*?}*/ || mc.gui.hud.getChat() == null) {
                 DihClientMessaging.sendPrefixed("§cChat unavailable.");
                 return SUCCESS;
             }

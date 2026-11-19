@@ -1,5 +1,6 @@
 package dihclient.mixin.accessor;
 
+//? if >=26.2
 import net.minecraft.client.CommandHistory;
 import net.minecraft.client.gui.components.ChatComponent;
 import net.minecraft.client.multiplayer.chat.GuiMessage;
@@ -14,8 +15,10 @@ public interface DihChatComponentAccessor {
     @Accessor("allMessages")
     List<GuiMessage> dih$getAllMessages();
 
+    //? if >=26.2 {
     @Accessor("commandHistory")
     CommandHistory dih$getCommandHistory();
+    //?}
 
     @Invoker("refreshTrimmedMessages")
     void dih$refreshTrimmedMessages();

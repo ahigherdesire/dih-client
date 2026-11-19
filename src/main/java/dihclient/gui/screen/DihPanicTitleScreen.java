@@ -6,6 +6,7 @@ import net.minecraft.SharedConstants;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.CommonButtons;
+//? if >=26.2
 import net.minecraft.client.gui.components.FriendsButton;
 import net.minecraft.client.gui.components.LogoRenderer;
 import net.minecraft.client.gui.components.PlainTextButton;
@@ -14,6 +15,7 @@ import net.minecraft.client.gui.components.SpriteIconButton;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.CreditsAndAttributionScreen;
 import net.minecraft.client.gui.screens.Screen;
+//? if >=26.2
 import net.minecraft.client.gui.screens.friends.FriendsOverlayScreen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.multiplayer.SafetyScreen;
@@ -41,6 +43,7 @@ public final class DihPanicTitleScreen extends Screen {
     private final LogoRenderer vanillaLogo = new LogoRenderer(false);
     private SplashRenderer vanillaSplash;
     private boolean vanillaSplashChosen;
+    //? if >=26.2
     private FriendsButton friends;
 
     public DihPanicTitleScreen() {
@@ -72,11 +75,13 @@ public final class DihPanicTitleScreen extends Screen {
             .bounds(this.width / 2 - 100, realmsY, 200, 20).tooltip(tooltip).build()).active = multiplayerAllowed;
 
         int iconRowY = realmsY + spacing;
+        //? if >=26.2 {
         boolean friendsAvailable = !this.minecraft.isDemo();
         this.friends = this.addRenderableWidget(CommonButtons.friends(20,
             b -> OnlineOptionsScreen.confirmFriendsListEnabled(this.minecraft,
                 () -> this.minecraft.gui.setScreen(new FriendsOverlayScreen(this)), this), friendsAvailable));
         this.friends.setPosition(horizontalPosition(1, 3, 20), iconRowY);
+        //?}
         SpriteIconButton language = this.addRenderableWidget(CommonButtons.language(20,
             b -> this.minecraft.gui.setScreen(new LanguageSelectScreen(this, this.minecraft.options, this.minecraft.getLanguageManager())), true));
         language.setPosition(horizontalPosition(2, 3, 20), iconRowY);
@@ -103,6 +108,7 @@ public final class DihPanicTitleScreen extends Screen {
 
     @Override
     public void tick() {
+        //? if >=26.2
         if (this.friends != null) this.friends.refreshIncomingRequestCount();
     }
 

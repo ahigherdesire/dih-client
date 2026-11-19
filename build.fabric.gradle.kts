@@ -50,9 +50,300 @@ plugins {
     `maven-publish`
 }
 
+// Obfuscated Minecraft (1.21.11) builds through build.fabric-remap.gradle.kts, this script with Loom's remapping
+// plugin: Mojang mappings, mod jars on the mod* configurations, and a remapJar step producing the release jar.
+val remapped: Boolean = plugins.hasPlugin("net.fabricmc.fabric-loom-remap")
+
 // Stonecutter node (versions/<mc>-<fabric>): its Minecraft version and dependency versions.
 val mcVersion: String = sc.current.version
 fun dep(key: String): String = sc.properties["deps.$key"]
+
+// Minecraft versions older than the sources (26.1, 1.21.11) get a one-way text pass over Stonecutter's generated
+// sources, for renames too common to wrap in //? blocks. Stonecutter's own replacements can't do this: it runs them
+// backwards on every node where their condition is false. Rules apply in order (more specific first) to every
+// node whose Minecraft version is below the rule's `below` version.
+fun mcVersionParts(v: String): List<Int> = v.split('.', '-').mapNotNull { it.toIntOrNull() }
+fun mcBelow(limit: String): Boolean {
+    val a = mcVersionParts(mcVersion)
+    val b = mcVersionParts(limit)
+    for (i in 0 until maxOf(a.size, b.size)) {
+        val x = a.getOrElse(i) { 0 }
+        val y = b.getOrElse(i) { 0 }
+        if (x != y) return x < y
+    }
+    return false
+}
+// Java the jar targets: Minecraft 1.21.11 ships with (and players run it on) Java 21; 26.1+ needs Java 25.
+val javaRelease: Int = if (mcBelow("26.1")) 21 else 25
+
+// `files` limits a rule to the generated sources whose path ends with one of those names.
+class LegacyRewrite(val below: String, val from: String, val to: String, val regex: Boolean = false,
+                    val files: List<String> = emptyList())
+val legacyRewrites: List<LegacyRewrite> = buildList {
+    fun str(below: String, from: String, to: String, vararg files: String) = add(LegacyRewrite(below, from, to, files = files.toList()))
+    fun rx(below: String, from: String, to: String, vararg files: String) = add(LegacyRewrite(below, from, to, true, files.toList()))
+
+    // --- Before 26.1 (Java 21 runtime) ---
+    str("26.1", "\"java\": \">=25\"", "\"java\": \">=21\"")
+    str("26.1", "\"compatibilityLevel\": \"JAVA_25\"", "\"compatibilityLevel\": \"JAVA_21\"")
+
+    // --- Before 26.2 ---
+    // Screen/overlay/toast/chat state lived on Minecraft, and the in-game HUD was Gui itself (26.2: Gui + Gui.hud).
+    str("26.2", ".gui.hud.isHidden()", ".options.hideGui")
+    str("26.2", ".gui.hud.toggle()", ".options.hideGui ^= true")
+    str("26.2", ".gui.hud.", ".gui.")
+    str("26.2", ".gui.screen()", ".screen")
+    str("26.2", ".gui.setScreen(", ".setScreen(")
+    str("26.2", ".gui.overlay()", ".getOverlay()")
+    str("26.2", ".gui.setOverlay(", ".setOverlay(")
+    str("26.2", ".gui.toastManager()", ".getToastManager()")
+    str("26.2", ".gui.chatListener()", ".getChatListener()")
+    str("26.2", "import net.minecraft.client.gui.Hud;", "import net.minecraft.client.gui.Gui;")
+    str("26.2", "@Mixin(Hud.class)", "@Mixin(Gui.class)")
+    // Record-style getters that were still get-prefixed, and other small renames.
+    str("26.2", ".panorama().extractRenderState(graphics, this.width, this.height)",
+        ".getPanorama().extractRenderState(graphics, this.width, this.height, true)")
+    str("26.2", ".panorama()", ".getPanorama()")
+    str("26.2", ".mainCamera()", ".getMainCamera()")
+    str("26.2", ".gameRenderState()", ".getGameRenderState()")
+    str("26.2", "MC.levelExtractor", "MC.levelRenderer")
+    str("26.2", ".levelRenderer.resetLevelRenderData()", ".levelRenderer.allChanged()")
+    str("26.2", "parameters.displayName()", "parameters.getDisplayName()")
+    str("26.2", "parameters.playerPrefix()", "parameters.getPlayerPrefix()")
+    str("26.2", "parameters.playerSuffix()", "parameters.getPlayerSuffix()")
+    str("26.2", ".LIGHTNING_ROD.weathering().unaffected()", ".LIGHTNING_ROD")
+    str("26.2", "public boolean isPausing()", "public boolean isPauseScreen()")
+    str("26.2", ".markPosForPostProcessing(", ".markPosForPostprocessing(")
+    // EntityTypes / BlockEntityTypes were the holder classes themselves.
+    str("26.2", "EntityTypes;", "EntityType;")
+    str("26.2", "EntityTypes.", "EntityType.")
+    // The 16 bed / dyed shulker box blocks were separate fields (26.2: ColorCollections).
+    val colors = listOf("white", "orange", "magenta", "lightBlue", "yellow", "lime", "pink", "gray",
+        "lightGray", "cyan", "purple", "blue", "brown", "green", "red", "black")
+    fun upper(c: String) = c.replace(Regex("([A-Z])"), "_$1").uppercase()
+    for (c in colors) {
+        str("26.2", "Blocks.BED.$c()", "Blocks.${upper(c)}_BED")
+        str("26.2", "Blocks.DYED_SHULKER_BOX.$c()", "Blocks.${upper(c)}_SHULKER_BOX")
+    }
+    str("26.2", "Blocks.BED.asList()", "List.of(" + colors.joinToString(", ") { "Blocks.${upper(it)}_BED" } + ")")
+    // Render API: a pipeline took one vertex format + mode (26.2: bindings + topology); PrimitiveTopology/IndexType
+    // were VertexFormat.Mode/IndexType, GpuFormat was TextureFormat.
+    rx("26.2", """\.withVertexBinding\(0, (DefaultVertexFormat\.\w+)\)(\s*)\.withPrimitiveTopology\(PrimitiveTopology\.(\w+)\)""",
+        ".withVertexFormat($1, com.mojang.blaze3d.vertex.VertexFormat.Mode.$3)$2")
+    str("26.2", "getPrimitiveTopology()", "getVertexFormatMode()")
+    str("26.2", "primitiveTopology()", "mode()")
+    str("26.2", "import com.mojang.blaze3d.PrimitiveTopology;", "import com.mojang.blaze3d.vertex.VertexFormat;")
+    str("26.2", "import com.mojang.blaze3d.IndexType;", "import com.mojang.blaze3d.vertex.VertexFormat.IndexType;")
+    str("26.2", "PrimitiveTopology.", "VertexFormat.Mode.")
+    str("26.2", "PrimitiveTopology topology", "VertexFormat.Mode topology")
+    str("26.2", "import com.mojang.blaze3d.GpuFormat;", "import com.mojang.blaze3d.textures.TextureFormat;")
+    str("26.2", "com.mojang.blaze3d.GpuFormat.RGBA8_UNORM", "com.mojang.blaze3d.textures.TextureFormat.RGBA8")
+    str("26.2", "GpuFormat.RGBA8_UNORM", "TextureFormat.RGBA8")
+    str("26.2", ".writeToTexture(this.texture, levels[level], level, 0, 0, 0)",
+        ".writeToTexture(this.texture, levels[level], level, 0, 0, 0, levels[level].getWidth(), levels[level].getHeight(), 0, 0)")
+    str("26.2", "clearColorTexture(texture, new Vector4f(1.0F, 1.0F, 1.0F, 1.0F))", "clearColorTexture(texture, -1)")
+    str("26.2", "guiRenderState.clearColorOverride = colorVector(BG_COLOR)", "guiRenderState.clearColorOverride = BG_COLOR")
+    str("26.2", "LightCoordsUtil.BrightnessGetter", "net.minecraft.client.renderer.LevelRenderer.BrightnessGetter")
+    str("26.2", "net/minecraft/util/LightCoordsUtil\$BrightnessGetter", "net/minecraft/client/renderer/LevelRenderer\$BrightnessGetter")
+    str("26.2", "cameraState.smartCull = false;", "net.minecraft.client.Minecraft.getInstance().smartCull = false;")
+    str("26.2", "new ClientboundLoginFinishedPacket(profile, UUID.randomUUID())", "new ClientboundLoginFinishedPacket(profile)")
+    str("26.2", "Screenshot.grab(mc, false)", "Screenshot.grab(mc.gameDirectory, mc.getMainRenderTarget(), message -> {})")
+    str("26.2", "originalInfo.pos(), processedInfo, settings", "originalInfo, processedInfo, settings")
+    str("26.2", "import journeymap.api.v2.common.Context;", "import journeymap.api.v2.client.display.Context;")
+    // Renamed methods named in mixin selectors (same parameters).
+    str("26.2", "method = \"submitFire\"", "method = \"renderFire\"")
+    str("26.2", "method = \"submitWater\"", "method = \"renderWater\"")
+    str("26.2", "method = \"submitBlockSprite\"", "method = \"renderTex\"")
+    str("26.2", "\"submitArmWithItem\"", "\"renderArmWithItem\"")
+    str("26.2", "\"submitHandsWithItems\"", "\"renderHandsWithItems\"")
+    str("26.2", "@Mixin(LightCoordsUtil.class)", "@Mixin(net.minecraft.client.renderer.LevelRenderer.class)")
+    // BlockEntityRenderDispatcher.tryExtractRenderState had no trailing boolean.
+    str("26.2", "ModelFeatureRenderer.CrumblingOverlay crumbling, boolean crumblingOnly,", "ModelFeatureRenderer.CrumblingOverlay crumbling,")
+    str("26.2", "ModelFeatureRenderer.CrumblingOverlay breakProgress, boolean enabled,", "ModelFeatureRenderer.CrumblingOverlay breakProgress,")
+    // LevelRenderer.render was renderLevel, with the sections to draw as a last argument.
+    str("26.2", "method = \"render(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;Lnet/minecraft/client/DeltaTracker;ZLnet/minecraft/client/renderer/state/level/CameraRenderState;Lorg/joml/Matrix4fc;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lorg/joml/Vector4f;Z)V\"",
+        "method = \"renderLevel(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;Lnet/minecraft/client/DeltaTracker;ZLnet/minecraft/client/renderer/state/level/CameraRenderState;Lorg/joml/Matrix4fc;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lorg/joml/Vector4f;ZLnet/minecraft/client/renderer/chunk/ChunkSectionsToRender;)V\"")
+
+    // --- Before 26.1 (applied after the rules above, so to 26.1-shaped text) ---
+    // 26.1 renamed GuiGraphics to GuiGraphicsExtractor and the render* methods of the GUI to extract*.
+    str("26.1", "GuiGraphicsExtractor", "GuiGraphics")
+    rx("26.1", """\bextractRenderState\((\s*(?:final\s+)?GuiGraphics\b)""", "render($1")
+    val gfx = "(graphics|ctx|context|g|g2|guiGraphics|drawContext|stack)"
+    rx("26.1", """\.extractRenderState\($gfx\b""", ".render($1")
+    for ((from, to) in listOf(
+        "extractRenderStateWithTooltipAndSubtitles" to "renderWithTooltipAndSubtitles",
+        "extractWidgetRenderState" to "renderWidget",
+        "extractBackground" to "renderBackground",
+        "extractBlurredBackground" to "renderBlurredBackground",
+        "extractPanorama" to "renderPanorama",
+        "extractMenuBackgroundTexture" to "renderMenuBackgroundTexture",
+        "extractMenuBackground" to "renderMenuBackground",
+        "extractTransparentBackground" to "renderTransparentBackground",
+        "extractScrollingStringOverContents" to "renderScrollingStringOverContents",
+        "extractDeferredSubtitles" to "renderDeferredSubtitles",
+    )) rx("26.1", """\b$from\(""", "$to(")
+    for ((from, to) in listOf(
+        "text" to "drawString", "centeredText" to "drawCenteredString", "textWithWordWrap" to "drawWordWrap",
+        "textWithBackdrop" to "drawStringWithBackdrop", "item" to "renderItem", "fakeItem" to "renderFakeItem",
+        "itemDecorations" to "renderItemDecorations", "outline" to "renderOutline", "horizontalLine" to "hLine",
+        "verticalLine" to "vLine", "skin" to "submitSkinRenderState", "tooltip" to "renderTooltip",
+    )) rx("26.1", """\b$gfx\.$from\((?!\))""", "$1.$to(")
+    // Classes in other packages.
+    for ((from, to) in listOf(
+        "net.minecraft.client.multiplayer.chat.GuiMessageTag" to "net.minecraft.client.GuiMessageTag",
+        "net.minecraft.client.renderer.state.level.CameraRenderState" to "net.minecraft.client.renderer.state.CameraRenderState",
+        "net.minecraft.client.renderer.state.level.LevelRenderState" to "net.minecraft.client.renderer.state.LevelRenderState",
+        "net.minecraft.client.resources.model.geometry.BakedQuad" to "net.minecraft.client.renderer.block.model.BakedQuad",
+        "net.minecraft.client.renderer.block.BlockAndTintGetter" to "net.minecraft.world.level.BlockAndTintGetter",
+        "net.minecraft.client.renderer.state.gui.GuiRenderState" to "net.minecraft.client.gui.render.state.GuiRenderState",
+    )) {
+        str("26.1", from, to)
+        str("26.1", from.replace('.', '/'), to.replace('.', '/'))
+    }
+    rx("26.1", """net([./])minecraft\1client\1multiplayer\1chat\1GuiMessage\b""", "net$1minecraft$1client$1GuiMessage")
+    rx("26.1", """net([./])minecraft\1client\1renderer\1block\1dispatch\1BlockStateModel\b""",
+        "net$1minecraft$1client$1renderer$1block$1model$1BlockStateModel")
+    // RegistryDataLoader.load was synchronous.
+    rx("26.1", """RegistryDataLoader\.load\(([^;]*?),\s*(?:direct|ForkJoinPool\.commonPool\(\))\s*\)\.join\(\)""",
+        "RegistryDataLoader.load($1)")
+    // Render pipelines: blending and depth were builder flags, not ColorTargetState/DepthStencilState objects.
+    val noDepth = ".withDepthTestFunction(com.mojang.blaze3d.platform.DepthTestFunction.NO_DEPTH_TEST).withDepthWrite(false)"
+    str("26.1", ".withColorTargetState(new ColorTargetState(BlendFunction.TRANSLUCENT))", ".withBlend(BlendFunction.TRANSLUCENT)")
+    str("26.1", ".withColorTargetState(ColorTargetState.DEFAULT)", ".withoutBlend()")
+    str("26.1", ".withDepthStencilState(Optional.empty())", noDepth)
+    str("26.1", ".withDepthStencilState(new DepthStencilState(CompareOp.ALWAYS_PASS, false))", noDepth)
+    str("26.1", ".withDepthStencilState(SCHEMATIC_DEPTH)",
+        ".withDepthTestFunction(com.mojang.blaze3d.platform.DepthTestFunction.LEQUAL_DEPTH_TEST).withDepthWrite(false).withDepthBias(-1.0F, -10.0F)")
+    str("26.1", "private static final DepthStencilState SCHEMATIC_DEPTH = new DepthStencilState(CompareOp.GREATER_THAN_OR_EQUAL, false, 1.0F, 10.0F);", "")
+    for (cls in listOf("com.mojang.blaze3d.pipeline.ColorTargetState", "com.mojang.blaze3d.pipeline.DepthStencilState", "com.mojang.blaze3d.platform.CompareOp")) {
+        str("26.1", "import $cls;", "")
+    }
+    str("26.1", "RenderPipelines.ENTITY_TRANSLUCENT_CULL", "RenderPipelines.ENTITY_TRANSLUCENT")
+    // Fabric API (16.x for 1.21.11): world render events, older screen and tick event names.
+    str("26.1", "net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents.COLLECT_SUBMITS",
+        "net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents.AFTER_ENTITIES")
+    str("26.1", "LevelRenderEvents.COLLECT_SUBMITS", "WorldRenderEvents.AFTER_ENTITIES")
+    str("26.1", "net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents", "net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderEvents")
+    str("26.1", "net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderContext", "net.fabricmc.fabric.api.client.rendering.v1.world.WorldRenderContext")
+    rx("26.1", """\bLevelRenderContext\b""", "WorldRenderContext")
+    str("26.1", "new SubmitContext(context.levelState(), context.submitNodeCollector(), context.poseStack())",
+        "new SubmitContext(context.worldState(), context.commandQueue(), context.matrices())")
+    str("26.1", "LivingEntityRenderLayerRegistrationCallback", "LivingEntityFeatureRendererRegistrationCallback")
+    str("26.1", "ScreenEvents.afterExtract(", "ScreenEvents.afterRender(")
+    str("26.1", "ClientTickEvents.END_LEVEL_TICK", "ClientTickEvents.END_WORLD_TICK")
+    str("26.1", "net.fabricmc.fabric.api.client.renderer.v1.", "net.fabricmc.fabric.api.renderer.v1.")
+    // Entity packets: no ServerboundAttackPacket; attacks are ServerboundInteractPacket actions (see DihPackets and
+    // InteractPacketCompat). Interact checks exclude attacks first, then attack checks and names are rewritten.
+    rx("26.1", """\bpacket instanceof ServerboundInteractPacket (\w+)\b""", "packet instanceof ServerboundInteractPacket $1 && !$1.isAttack()")
+    rx("26.1", """\bpacket instanceof ServerboundAttackPacket (\w+)\)""", "packet instanceof ServerboundInteractPacket $1 && $1.isAttack())")
+    rx("26.1", """\bpacket instanceof ServerboundAttackPacket\)""", "dihclient.compat.DihPackets.isAttack(packet))")
+    str("26.1", "new ServerboundAttackPacket(", "dihclient.compat.DihPackets.attack(")
+    str("26.1", "new ServerboundInteractPacket(", "dihclient.compat.DihPackets.interact(")
+    str("26.1", "import net.minecraft.network.protocol.game.ServerboundAttackPacket;", "import net.minecraft.network.protocol.game.ServerboundInteractPacket;")
+    rx("26.1", """\bServerboundAttackPacket\b""", "ServerboundInteractPacket")
+    // Small member renames.
+    str("26.1", ".getOverworldClockTime()", ".getDayTime()")
+    str("26.1", ".maxInclusive()", ".getMaxValue()")
+    str("26.1", "import net.minecraft.world.level.block.SnowyBlock;", "import net.minecraft.world.level.block.SnowyDirtBlock;")
+    rx("26.1", """\bSnowyBlock\b""", "SnowyDirtBlock")
+    rx("26.1", """\bLilyPadBlock\b""", "WaterlilyBlock")
+    str("26.1", "ChunkPos.containing(", "new ChunkPos(")
+    rx("26.1", """new CharacterEvent\(([^,()]+)\)""", "new CharacterEvent($1, 0)")
+    // More GUI render* names (container screens, buttons, logo).
+    rx("26.1", """\bextract(Contents|CarriedItem|SnapbackItem|Tooltip|Labels|Slots|Slot)\(""", "render$1(")
+    str("26.1", "vanillaLogo.render(", "vanillaLogo.renderLogo(")
+    // TagKey.contains(holder) was holder.is(tag).
+    rx("26.1", """([\w.]+)\.contains\(((?:source|damageSource|src)\.typeHolder\(\))\)""", "$2.is($1)")
+    str("26.1", "RenderTypes.entityCutoutCull(", "RenderTypes.entityCutout(")
+    str("26.1", "import net.minecraft.util.LightCoordsUtil;", "import net.minecraft.client.renderer.LightTexture;")
+    rx("26.1", """\bLightCoordsUtil\.""", "LightTexture.")
+    str("26.1", "net.minecraft.world.level.BlockAndLightGetter", "net.minecraft.world.level.BlockAndTintGetter")
+    rx("26.1", """\bBlockAndLightGetter\b""", "BlockAndTintGetter")
+    str("26.1", "new OptionsScreen(parent, options, inGame)", "new OptionsScreen(parent, options)")
+    str("26.1", "new RegistrationPayload(registrationPayload.type(), kept)", "new RegistrationPayload(registrationPayload.id(), kept)")
+    str("26.1", "player.getAttackRangeWith(stack)",
+        "java.util.Objects.requireNonNullElseGet(stack.get(net.minecraft.core.component.DataComponents.ATTACK_RANGE), () -> AttackRange.defaultFor(player))")
+    str("26.1", "component(DataComponents.DYE, \"Dye\"),", "")
+    // Block models: BlockModelShaper / BlockModelPart; face shading from the level; no camera rotation state.
+    str("26.1", "import net.minecraft.client.renderer.block.BlockStateModelSet;", "")
+    str("26.1", "BlockStateModelSet set = mc.getModelManager().getBlockStateModelSet();",
+        "net.minecraft.client.renderer.block.BlockModelShaper set = mc.getModelManager().getBlockModelShaper();")
+    str("26.1", "Template build(BlockStateModelSet set,", "Template build(net.minecraft.client.renderer.block.BlockModelShaper set,")
+    str("26.1", "set.get(state).collectParts(", "set.getBlockModel(state).collectParts(")
+    str("26.1", "net.minecraft.client.renderer.block.dispatch.BlockStateModelPart", "net.minecraft.client.renderer.block.model.BlockModelPart")
+    rx("26.1", """\bBlockStateModelPart\b""", "BlockModelPart")
+    str("26.1", "import net.minecraft.world.level.CardinalLighting;", "")
+    str("26.1", "CardinalLighting lighting = level.cardinalLighting();", "ClientLevel lighting = level;")
+    str("26.1", "lighting.byFace(face.facing())", "lighting.getShade(face.facing(), true)")
+    str("26.1", "Vec3.directionFromRotation(camera.xRot, camera.yRot)", "dihclient.compat.LegacyCompat.forward(camera.orientation)")
+    str("26.1", "Vec3.directionFromRotation(cameraState.xRot, cameraState.yRot)", "dihclient.compat.LegacyCompat.forward(cameraState.orientation)")
+    str("26.1", "blocksAttacks.bypassedBy().get().contains(source.typeHolder())", "source.typeHolder().is(blocksAttacks.bypassedBy().get())")
+    str("26.1", "net.minecraft.util.LightTexture", "net.minecraft.client.renderer.LightTexture")
+    str("26.1", "graphics().text(", "graphics().drawString(")
+    str("26.1", "WorldGenLevel level = context.level();", "WorldGenLevel level = (WorldGenLevel) context.level();", "DihSyntheticFeatureBridge.java")
+    // Farm soil: 1.21.11 has no SUPPORTS_* block tags.
+    str("26.1", "below.is(BlockTags.SUPPORTS_NETHER_WART)", "below.is(Blocks.SOUL_SAND)")
+    str("26.1", "below.is(BlockTags.SUPPORTS_COCOA)", "below.is(BlockTags.JUNGLE_LOGS)")
+    str("26.1", "below.is(BlockTags.SUPPORTS_VEGETATION)", "below.is(BlockTags.DIRT)")
+    str("26.1", "below.is(BlockTags.SUPPORTS_CROPS)", "below.is(Blocks.FARMLAND)")
+    str("26.1", "cameraState.projectionMatrix", "dihclient.compat.LegacyCompat.projectionMatrix()", "MixinWorldRenderer.java")
+    // Tests: item components came with the item, nothing to bind.
+    rx("26.1", """\.bindComponents\([^;]*\);""", ";")
+    // Mixin selectors on the GUI: render* in 1.21.11 (entity renderers keep their extractRenderState, so scoped).
+    val guiMixins = arrayOf("DihEssentialOverlayGuardMixin.java", "DihChatPinnedWindowsMixin.java",
+        "DihClickableWidgetMixin.java", "DihConnectScreenUiMixin.java", "DihCreativeScreenMixin.java",
+        "DihHandledScreenMixin.java", "DihInGameHudMixin.java", "DihLightUiScreenMixin.java",
+        "DihNoRenderBossHealthOverlayMixin.java", "DihNoRenderHudMixin.java", "DihNoRenderScreenMixin.java",
+        "DihPanicMenuMixin.java", "DihPlayerTabOverlayMixin.java", "DihScreenMixin.java", "DihSplashRendererMixin.java",
+        "DihLogoRendererMixin.java")
+    str("26.1", "\"extractRenderState", "\"renderLogo", "DihLogoRendererMixin.java")
+    str("26.1", "\"extractRenderState", "\"render", *guiMixins)
+    rx("26.1", """"extract([A-Z]\w*)""", "\"render$1", *guiMixins)
+    rx("26.1", """\bextractTabButton\(""", "renderTabButton(", "DihCreativeScreenMixin.java")
+    for ((from, to) in listOf("text" to "drawString", "centeredText" to "drawCenteredString", "item" to "renderItem",
+        "itemDecorations" to "renderItemDecorations", "fakeItem" to "renderFakeItem", "outline" to "renderOutline",
+        "horizontalLine" to "hLine", "verticalLine" to "vLine", "textWithWordWrap" to "drawWordWrap")) {
+        str("26.1", "net/minecraft/client/gui/GuiGraphics;$from(", "net/minecraft/client/gui/GuiGraphics;$to(")
+    }
+    str("26.1", "method = {\"update\", \"extract\", \"render\"}", "method = {\"render\"}", "DihGameRendererMixin.java")
+    str("26.1", "private Holder<Item> item;", "private Item item;", "MixinItemStack.java")
+    // Chat: GuiMessage had no source.
+    str("26.1", "import net.minecraft.client.multiplayer.chat.GuiMessageSource;", "")
+    rx("26.1", """\s*GuiMessageSource\.\w+,""", "")
+    // World creation: LevelSettings took hardcore + Difficulty + GameRules instead of DifficultySettings.
+    val gameRules = "new net.minecraft.world.level.gamerules.GameRules(net.minecraft.world.flag.FeatureFlags.DEFAULT_FLAGS)"
+    rx("26.1", """new LevelSettings\.DifficultySettings\((\w+), (true|false), (?:true|false)\), (true|false),""", "$2, $1, $3, $gameRules,")
+    rx("26.1", """net\.minecraft\.world\.level\.LevelSettings\.DifficultySettings\.DEFAULT, (true|false),""",
+        "false, net.minecraft.world.Difficulty.NORMAL, $1, $gameRules,")
+    // Container clicks: ContainerInput was ClickType.
+    str("26.1", "ContainerInput", "ClickType")
+    str("26.1", ".handleClickType(", ".handleInventoryMouseClick(")
+    // ChunkPos: its record accessors come from dihclient.compat.ChunkPosCompat; the static pack was asLong.
+    str("26.1", "ChunkPos.pack(", "ChunkPos.asLong(")
+    str("26.1", ".containerInput()", ".clickType()")
+}.filter { mcBelow(it.below) }
+val legacyRewriteKey: String = legacyRewrites.joinToString("\n") { "${it.regex}|${it.from}|${it.to}|${it.files}" }
+
+tasks.matching { it.name.startsWith("stonecutterGenerate") }.configureEach {
+    if (legacyRewrites.isEmpty()) return@configureEach
+    inputs.property("dihLegacyRewrites", legacyRewriteKey)
+    doLast {
+        val compiled = legacyRewrites.map { r -> r to (if (r.regex) Regex(r.from) else null) }
+        outputs.files.forEach { root ->
+            if (!root.isDirectory) return@forEach
+            root.walkTopDown().filter { it.isFile && (it.extension == "java" || it.extension == "json") }.forEach { f ->
+                val text = f.readText()
+                var out = text
+                val path = f.invariantSeparatorsPath
+                for ((r, re) in compiled) {
+                    if (r.files.isNotEmpty() && r.files.none { path.endsWith("/$it") }) continue
+                    out = if (re != null) re.replace(out, r.to) else out.replace(r.from, r.to)
+                }
+                if (out != text) f.writeText(out)
+            }
+        }
+    }
+}
 
 // Optional: build outside a synced folder (Google Drive/OneDrive lock files and break clean/delete):
 //   gradlew build -PdihBuildDir=C:/dih-build     (each node builds into <dir>/<node>, e.g. C:/dih-build/26.2-fabric)
@@ -102,16 +393,35 @@ val extractJourneyMapApi by tasks.registering(Copy::class) {
 dependencies {
 
     minecraft("com.mojang:minecraft:$mcVersion")
-    implementation("net.fabricmc:fabric-loader:${dep("fabric_loader")}")
-    implementation("net.fabricmc.fabric-api:fabric-api:${dep("fabric_api")}")
+    // Mod jars: remapped from intermediary on an obfuscated Minecraft, used as-is otherwise.
+    val modImpl = if (remapped) "modImplementation" else "implementation"
+    val modCompile = if (remapped) "modCompileOnly" else "compileOnly"
+    if (remapped) "mappings"(loom.officialMojangMappings())
+    modImpl("net.fabricmc:fabric-loader:${dep("fabric_loader")}")
+    modImpl("net.fabricmc.fabric-api:fabric-api:${dep("fabric_api")}")
     // Compile-only: mixins for Lithium's collision sweeper (runtime-optional, plugin-gated).
-    compileOnly("maven.modrinth:lithium:${dep("lithium")}")
+    modCompile("maven.modrinth:lithium:${dep("lithium")}")
     // Compile-only: ReplayMod ReplayStudio types for the team-parser compat mixin (runtime-optional).
-    compileOnly("maven.modrinth:replaymod:${dep("replaymod")}")
+    modCompile("maven.modrinth:replaymod:${dep("replaymod")}")
     // Compile-only: the real JourneyMap v2 API (see extractJourneyMapApi). JourneyMap itself is a
     // runtime-optional soft dependency; nothing from it is bundled.
     journeymapRelease("maven.modrinth:journeymap:${dep("journeymap")}")
-    compileOnly(files(journeymapApiJar).builtBy(extractJourneyMapApi))
+    if (remapped) {
+        // Loom remaps mod jars while configuring, so the API jar must exist now rather than from a task.
+        val apiFile = journeymapApiJar.get().asFile
+        if (!apiFile.exists()) {
+            ZipFile(journeymapRelease.singleFile).use { zip ->
+                val entry = zip.entries().asSequence().first {
+                    it.name.startsWith("META-INF/jars/journeymap-api-fabric-") && it.name.endsWith(".jar")
+                }
+                apiFile.parentFile.mkdirs()
+                zip.getInputStream(entry).use { input -> apiFile.outputStream().use { input.copyTo(it) } }
+            }
+        }
+        modCompile(files(apiFile))
+    } else {
+        modCompile(files(journeymapApiJar).builtBy(extractJourneyMapApi))
+    }
 
     implementation("net.java.dev.jna:jna:5.13.0")
     implementation("net.java.dev.jna:jna-platform:5.13.0")
@@ -153,6 +463,32 @@ tasks.test {
     useJUnitPlatform()
     // A real AI key in the developer's environment overrides the tests' fake keys; tests must not see it.
     environment("MINECRAFTAI_LLM_KEY", "")
+}
+
+// Remapping: tiny-remapper rewrites the mixin annotations of every source set in remapJar, so no refmap is needed.
+// Interface injection gives 1.21.11 classes the accessors the 26.x sources call (see dihclient.compat); Loom reads
+// the declarations from src/compat1211/resources/fabric.mod.json while configuring, so they can't come from
+// Stonecutter's generated resources, which don't exist yet on a clean build.
+if (remapped) {
+    val compat1211 = sourceSets.create("compat1211") {
+        resources.setSrcDirs(listOf(rootProject.file("src/compat1211/resources")))
+        java.setSrcDirs(emptyList<Any>())
+    }
+    loom {
+        mixin {
+            useLegacyMixinAp = false
+        }
+        // Loom finds the project's injected interfaces through this file (the main fabric.mod.json is generated).
+        fabricModJsonPath = rootProject.file("src/compat1211/resources/fabric.mod.json")
+        interfaceInjection {
+            interfaceInjectionSourceSets.add(compat1211)
+        }
+        // Fabric API 16's game-test network synchronizer rejects DIH's connection-level packet hooks (it asks for
+        // this property itself); the 26.x runner does not.
+        runs.matching { it.name == "clientGameTest" }.configureEach {
+            vmArg("-Dfabric.client.gametest.disableNetworkSynchronizer=true")
+        }
+    }
 }
 
 // Run acquire scenarios against an integrated singleplayer server, separately from JUnit.
@@ -722,8 +1058,8 @@ tasks {
     }
 
     java {
-        sourceCompatibility = JavaVersion.VERSION_25
-        targetCompatibility = JavaVersion.VERSION_25
+        sourceCompatibility = JavaVersion.toVersion(javaRelease)
+        targetCompatibility = JavaVersion.toVersion(javaRelease)
         toolchain {
             languageVersion.set(JavaLanguageVersion.of(25))
         }
@@ -731,7 +1067,7 @@ tasks {
 
     withType<JavaCompile> {
         options.encoding = "UTF-8"
-        options.release.set(25)
+        options.release.set(javaRelease)
         options.compilerArgs.add("-Xlint:deprecation")
         options.compilerArgs.add("-Xlint:unchecked")
         options.compilerArgs.add("-Xlint:-restricted")

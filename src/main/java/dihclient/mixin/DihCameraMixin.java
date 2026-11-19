@@ -36,26 +36,40 @@ public abstract class DihCameraMixin {
     @Shadow
     protected abstract float getMaxZoom(float maxZoom);
 
+    //? if >=26.1 {
     @Inject(
         method = "update(Lnet/minecraft/client/DeltaTracker;)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;alignWithEntity(F)V", shift = At.Shift.AFTER)
     )
     private void dih$freecamCamera(DeltaTracker deltaTracker, CallbackInfo ci) {
-        if (!PackFreecamState.isActive()) return;
         float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(true);
+    //?} else {
+    /*// 1.21.11: the camera is placed in setup(); override it once vanilla is done.
+    @Inject(method = "setup", at = @At("TAIL"))
+    private void dih$freecamCamera(net.minecraft.world.level.Level level, Entity focused, boolean thirdPerson,
+                                    boolean mirror, float partialTicks, CallbackInfo ci) {
+    *///?}
+        if (!PackFreecamState.isActive()) return;
         detached = true;
         setPosition(new Vec3(PackFreecamState.getX(partialTicks), PackFreecamState.getY(partialTicks), PackFreecamState.getZ(partialTicks)));
         setRotation(PackFreecamState.getYaw(partialTicks), PackFreecamState.getPitch(partialTicks));
     }
 
+    //? if >=26.1 {
     @Inject(
         method = "update(Lnet/minecraft/client/DeltaTracker;)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;alignWithEntity(F)V", shift = At.Shift.AFTER)
     )
     private void dih$freeLookCamera(DeltaTracker deltaTracker, CallbackInfo ci) {
+        float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(true);
+    //?} else {
+    /*// 1.21.11: the camera is placed in setup(); override it once vanilla is done.
+    @Inject(method = "setup", at = @At("TAIL"))
+    private void dih$freeLookCamera(net.minecraft.world.level.Level level, Entity focused, boolean thirdPerson,
+                                    boolean mirror, float partialTicks, CallbackInfo ci) {
+    *///?}
         FreeLookModule freeLook = FreeLookModule.lookingInstance();
         if (freeLook == null || PackFreecamState.isActive()) return;
-        float partialTicks = deltaTracker.getGameTimeDeltaPartialTick(true);
         detached = true;
         setPosition(new Vec3(
             Mth.lerp(partialTicks, entity.xo, entity.getX()),
@@ -70,6 +84,7 @@ public abstract class DihCameraMixin {
         move(-getMaxZoom(4.0F * scale), 0.0F, 0.0F);
     }
 
+    //? if >=26.1 {
     @Inject(method = "extractRenderState", at = @At("TAIL"))
     private void dih$disableSmartCull(CameraRenderState cameraState,
                                       //? if >=26.3 {
@@ -82,4 +97,6 @@ public abstract class DihCameraMixin {
             cameraState.smartCull = false;
         }
     }
+    //?}
+
 }

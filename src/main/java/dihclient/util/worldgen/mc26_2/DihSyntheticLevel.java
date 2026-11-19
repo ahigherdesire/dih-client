@@ -176,7 +176,11 @@ public final class DihSyntheticLevel implements WorldGenLevel {
             chunk.removeBlockEntity(pos);
         }
         if ((flags & 16) == 0) {
+            //? if >=26.1 {
             BlockPos postProcess = state.getPostProcessPos(this, pos);
+            //?} else {
+            /*BlockPos postProcess = state.hasPostProcess(this, pos) ? pos : null;
+            *///?}
             if (postProcess != null) chunkFor(postProcess).markPosForPostProcessing(postProcess);
         }
         return true;
@@ -406,4 +410,11 @@ public final class DihSyntheticLevel implements WorldGenLevel {
     @Override
     public void gameEvent(Holder<GameEvent> event, Vec3 pos, GameEvent.Context context) {
     }
+
+    //? if <26.1 {
+    /*@Override
+    public float getShade(net.minecraft.core.Direction direction, boolean shade) {
+        return 1.0F;
+    }
+    *///?}
 }

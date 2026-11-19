@@ -113,8 +113,13 @@ public class DihAccountsScreen extends DihScreen {
     private EditBox searchField;
 
     private DihAccount renamingAccount;
+    //? if >=26.2 {
     private Model.Simple widePlayerModel;
     private Model.Simple slimPlayerModel;
+    //?} else {
+    /*private net.minecraft.client.model.player.PlayerModel widePlayerModel;
+    private net.minecraft.client.model.player.PlayerModel slimPlayerModel;
+    *///?}
     private DihAccountType type = DihAccountType.Cracked;
     private DihAccount selectedAccount;
     private String searchQuery = "";
@@ -182,8 +187,13 @@ public class DihAccountsScreen extends DihScreen {
             searchDirty = true;
         });
         this.addRenderableWidget(searchField);
+        //? if >=26.2 {
         this.widePlayerModel = new Model.Simple(this.minecraft.getEntityModels().bakeLayer(ModelLayers.PLAYER), DihRenderTypes::skinPreview);
         this.slimPlayerModel = new Model.Simple(this.minecraft.getEntityModels().bakeLayer(ModelLayers.PLAYER_SLIM), DihRenderTypes::skinPreview);
+        //?} else {
+        /*this.widePlayerModel = new net.minecraft.client.model.player.PlayerModel(this.minecraft.getEntityModels().bakeLayer(ModelLayers.PLAYER), false);
+        this.slimPlayerModel = new net.minecraft.client.model.player.PlayerModel(this.minecraft.getEntityModels().bakeLayer(ModelLayers.PLAYER_SLIM), true);
+        *///?}
         this.generatorCountField = new EditBox(this.font, 0, 0, 58, 16, Component.literal("Count"));
         this.generatorCountField.setHint(Component.literal("Count"));
         this.generatorCountField.setMaxLength(4);
@@ -962,7 +972,7 @@ public class DihAccountsScreen extends DihScreen {
 
     private void render3dSkin(GuiGraphicsExtractor graphics, PlayerSkin skin, int x0, int y0, int x1, int y1) {
         if (widePlayerModel == null || slimPlayerModel == null) return;
-        Model.Simple model = skin.model().name().equalsIgnoreCase("slim") ? slimPlayerModel : widePlayerModel;
+        var model = skin.model().name().equalsIgnoreCase("slim") ? slimPlayerModel : widePlayerModel;
         float drawScale = DihUiScale.getOverlayDrawScale();
         int scaledX0 = Math.round(x0 * drawScale);
         int scaledY0 = Math.round(y0 * drawScale);

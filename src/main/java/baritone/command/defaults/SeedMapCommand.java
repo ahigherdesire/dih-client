@@ -347,7 +347,7 @@ public class SeedMapCommand extends Command {
     private static void actionBar(String text) {
         Minecraft mc = Minecraft.getInstance();
         mc.execute(() -> {
-            if (mc.gui == null || mc.gui.hud == null) return;
+            if (mc.gui == null /*? if >=26.2 {*/|| mc.gui.hud == null/*?}*/) return;
             mc.gui.hud.setOverlayMessage(text == null ? Component.empty()
                 : Component.literal(text).withStyle(ChatFormatting.GOLD), false);
         });

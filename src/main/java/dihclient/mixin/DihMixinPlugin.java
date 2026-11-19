@@ -53,6 +53,34 @@ public class DihMixinPlugin implements IMixinConfigPlugin {
         "DihProtectorResourceLoaderImplMixin"
     );
 
+    /**
+     * Mixins written for one Minecraft version range only; the others don't have their targets. The 1.21.11 compat
+     * mixins add the interfaces in dihclient.compat; the 1.21.11 set are 26.x mixins stubbed out there.
+     */
+    private static final Set<String> COMPAT_1211_MIXINS = Set.of(
+        "DihChunkPosCompatMixin", "DihInteractPacketCompatMixin", "DihMotionPacketCompatMixin", "DihCameraCompatMixin",
+        "DihContainerContentsCompatMixin", "DihChargedProjectilesCompatMixin", "DihWindowCompatMixin",
+        "DihNativeImageCompatMixin", "DihItemStackCompatMixin", "DihBlockStateCompatMixin", "DihChatCompatMixin",
+        "DihGameModeCompatMixin", "DihGameRendererPickMixin");
+    //? if >=26.2 {
+    private static final Set<String> OTHER_VERSION_MIXINS = union(COMPAT_1211_MIXINS, "DihBounceBlocksMixin");
+    //?} else if >=26.1 {
+    /*private static final Set<String> OTHER_VERSION_MIXINS = union(COMPAT_1211_MIXINS, "DihOreSimTemplateFeatureMixin");
+    *///?} else {
+    /*private static final Set<String> OTHER_VERSION_MIXINS = Set.of(
+        "DihBetterChatMixin", "DihChatSuggestMixin", "DihDataComponentInitializerMixin", "DihFluidRendererMixin",
+        "DihFramerateLimiterMixin", "DihIndigoAltModelBlockRendererMixin", "DihLightCoordsUtilMixin",
+        "DihLightmapMixin", "DihModelBlockRendererMixin", "DihMultiPovChatMixin", "DihNoRenderTimeMixin",
+        "DihOreSimCappedProcessorMixin", "DihOreSimEndSpikeFeatureMixin", "DihOreSimTemplateFeatureMixin",
+        "DihRegistryDataCollectorMixin", "DihSodiumDefaultFluidRendererMixin");
+    *///?}
+
+    private static Set<String> union(Set<String> base, String... more) {
+        Set<String> all = new java.util.HashSet<>(base);
+        all.addAll(java.util.Arrays.asList(more));
+        return Set.copyOf(all);
+    }
+
     @Override
     public void onLoad(String mixinPackage) {
         sodiumLoaded = DihLoader.isModLoaded("sodium");
@@ -75,6 +103,7 @@ public class DihMixinPlugin implements IMixinConfigPlugin {
     @Override
     public boolean shouldApplyMixin(String targetClassName, String mixinClassName) {
         String simpleName = mixinClassName.substring(mixinClassName.lastIndexOf('.') + 1);
+        if (OTHER_VERSION_MIXINS.contains(simpleName)) return false;
         // Dev bisecting: -Ddih.disableMixins=DihFooMixin,DihBarMixin skips those mixins.
         String disabled = System.getProperty("dih.disableMixins");
         if (disabled != null && java.util.Arrays.asList(disabled.split(",")).contains(simpleName)) return false;

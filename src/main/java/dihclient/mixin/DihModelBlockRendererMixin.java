@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+//? if >=26.1 {
 import dihclient.util.DihRender;
 import com.mojang.blaze3d.vertex.QuadInstance;
 import dihclient.modules.GoldenLeverModule;
@@ -109,3 +110,11 @@ public class DihModelBlockRendererMixin {
         cir.setReturnValue(ModuleRenderUtil.modifyXrayFace(level, state, direction, originalPos, cir.getReturnValue()));
     }
 }
+//?} else {
+/*import org.spongepowered.asm.mixin.Mixin;
+
+// Minecraft 1.21.11 has no target for this mixin; it is skipped there (DihMixinPlugin) and kept empty.
+@Mixin(net.minecraft.client.Minecraft.class)
+public abstract class DihModelBlockRendererMixin {
+}
+*///?}

@@ -1,6 +1,7 @@
 package dihclient.util;
 
 import com.mojang.authlib.minecraft.UserApiService;
+//? if >=26.2
 import com.mojang.authlib.yggdrasil.FriendsService;
 import net.minecraft.server.Services;
 //? if >=26.3 {
@@ -110,7 +111,9 @@ public final class DihAuthServices {
         return auth.createUserApiService(accessToken);
     }
 
+    //? if >=26.2 {
     public FriendsService friends(String accessToken) {
         return auth.createFriendsService(accessToken);
     }
+    //?}
 }

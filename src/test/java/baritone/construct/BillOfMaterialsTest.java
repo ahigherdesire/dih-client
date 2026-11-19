@@ -45,7 +45,11 @@ final class BillOfMaterialsTest {
         assertSame(BillOfMaterials.NONE, BillOfMaterials.costOf(upper));
         BlockState foot = Blocks.BED.red().defaultBlockState().setValue(BlockStateProperties.BED_PART, BedPart.FOOT);
         BlockState head = Blocks.BED.red().defaultBlockState().setValue(BlockStateProperties.BED_PART, BedPart.HEAD);
+        //? if >=26.2 {
         assertEquals(new BillOfMaterials.Cost(Items.BED.red(), 1), BillOfMaterials.costOf(foot));
+        //?} else {
+        /*assertEquals(new BillOfMaterials.Cost(Items.RED_BED, 1), BillOfMaterials.costOf(foot));
+        *///?}
         assertSame(BillOfMaterials.NONE, BillOfMaterials.costOf(head));
     }
 

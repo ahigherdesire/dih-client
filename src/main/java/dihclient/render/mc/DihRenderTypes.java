@@ -8,6 +8,7 @@ import net.minecraft.client.renderer.rendertype.RenderType;
 
 import com.mojang.blaze3d.PrimitiveTopology;
 import com.mojang.blaze3d.pipeline.BlendFunction;
+//? if >=26.2
 import com.mojang.blaze3d.pipeline.BindGroupLayout;
 import com.mojang.blaze3d.pipeline.ColorTargetState;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
@@ -291,9 +292,20 @@ public final class DihRenderTypes {
     }
 
     private static RenderPipeline.Builder copyLayouts(RenderPipeline.Builder builder, RenderPipeline template) {
+        //? if >=26.2 {
         for (BindGroupLayout layout : template.getBindGroupLayouts()) {
             builder.withBindGroupLayout(layout);
         }
+        //?} else {
+        /*// 26.1 pipelines declare their samplers and uniforms directly instead of through bind group layouts.
+        for (String sampler : template.getSamplers()) {
+            builder.withSampler(sampler);
+        }
+        for (RenderPipeline.UniformDescription uniform : template.getUniforms()) {
+            if (uniform.textureFormat() != null) builder.withUniform(uniform.name(), uniform.type(), uniform.textureFormat());
+            else builder.withUniform(uniform.name(), uniform.type());
+        }
+        *///?}
         return builder;
     }
 }

@@ -1,5 +1,6 @@
 package dihclient.mixin.indigo;
 
+//? if >=26.1 {
 // Fabric only: targets Fabric API internals (left out of the NeoForge mixin config).
 //? if fabric {
 
@@ -66,3 +67,11 @@ public abstract class DihIndigoAltModelBlockRendererMixin {
     }
 }
 //?}
+//?} else {
+/*import org.spongepowered.asm.mixin.Mixin;
+
+// Minecraft 1.21.11 has no target for this mixin; it is skipped there (DihMixinPlugin) and kept empty.
+@Mixin(net.minecraft.client.Minecraft.class)
+public abstract class DihIndigoAltModelBlockRendererMixin {
+}
+*///?}

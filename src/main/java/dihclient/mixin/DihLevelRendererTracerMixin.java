@@ -33,6 +33,21 @@ public class DihLevelRendererTracerMixin {
         boolean renderWeather, CallbackInfo ci) {
         dih$flushOverlays(cameraState.viewRotationMatrix);
     }
+    *///?} else if <26.1 {
+    /*// 1.21.11: renderLevel takes the camera and its matrices directly.
+    @Inject(method = "renderLevel", at = @At("HEAD"))
+    private void dih$beginDelayedOverlays(GraphicsResourceAllocator allocator, DeltaTracker deltaTracker, boolean renderBlockOutline,
+        net.minecraft.client.Camera camera, org.joml.Matrix4f positionMatrix, org.joml.Matrix4f projectionMatrix,
+        org.joml.Matrix4f cullingProjectionMatrix, GpuBufferSlice fog, Vector4f fogColor, boolean renderSky, CallbackInfo ci) {
+        DihChamsRenderQueue.clear();
+    }
+
+    @Inject(method = "renderLevel", at = @At("RETURN"))
+    private void dih$drawTracers(GraphicsResourceAllocator allocator, DeltaTracker deltaTracker, boolean renderBlockOutline,
+        net.minecraft.client.Camera camera, org.joml.Matrix4f positionMatrix, org.joml.Matrix4f projectionMatrix,
+        org.joml.Matrix4f cullingProjectionMatrix, GpuBufferSlice fog, Vector4f fogColor, boolean renderSky, CallbackInfo ci) {
+        dih$flushOverlays(positionMatrix);
+    }
     *///?} else {
     @Inject(
         method = "render(Lcom/mojang/blaze3d/resource/GraphicsResourceAllocator;Lnet/minecraft/client/DeltaTracker;ZLnet/minecraft/client/renderer/state/level/CameraRenderState;Lorg/joml/Matrix4fc;Lcom/mojang/blaze3d/buffers/GpuBufferSlice;Lorg/joml/Vector4f;Z)V",
@@ -41,7 +56,10 @@ public class DihLevelRendererTracerMixin {
         DeltaTracker tickCounter, boolean renderBlockOutline,
         CameraRenderState cameraState, Matrix4fc positionMatrix,
         GpuBufferSlice gpuBufferSlice, Vector4f vector4f,
-        boolean shouldRenderSky, CallbackInfo ci) {
+        boolean shouldRenderSky,
+        //? if <26.2
+        /*net.minecraft.client.renderer.chunk.ChunkSectionsToRender sections,*/
+        CallbackInfo ci) {
 
         DihChamsRenderQueue.clear();
     }
@@ -53,7 +71,10 @@ public class DihLevelRendererTracerMixin {
         DeltaTracker tickCounter, boolean renderBlockOutline,
         CameraRenderState cameraState, Matrix4fc positionMatrix,
         GpuBufferSlice gpuBufferSlice, Vector4f vector4f,
-        boolean shouldRenderSky, CallbackInfo ci) {
+        boolean shouldRenderSky,
+        //? if <26.2
+        /*net.minecraft.client.renderer.chunk.ChunkSectionsToRender sections,*/
+        CallbackInfo ci) {
         dih$flushOverlays(positionMatrix);
     }
     //?}

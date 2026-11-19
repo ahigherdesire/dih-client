@@ -200,8 +200,14 @@ public final class DihRegionGenerator {
                 }
             }
         }
+        //? if >=26.2 {
         context.noiseGenerator().buildSurface(chunk, heightContext, context.randomState(), structures,
             level.getBiomeManager(), Blender.empty(), biomes);
+        //?} else {
+        /*context.noiseGenerator().buildSurface(chunk, heightContext, context.randomState(), structures,
+            level.getBiomeManager(), context.registryAccess().lookupOrThrow(net.minecraft.core.registries.Registries.BIOME),
+            Blender.empty());
+        *///?}
     }
 
     private void applyCarvers(DihSyntheticLevel level, Map<Long, ChunkAccess> chunks,

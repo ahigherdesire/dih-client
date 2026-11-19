@@ -38,3 +38,15 @@ deps.replaymod = "26.2-2.6.27"
 deps.forge = "26.3-66.0.4"
 deps.lithium = "mc26.3-0.26.1-fabric"
 deps.replaymod = "26.2-2.6.27"
+
+[fabric."1.21.11"]
+deps.fabric_api = "0.141.6+1.21.11"
+deps.lithium = "mc1.21.11-0.21.4-fabric"
+deps.journeymap = "1.21.11-6.0.0+fabric"
+deps.replaymod = "1.21.11-2.6.28"
+
+[fabric."26.1.2"]
+deps.fabric_api = "0.155.3+26.1.2"
+deps.lithium = "mc26.1.2-0.24.7-fabric"
+deps.journeymap = "26.1.2-6.0.10+fabric"
+deps.replaymod = "26.1-2.6.28"

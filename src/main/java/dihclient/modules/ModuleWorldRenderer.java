@@ -1423,12 +1423,26 @@ public final class ModuleWorldRenderer {
         DihBufferSource bufferSource = WAYPOINT_BUFFERS.get();
         Matrix4f textPose = new Matrix4f();
         Font.GlyphVisitor waypointGlyphs = new Font.GlyphVisitor() {
+            //? if >=26.2 {
             @Override
             public void acceptRenderable(TextRenderable renderable) {
                 renderable.render(textPose,
                     bufferSource.getBuffer(renderable.renderType(Font.DisplayMode.SEE_THROUGH)),
                     LightCoordsUtil.FULL_BRIGHT, false);
             }
+            //?} else {
+            /*@Override
+            public void acceptGlyph(TextRenderable.Styled renderable) {
+                acceptEffect(renderable);
+            }
+
+            @Override
+            public void acceptEffect(TextRenderable renderable) {
+                renderable.render(textPose,
+                    bufferSource.getBuffer(renderable.renderType(Font.DisplayMode.SEE_THROUGH)),
+                    LightCoordsUtil.FULL_BRIGHT, false);
+            }
+            *///?}
         };
         Identifier discTexture = waypointDiscTexture(mc);
         double baseRadius = snapshot.discRadius();

@@ -194,12 +194,22 @@ public final class GoldenLeverModule extends Module {
             quads.set(i, withTintIndex(quads.get(i)));
         }
         //?}
+        //? if >=26.1 {
         IntList tints = layer.tintLayers();
         tints.clear();
         tints.add(GOLD_TINT);
+        //?} else {
+        /*layer.prepareTintLayers(1)[0] = GOLD_TINT;
+        *///?}
     }
 
     private static BakedQuad withTintIndex(BakedQuad quad) {
+        //? if <26.1 {
+        /*if (quad.tintIndex() == 0) return quad;
+        return new BakedQuad(quad.position0(), quad.position1(), quad.position2(), quad.position3(),
+            quad.packedUV0(), quad.packedUV1(), quad.packedUV2(), quad.packedUV3(), 0, quad.direction(),
+            quad.sprite(), quad.shade(), quad.lightEmission());
+        *///?} else {
         BakedQuad.MaterialInfo materialInfo = quad.materialInfo();
         if (materialInfo.tintIndex() == 0) return quad;
         BakedQuad.MaterialInfo tintedInfo = DihRender.copyMaterial(materialInfo, materialInfo.layer(), 0);
@@ -215,6 +225,7 @@ public final class GoldenLeverModule extends Module {
             quad.direction(),
             tintedInfo
         );
+        //?}
     }
 
     private static boolean isActive() {

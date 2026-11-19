@@ -3,10 +3,12 @@ package dihclient.util;
 import dihclient.DihClientAddon;
 import dihclient.mixin.accessor.DihMinecraftAccessor;
 import com.mojang.authlib.minecraft.UserApiService;
+//? if >=26.2
 import com.mojang.authlib.yggdrasil.FriendsService;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.User;
 import net.minecraft.client.gui.screens.social.PlayerSocialManager;
+//? if >=26.2
 import net.minecraft.client.gui.screens.social.RemoteFriendListUpdateHandler;
 import net.minecraft.client.multiplayer.ProfileKeyPairManager;
 import net.minecraft.client.multiplayer.chat.report.ReportEnvironment;
@@ -44,15 +46,21 @@ public final class DihAccountSessionSwitcher {
             DihAuthServices userApiAuthService = DihAuthServices.mojang(DihAuthNetwork.directProxy());
             Services services = authService.services(mc.gameDirectory);
             UserApiService apiService = userApiAuthService.userApi(user.getAccessToken());
+            //? if >=26.2 {
             FriendsService friendsService = userApiAuthService.friends(user.getAccessToken());
             RemoteFriendListUpdateHandler friendListUpdateHandler = new RemoteFriendListUpdateHandler(friendsService, mc);
+            //?}
             Path skinCachePath = mc.gameDirectory.toPath().resolve("assets").resolve("skins");
 
             accessor.dih$setServices(services);
             accessor.dih$setUser(user);
             accessor.dih$setUserApiService(apiService);
+            //? if >=26.2 {
             accessor.dih$setRemoteFriendListUpdateHandler(friendListUpdateHandler);
             accessor.dih$setPlayerSocialManager(new PlayerSocialManager(mc, apiService, friendsService, friendListUpdateHandler));
+            //?} else {
+            /*accessor.dih$setPlayerSocialManager(new PlayerSocialManager(mc, apiService));
+            *///?}
             accessor.dih$setProfileKeyPairManager(ProfileKeyPairManager.create(apiService, user, mc.gameDirectory.toPath()));
             accessor.dih$setReportingContext(ReportingContext.create(ReportEnvironment.local(), apiService));
             accessor.dih$setProfileFuture(CompletableFuture.supplyAsync(() -> mc.services().sessionService().fetchProfile(mc.getUser().getProfileId(), true), Util.nonCriticalIoPool()));

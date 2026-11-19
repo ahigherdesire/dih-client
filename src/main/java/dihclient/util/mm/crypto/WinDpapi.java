@@ -1,5 +1,6 @@
 package dihclient.util.mm.crypto;
 
+//? if >=26.1 {
 import java.lang.foreign.Arena;
 import java.lang.foreign.FunctionDescriptor;
 import java.lang.foreign.Linker;
@@ -91,3 +92,47 @@ final class WinDpapi {
         }
     }
 }
+//?} else {
+/*import java.util.Locale;
+
+// Java 21 (the Minecraft 1.21.11 runtime) has the FFM API only as a preview, so this build calls DPAPI through JNA.
+final class WinDpapi {
+    private WinDpapi() {}
+
+    private static final int CRYPTPROTECT_UI_FORBIDDEN = 0x1;
+    private static final boolean AVAILABLE;
+
+    static {
+        boolean ok = false;
+        if (System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win")) {
+            try {
+                Class.forName("com.sun.jna.platform.win32.Crypt32Util");
+                ok = true;
+            } catch (Throwable t) {
+                ok = false;
+            }
+        }
+        AVAILABLE = ok;
+    }
+
+    static boolean available() { return AVAILABLE; }
+
+    static byte[] protect(byte[] plain) {
+        if (!AVAILABLE || plain == null) return null;
+        try {
+            return com.sun.jna.platform.win32.Crypt32Util.cryptProtectData(plain, null, CRYPTPROTECT_UI_FORBIDDEN, null, null);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+
+    static byte[] unprotect(byte[] cipher) {
+        if (!AVAILABLE || cipher == null) return null;
+        try {
+            return com.sun.jna.platform.win32.Crypt32Util.cryptUnprotectData(cipher, null, CRYPTPROTECT_UI_FORBIDDEN, null);
+        } catch (Throwable t) {
+            return null;
+        }
+    }
+}
+*///?}

@@ -28,7 +28,7 @@ public final class MultiPovChat {
 
     static void enter(String accountId) {
         Minecraft mc = Minecraft.getInstance();
-        if (accountId == null || mc == null || mc.gui == null || mc.gui.hud == null) return;
+        if (accountId == null || mc == null || mc.gui == null /*? if >=26.2 {*/|| mc.gui.hud == null/*?}*/) return;
         ChatComponent chat = mc.gui.hud.getChat();
         if (chat == null) return;
 
@@ -69,7 +69,7 @@ public final class MultiPovChat {
         mc.execute(() -> {
             if (expectedEpoch != viewEpoch || !session.accountId().equals(activeAccountId)) return;
             ChatComponent chat = activeChat;
-            if (chat == null || mc.gui == null || mc.gui.hud == null || mc.gui.hud.getChat() != chat) return;
+            if (chat == null || mc.gui == null /*? if >=26.2 {*/|| mc.gui.hud == null/*?}*/ || mc.gui.hud.getChat() != chat) return;
             ADDING_BOT_MESSAGE.set(true);
             try {
 

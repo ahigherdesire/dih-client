@@ -126,7 +126,11 @@ public final class DihClientMessaging {
             ChatComponent chat = MC.gui.hud.getChat();
             chat.addRecentChat(line);
             if (DihCommands.isDihCommandMessage(line)) {
+                //? if >=26.2 {
                 CommandHistory history = ((DihChatComponentAccessor) chat).dih$getCommandHistory();
+                //?} else {
+                /*CommandHistory history = net.minecraft.client.Minecraft.getInstance().commandHistory();
+                *///?}
                 if (history != null) persistCommandHistoryAsync(history, line);
             }
         } catch (Throwable ignored) {  }
@@ -181,7 +185,11 @@ public final class DihClientMessaging {
                 if (MC.gui == null || MC.gui.hud.getChat() == null) return;
                 ChatComponent chat = MC.gui.hud.getChat();
                 chat.getRecentChat().clear();
+                //? if >=26.2 {
                 CommandHistory history = ((DihChatComponentAccessor) chat).dih$getCommandHistory();
+                //?} else {
+                /*CommandHistory history = net.minecraft.client.Minecraft.getInstance().commandHistory();
+                *///?}
                 if (history == null) return;
                 DihCommandHistoryAccessor accessor = (DihCommandHistoryAccessor) history;
                 accessor.dih$getLastCommands().clear();

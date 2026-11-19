@@ -28,6 +28,7 @@ import net.minecraft.world.scores.Objective;
 import net.minecraft.world.scores.PlayerScoreEntry;
 import net.minecraft.world.scores.PlayerTeam;
 import net.minecraft.world.scores.Scoreboard;
+//? if >=26.2
 import net.minecraft.world.scores.TeamColor;
 
 public class CaptureValueAction implements MacroAction, MacroCaptureOutput {
@@ -227,8 +228,13 @@ public class CaptureValueAction implements MacroAction, MacroCaptureOutput {
         Objective teamObjective = null;
         PlayerTeam team = scoreboard.getPlayersTeam(mc.player.getScoreboardName());
         if (team != null) {
+            //? if >=26.2 {
             Optional<TeamColor> color = team.getColor();
             if (color.isPresent()) teamObjective = scoreboard.getDisplayObjective(color.get().displaySlot());
+            //?} else {
+            /*DisplaySlot slot = DisplaySlot.teamColorToSlot(team.getColor());
+            if (slot != null) teamObjective = scoreboard.getDisplayObjective(slot);
+            *///?}
         }
         return teamObjective != null ? teamObjective : scoreboard.getDisplayObjective(DisplaySlot.SIDEBAR);
     }

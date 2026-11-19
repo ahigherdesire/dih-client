@@ -262,9 +262,15 @@ public final class BlockOptionalMeta {
         private static Unsafe unsafe = getUnsafe();
         private static CompletableFuture<RegistryAccess> registryAccess = load();
 
+        //? if >=26.1 {
         public ServerLevelStub(MinecraftServer $$0, Executor $$1, LevelStorageSource.LevelStorageAccess $$2, ServerLevelData $$3, ResourceKey<Level> $$4, LevelStem $$5, boolean $$6, long $$7, List<CustomSpawner> $$8, boolean $$9) {
             super($$0, $$1, $$2, $$3, $$4, $$5, $$6, $$7, $$8, $$9);
         }
+        //?} else {
+        /*public ServerLevelStub(MinecraftServer $$0, Executor $$1, LevelStorageSource.LevelStorageAccess $$2, ServerLevelData $$3, ResourceKey<Level> $$4, LevelStem $$5, boolean $$6, long $$7, List<CustomSpawner> $$8, boolean $$9, net.minecraft.world.RandomSequences $$10) {
+            super($$0, $$1, $$2, $$3, $$4, $$5, $$6, $$7, $$8, $$9, $$10);
+        }
+        *///?}
 
         @Override
         public FeatureFlagSet enabledFeatures() {

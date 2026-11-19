@@ -1,5 +1,6 @@
 package dihclient.mixin.security;
 
+//? if >=26.1 {
 import dihclient.DihClientAddon;
 import dihclient.security.DihRegistryComponentCompat;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -93,3 +94,11 @@ public abstract class DihRegistryDataCollectorMixin {
         }
     }
 }
+//?} else {
+/*import org.spongepowered.asm.mixin.Mixin;
+
+// Minecraft 1.21.11 has no target for this mixin; it is skipped there (DihMixinPlugin) and kept empty.
+@Mixin(net.minecraft.client.Minecraft.class)
+public abstract class DihRegistryDataCollectorMixin {
+}
+*///?}

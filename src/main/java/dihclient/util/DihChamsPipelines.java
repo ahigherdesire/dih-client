@@ -1,5 +1,6 @@
 package dihclient.util;
 
+//? if >=26.1 {
 import dihclient.mixin.DihRenderPipelineInvoker;
 import com.mojang.blaze3d.pipeline.DepthStencilState;
 import com.mojang.blaze3d.pipeline.RenderPipeline;
@@ -70,7 +71,7 @@ public final class DihChamsPipelines {
             ((DihRenderPipelineInvoker) base).dih$pushConstantSize(),
             base.getSortKey()
         );
-        *///?} else {
+        *///?} else if >=26.2 {
         return DihRenderPipelineInvoker.dih$create(
             Identifier.fromNamespaceAndPath("dihclient", "pipeline/" + name),
             base.getVertexShader(),
@@ -85,7 +86,23 @@ public final class DihChamsPipelines {
             base.getPrimitiveTopology(),
             base.getSortKey()
         );
-        //?}
+        //?} else {
+        /*return DihRenderPipelineInvoker.dih$create(
+            Identifier.fromNamespaceAndPath("dihclient", "pipeline/" + name),
+            base.getVertexShader(),
+            CHAMS_FRAGMENT,
+            base.getShaderDefines(),
+            base.getSamplers(),
+            base.getUniforms(),
+            base.getColorTargetState(),
+            depth,
+            base.getPolygonMode(),
+            true,
+            base.getVertexFormat(),
+            base.getVertexFormatMode(),
+            base.getSortKey()
+        );
+        *///?}
     }
 
     private static CompareOp invertDepth(CompareOp op) {
@@ -98,3 +115,70 @@ public final class DihChamsPipelines {
         };
     }
 }
+//?} else {
+/*import dihclient.mixin.DihRenderPipelineInvoker;
+import com.mojang.blaze3d.pipeline.RenderPipeline;
+import com.mojang.blaze3d.platform.DepthTestFunction;
+import net.minecraft.client.renderer.RenderPipelines;
+import net.minecraft.resources.Identifier;
+
+// Minecraft 1.21.11: pipelines carry a depth test function and write flags instead of a DepthStencilState, and the
+// entity translucent pipeline has no culling variant (the clones below enable culling themselves).
+public final class DihChamsPipelines {
+    private static RenderPipeline visible;
+    private static RenderPipeline occluded;
+    private static boolean tried;
+
+    private static final Identifier CHAMS_FRAGMENT = Identifier.fromNamespaceAndPath("dihclient", "core/chams");
+
+    private DihChamsPipelines() {
+    }
+
+    public static RenderPipeline visible() {
+        ensureBuilt();
+        return visible != null ? visible : RenderPipelines.ENTITY_TRANSLUCENT;
+    }
+
+    public static RenderPipeline occluded() {
+        ensureBuilt();
+        return occluded != null ? occluded : RenderPipelines.ENTITY_TRANSLUCENT;
+    }
+
+    private static void ensureBuilt() {
+        if (tried) return;
+        tried = true;
+        RenderPipeline base = RenderPipelines.ENTITY_TRANSLUCENT;
+        try {
+            visible = clone(base, "chams_visible", DepthTestFunction.LEQUAL_DEPTH_TEST, true);
+            occluded = clone(base, "chams_occluded", DepthTestFunction.GREATER_DEPTH_TEST, false);
+        } catch (Throwable t) {
+            visible = base;
+            occluded = base;
+        }
+    }
+
+    private static RenderPipeline clone(RenderPipeline base, String name, DepthTestFunction depthTest, boolean writeDepth) {
+        return DihRenderPipelineInvoker.dih$create(
+            Identifier.fromNamespaceAndPath("dihclient", "pipeline/" + name),
+            base.getVertexShader(),
+            CHAMS_FRAGMENT,
+            base.getShaderDefines(),
+            base.getSamplers(),
+            base.getUniforms(),
+            base.getBlendFunction(),
+            depthTest,
+            base.getPolygonMode(),
+            true,
+            base.isWriteColor(),
+            base.isWriteAlpha(),
+            writeDepth,
+            base.getColorLogic(),
+            base.getVertexFormat(),
+            base.getVertexFormatMode(),
+            base.getDepthBiasScaleFactor(),
+            base.getDepthBiasConstant(),
+            base.getSortKey()
+        );
+    }
+}
+*///?}

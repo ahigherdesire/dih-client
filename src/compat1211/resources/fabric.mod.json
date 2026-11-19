@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "id": "dih-compat1211",
+  "version": "1.0.0",
+  "custom": {
+    "loom:injected_interfaces": {
+      "net/minecraft/class_1923": [
+        "dihclient/compat/ChunkPosCompat"
+      ],
+      "net/minecraft/class_2824": [
+        "dihclient/compat/InteractPacketCompat"
+      ],
+      "net/minecraft/class_2743": [
+        "dihclient/compat/MotionPacketCompat"
+      ],
+      "net/minecraft/class_4184": [
+        "dihclient/compat/CameraCompat"
+      ],
+      "net/minecraft/class_9288": [
+        "dihclient/compat/ContainerContentsCompat"
+      ],
+      "net/minecraft/class_9278": [
+        "dihclient/compat/ChargedProjectilesCompat"
+      ],
+      "net/minecraft/class_1041": [
+        "dihclient/compat/WindowCompat"
+      ],
+      "net/minecraft/class_1011": [
+        "dihclient/compat/NativeImageCompat"
+      ],
+      "net/minecraft/class_1799": [
+        "dihclient/compat/ItemStackCompat"
+      ],
+      "net/minecraft/class_4970$class_4971": [
+        "dihclient/compat/BlockStateCompat"
+      ],
+      "net/minecraft/class_338": [
+        "dihclient/compat/ChatCompat"
+      ],
+      "net/minecraft/class_636": [
+        "dihclient/compat/GameModeCompat"
+      ]
+    }
+  }
+}

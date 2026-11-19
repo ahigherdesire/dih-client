@@ -262,7 +262,7 @@ public final class PlayerPhysics {
         if (s.verticalCollision) {
             if (s.verticalCollision && s.onGround) {
                 restitution = !(-cy < GRAVITY) && !shift && !suppressesBounce(effectState)
-                    ? Math.max(restitution, effectState.getBlock().getBounceRestitution())
+                    ? Math.max(restitution, bounceRestitution(effectState))
                     : 0.0;
             }
             double gravityCompensation;
@@ -283,7 +283,22 @@ public final class PlayerPhysics {
     }
 
     private static boolean suppressesBounce(BlockState state) {
+        //? if >=26.2 {
         return state.is(BlockTags.SUPPRESSES_BOUNCE);
+        //?} else {
+        /*return false;
+        *///?}
+    }
+
+    private static double bounceRestitution(BlockState state) {
+        //? if >=26.2 {
+        return state.getBlock().getBounceRestitution();
+        //?} else {
+        /*// 26.1: slime and beds bounce in their own updateEntityMovementAfterFallOn.
+        if (state.getBlock() instanceof net.minecraft.world.level.block.SlimeBlock) return 1.0;
+        if (state.getBlock() instanceof net.minecraft.world.level.block.BedBlock) return 0.66;
+        return 0.0;
+        *///?}
     }
 
     private static boolean isHorizontalCollisionMinor(PlayerState s, Vec3 movement, float xxa, float zza) {

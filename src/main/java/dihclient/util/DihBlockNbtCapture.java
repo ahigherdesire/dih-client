@@ -168,8 +168,13 @@ public final class DihBlockNbtCapture {
         encoded.putString("Name", id);
         if (!state.isSingletonState()) {
             CompoundTag properties = new CompoundTag();
+            //? if >=26.1 {
             state.getValues().forEach(value ->
                 properties.putString(value.property().getName(), value.valueName()));
+            //?} else {
+            /*state.getValues().forEach((property, value) ->
+                properties.putString(property.getName(), net.minecraft.util.Util.getPropertyName(property, value)));
+            *///?}
             if (!properties.isEmpty()) encoded.put("Properties", properties);
         }
         return encoded;
