@@ -6,40 +6,50 @@ window.DIH_RELEASE = {
   "repo": "https://github.com/ahigherdesire/dih-client",
   "channels": {
     "stable": {
-      "version": "5.1.2",
-      "label": "5.1.2",
-      "tag": "v5.1.2",
-      "notes": "https://github.com/ahigherdesire/dih-client/releases/tag/v5.1.2",
+      "version": "5.1.3",
+      "label": "5.1.3",
+      "tag": "v5.1.3",
+      "notes": "https://github.com/ahigherdesire/dih-client/releases/tag/v5.1.3",
       "builds": {
         "26.2-fabric": {
-          "file": "DIH-Client-5.1.2-26.2.jar",
+          "file": "DIH-Client-5.1.3-26.2.jar",
           "size": "22.5 MB",
-          "sha256": "d71da6a4f71208f5afe1f42f11785a1e4e9e87a1b1550cbc4cb74dce6605dea3"
+          "sha256": "8d11bbac4dbadcca1b4a6d3d7f24fe88d1373b1368be6142cab05a3a8ba96d4a"
         },
         "26.2-forge": {
-          "file": "DIH-Client-5.1.2-26.2-forge.jar",
+          "file": "DIH-Client-5.1.3-26.2-forge.jar",
           "size": "22.3 MB",
-          "sha256": "4143a8944b0915eaa45c49c4b15d575a96ee6ca8a487d1097e9f7aa1e227d1fd"
+          "sha256": "c197c07ab9340664d7d4a5e57695383c2c349d68192712a809844b625e4081c7"
         },
         "26.2-neoforge": {
-          "file": "DIH-Client-5.1.2-26.2-neoforge.jar",
+          "file": "DIH-Client-5.1.3-26.2-neoforge.jar",
           "size": "21.7 MB",
-          "sha256": "064b06e01c1f101662fac88c5a0472def5655c9e06e9f0f11649b00610733d84"
+          "sha256": "dc4ca3fb377cd5f1717567577559f5d806aa88bbfe66851043fbc9b8ca350c5f"
         },
         "26.3-fabric": {
-          "file": "DIH-Client-5.1.2-26.3.jar",
+          "file": "DIH-Client-5.1.3-26.3.jar",
           "size": "22.5 MB",
-          "sha256": "13d1558d051069a274c0ce0c114b4022c5fc70d789c0401bd4238a908ffc98c0"
+          "sha256": "d0eb14671d8814ceb183904f3e2bded1e69a4d41b6101b97c6bfc1c4852dfc2d"
         },
         "26.3-forge": {
-          "file": "DIH-Client-5.1.2-26.3-forge.jar",
+          "file": "DIH-Client-5.1.3-26.3-forge.jar",
           "size": "22.3 MB",
-          "sha256": "69d86803b0b8da2c687d3473f7a138dc9c15d6a936cb003b4a4e9e8df9afee92"
+          "sha256": "1b11274ca6c42277d6b8457b42a9044fba3ff9bf8f160ca39bb76ee15a5cb6f8"
         },
         "26.3-neoforge": {
-          "file": "DIH-Client-5.1.2-26.3-neoforge.jar",
+          "file": "DIH-Client-5.1.3-26.3-neoforge.jar",
           "size": "21.7 MB",
-          "sha256": "865e73bbac27304d66b780593d02c1db3a8770c2fb0b95b798b29b7e0c6425f1"
+          "sha256": "3b257438a5dbfc4ba6fa7161fd43fe5a5bbdfc4e0ec3e3ce47dc76c5a77bf9bf"
+        },
+        "26.1.2-fabric": {
+          "file": "DIH-Client-5.1.3-26.1.2.jar",
+          "size": "22.5 MB",
+          "sha256": "00294a4030f478bf4059ca6961e4b6754f46c298eac8156e99d463e0b3bd6cfc"
+        },
+        "1.21.11-fabric": {
+          "file": "DIH-Client-5.1.3-1.21.11.jar",
+          "size": "22.4 MB",
+          "sha256": "d108ae01392bf1364ce0bc6888141fdbc550bd984933ba7f3e0d0e79da5aeb87"
         }
       }
     },
@@ -96,7 +106,9 @@ window.DIH_RELEASE = {
     "26.2-neoforge": "https://cdn.modrinth.com/data/lfHFW1mp/versions/3PRDPZcJ/journeymap-neoforge-26.2-6.0.9.jar",
     "26.3-neoforge": "https://cdn.modrinth.com/data/lfHFW1mp/versions/OCuB6UWq/journeymap-neoforge-26.3-6.0.9.jar",
     "26.2-forge": "https://cdn.modrinth.com/data/lfHFW1mp/versions/FnrKzuue/journeymap-forge-26.2-6.0.9.jar",
-    "26.3-forge": "https://cdn.modrinth.com/data/lfHFW1mp/versions/Wki3fpjV/journeymap-forge-26.3-6.0.9.jar"
+    "26.3-forge": "https://cdn.modrinth.com/data/lfHFW1mp/versions/Wki3fpjV/journeymap-forge-26.3-6.0.9.jar",
+    "26.1.2-fabric": "https://cdn.modrinth.com/data/lfHFW1mp/versions/H7ypm6CE/journeymap-fabric-26.1.2-6.0.10.jar",
+    "1.21.11-fabric": "https://cdn.modrinth.com/data/lfHFW1mp/versions/6Np0S5K2/journeymap-fabric-1.21.11-6.0.0.jar"
   },
   "beta2": "https://github.com/ahigherdesire/dih-client/releases/tag/v5.1-beta.2"
 };

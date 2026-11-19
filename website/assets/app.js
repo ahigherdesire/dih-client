@@ -22,8 +22,8 @@
   const C = R.channels || {};
   const LOADERS = { fabric: 'Fabric', neoforge: 'NeoForge', forge: 'Forge' };
   const INSTALL = {
-    fabric: () => 'Install <a href="https://fabricmc.net/use/installer/" rel="noopener">Fabric Loader</a> 0.19.3+ and ' +
-      '<a href="https://modrinth.com/mod/fabric-api" rel="noopener">Fabric API</a>. Java 25.',
+    fabric: mc => 'Install <a href="https://fabricmc.net/use/installer/" rel="noopener">Fabric Loader</a> 0.19.3+ and ' +
+      '<a href="https://modrinth.com/mod/fabric-api" rel="noopener">Fabric API</a>. Java ' + (mc === '1.21.11' ? '21' : '25') + '.',
     neoforge: mc => 'Install <a href="https://neoforged.net/" rel="noopener">NeoForge</a> ' +
       (mc === '26.3' ? '26.3.0.22-beta' : '26.2.0.88') + ' or newer. Java 25.',
     forge: mc => 'Install <a href="https://files.minecraftforge.net/" rel="noopener">Forge</a> ' +
@@ -32,7 +32,7 @@
   const sel = { mc: '26.2', loader: 'fabric' };
   try {
     const saved = JSON.parse(localStorage.getItem('dih-pick') || '{}');
-    if (saved.mc in { '26.2': 1, '26.3': 1 }) sel.mc = saved.mc;
+    if (saved.mc in { '26.2': 1, '26.3': 1, '26.1.2': 1, '1.21.11': 1 }) sel.mc = saved.mc;
     if (saved.loader in LOADERS) sel.loader = saved.loader;
   } catch (e) {}
   const channelOf = el => el.dataset.pickLink || el.dataset.pickSum ||
