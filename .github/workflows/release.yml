@@ -71,8 +71,7 @@ jobs:
             name="DIH-Client-$version-$mc.jar"
             cp "versions/$mc-fabric/build/libs/DIH Client-$version-$mc.jar" "dist/$name"
             sha=$(sha256sum "dist/$name" | cut -d' ' -f1)
-            printf -- '- `%s` `%s`
-' "$name" "$sha" >> sha256.md
+            printf -- '- `%s` `%s`\n' "$name" "$sha" >> sha256.md
             echo "$name  $(stat -c %s "dist/$name") bytes  sha256 $sha" >> "$GITHUB_STEP_SUMMARY"
           done
           echo "version=$version" >> "$GITHUB_OUTPUT"
