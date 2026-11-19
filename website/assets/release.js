@@ -6,40 +6,40 @@ window.DIH_RELEASE = {
   "repo": "https://github.com/ahigherdesire/dih-client",
   "channels": {
     "stable": {
-      "version": "5.0.1",
-      "label": "5.0.1",
-      "tag": "v5.0.1",
-      "notes": "https://github.com/ahigherdesire/dih-client/releases/tag/v5.0.1",
+      "version": "5.1.2",
+      "label": "5.1.2",
+      "tag": "v5.1.2",
+      "notes": "https://github.com/ahigherdesire/dih-client/releases/tag/v5.1.2",
       "builds": {
         "26.2-fabric": {
-          "file": "DIH-Client-5.0.1-26.2.jar",
-          "size": "20.8 MB",
-          "sha256": "7a10cdb8168856611e9d5f255f4e6331e7de3e63108c348a0da5c50d56fbd2a2"
+          "file": "DIH-Client-5.1.2-26.2.jar",
+          "size": "22.5 MB",
+          "sha256": "d71da6a4f71208f5afe1f42f11785a1e4e9e87a1b1550cbc4cb74dce6605dea3"
         },
         "26.2-forge": {
-          "file": "DIH-Client-5.0.1-26.2-forge.jar",
-          "size": "20.5 MB",
-          "sha256": "be1b8931f159d957e8807ba4a487ffe64a4a7207cb7b65dbf160c8bd4ab39245"
+          "file": "DIH-Client-5.1.2-26.2-forge.jar",
+          "size": "22.3 MB",
+          "sha256": "4143a8944b0915eaa45c49c4b15d575a96ee6ca8a487d1097e9f7aa1e227d1fd"
         },
         "26.2-neoforge": {
-          "file": "DIH-Client-5.0.1-26.2-neoforge.jar",
-          "size": "19.9 MB",
-          "sha256": "84e22c79030a66f7c371e3622925ab454083df88162db516b019543630586bf7"
+          "file": "DIH-Client-5.1.2-26.2-neoforge.jar",
+          "size": "21.7 MB",
+          "sha256": "064b06e01c1f101662fac88c5a0472def5655c9e06e9f0f11649b00610733d84"
         },
         "26.3-fabric": {
-          "file": "DIH-Client-5.0.1-26.3.jar",
-          "size": "20.8 MB",
-          "sha256": "c835b0c2f92c5622d5884682ed9685c6a8fd0874cd47dacb59c8360860ddce01"
+          "file": "DIH-Client-5.1.2-26.3.jar",
+          "size": "22.5 MB",
+          "sha256": "13d1558d051069a274c0ce0c114b4022c5fc70d789c0401bd4238a908ffc98c0"
         },
         "26.3-forge": {
-          "file": "DIH-Client-5.0.1-26.3-forge.jar",
-          "size": "20.5 MB",
-          "sha256": "8646edf1884858f9a8a7fdc84d93187803931f42a877c60babb45bc17488aae1"
+          "file": "DIH-Client-5.1.2-26.3-forge.jar",
+          "size": "22.3 MB",
+          "sha256": "69d86803b0b8da2c687d3473f7a138dc9c15d6a936cb003b4a4e9e8df9afee92"
         },
         "26.3-neoforge": {
-          "file": "DIH-Client-5.0.1-26.3-neoforge.jar",
-          "size": "19.9 MB",
-          "sha256": "c7118fa4c0ce3021d5014465638850354a474328f1cb4b330687bc46e81b3b74"
+          "file": "DIH-Client-5.1.2-26.3-neoforge.jar",
+          "size": "21.7 MB",
+          "sha256": "865e73bbac27304d66b780593d02c1db3a8770c2fb0b95b798b29b7e0c6425f1"
         }
       }
     },
