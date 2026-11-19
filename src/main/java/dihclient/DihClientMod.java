@@ -81,6 +81,7 @@ public final class DihClientMod implements ClientModInitializer {
         dihclient.util.DihBaritonePathRenderer.initialize();
 
         dihclient.modules.HoleEspModule.initialize();
+        dihclient.modules.LightingModule.initialize();
         dihclient.modules.SchematicsModule.initialize();
         DihFemaleBodyRenderer.initialize();
         dihclient.commands.DihCommands.init();
