@@ -37,7 +37,11 @@ public class DihGuiSetScreenMixin {
 
     @Inject(method = "setScreen", at = @At("HEAD"))
     private void dih$storageScreenChanged(Screen screen, CallbackInfo ci) {
+        //? if >=26.2 {
         baritone.cache.ChestMemory.onScreenChange(minecraft, screen);
+        //?} else {
+        /*baritone.cache.ChestMemory.onScreenChange((Minecraft) (Object) this, screen);
+        *///?}
     }
 
     @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true)

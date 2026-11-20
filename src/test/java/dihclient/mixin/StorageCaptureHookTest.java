@@ -1,5 +1,6 @@
 package dihclient.mixin;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.ClassReader;
@@ -24,11 +25,14 @@ class StorageCaptureHookTest {
         var injection = hook.getAnnotation(Inject.class);
         assertNotNull(injection);
         assertTrue(Arrays.asList(injection.method()).contains("setScreen"));
-        assertNotNull(Gui.class.getDeclaredMethod("setScreen", net.minecraft.client.gui.screens.Screen.class));
+        boolean modern = Arrays.stream(Gui.class.getDeclaredMethods()).anyMatch(method -> method.getName().equals("setScreen"));
+        Class<?> screenOwner = modern ? Gui.class : Minecraft.class;
+        String screenOwnerName = screenOwner.getName().replace('.', '/');
+        assertNotNull(screenOwner.getDeclaredMethod("setScreen", net.minecraft.client.gui.screens.Screen.class));
         assertTrue(calls("net/minecraft/client/gui/screens/MenuScreens$ScreenConstructor", "fromPacket",
-            "net/minecraft/client/gui/Gui", "setScreen"));
+            screenOwnerName, "setScreen"));
         assertTrue(calls("net/minecraft/client/player/LocalPlayer", "clientSideCloseContainer",
-            "net/minecraft/client/gui/Gui", "setScreen"));
+            screenOwnerName, "setScreen"));
         assertTrue(calls("dihclient/mixin/DihGuiSetScreenMixin", hook.getName(),
             "baritone/cache/ChestMemory", "onScreenChange"));
     }
