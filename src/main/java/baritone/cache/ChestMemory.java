@@ -24,13 +24,22 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.inventory.AbstractContainerMenu;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ChestBlock;
+import net.minecraft.world.level.block.ShulkerBoxBlock;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.properties.ChestType;
 
 import java.io.File;
+import java.lang.ref.WeakReference;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -38,18 +47,18 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Locale;
 
 /**
  * Persistent store for chest / container contents observed in-game.
  *
- * <p>When the player opens a container the {@link MixinMinecraft} hooks call
- * {@link #onContainerOpen(BlockPos)} with the BlockPos the player is looking at,
+ * <p>When the player opens a container the GUI screen hook calls
+ * {@link #onContainerOpen(AbstractContainerMenu)} with the menu,
  * then {@link #onContainerClose(AbstractContainerMenu, String)} when the screen
- * closes. If both fire in quick succession and the container has at least one
- * item, the record is written to {@code baritone/chest_memory.json}.
+ * closes. Once the server has synced its contents, the snapshot is written to
+ * {@code baritone/chest_memory.json}. Empty snapshots remove old records.
  *
- * <p>All public methods are safe to call from any thread.
+ * <p>Lifecycle hooks run on the client thread. Queries and persistence synchronize access to records.
  */
 public final class ChestMemory {
 
@@ -73,51 +82,157 @@ public final class ChestMemory {
     }
 
     // ── Pending interaction tracking ──────────────────────────────────────────
-    // Set when a container screen opens (hitResult at that moment = the block).
-    // Cleared when the screen closes or after TTL_MS without a close event.
+    // Bound to the exact menu and level, not to an arbitrary wall-clock timeout.
+    private static Capture pending;
+    private static Interaction interaction;
 
-    private static volatile BlockPos pendingPos       = null;
-    private static volatile long     pendingTimestamp = 0L;
-    /** Discard the pending pos if the screen hasn't closed within this many ms. */
-    private static final long TTL_MS = 8_000L;
+    /** Observes Gui.setScreen, which both vanilla container opening and closing actually use. */
+    public static void onScreenChange(Minecraft mc, Screen newScreen) {
+        Screen old = mc.gui.screen();
+        if (old == newScreen) return;
+        boolean oldContainer = old instanceof AbstractContainerScreen<?>;
+        if (old instanceof AbstractContainerScreen<?> previous && mc.level != null) {
+            onContainerClose(previous.getMenu(), mc.level.dimension().identifier().toString());
+        }
+        if (!oldContainer && newScreen instanceof AbstractContainerScreen<?> next) {
+            onContainerOpen(next.getMenu());
+        } else {
+            // Screen replacement, disconnection or an unrelated GUI ends the association.
+            cancelCapture();
+        }
+    }
 
-    /**
-     * Called by {@code MixinMinecraft.onSetScreen} when a container screen
-     * opens. {@code pos} is {@code mc.hitResult.getBlockPos()} at that instant —
-     * the block the player just right-clicked to open the container.
-     */
-    public static void onContainerOpen(BlockPos pos) {
-        pendingPos       = pos;
-        pendingTimestamp = System.currentTimeMillis();
+    /** Record the actual use target rather than a later, possibly unrelated crosshair position. */
+    public static void onBlockInteraction(BlockPos pos) {
+        Minecraft mc = Minecraft.getInstance();
+        interaction = mc.level == null || pos == null ? null
+            : new Interaction(mc.level, pos.immutable(), System.currentTimeMillis());
+    }
+
+    record Interaction(WeakReference<Object> level, BlockPos pos, long timestamp) {
+        Interaction(Object level, BlockPos pos, long timestamp) {
+            this(new WeakReference<>(level), pos, timestamp);
+        }
+
+        BlockPos position(Object currentLevel, long now) {
+            // This timeout only covers the wait for the server to open a menu, not time spent using it.
+            long elapsed = now - timestamp;
+            return currentLevel != null && level.get() == currentLevel && elapsed >= 0 && elapsed <= 5_000 ? pos : null;
+        }
     }
 
     /**
-     * Called by {@code MixinMinecraft.onSetScreen} when a container screen
-     * closes. Reads all container-owned slots, filters air/empty, and if there
-     * are items and a valid pending BlockPos, writes a record to disk.
+     * Called by {@link #onScreenChange} when a container screen
+     * opens. Consume the recent block interaction, then validate its physical storage/menu pairing.
+     */
+    public static void onContainerOpen(AbstractContainerMenu menu) {
+        pending = null;
+        Minecraft mc = Minecraft.getInstance();
+        Interaction clicked = interaction;
+        interaction = null;
+        BlockPos pos = clicked == null ? null : clicked.position(mc.level, System.currentTimeMillis());
+        if (pos == null || mc.level == null || mc.player == null || menu == null
+                || menu == mc.player.inventoryMenu || !mc.level.isLoaded(pos)) return;
+        BlockState state = mc.level.getBlockState(pos);
+        int slots;
+        try {
+            slots = storageSlotCount(state, menu.getType());
+        } catch (UnsupportedOperationException e) {
+            return; // inventory has no registered menu type
+        }
+        if (slots == 0 || menu.slots.size() != slots + 36 || mc.level.getBlockEntity(pos) == null) return;
+        BlockPos partner = null;
+        if (state.getBlock() instanceof ChestBlock && state.getValue(ChestBlock.TYPE) != ChestType.SINGLE) {
+            partner = pos.relative(ChestBlock.getConnectedDirection(state));
+            if (!mc.level.isLoaded(partner)) return;
+            BlockState other = mc.level.getBlockState(partner);
+            if (!other.is(state.getBlock()) || other.getValue(ChestBlock.TYPE) == ChestType.SINGLE
+                || other.getValue(ChestBlock.FACING) != state.getValue(ChestBlock.FACING)
+                || !partner.relative(ChestBlock.getConnectedDirection(other)).equals(pos)) return;
+            // A double chest is one record whichever half was clicked. Replace legacy records for both halves.
+            if (partner.compareTo(pos) < 0) {
+                BlockPos swap = pos;
+                pos = partner;
+                partner = swap;
+            }
+        }
+        pending = new Capture(mc.level, menu, menu.containerId, currentWorldKey(),
+            mc.level.dimension().identifier().toString(), pos.immutable(), partner);
+    }
+
+    /** Called only after the server's full contents packet has been applied. */
+    public static void onContainerSynced(int containerId) {
+        if (pending != null) pending.synced(containerId);
+    }
+
+    public static void cancelCapture() {
+        pending = null;
+        interaction = null;
+    }
+
+    /** Expected storage-owned slots; excludes personal ender storage and non-storage menus. */
+    public static int storageSlotCount(BlockState state, MenuType<?> type) {
+        if (state.getBlock() instanceof ChestBlock) {
+            boolean single = state.getValue(ChestBlock.TYPE) == ChestType.SINGLE;
+            return type == (single ? MenuType.GENERIC_9x3 : MenuType.GENERIC_9x6) ? (single ? 27 : 54) : 0;
+        }
+        if (state.is(Blocks.BARREL) && type == MenuType.GENERIC_9x3) return 27;
+        if (state.getBlock() instanceof ShulkerBoxBlock && type == MenuType.SHULKER_BOX) return 27;
+        if ((state.is(Blocks.DISPENSER) || state.is(Blocks.DROPPER)) && type == MenuType.GENERIC_3x3) return 9;
+        if (state.is(Blocks.HOPPER) && type == MenuType.HOPPER) return 5;
+        if (state.is(Blocks.FURNACE) && type == MenuType.FURNACE) return 3;
+        if (state.is(Blocks.BLAST_FURNACE) && type == MenuType.BLAST_FURNACE) return 3;
+        if (state.is(Blocks.SMOKER) && type == MenuType.SMOKER) return 3;
+        if (state.is(Blocks.BREWING_STAND) && type == MenuType.BREWING_STAND) return 5;
+        if (state.is(Blocks.CRAFTER) && type == MenuType.CRAFTER_3x3) return 9;
+        return 0;
+    }
+
+    static final class Capture {
+        final Object level, menu;
+        final int containerId;
+        final String world, dimension;
+        final BlockPos pos, partner;
+        private boolean synced;
+
+        Capture(Object level, Object menu, int containerId, String world, String dimension, BlockPos pos, BlockPos partner) {
+            this.level = level;
+            this.menu = menu;
+            this.containerId = containerId;
+            this.world = world;
+            this.dimension = dimension;
+            this.pos = pos;
+            this.partner = partner;
+        }
+
+        void synced(int id) {
+            if (id == containerId) synced = true;
+        }
+
+        ChestRecord snapshot(Object level, Object menu, String world, String dimension, List<SlotItem> items, long now) {
+            if (!synced || this.level != level || this.menu != menu || !this.world.equals(world)
+                    || !this.dimension.equals(dimension)) return null;
+            return new ChestRecord(pos, dimension, world, items, now);
+        }
+    }
+
+    /**
+     * Called by {@link #onScreenChange} when a container screen
+     * closes. Reads the validated storage-owned slots and replaces the previous
+     * snapshot, removing the record if the container is now empty.
      *
      * @param menu      the closing container menu
      * @param dimension registry key string like {@code "minecraft:overworld"}
      */
     public static void onContainerClose(AbstractContainerMenu menu, String dimension) {
-        if (dimension == null) return;
-
-        BlockPos pos = pendingPos;
-        long     ts  = pendingTimestamp;
-        if (pos == null) return;
-
-        // Stale pending pos — the container was opened without a right-click
-        // capture (automation, plugin message, etc.).
-        if (System.currentTimeMillis() - ts > TTL_MS) {
-            pendingPos = null;
-            return;
-        }
-        pendingPos = null;
+        Capture capture = pending;
+        pending = null;
+        if (capture == null || dimension == null || menu == null) return;
+        Minecraft mc = Minecraft.getInstance();
 
         // Collect items from the container's own slots (not the player inv).
-        // Most menus: total_slots - 36 = container slots (the last 36 are
-        // always the player's own inventory). For tiny containers (< 41 slots
-        // total) we record all slots.
+        // onContainerOpen has validated the vanilla menu type and exact slot count;
+        // the final 36 slots are the player's inventory, never remembered here.
         List<Slot> allSlots = menu.slots;
         int containerSlotCount = allSlots.size() > 36
                 ? allSlots.size() - 36
@@ -140,22 +255,21 @@ public final class ChestMemory {
             items.add(new SlotItem(id, stack.getCount(), displayName));
         }
 
-        if (items.isEmpty()) return; // container was empty — not worth keeping
-
-        String world = currentWorldKey();
-        String key = recordKey(world, dimension, pos);
+        ChestRecord snapshot = capture.snapshot(mc.level, menu, currentWorldKey(), dimension, items,
+            System.currentTimeMillis());
+        if (snapshot == null) return;
         synchronized (RECORDS) {
             ensureLoaded();
-            RECORDS.put(key, new ChestRecord(pos, dimension, world, items,
-                    System.currentTimeMillis()));
+            STORE.replace(snapshot, capture.partner);
         }
         scheduleSave();
     }
 
     // ── In-memory store ───────────────────────────────────────────────────────
 
-    /** Map key: {@code "dim:x,y,z"} — one entry per recorded container position. */
-    private static final Map<String, ChestRecord> RECORDS = new LinkedHashMap<>();
+    /** One entry per world, dimension and recorded container position. */
+    private static final Store STORE = new Store();
+    private static final Map<String, ChestRecord> RECORDS = STORE.records;
     private static boolean loaded = false;
 
     /** Ensure the on-disk data has been loaded into {@link #RECORDS} (lazy, once). */
@@ -200,17 +314,37 @@ public final class ChestMemory {
      * Results are sorted by total matched-item count, descending.
      */
     public static List<SearchResult> search(String query) {
-        String q = query.toLowerCase();
         String world = currentWorldKey();
-        List<SearchResult> results = new ArrayList<>();
         synchronized (RECORDS) {
             ensureLoaded();
-            for (ChestRecord rec : RECORDS.values()) {
-                if (!world.equals(rec.world)) continue; // only the current world/server
+            return STORE.search(world, query);
+        }
+    }
+
+    /** Shared in-memory index. Disk IO and Minecraft lifecycle remain in the facade. */
+    static final class Store {
+        final Map<String, ChestRecord> records = new LinkedHashMap<>();
+
+        void put(ChestRecord record) {
+            String key = recordKey(record.world, record.dimension, record.pos);
+            if (record.items.isEmpty()) records.remove(key);
+            else records.put(key, record);
+        }
+
+        void replace(ChestRecord record, BlockPos partner) {
+            if (partner != null) records.remove(recordKey(record.world, record.dimension, partner));
+            put(record);
+        }
+
+        List<SearchResult> search(String world, String query) {
+            String q = normalize(query);
+            List<SearchResult> results = new ArrayList<>();
+            if (q.isEmpty()) return results;
+            for (ChestRecord rec : records.values()) {
+                if (!world.equals(rec.world)) continue;
                 List<SlotItem> matched = new ArrayList<>();
                 for (SlotItem item : rec.items) {
-                    if (item.id.toLowerCase().contains(q)
-                            || item.displayName.toLowerCase().contains(q)) {
+                    if (normalize(item.id).contains(q) || normalize(item.displayName).contains(q)) {
                         matched.add(item);
                     }
                 }
@@ -218,14 +352,13 @@ public final class ChestMemory {
                     results.add(new SearchResult(rec, matched));
                 }
             }
+            results.sort((a, b) -> Integer.compare(b.matchedCount(), a.matchedCount()));
+            return results;
         }
-        // Sort by total matched quantity (most items first)
-        results.sort((a, b) -> {
-            int ca = a.matchedItems.stream().mapToInt(s -> s.count).sum();
-            int cb = b.matchedItems.stream().mapToInt(s -> s.count).sum();
-            return Integer.compare(cb, ca);
-        });
-        return results;
+
+        private static String normalize(String text) {
+            return text == null ? "" : text.strip().toLowerCase(Locale.ROOT).replace('_', ' ');
+        }
     }
 
     /** Remove all records for the current world/server (in memory + on disk). */
@@ -243,6 +376,7 @@ public final class ChestMemory {
         String key = recordKey(currentWorldKey(), dim, pos);
         boolean removed;
         synchronized (RECORDS) {
+            ensureLoaded();
             removed = RECORDS.remove(key) != null;
         }
         if (removed) scheduleSave();

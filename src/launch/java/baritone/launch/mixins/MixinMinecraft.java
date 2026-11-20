@@ -27,10 +27,8 @@ import baritone.cache.ChestMemory;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.screens.Screen;
-import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.phys.BlockHitResult;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -155,6 +153,7 @@ public class MixinMinecraft {
             at = @At("HEAD")
     )
     private void preLoadWorld(final ClientLevel world, final CallbackInfo ci) {
+        ChestMemory.cancelCapture();
         // If we're unloading the world but one doesn't exist, ignore it
         if (this.level == null && world == null) {
             return;
@@ -241,51 +240,6 @@ public class MixinMinecraft {
         //?} else {
         /*return instance.screen;
         *///?}
-    }
-
-    // ── Chest content memory ─────────────────────────────────────────────────
-    //
-    // Hook into Minecraft.setScreen(Screen) to detect when a container UI
-    // opens and closes.  When a container opens we capture the BlockPos the
-    // player is looking at (mc.hitResult at that moment = the block just
-    // right-clicked).  When the container closes we read the slots and write
-    // the record to disk via ChestMemory.
-    //
-    // require = 0 means: if the method is renamed in a future MC version, the
-    // mod still loads — chest memory simply doesn't capture anything until the
-    // mixin is updated.
-
-    // MC 26.2: Minecraft.setScreen(Screen) was renamed to setScreenAndShow(Screen), and the current
-    // screen moved to Gui.screen().
-    //? if >=26.2 {
-    @Inject(method = "setScreenAndShow", at = @At("HEAD"), require = 0)
-    //?} else {
-    /*@Inject(method = "setScreen", at = @At("HEAD"), require = 0)
-    *///?}
-    private void onSetScreen(Screen newScreen, CallbackInfo ci) {
-        Minecraft mc  = Minecraft.getInstance();
-        Screen    old = mc.gui.screen();
-
-        boolean oldIsContainer = old instanceof AbstractContainerScreen<?>;
-        boolean newIsContainer = newScreen instanceof AbstractContainerScreen<?>;
-
-        if (!oldIsContainer && newIsContainer) {
-            // A container screen just opened.
-            // mc.hitResult is still pointing at the block the player right-clicked
-            // (raycasting is suspended while a screen is open, so hitResult stays
-            // frozen from the moment the player interacted with the block).
-            if (mc.hitResult instanceof BlockHitResult bhr) {
-                ChestMemory.onContainerOpen(bhr.getBlockPos());
-            }
-
-        } else if (oldIsContainer && !newIsContainer) {
-            // A container screen is closing — record its contents.
-            AbstractContainerScreen<?> prev = (AbstractContainerScreen<?>) old;
-            if (mc.level != null) {
-                String dim = mc.level.dimension().identifier().toString();
-                ChestMemory.onContainerClose(prev.getMenu(), dim);
-            }
-        }
     }
 
     // TODO

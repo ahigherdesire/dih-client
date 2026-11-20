@@ -35,6 +35,11 @@ public class DihGuiSetScreenMixin {
     @Unique
     private boolean dih$replacingScreen;
 
+    @Inject(method = "setScreen", at = @At("HEAD"))
+    private void dih$storageScreenChanged(Screen screen, CallbackInfo ci) {
+        baritone.cache.ChestMemory.onScreenChange(minecraft, screen);
+    }
+
     @Inject(method = "setScreen", at = @At("HEAD"), cancellable = true)
     private void dih$replaceScreen(Screen screen, CallbackInfo ci) {
 

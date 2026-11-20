@@ -188,6 +188,7 @@ public abstract class DihClientPlayNetworkHandlerMixin {
 
     @Inject(method = "handleContainerContent", at = @At("RETURN"))
     private void yang$onInventory(ClientboundContainerSetContentPacket packet, CallbackInfo ci) {
+        baritone.cache.ChestMemory.onContainerSynced(packet.containerId());
         if (PackHideState.isHardLocked()) return;
         MacroConditionRegistry.recordInventorySync();
         boolean macroWaits = MacroConditionRegistry.hasPendingInventoryConditions();

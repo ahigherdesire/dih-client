@@ -69,6 +69,10 @@ public class DihMultiPlayerGameModeMixin {
                                                        BlockHitResult hit,
                                                        CallbackInfoReturnable<InteractionResult> cir) {
         ScaffoldModule.onVanillaUseItemOnResult(hand, hit, cir.getReturnValue());
+        if (hit != null && player == Minecraft.getInstance().player && cir.getReturnValue() != null
+            && cir.getReturnValue().consumesAction()) {
+            baritone.cache.ChestMemory.onBlockInteraction(hit.getBlockPos());
+        }
     }
 
     @Inject(

@@ -22,12 +22,13 @@ import baritone.api.command.Command;
 import baritone.api.command.argument.IArgConsumer;
 import baritone.api.command.exception.CommandException;
 import baritone.api.command.exception.CommandInvalidStateException;
-import baritone.api.pathing.goals.GoalBlock;
 import baritone.cache.ChestMemory;
 import baritone.cache.ChestMemory.ChestRecord;
 import baritone.cache.ChestMemory.SearchResult;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import dihclient.modules.StorageSearchRenderer;
+import dihclient.util.DihStorageSearch;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -36,17 +37,17 @@ import java.util.List;
 import java.util.stream.Stream;
 
 /**
- * {@code #chest} — search your recorded container contents and navigate to them.
+ * {@code #chest} — search recorded container contents and highlight them.
  *
  * <p>DIH Client silently records the contents of every chest, barrel, shulker
  * box, hopper, dropper, and other container you open. This command lets you
- * search that database and optionally path to a specific result.
+ * search that database and highlight a specific result, without moving the player.
  *
  * <h2>Subcommands</h2>
  * <pre>
  *   #chest &lt;item&gt;            search for chests containing &lt;item&gt; (partial match)
- *   #chest &lt;item&gt; goto       path to the best matching chest
- *   #chest &lt;N&gt; goto          path to the N'th result from the last search
+ *   #chest &lt;item&gt; highlight  highlight the best matching chest
+ *   #chest &lt;N&gt; highlight     highlight the N'th result from the last search
  *   #chest list              list all recorded containers (most recent first)
  *   #chest stats             show database stats
  *   #chest clear             wipe the entire database
@@ -59,6 +60,7 @@ public class ChestCommand extends Command {
 
     /** Results from the most recent {@code #chest <item>} search. */
     private List<SearchResult> lastResults = Collections.emptyList();
+    private String lastQuery = "";
 
     public ChestCommand(IBaritone baritone) {
         super(baritone, "chest", "chests", "findchest");
@@ -68,7 +70,7 @@ public class ChestCommand extends Command {
     public void execute(String label, IArgConsumer args) throws CommandException {
         if (!args.hasAny()) {
             throw new CommandInvalidStateException(
-                    "Usage: #chest <item> | #chest list | #chest stats | #chest clear | #chest <N> goto");
+                    "Usage: #chest <item> | #chest list | #chest stats | #chest clear | #chest <N> highlight");
         }
 
         String first = args.getString().toLowerCase();
@@ -92,6 +94,7 @@ public class ChestCommand extends Command {
             args.requireMax(0);
             int prev = ChestMemory.size();
             ChestMemory.clear();
+            StorageSearchRenderer.clear();
             lastResults = Collections.emptyList();
             logDirect("Cleared " + prev + " container record"
                     + (prev == 1 ? "" : "s") + " from chest memory.");
@@ -130,12 +133,12 @@ public class ChestCommand extends Command {
         // If the first token is a number, treat it as "goto Nth last result".
         try {
             int n = Integer.parseInt(first);
-            if (args.hasAny() && args.getString().toLowerCase().equals("goto")) {
+            if (args.hasAny() && isSelection(args.getString())) {
                 args.requireMax(0);
                 gotoResult(n);
             } else {
                 throw new CommandInvalidStateException(
-                        "Usage: #chest <N> goto  (or #chest <item> to search first)");
+                        "Usage: #chest <N> highlight  (or #chest <item> to search first)");
             }
             return;
         } catch (NumberFormatException ignored) {
@@ -148,14 +151,14 @@ public class ChestCommand extends Command {
         boolean gotoFirst = false;
         if (args.hasAny()) {
             String second = args.getString().toLowerCase();
-            if (second.equals("goto")) {
+            if (isSelection(second)) {
                 gotoFirst = true;
             } else {
                 // Maybe it's a multi-word item name — append
                 query = query + " " + second;
                 while (args.hasAny()) {
                     String tok = args.getString().toLowerCase();
-                    if (tok.equals("goto")) { gotoFirst = true; break; }
+                    if (isSelection(tok)) { gotoFirst = true; break; }
                     query = query + " " + tok;
                 }
             }
@@ -167,7 +170,16 @@ public class ChestCommand extends Command {
     // ── Search ──────────────────────────────────────────────────────────────
 
     private void searchAndDisplay(String query, boolean gotoFirst) throws CommandException {
+        lastQuery = query;
         lastResults = ChestMemory.search(query);
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level != null && mc.player != null) {
+            String dimension = mc.level.dimension().identifier().toString();
+            lastResults.sort(java.util.Comparator
+                .comparingInt((SearchResult hit) -> dimension.equals(hit.record.dimension) ? 0 : 1)
+                .thenComparingDouble(hit -> hit.record.pos.distToCenterSqr(mc.player.position())));
+            StorageSearchRenderer.search(mc, query);
+        }
 
         if (lastResults.isEmpty()) {
             logDirect("No recorded chests contain \"" + query + "\".");
@@ -199,23 +211,24 @@ public class ChestCommand extends Command {
                     .orElse("?");
 
             logDirect(String.format(
-                    " %2d. X=%d Y=%d Z=%d [%s] ~%d away — %s",
+                    " %2d. X=%d Y=%d Z=%d [%s] ~%d away — %s; last seen %s",
                     i + 1,
                     pos.getX(), pos.getY(), pos.getZ(),
                     rec.dimShort(),
                     dist,
-                    matchStr));
+                    matchStr, DihStorageSearch.age(rec.timestamp, System.currentTimeMillis())));
         }
 
         if (lastResults.size() > show) {
             logDirect("  ... " + (lastResults.size() - show) + " more. "
-                    + "Use #chest <N> goto to path to a specific result.");
+                    + "Use #chest <N> highlight to select a specific result.");
         }
 
         if (gotoFirst) {
             gotoResult(1);
         } else {
-            logDirect("Tip: #chest 1 goto → path to nearest match");
+            logDirect("Green outlines show nearby matches (up to 64 within 128 blocks). Contents are remembered snapshots.");
+            logDirect("Tip: #chest 1 highlight selects one; .storage clear hides outlines.");
         }
     }
 
@@ -278,11 +291,16 @@ public class ChestCommand extends Command {
         }
         ChestRecord rec = lastResults.get(n - 1).record;
         BlockPos    pos = rec.pos;
-        logDirect("→ Pathing to chest #" + n + " at X=" + pos.getX()
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.level == null || mc.player == null || !rec.world.equals(ChestMemory.currentWorldKey())
+            || !rec.dimension.equals(mc.level.dimension().identifier().toString())) {
+            throw new CommandInvalidStateException("That result is in another world or dimension. Search again here.");
+        }
+        var highlighted = StorageSearchRenderer.show(mc, lastQuery, pos);
+        logDirect("Highlighting chest #" + n + " at X=" + pos.getX()
                 + " Y=" + pos.getY() + " Z=" + pos.getZ()
                 + " [" + rec.dimShort() + "]");
-        // GoalBlock walks to the block itself and descends if needed.
-        baritone.getCustomGoalProcess().setGoalAndPath(new GoalBlock(pos));
+        if (highlighted.isEmpty()) logDirect("Outside the 128-block highlight radius, or no longer a match. No movement started.");
     }
 
     // ── Forget ──────────────────────────────────────────────────────────────
@@ -297,6 +315,9 @@ public class ChestCommand extends Command {
                     "Result " + n + " out of range (1 – " + lastResults.size() + ").");
         }
         ChestRecord rec = lastResults.get(n - 1).record;
+        if (!rec.world.equals(ChestMemory.currentWorldKey())) {
+            throw new CommandInvalidStateException("That result belongs to another world. Search again here.");
+        }
         boolean ok = ChestMemory.forgetAt(rec.pos, rec.dimension);
         if (ok) {
             logDirect("Forgot container at X=" + rec.pos.getX()
@@ -309,6 +330,11 @@ public class ChestCommand extends Command {
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
+
+    /** Legacy goto syntax selects an outline too; storage search never starts movement. */
+    private static boolean isSelection(String token) {
+        return token.equalsIgnoreCase("highlight") || token.equalsIgnoreCase("goto");
+    }
 
     /** Returns a rough dimension index for sorting same-dim results first. */
     private int dimensionIndex() {
@@ -336,7 +362,7 @@ public class ChestCommand extends Command {
             String p = "";
             try { p = args.peekString().toLowerCase(); } catch (Exception ignored) {}
             final String pf = p;
-            return Stream.of("goto").filter(s -> s.startsWith(pf));
+            return Stream.of("highlight").filter(s -> s.startsWith(pf));
         }
         return Stream.empty();
     }
@@ -353,12 +379,14 @@ public class ChestCommand extends Command {
         return Arrays.asList(
                 "DIH Client silently records the contents of every container you open",
                 "(chests, barrels, shulker boxes, hoppers, droppers, etc.).",
-                "Use this command to search those records and navigate to them.",
+                "Use this command to search those records and highlight them without walking.",
                 "",
                 "Usage:",
                 "> #chest <item>          - search for chests containing <item>",
-                "> #chest <item> goto     - search and immediately path to top result",
-                "> #chest <N> goto        - path to result N from the last search",
+                "> #chest <item> highlight - search and highlight the top result",
+                "> #chest <N> highlight   - highlight result N from the last search",
+                "Legacy goto syntax also highlights; it never starts movement.",
+                "> .storage clear        - hide outlines without deleting remembered contents",
                 "> #chest list            - browse all recorded containers",
                 "> #chest list <page>     - next page of the list",
                 "> #chest stats           - how many containers are recorded",
