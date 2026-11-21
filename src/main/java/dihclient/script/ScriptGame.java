@@ -62,7 +62,7 @@ public final class ScriptGame {
             a -> player(p -> p.level().getBiome(p.blockPosition()).unwrapKey().map(k -> k.identifier().toString()).orElse(null)));
         lib.define("World", "groundDistance(maxDistance)", "Vertical collision distance below the feet, or null if no ground is found. Liquids do not count as ground.", 0, 1,
             a -> player(p -> groundDistance(p, boundedDistance(a.number(0, 64), 512))));
-        lib.define("World", "nearestThreat(radius)", "Nearest hostile or targeting mob: identity, position, distance, targeting and attacking. Hostility alone never implies attacking.", 0, 1,
+        lib.define("World", "nearestThreat(radius)", "Nearest hostile, targeting or observed attacking entity: identity, position, distance, targeting and attacking. Hostility alone never implies attacking.", 0, 1,
             a -> player(p -> nearestThreat(p, boundedDistance(a.number(0, 32), 256))));
         lib.define("World", "blockInfo(x, y, z)", "Block ID, fluid, collision, fullBlockSupport, falling and loaded; unloaded blocks have null ID.", 3, 3,
             a -> player(p -> blockInfo(p, new BlockPos(a.integer(0), a.integer(1), a.integer(2)))));
@@ -149,6 +149,15 @@ public final class ScriptGame {
         return Map.of("hostile", hostile, "targeting", targeting, "attacking", recentlyHurtPlayer);
     }
 
+    static boolean isRecentAttacker(Object entity, Object owner, Object directSource, int hurtTime) {
+        return entity != null && hurtTime > 0 && (entity == owner || entity == directSource);
+    }
+
+    private static boolean recentlyAttacked(LocalPlayer player, Entity entity) {
+        var source = player.getLastDamageSource();
+        return source != null && isRecentAttacker(entity, source.getEntity(), source.getDirectEntity(), player.hurtTime);
+    }
+
     private static Map<String, Object> entityInfo(LocalPlayer p, Entity entity) {
         Map<String, Object> out = vector(entity.position());
         out.put("id", entity.getUUID().toString());
@@ -157,7 +166,7 @@ public final class ScriptGame {
         out.put("name", entity.getName().getString());
         out.put("distance", (double) entity.distanceTo(p));
         boolean targeting = entity instanceof Mob mob && mob.getTarget() == p;
-        boolean hurt = p.getLastHurtByMob() == entity && p.hurtTime > 0;
+        boolean hurt = recentlyAttacked(p, entity);
         out.putAll(threatState(entity instanceof Enemy, targeting, hurt));
         return out;
     }
@@ -166,8 +175,9 @@ public final class ScriptGame {
         Entity nearest = null;
         double distance = radius * radius;
         for (Entity entity : p.level().getEntities(p, p.getBoundingBox().inflate(radius))) {
-            if (!entity.isAlive() || !(entity instanceof Mob mob)) continue;
-            if (!(entity instanceof Enemy) && mob.getTarget() != p && p.getLastHurtByMob() != entity) continue;
+            if (!entity.isAlive()) continue;
+            boolean targeting = entity instanceof Mob mob && mob.getTarget() == p;
+            if (!(entity instanceof Enemy) && !targeting && !recentlyAttacked(p, entity)) continue;
             double d = entity.distanceToSqr(p);
             if (d <= distance) { distance = d; nearest = entity; }
         }

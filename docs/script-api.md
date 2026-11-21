@@ -56,7 +56,7 @@ setting when all scripts owning that override stop.
 | `velocity()` | Object with `x`, `y`, `z` in blocks/tick. |
 | `biome()` | Namespaced biome ID. |
 | `groundDistance(maxDistance)` | Vertical collision distance below feet, or null for absent/unloaded ground; fluids are separate from collision ground. |
-| `nearestThreat(radius)` | Mob identity/type/position/distance plus observed `targeting` and `attacking`. Hostility alone does not imply attacking. |
+| `nearestThreat(radius)` | Entity identity/type/position/distance plus observed `targeting` and `attacking`. Damage owners and direct projectile sources count as observed attackers during hurt time; hostility alone does not imply attacking. |
 | `blockInfo(x,y,z)` | `loaded`, `id`, `fluid`, `collision`, `fullBlockSupport`, `falling`; unloaded IDs are null, distinguishable from air. |
 | `crosshairTarget()` | `type` = entity/block/miss, with entity identity or block coordinates and face. |
 

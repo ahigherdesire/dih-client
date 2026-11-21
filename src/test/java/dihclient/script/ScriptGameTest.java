@@ -9,6 +9,14 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 
 class ScriptGameTest {
+    @Test void attacksUseTheObservedDamageOwnerOrProjectileAndExpire() {
+        Object attacker = new Object(), projectile = new Object(), unrelated = new Object();
+        assertTrue(ScriptGame.isRecentAttacker(attacker, attacker, projectile, 5));
+        assertTrue(ScriptGame.isRecentAttacker(projectile, attacker, projectile, 5));
+        assertFalse(ScriptGame.isRecentAttacker(unrelated, attacker, projectile, 5));
+        assertFalse(ScriptGame.isRecentAttacker(attacker, attacker, projectile, 0));
+        assertFalse(ScriptGame.isRecentAttacker(attacker, null, null, 5));
+    }
     @Test void interactingWithChestUsesActualInsetFace() {
         AABB chest = new AABB(1.0 / 16, 0, 1.0 / 16, 15.0 / 16, 14.0 / 16, 15.0 / 16);
         assertEquals(new Vec3(10.5, 64.875, 20.5), ScriptGame.facePoint(new BlockPos(10, 64, 20), chest, Direction.UP));
