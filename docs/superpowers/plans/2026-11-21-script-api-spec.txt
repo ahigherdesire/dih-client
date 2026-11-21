@@ -1,0 +1,120 @@
+These are proposed APIs, not functions that already exist.
+
+Meteor should be supported alongside the script. The original relies on Meteor Auto Eat and Auto Log. My earlier instruction to remove it was unnecessary; the script needs to coordinate those modules. Automatic mending also wasn’t implemented in my previous script.
+1. Inventory and offhand control
+Keep DIH’s existing numbering: 1–36 for inventory slots, plus "offhand".
+API	Required behaviour
+inventoryItem(slot)	Item ID, including offhand; works without an open GUI.
+inventoryCount(slot)	Count in that specific slot.
+durability(slot)	Extend the existing function to accept "offhand".
+maxDurability(slot)	Maximum durability, so the script knows when mending is complete.
+hasEnchantment(slot, id)	Check for Mending.
+swapInventory(a, b)	Swap two slots, including offhand, without dropping anything.
+moveInventory(from, to, amount)	Move/split an exact amount; return the amount actually moved.
+dropInventory(slot, amount)	Drop from that specific slot, preserving the remainder.
+cursorItem(), cursorCount()	Inspect carried items so interrupted inventory operations can recover.
+
+
+Inventory operations must use normal server-synchronised clicks, handle cursor state, and report failure rather than assuming success.
+
+This restores steak in offhand and all 34 gold slots, and lets the mending routine exchange steak, pickaxe and sword while keeping the inventory full.
+2. Eating, aiming and interaction
+API	Why it is needed
+usingItem()	Meteor eating must not count as being stuck.
+eat(hand)	Extend existing eating to support "offhand"; useful when Meteor is absent.
+yaw(), pitch()	Capture deposit and XP-farm directions during setup.
+look(yaw, pitch, sync)	Restore the exact direction; sync=true sends rotation before the following action.
+attackCooldown()	Return a fraction from 0 to 1.
+attack()	Normal crosshair attack, not target selection or KillAura.
+useItem(hand)	Place/scoop water with the selected bucket.
+interactBlock(x, y, z, face, hand)	Open the configured chest instead of whichever chest happens to be nearest.
+setKey(key, pressed)	Jump/swim recovery; automatically release script-held keys on stop.
+
+
+Mending requires full attack cooldown plus the small random delay described in the README.
+3. Player, environment and threat information
+Add:
+alive()
+onGround()
+inWater()
+submerged()
+inLava()
+onFire()
+air()
+fallDistance()
+velocity()
+biome()
+groundDistance(maxDistance)
+nearestThreat(radius)
+blockInfo(x, y, z)
+crosshairTarget()
+Required return information:
+- velocity(): X/Y/Z velocity.
+- nearestThreat(): entity type, position, distance and whether it is targeting/attacking this player. Merely being a hostile mob must not automatically mean “attacking.”
+- blockInfo(): block ID, fluid, collision, full-block support, and whether it is a falling block. Unloaded locations must be distinguishable from air.
+- crosshairTarget(): entity/block/miss plus target identity or block position.
+These cover the README’s safe /sethome location, liquid landings, drowning, fire/lava escape, damage reports and water-bucket clutch. The creeper exception belongs in the script’s settings.
+4. More complete container controls
+Existing GUI functions cover much of this. Add:
+slotLore(slot)
+clickSlotAction(slot, action, button)
+Support normal pickup, quick_move, swap and throw actions. This is needed to take the shared sword directly into the pickaxe’s hotbar slot.
+
+Menu matching needs exact name first, then substring, then lore, plus explicit slot selection. Station setup must capture the chest actually under the crosshair.
+5. Meteor integration
+modLoaded("meteor-client")
+moduleEnabled("meteor", "auto-eat")
+setModuleEnabled("meteor", "auto-eat", true)
+setModuleEnabled("meteor", "auto-log", false)
+setModuleEnabled must be idempotent, not a blind toggle, and return failure if the module/provider is missing.
+
+The script can then:
+- Keep Auto Eat working with offhand steak.
+- Disable Auto Log before returning to base.
+- Enable Auto Log after arriving at the mining spot.
+- Avoid competing with Meteor for eating and inventory actions.
+6. Persistent storage and cross-client locks
+The README requires shared settings, per-account statistics/spot state, death logs and a shared Discord command queue.
+
+Provide:
+readText(scope, path)
+writeTextAtomic(scope, path, text)
+appendText(scope, path, text)
+listFiles(scope, directory)
+
+tryLock(scope, name, leaseMilliseconds)
+renewLock(handle)
+releaseLock(handle)
+lockOwner(scope, name)
+scope should support an instance folder and a configured shared folder.
+
+Locks must work across separate Minecraft processes, use unique ownership tokens, and prevent an old owner from releasing a newer owner’s lock. The sword needs a renewable three-minute lease; the Discord poller needs a roughly 20-second lease.
+
+Malformed configuration must leave the last valid settings intact. Writes must not silently overwrite someone else’s concurrent edits.
+7. JSON, HTTP and secrets for Discord
+jsonParse(text)
+jsonStringify(value)
+httpRequest(method, url, headers, body, timeoutMilliseconds)
+secret(name)
+JSON objects must be accessible from scripts—through maps/indexing or equivalent getter/setter functions. Keep Discord IDs as strings, since numeric conversion can lose precision.
+
+HTTP must return status, headers and body, expose rate-limit responses, and run away from the Minecraft client thread.
+
+This is sufficient to implement the original Discord commands, authorised-user checks, bot-name targeting, leader polling and command distribution. A webhook alone is insufficient because it cannot receive those commands.
+
+The token should remain in local secret/config storage, never in the script committed to GitHub.
+8. Lifecycle, monitoring and local commands
+Add support for:
+registerClientCommand(name, handler)
+disconnect(reason)
+reconnectLastServer()
+respawn()
+Also expose tick, damage, death, join, disconnect and received-chat events. Damage/death events need a snapshot of position, environment and nearby entities before the player/world disappears.
+
+Runtime requirement: safety monitoring and bucket clutch must continue during waits, walking and other operations. Callbacks must be serialised safely; don’t run the same interpreter concurrently or block the client thread.
+
+Discord supervision must remain usable while the mining routine is stopped or the client is disconnected. Ordinary joining must not start mining; only an explicitly armed Auto Log reconnect may resume it. Death must cancel that armed resume.
+
+Finally, expose a way to disable pause-on-lost-focus while the bot runs.
+
+With these additions, I can replace the macro placeholders with actual offhand eating, automatic mending, safe-home saving, clutching and Discord control. Death Replay remains its separate mod, exactly as the original README requires.

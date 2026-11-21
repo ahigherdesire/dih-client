@@ -4,6 +4,9 @@
   "plugin": "dihclient.mixin.DihMixinPlugin",
   "compatibilityLevel": "JAVA_25",
   "client": [
+    "DihScriptConnectMixin",
+    "DihScriptLifecycleMixin",
+    "DihScriptInventoryNetworkMixin",
     "DihPlatformHooksMixin",
     "DihPlatformStartMixin",
     "DihForgeSubmitMixin",

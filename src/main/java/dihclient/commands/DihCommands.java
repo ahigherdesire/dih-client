@@ -252,6 +252,7 @@ public final class DihCommands {
         if (body == null) return false;
         String trimmed = body.trim();
         if (trimmed.isEmpty()) return false;
+        if (dihclient.script.ScriptLifecycle.dispatchCommand(trimmed)) return true;
         if (DISABLED_ADDON_COMMAND_NAMES.contains(firstToken(trimmed).toLowerCase(Locale.ROOT))) {
             sendSyntaxError(trimmed, CommandSyntaxException.BUILT_IN_EXCEPTIONS.dispatcherUnknownCommand().create());
             return true;

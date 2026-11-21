@@ -70,6 +70,13 @@ public final class Interpreter {
     private final Library library;
     private final ScriptHost host;
     private final Env globals = new Env(null);
+    private record Event(String name, Object value) {}
+    private final Map<String, String> handlers = new java.util.concurrent.ConcurrentHashMap<>();
+    private final java.util.concurrent.ConcurrentLinkedDeque<Event> events = new java.util.concurrent.ConcurrentLinkedDeque<>();
+    private final java.util.concurrent.atomic.AtomicInteger eventCount = new java.util.concurrent.atomic.AtomicInteger();
+    private final java.util.concurrent.atomic.AtomicBoolean tickPending = new java.util.concurrent.atomic.AtomicBoolean();
+    private final java.util.Set<String> activeCallbacks = new java.util.HashSet<>();
+    private boolean supervising;
     private int depth;
     private int stepsSinceYield;
     private volatile int currentLine;
@@ -99,6 +106,7 @@ public final class Interpreter {
         try {
             for (VarDecl decl : program.globals()) execute(decl, globals);
             invoke(main, List.of(), main.line());
+            while (supervising) waitTicks(1);
         } catch (StopSignal ignored) {
             // normal stop
         }
@@ -130,8 +138,72 @@ public final class Interpreter {
     public void waitTicks(int ticks) {
         checkCancelled();
         stepsSinceYield = 0;
-        host.waitTicks(Math.max(0, ticks));
+        dispatchEvents();
+        for (int i = 0; i < Math.max(0, ticks); i++) {
+            host.waitTicks(1);
+            checkCancelled();
+            dispatchEvents();
+        }
         checkCancelled();
+    }
+
+    /** Call only from this interpreter's worker. Event producers only enqueue immutable snapshots. */
+    public void on(String event, String handler) {
+        validateHandler(handler);
+        handlers.put(event, handler);
+    }
+
+    public void validateHandler(String name) {
+        Function fn = program.functions().get(name);
+        if (fn == null || fn.params().size() > 1) throw new ScriptException("Callback must name a function taking zero or one argument: " + name, currentLine);
+    }
+
+    public void supervise(boolean enabled) { supervising = enabled; }
+
+    public void enqueueEvent(String event, Object value) {
+        if (!handlers.containsKey(event)) return;
+        if (event.equals("tick") && !tickPending.compareAndSet(false, true)) return;
+        boolean critical = java.util.Set.of("damage", "death", "disconnect", "resume").contains(event);
+        if (eventCount.incrementAndGet() > 1024) {
+            Event dropped = critical ? events.pollLast() : null;
+            eventCount.decrementAndGet();
+            if (dropped == null) {
+                if (event.equals("tick")) tickPending.set(false);
+                return;
+            }
+            if (dropped.name.equals("tick")) tickPending.set(false);
+        }
+        if (critical) events.addFirst(new Event(event, value));
+        else events.addLast(new Event(event, value));
+    }
+
+    /** Enqueues a registered command callback without invoking code on the client thread. */
+    public void enqueueCallback(String handler, Object value) {
+        String event = "command:" + handler;
+        handlers.put(event, handler);
+        enqueueEvent(event, value);
+    }
+
+    private void dispatchEvents() {
+        if (activeCallbacks.size() >= 8 || ignoreCancel) return;
+            int count = Math.min(64, eventCount.get());
+            for (int i = 0; i < count; i++) {
+                Event event = events.poll();
+                if (event == null) break;
+                String handler = handlers.get(event.name);
+                if (handler != null && activeCallbacks.contains(handler)) {
+                    events.add(event);
+                    continue;
+                }
+                eventCount.decrementAndGet();
+                if (event.name.equals("tick")) tickPending.set(false);
+                Function fn = handler == null ? null : program.functions().get(handler);
+                if (fn != null) {
+                    activeCallbacks.add(handler);
+                    try { invoke(fn, fn.params().isEmpty() ? List.of() : java.util.Collections.singletonList(event.value), fn.line()); }
+                    finally { activeCallbacks.remove(handler); }
+                }
+            }
     }
 
     public void checkCancelled() {
@@ -143,9 +215,10 @@ public final class Interpreter {
     private void checkpoint(int line) {
         currentLine = line;
         checkCancelled();
+        dispatchEvents();
         if (++stepsSinceYield >= STEPS_PER_TICK) {
             stepsSinceYield = 0;
-            host.waitTicks(1);
+            waitTicks(1);
         }
     }
 
@@ -253,6 +326,15 @@ public final class Interpreter {
             }
             case IndexAssign e -> {
                 Object target = evaluate(e.target(), env);
+                if (target instanceof Map<?, ?> raw) {
+                    Object key = evaluate(e.index(), env);
+                    if (!(key instanceof String)) throw new ScriptException("Object key must be a string", e.line());
+                    @SuppressWarnings("unchecked") Map<String, Object> map = (Map<String, Object>) raw;
+                    Object value = evaluate(e.value(), env);
+                    Object result = e.op() == Type.EQUAL ? value : arithmetic(compoundOp(e.op()), map.get(key), value, e.line());
+                    map.put((String) key, result);
+                    yield result;
+                }
                 if (!(target instanceof List<?>)) {
                     throw new ScriptException("Only list elements can be assigned with [i], got " + Values.typeName(target), e.line());
                 }
@@ -279,6 +361,10 @@ public final class Interpreter {
             case Index e -> {
                 Object target = evaluate(e.target(), env);
                 Object index = evaluate(e.index(), env);
+                if (target instanceof Map<?, ?> map) {
+                    if (!(index instanceof String)) throw new ScriptException("Object key must be a string", e.line());
+                    yield map.get(index);
+                }
                 if (target instanceof List<?> l) yield l.get(listIndex(l.size(), index, e.line()));
                 if (target instanceof String s) {
                     int i = listIndex(s.length(), index, e.line());

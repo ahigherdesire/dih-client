@@ -126,7 +126,9 @@ public final class ScriptManager {
     public static Library library() {
         Library lib = library;
         if (lib == null) {
-            lib = new Library().include(CoreLibrary.create()).include(GameLibrary.create());
+            lib = new Library().include(CoreLibrary.create()).include(GameLibrary.create())
+                .include(ScriptInventory.create()).include(ScriptGame.create())
+                .include(ScriptServices.create()).include(ScriptLifecycle.create());
             library = lib;
         }
         return lib;
@@ -165,7 +167,7 @@ public final class ScriptManager {
         }
 
         Run run = new Run(stored, program);
-        RUNNING.put(key, run);
+        if (RUNNING.putIfAbsent(key, run) != null) return "'" + stored + "' is already running.";
         revision++;
         run.thread.start();
         return null;
@@ -214,6 +216,7 @@ public final class ScriptManager {
 
     /** Called once per client tick (from the mod's END_CLIENT_TICK hook). */
     public static void onClientTick() {
+        if (!RUNNING.isEmpty()) ScriptLifecycle.tick();
         if (RUNNING.isEmpty()) {
             tick++;
             return;
@@ -227,6 +230,14 @@ public final class ScriptManager {
 
     private static String key(String name) {
         return name.trim().toLowerCase(Locale.ROOT);
+    }
+
+    public static void emit(String event, Object snapshot) {
+        for (Run run : RUNNING.values()) run.interpreter.enqueueEvent(event, ScriptLifecycle.copy(snapshot));
+    }
+
+    public static void releaseGameKeys() {
+        for (Run run : RUNNING.values()) ScriptGame.releaseKeys(run.interpreter);
     }
 
     private static void message(String text) {
@@ -282,7 +293,9 @@ public final class ScriptManager {
             } catch (Throwable t) {
                 DihClientAddon.LOG.warn("[Scripts] '{}' onStop crashed", name, t);
             } finally {
-                GameLibrary.releaseUse();
+                ScriptGame.releaseKeys(interpreter);
+                ScriptLifecycle.release(interpreter);
+                ScriptServices.release(interpreter);
                 RUNNING.remove(key(name), this);
                 revision++;
             }

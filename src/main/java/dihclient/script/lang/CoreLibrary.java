@@ -12,6 +12,7 @@ public final class CoreLibrary {
 
     public static Library create() {
         Library lib = new Library();
+        lib.include(ScriptJson.create());
 
         // ---- control
         lib.define("Control", "print(value, ...)", "Show a message in chat (values are joined with spaces).", 0, -1, a -> {
@@ -116,6 +117,7 @@ public final class CoreLibrary {
         lib.define("Lists", "len(value)", "Length of a list or string.", 1, 1, a -> {
             Object v = a.get(0);
             if (v instanceof List<?> l) return (double) l.size();
+            if (v instanceof java.util.Map<?, ?> m) return (double) m.size();
             if (v instanceof String s) return (double) s.length();
             throw a.error("needs a list or string, got " + Values.typeName(v));
         });

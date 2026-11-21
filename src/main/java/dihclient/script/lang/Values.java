@@ -17,6 +17,7 @@ public final class Values {
         if (v instanceof Double d) return d != 0.0 && !d.isNaN();
         if (v instanceof String s) return !s.isEmpty();
         if (v instanceof List<?> l) return !l.isEmpty();
+        if (v instanceof java.util.Map<?, ?> m) return !m.isEmpty();
         return true;
     }
 
@@ -26,6 +27,7 @@ public final class Values {
         if (v instanceof String) return "string";
         if (v instanceof Boolean) return "boolean";
         if (v instanceof List<?>) return "list";
+        if (v instanceof java.util.Map<?, ?>) return "object";
         return v.getClass().getSimpleName();
     }
 

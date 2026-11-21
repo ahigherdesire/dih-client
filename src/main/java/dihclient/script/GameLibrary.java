@@ -735,24 +735,21 @@ public final class GameLibrary {
         return mc.player == null ? null : mc.player.containerMenu;
     }
 
-    /** Handler slot of the item named {@code name}: exact name first, then id, then partial name. */
+    /** Handler slot of an item: exact name, substring, lore, then legacy registry ID. */
     private static int findGuiSlot(String name, boolean playerSide) {
         AbstractContainerMenu menu = menu();
         if (menu == null) return -1;
-        String target = ItemTarget.normalize(name);
-        if (target.isEmpty()) return -1;
-        int partial = -1;
-        int byId = -1;
+        int best = -1;
+        int bestScore = 0;
         for (int i = 0; i < menu.slots.size(); i++) {
             ItemStack stack = menu.slots.get(i).getItem();
             if (stack.isEmpty()) continue;
             if (!playerSide && menu.slots.get(i).container instanceof Inventory && menu != mc().player.inventoryMenu) continue;
-            String shown = ItemTarget.normalize(stack.getHoverName().getString());
-            if (shown.equals(target)) return i;
-            if (byId < 0 && idMatches(stack, name)) byId = i;
-            if (partial < 0 && shown.contains(target)) partial = i;
+            int score = ScriptMenuMatching.score(stack.getHoverName().getString(),
+                BuiltInRegistries.ITEM.getKey(stack.getItem()).toString(), ScriptInventory.lore(stack), name);
+            if (score > bestScore) { bestScore = score; best = i; }
         }
-        return byId >= 0 ? byId : partial;
+        return best;
     }
 
     // ---------------------------------------------------------------- world

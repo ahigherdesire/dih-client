@@ -188,6 +188,7 @@ public final class DihClientMod implements ClientModInitializer {
             runSafe("cfg.joinMacro", DihJoinMacroController::onConfigurationDisconnect);
         });
         DihPlatform.onPlayJoin(client -> {
+            runSafe("join.scripts", dihclient.script.ScriptLifecycle::joined);
             runSafe("join.pacedTp", () -> dihclient.util.multi.PacketTeleportController.cancelAll("connection changed"));
 
             runSafe("join.movementGrace", dihclient.modules.DihJoinGrace::onJoin);
@@ -203,6 +204,7 @@ public final class DihClientMod implements ClientModInitializer {
             runSafe("join.schematics", () -> dihclient.schematic.Schematics.get().tick(client));
         });
         DihPlatform.onPlayDisconnect(() -> {
+            runSafe("leave.scripts", dihclient.script.ScriptLifecycle::disconnected);
             runSafe("leave.seedMap", baritone.command.defaults.SeedMapCommand::onDisconnect);
             runSafe("leave.schematics", () -> dihclient.schematic.Schematics.get().leave());
             runSafe("leave.remoteView", () -> dihclient.util.DihRemoteView.stop(false));
@@ -232,6 +234,7 @@ public final class DihClientMod implements ClientModInitializer {
         });
 
         DihPlatform.onClientStopping(client -> {
+            dihclient.script.ScriptManager.stopAll();
 
             if (!dihclient.util.DihLiteVariant.enabled()) {
                 dihclient.util.mm.MatchmakingManager.get().shutdownLeave();

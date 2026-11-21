@@ -33,6 +33,7 @@ public final class ScriptChat {
         if (clean.isEmpty()) return;
         LINES.addLast(new Line(nextSeq++, System.nanoTime(), clean, clean.toLowerCase(Locale.ROOT)));
         while (LINES.size() > CAPACITY) LINES.removeFirst();
+        ScriptManager.emit("chat", clean);
     }
 
     /**
