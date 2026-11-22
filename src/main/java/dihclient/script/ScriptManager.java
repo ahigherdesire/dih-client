@@ -129,6 +129,7 @@ public final class ScriptManager {
             lib = new Library().include(CoreLibrary.create()).include(GameLibrary.create())
                 .include(ScriptInventory.create()).include(ScriptGame.create())
                 .include(ScriptServices.create()).include(ScriptLifecycle.create());
+            lib = ScriptReadSnapshots.decorate(lib);
             library = lib;
         }
         return lib;
@@ -166,6 +167,11 @@ public final class ScriptManager {
             return "'" + stored + "' has " + problems.size() + " problem(s); first at " + problems.get(0).describe();
         }
 
+        try {
+            GameLibrary.onClient(() -> { ScriptReadSnapshots.capture(); return null; });
+        } catch (ScriptException error) {
+            return "Could not capture game state: " + error.getMessage();
+        }
         Run run = new Run(stored, program);
         if (RUNNING.putIfAbsent(key, run) != null) return "'" + stored + "' is already running.";
         revision++;
@@ -216,7 +222,10 @@ public final class ScriptManager {
 
     /** Called once per client tick (from the mod's END_CLIENT_TICK hook). */
     public static void onClientTick() {
-        if (!RUNNING.isEmpty()) ScriptLifecycle.tick();
+        if (!RUNNING.isEmpty()) {
+            ScriptReadSnapshots.capture();
+            ScriptLifecycle.tick();
+        }
         if (RUNNING.isEmpty()) {
             tick++;
             return;
