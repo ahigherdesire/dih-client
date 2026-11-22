@@ -27,7 +27,8 @@ public final class Library {
         private final Interpreter interpreter;
         private final int line;
 
-        Args(Entry entry, List<Object> values, Interpreter interpreter, int line) {
+        /** Host readers may use a null interpreter when capturing pure observations on the client thread. */
+        public Args(Entry entry, List<Object> values, Interpreter interpreter, int line) {
             this.entry = entry;
             this.values = values;
             this.interpreter = interpreter;

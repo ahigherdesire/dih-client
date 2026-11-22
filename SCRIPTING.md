@@ -147,6 +147,33 @@ The game runs 20 ticks a second. `wait(ticks)` and `waitSeconds(s)` pause the sc
 loop that never waits is made to yield every 20 000 steps, so a mistake can't lock up the client, but put a `wait`
 in every long-running loop anyway.
 
+Simple player, inventory and GUI reads are served from a detached snapshot published once per client tick.
+Reading `inventoryItem(1)` a hundred times does not queue a hundred client-thread tasks. Position, health,
+item-use flags, inventory slot ids/counts/durability and menu slot names/counts/lore share this fast path.
+Snapshots normally lag by at most one client tick (about 50 ms at 20 TPS); paused or stalled clients update
+less often. DIH refreshes the snapshot after script actions complete and on connection transitions, so a
+completed inventory action is visible to the next read. Actions still run on the client thread and retain
+their existing server acknowledgement and tick waits. GUI/pathing waits also refresh before returning,
+so `waitForGui(); guiSize()` observes the menu that satisfied the wait.
+
+`inventorySnapshot()` returns all 36 main slots plus offhand in one detached list. List indices 0-35 correspond
+to inventory slots 1-36; index 36 is offhand. Each entry has `slot` (1-36 or `"offhand"`), namespaced `id`,
+`count`, `durability` and `maxDurability` (-1 for items without durability). Changing this list cannot change
+the game or another script's observations.
+
+```js
+function main() {
+    let inventory = inventorySnapshot();
+    for (let stack in inventory) { print(stack["slot"], stack["id"], stack["count"]); }
+}
+```
+
+Arbitrary world queries such as `blockInfo` and `findBlock` still marshal onto the client thread. Read queries
+with arguments that were not captured in the tick snapshot may also need a first live lookup; repeated identical
+queries are reused until the next snapshot. That lookup can incur scheduler latency, which is not a guaranteed
+16 ms delay and cannot be fixed just by changing render FPS. Prefer the batch inventory read for large scans,
+and keep expensive world searches out of per-tick callbacks.
+
 Before a script starts, DIH checks it for syntax errors, unknown functions and wrong argument counts. The editor
 runs the same check as you type and marks problem lines in red. Errors while running stop the script and print the
 line number in chat.
@@ -229,6 +256,7 @@ function main() {
 | Function | Does |
 |---|---|
 | `count(item)` | How many you carry. |
+| `inventorySnapshot()` | Detached tick snapshot of inventory slots 1-36 followed by offhand; each entry has slot, id, count and durability fields. |
 | `hasItem(item)` | True if you carry at least one. |
 | `freeSlots()` | Empty main-inventory slots (0-36). |
 | `inventoryFull(item)` | True when no slot is empty. With an item, e.g. `inventoryFull("raw_gold")`, only once every stack of it is also full, so slots holding a few raw gold still count as room. |

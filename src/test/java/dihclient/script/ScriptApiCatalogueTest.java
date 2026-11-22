@@ -9,7 +9,7 @@ class ScriptApiCatalogueTest {
         var problems = Checker.check("""
             function monitor(snapshot) { print(snapshot); }
             function main() {
-                inventoryItem("offhand"); inventoryCount(1); durability("offhand");
+                inventorySnapshot(); inventoryItem("offhand"); inventoryCount(1); durability("offhand");
                 maxDurability(1); hasEnchantment(1, "mending");
                 swapInventory(1, "offhand"); moveInventory(1, 2, 3); dropInventory(2, 1);
                 cursorItem(); cursorCount(); usingItem(); eat("offhand");

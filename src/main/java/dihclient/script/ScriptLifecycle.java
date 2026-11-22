@@ -118,6 +118,7 @@ public final class ScriptLifecycle {
 
     public static void joined() {
         Minecraft mc = Minecraft.getInstance();
+        ScriptReadSnapshots.joined();
         if (mc.getCurrentServer() != null) lastServer = mc.getCurrentServer();
         dead = false;
         lastSnapshot = ScriptGame.snapshot();
@@ -128,6 +129,7 @@ public final class ScriptLifecycle {
     }
 
     public static void disconnected() {
+        ScriptReadSnapshots.disconnected();
         connectionFailed();
         ScriptManager.emit("disconnect", lastSnapshot);
         // Release gameplay controls on connection loss without ending supervisor workers.

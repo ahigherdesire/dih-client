@@ -1,4 +1,4 @@
-# DihScript automation APIs (5.1.5)
+# DihScript automation APIs (5.1.6)
 
 The editor and `.scripts functions` list these APIs. Existing scripts keep their syntax.
 Objects use string indexing: `response["status"]`, `settings["enabled"] = true`.
@@ -11,6 +11,7 @@ the existing raw container numbering and must not be confused with inventory num
 
 | Function | Result |
 |---|---|
+| `inventorySnapshot()` | Detached list of 36 main slots followed by offhand. Each entry has `slot` (1-36 or `"offhand"`), namespaced `id`, `count`, `durability` and `maxDurability`. |
 | `inventoryItem(slot)`, `inventoryCount(slot)` | Namespaced item ID and count, without opening a GUI; empty is `minecraft:air`/0. |
 | `durability(slot)`, `maxDurability(slot)` | Remaining/max uses, or -1 for an empty/non-damageable item. |
 | `hasEnchantment(slot, id)` | Boolean; accepts IDs such as `minecraft:mending`. |
@@ -29,6 +30,15 @@ Inventory mutators share ownership across scripts and callbacks. Legacy inventor
 participate in the same guard. Counts represent confirmed progress, which may be partial.
 Menu search ranks exact display name, substring, lore, then legacy item ID. Use an explicit
 raw slot when the menu has duplicate names.
+
+Simple inventory, player and GUI observations use a snapshot published once per client tick rather
+than blocking on a separate client-thread task for every read. Snapshots normally lag by at most one
+tick (about 50 ms at 20 TPS); actions and GUI/pathing waits refresh observations before returning.
+The snapshot is detached: editing an object returned to a script cannot change the game or another
+script's observations. Read queries with uncaptured arguments can require an initial live lookup;
+repeated queries are cached and a bounded set of observed arguments is captured on later ticks.
+Arbitrary world searches such as `blockInfo` and `findBlock` still use live client-thread queries.
+See [Timing and safety](../SCRIPTING.md#timing-and-safety) for details.
 
 ## Player actions and environment
 
