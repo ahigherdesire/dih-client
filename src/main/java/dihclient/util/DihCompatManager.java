@@ -55,19 +55,25 @@ public final class DihCompatManager {
     }
 
     public static String environmentDefaultCommandPrefix() {
-        return isMeteorAvailable() ? "%" : ".";
+        return ".";
     }
 
     public static String normalizeStoredCommandPrefix(String prefix) {
         String selected = prefix == null ? "" : prefix.trim();
         if (!COMMAND_PREFIX_CHOICES.contains(selected)) return environmentDefaultCommandPrefix();
-        if (".".equals(selected) && isMeteorAvailable()) return "%";
         return selected;
     }
 
     public static boolean isSelectableCommandPrefix(String prefix) {
         String selected = prefix == null ? "" : prefix.trim();
-        return COMMAND_PREFIX_CHOICES.contains(selected) && !(".".equals(selected) && isMeteorAvailable());
+        return COMMAND_PREFIX_CHOICES.contains(selected);
+    }
+
+    /** Called after matching DIH's prefix; unclaimed Meteor bodies must reach Meteor's hooks. */
+    public static boolean shouldDeferCommandToMeteor(String message, boolean dihOwnsBody) {
+        if (dihOwnsBody || !isMeteorAvailable() || message == null) return false;
+        String prefix = meteorCommandPrefix();
+        return !prefix.isEmpty() && message.trim().startsWith(prefix);
     }
 
     public static boolean isBaritoneAvailable() {

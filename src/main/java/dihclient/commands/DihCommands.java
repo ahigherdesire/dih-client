@@ -29,6 +29,9 @@ public final class DihCommands {
     private static final List<String> PANIC_PREFIX_FALLBACKS = List.of(".", ",", ";", ":", "'", "\"", "\\", "|", "-", "_", "+", "=", "*", "#", "@", "!", "$", "%", "&", "~");
     private static boolean initialized = false;
     private static int revision;
+    private static boolean automationReady;
+    private static boolean installingAutomation;
+    private static long automationRetryAfter;
 
     private DihCommands() {}
 
@@ -92,7 +95,21 @@ public final class DihCommands {
             register(new dihclient.commands.impl.ToolsCommand());
             register(new dihclient.commands.impl.AiRunCommand());
             dihclient.ai.ClientToolCatalog.install();
+            baritone.api.command.CommandText.formatter(DihAutomationCommands::formatText);
         }
+    }
+
+    private static synchronized void ensureAutomation() {
+        if (!initialized || automationReady || installingAutomation || dihclient.util.DihLiteVariant.enabled()) return;
+        if (net.minecraft.client.Minecraft.getInstance() == null || System.nanoTime() < automationRetryAfter) return;
+        installingAutomation = true;
+        try {
+            DihAutomationCommands.install(BY_NAME::containsKey, DihCommands::register);
+            automationReady = true;
+        } catch (RuntimeException | LinkageError error) {
+            automationRetryAfter = System.nanoTime() + 1_000_000_000L;
+            DihClientAddon.LOG.warn("[Commands] automation registry is not ready", error);
+        } finally { installingAutomation = false; }
     }
 
     private static void register(Command command) {
@@ -178,18 +195,33 @@ public final class DihCommands {
         if (!removeNames.isEmpty()) revision++;
     }
 
-    public static CommandDispatcher<DihCommandSource> dispatcher() { return DISPATCHER; }
+    public static CommandDispatcher<DihCommandSource> dispatcher() { ensureAutomation(); return DISPATCHER; }
 
-    public static int revision() { return revision; }
+    public static int revision() { ensureAutomation(); return revision; }
 
-    public static List<Command> all() { return Collections.unmodifiableList(ALL); }
+    public static List<Command> all() { ensureAutomation(); return Collections.unmodifiableList(ALL); }
 
     public static Command find(String nameOrAlias) {
+        ensureAutomation();
         if (nameOrAlias == null) return null;
         return BY_NAME.get(nameOrAlias.trim().toLowerCase(Locale.ROOT));
     }
 
     public static String effectivePrefix() { return DihCompatManager.effectiveCommandPrefix(); }
+
+    public static boolean isKnownCommandBody(String body) {
+        String root = firstToken(body).toLowerCase(Locale.ROOT);
+        return find(root) != null || dihclient.script.ScriptLifecycle.clientCommandNames().contains(root);
+    }
+
+    public static boolean hasCommandPrefix(String body) {
+        ensureAutomation();
+        String value = body == null ? "" : body.stripLeading().toLowerCase(Locale.ROOT);
+        if (value.chars().anyMatch(Character::isWhitespace)) return isKnownCommandBody(value);
+        for (String name : BY_NAME.keySet()) if (name.startsWith(value)) return true;
+        for (String name : dihclient.script.ScriptLifecycle.clientCommandNames()) if (name.startsWith(value)) return true;
+        return false;
+    }
 
     public static boolean isDihCommandMessage(String message) {
         if (message == null || message.isBlank()) return false;
@@ -249,6 +281,7 @@ public final class DihCommands {
 
     public static boolean dispatch(String body) {
         if (commandsBlockedByPanic()) return true;
+        ensureAutomation();
         if (body == null) return false;
         String trimmed = body.trim();
         if (trimmed.isEmpty()) return false;

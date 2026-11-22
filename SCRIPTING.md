@@ -215,7 +215,7 @@ name shown in game (`Raw Gold`).
 
 | Function | Does |
 |---|---|
-| `command(text)` | Run a command as if typed: `"/home"` goes to the server, `"#mine gold_ore"` to Baritone, `".toggle flee"` to DIH. |
+| `command(text)` | Run a command as if typed: `"/home"` goes to the server; `".mine gold_ore"` runs automation and `".toggle flee"` controls DIH. Use the selected DIH prefix; `baritone("mine gold_ore")` is independent of it. |
 | `say(text)` | Send a plain chat message. |
 | `chatSeen(text)` | True if a chat message containing `text` arrived since the script started or since `chatSeen` last found one for that text. Capitals and colours are ignored, and each message counts once. |
 | `waitForChat(text, seconds)` | Wait for a chat message containing `text` and return the whole message. After `seconds` (default: wait forever) it gives up and returns `null`. |

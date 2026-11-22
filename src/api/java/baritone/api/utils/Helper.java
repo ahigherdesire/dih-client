@@ -171,7 +171,7 @@ public interface Helper {
             component.append(getPrefix());
             component.append(Component.literal(" "));
         }
-        Arrays.asList(components).forEach(component::append);
+        Arrays.asList(components).forEach(part -> component.append(baritone.api.command.CommandText.format(part)));
         if (logAsToast) {
             logToast(getPrefix(), component);
         } else {

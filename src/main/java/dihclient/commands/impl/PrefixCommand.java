@@ -6,7 +6,6 @@ import dihclient.commands.CommandSuggest;
 import dihclient.modules.DihModule;
 import dihclient.util.DihClientMessaging;
 import dihclient.util.DihCompatManager;
-import dihclient.util.DihNotifications;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.builder.RequiredArgumentBuilder;
@@ -38,9 +37,6 @@ public class PrefixCommand extends Command {
                 }
                 String selected = DihCompatManager.normalizeStoredCommandPrefix(requested);
                 DihModule.get().setCommandPrefix(selected);
-                if (!selected.equals(requested)) {
-                    DihNotifications.warning("Meteor uses '.'. Prefix kept as '%'.");
-                }
                 DihClientMessaging.sendPrefixed("Prefix set to " + selected);
                 return SUCCESS;
             }));

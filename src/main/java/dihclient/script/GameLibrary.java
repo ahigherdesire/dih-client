@@ -158,7 +158,7 @@ public final class GameLibrary {
     // ---------------------------------------------------------------- chat / commands
 
     private static void defineChat(Library lib) {
-        lib.define("Chat", "command(text)", "Run a command as if typed in chat: \"/home\" (server), \"#mine gold_ore\" (Baritone) or \".toggle flee\" (DIH).", 1, 1, a -> {
+        lib.define("Chat", "command(text)", "Run a command as if typed in chat: \"/home\" (server), \".mine gold_ore\" (automation) or \".toggle flee\" (DIH); use your selected DIH prefix.", 1, 1, a -> {
             runCommand(a.string(0).trim(), a);
             return null;
         });

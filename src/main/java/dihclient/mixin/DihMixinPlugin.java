@@ -68,7 +68,7 @@ public class DihMixinPlugin implements IMixinConfigPlugin {
     /*private static final Set<String> OTHER_VERSION_MIXINS = union(COMPAT_1211_MIXINS, "DihOreSimTemplateFeatureMixin");
     *///?} else {
     /*private static final Set<String> OTHER_VERSION_MIXINS = Set.of(
-        "DihBetterChatMixin", "DihChatSuggestMixin", "DihDataComponentInitializerMixin", "DihFluidRendererMixin",
+        "DihBetterChatMixin", "DihDataComponentInitializerMixin", "DihFluidRendererMixin",
         "DihFramerateLimiterMixin", "DihIndigoAltModelBlockRendererMixin", "DihLightCoordsUtilMixin",
         "DihLightmapMixin", "DihModelBlockRendererMixin", "DihMultiPovChatMixin", "DihNoRenderTimeMixin",
         "DihOreSimCappedProcessorMixin", "DihOreSimEndSpikeFeatureMixin", "DihOreSimTemplateFeatureMixin",

@@ -6,6 +6,7 @@ import dihclient.modules.InventoryTweaksModule;
 import dihclient.modules.PackHideState;
 import dihclient.modules.ModuleRegistry;
 import dihclient.util.DihSharedState;
+import dihclient.util.DihCompatManager;
 import dihclient.util.macro.MacroConditionRegistry;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
@@ -29,7 +30,8 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-@Mixin(ClientPacketListener.class)
+// Claim registered DIH roots before Meteor's default-priority sendChat hook.
+@Mixin(value = ClientPacketListener.class, priority = 2000)
 public abstract class DihClientPlayNetworkHandlerMixin {
     @Inject(method = "handleBlockChangedAck", at = @At("RETURN"))
     private void dih$onBlockPredictionAckApplied(
@@ -171,6 +173,7 @@ public abstract class DihClientPlayNetworkHandlerMixin {
                 return;
             }
             String body = DihCommands.commandBody(message);
+            if (DihCompatManager.shouldDeferCommandToMeteor(message, DihCommands.isKnownCommandBody(body))) return;
             if (body.isBlank()) {
                 ci.cancel();
                 return;

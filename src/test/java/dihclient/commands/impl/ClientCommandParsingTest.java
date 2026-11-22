@@ -11,6 +11,14 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ClientCommandParsingTest {
     @Test
+    void detailedHelpAcceptsQualifiedAutomationNamesAndReadableFallbackSyntax() {
+        CommandDispatcher<DihCommandSource> dispatcher = dispatcher("help", new HelpCommand());
+        assertParses(dispatcher, "help baritone:ai");
+        assertParses(dispatcher, "help baritone ai");
+        assertParses(dispatcher, "help structure");
+    }
+
+    @Test
     void clickSlotAcceptsCountsAboveTheOldOneThousandLimit() {
         CommandDispatcher<DihCommandSource> dispatcher = dispatcher("click-slot", new ClickSlotCommand());
 

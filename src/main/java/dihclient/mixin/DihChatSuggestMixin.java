@@ -1,6 +1,5 @@
 package dihclient.mixin;
 
-//? if >=26.1 {
 import dihclient.commands.DihCommandSource;
 import dihclient.commands.DihCommands;
 import dihclient.mixin.accessor.DihCommandSuggestionsListAccessor;
@@ -30,15 +29,18 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
-@Mixin(CommandSuggestions.class)
+// Complete known DIH roots before Meteor's default-priority suggestion hook.
+@Mixin(value = CommandSuggestions.class, priority = 2000)
 public abstract class DihChatSuggestMixin {
     @Shadow @Final private EditBox input;
     @Shadow @Nullable private ParseResults<ClientSuggestionProvider> currentParse;
     @Shadow @Nullable private CompletableFuture<Suggestions> pendingSuggestions;
     @Shadow @Nullable private CommandSuggestions.SuggestionsList suggestions;
     @Shadow @Final private List<FormattedCharSequence> commandUsage;
+    //? if >=26.1 {
     @Shadow private boolean currentParseIsCommand;
     @Shadow private boolean currentParseIsMessage;
+    //?}
     @Shadow private boolean keepSuggestions;
 
     @Unique private boolean dih$owningSuggestions;
@@ -53,7 +55,9 @@ public abstract class DihChatSuggestMixin {
     @Unique private static final int DIH_MAX_SUGGESTION_INPUT = 4096;
 
     @Shadow public abstract void showSuggestions(boolean narrateFirstSuggestion);
+    //? if >=26.1 {
     @Shadow private void updateUsageInfo(ParseResults<ClientSuggestionProvider> parseResults, Suggestions suggestions) {}
+    //?}
 
     @Inject(method = "updateCommandInfo", at = @At("HEAD"), cancellable = true)
     private void dih$updateDihCommandInfo(CallbackInfo ci) {
@@ -119,8 +123,10 @@ public abstract class DihChatSuggestMixin {
                 (ParseResults<ClientSuggestionProvider>) (Object) parse;
 
         currentParse = widgetParse;
+        //? if >=26.1 {
         currentParseIsCommand = true;
         currentParseIsMessage = false;
+        //?}
         commandUsage.clear();
 
         if (suggestions != null && keepSuggestions && dih$canKeepSuggestionList(value)) {
@@ -142,7 +148,11 @@ public abstract class DihChatSuggestMixin {
                 if (!inputSnapshot.equals(input.getValue())) return;
                 if (!dih$isDihCommandInput(inputSnapshot)) return;
                 dih$owningSuggestions = true;
+                // 1.21.11's no-argument usage renderer uses the server dispatcher/source.
+                // Its suggestion list can consume pendingSuggestions directly without that renderer.
+                //? if >=26.1 {
                 updateUsageInfo(widgetParse, result);
+                //?}
                 if (pendingSuggestions == future && inputSnapshot.equals(input.getValue())) {
                     showSuggestions(false);
                 }
@@ -171,7 +181,11 @@ public abstract class DihChatSuggestMixin {
 
     @Unique
     private static boolean dih$isDihCommandInput(String value) {
-        return !DihCommands.commandsBlockedByPanic() && DihCommands.isDihCommandMessage(value);
+        if (DihCommands.commandsBlockedByPanic() || !DihCommands.isDihCommandMessage(value)) return false;
+        // Preserve trailing whitespace: once arguments start, the root must be an exact match.
+        String body = value.stripLeading().substring(DihCommands.effectivePrefix().length());
+        return !DihCompatManager.shouldDeferCommandToMeteor(value,
+            DihCommands.hasCommandPrefix(body));
     }
 
     @Unique
@@ -231,11 +245,3 @@ public abstract class DihChatSuggestMixin {
         dih$owningSuggestions = false;
     }
 }
-//?} else {
-/*import org.spongepowered.asm.mixin.Mixin;
-
-// Minecraft 1.21.11 has no target for this mixin; it is skipped there (DihMixinPlugin) and kept empty.
-@Mixin(net.minecraft.client.Minecraft.class)
-public abstract class DihChatSuggestMixin {
-}
-*///?}
