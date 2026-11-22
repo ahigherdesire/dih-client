@@ -71,6 +71,20 @@ public class DihMeteorCommandRoutingTest {
     }
 
     @Test
+    void realCommandClassifierAlwaysAcceptsDotAlongsideASavedAlternative() throws Exception {
+        Method classify = isolatedHook("dihclient/commands/DihCommands", "isDihCommandMessage");
+        Method body = isolatedHook("dihclient/commands/DihCommands", "commandBody");
+        for (String alternative : List.of("%", "&", "#")) {
+            prefix = alternative;
+            assertEquals(true, classify.invoke(null, ".seedinput 42"));
+            assertEquals(true, classify.invoke(null, alternative + "seedinput 42"));
+            assertEquals(false, classify.invoke(null, "ordinary chat"));
+            assertEquals("seedinput 42", body.invoke(null, ".seedinput 42"));
+            assertEquals("seedinput 42", body.invoke(null, alternative + "seedinput 42"));
+        }
+    }
+
+    @Test
     void suggestionsOwnPartialKnownRootsAndReleaseMeteorOnlyRoots() throws Exception {
         assertTrue(priority(SUGGEST_MIXIN) > 1000);
         Method suggest = isolatedHook(SUGGEST_MIXIN, "dih$isDihCommandInput");
@@ -82,7 +96,7 @@ public class DihMeteorCommandRoutingTest {
         }
         prefix = "%";
         assertEquals(true, suggest.invoke(null, "%unknown"));
-        assertEquals(false, suggest.invoke(null, ".structure"));
+        assertEquals(true, suggest.invoke(null, ".structure"));
         panic = true;
         assertEquals(false, suggest.invoke(null, "%structure"));
     }
@@ -146,7 +160,7 @@ public class DihMeteorCommandRoutingTest {
     public static boolean plainChatBypass() { return bypass; }
     public static String effectivePrefix() { return prefix; }
     public static boolean commandsBlockedByPanic() { return panic; }
-    public static boolean isDihCommandMessage(String value) { return value != null && value.startsWith(prefix); }
+    public static boolean isDihCommandMessage(String value) { return value != null && (value.startsWith(prefix) || value.startsWith(".")); }
     public static boolean isBlockedPanicCommandMessage(String value) { return panic; }
     public static String commandBody(String value) { return value.substring(prefix.length()).trim(); }
     public static boolean isKnownCommandBody(String body) { return ROOTS.contains(body.split(" ", 2)[0]); }

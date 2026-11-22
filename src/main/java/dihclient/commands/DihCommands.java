@@ -227,7 +227,8 @@ public final class DihCommands {
         if (message == null || message.isBlank()) return false;
         String trimmed = message.trim();
         String prefix = effectivePrefix();
-        return !prefix.isEmpty() && trimmed.startsWith(prefix);
+        // Dot is always available, including old Meteor installations that saved '%' as their default.
+        return trimmed.startsWith(".") || (!prefix.isEmpty() && trimmed.startsWith(prefix));
     }
 
     public static boolean commandsBlockedByPanic() {
@@ -260,7 +261,7 @@ public final class DihCommands {
     public static String commandBody(String message) {
         if (!isDihCommandMessage(message)) return "";
         String trimmed = message.trim();
-        int prefixLength = effectivePrefix().length();
+        int prefixLength = trimmed.startsWith(".") ? 1 : effectivePrefix().length();
         return trimmed.length() <= prefixLength ? "" : trimmed.substring(prefixLength).trim();
     }
 
