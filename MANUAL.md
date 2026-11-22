@@ -169,11 +169,11 @@ Live view of packets flowing through the connection.
 
 ## 6. Commands
 
-Chat commands (default prefix `.`, change with `.prefix`). Implementations in `commands/impl/`. A few useful ones:
+All native DIH and Baritone automation commands use the same chat prefix (default `.`, change with `.prefix`). Use `.structure`, `.autosleep`, `.seedinput <seed>`, `.mine`, or `.goto` directly. Implementations of native commands live in `commands/impl/`. A few useful ones:
 
 `.help` · `.modules` · `.toggle <module>` · `.macro` · `.bind` / `.binds` · `.send` (raw packet) · `.delay` · `.nbt` · `.click-slot` / `.click-item` / `.change-slot` · `.xcarry` · `.hclip` / `.vclip` · `.give` / `.damage` · `.gamemode` / `.fakegm` · `.disconnect` · `.waypoints` · `.friend` · `.sync`.
 
-Full list: `.commands`.
+Discover commands with `.commands [search]` (for example, `.commands seed`); use `.help <command>` for detailed usage (for example, `.help structure`). If a name overlaps, the native DIH command takes priority; `.baritone <command> [args]` always reaches the automation version. The legacy `#` prefix remains compatible, but is never required. Examples here use the default prefix; use your configured prefix if you change it.
 
 ### 6.1 Full CLI — every subsystem from chat
 

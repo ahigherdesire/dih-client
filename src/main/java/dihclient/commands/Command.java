@@ -20,6 +20,8 @@ public abstract class Command {
     public final String description() { return description; }
     public final String[] aliases() { return aliases.clone(); }
 
+    public java.util.List<String> helpLines() { return java.util.List.of(); }
+
     public abstract void build(LiteralArgumentBuilder<DihCommandSource> builder);
 
     public int run(CommandContext<DihCommandSource> ctx) {

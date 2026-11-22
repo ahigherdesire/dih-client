@@ -12,7 +12,7 @@ This client is built around speed, control, and not pretending that users are to
 
 1. Install [Fabric Loader](https://fabricmc.net/use/installer/) 0.19.3+ for Minecraft 26.2 and [Fabric API](https://modrinth.com/mod/fabric-api). Java 25 is required.
 2. Put `DIH-Client-<version>-26.2.jar` in `.minecraft/mods`.
-3. Launch. `R.Shift` opens the module manager, `.help` lists client commands, `#help` lists Baritone commands.
+3. Launch. `R.Shift` opens the module manager. All native and automation commands use the default `.` chat prefix: `.commands [search]` discovers commands and `.help <command>` shows detailed usage.
 
 Coming from XINYUAN or Autism Client? Your accounts, proxies, macros and config are copied to the new `dih` names on first launch; the old files are left in place.
 
@@ -50,24 +50,24 @@ The client is made to be expandable. If the base client is not enough, addons ca
 
 ## AI & Pathfinding (integrated)
 
-DIH Client now ships with a full Baritone-based pathfinding engine and the MinecraftAI feature set built directly into the jar — no second mod required. These are driven with the `#` command prefix in chat:
+DIH Client now ships with a full Baritone-based pathfinding engine and the MinecraftAI feature set built directly into the jar — no second mod required. All commands use the DIH chat prefix (default `.`, change with `.prefix`), including `.structure`, `.autosleep` and `.seedinput`. Use `.commands [search]` to discover commands and `.help <command>` for detailed usage. Native DIH commands take priority when names overlap; `.baritone <command> [args]` reaches the automation version. Legacy `#` commands remain compatible, but are never required. Examples below use the default prefix.
 
-* `#ai` — hand the controls to a language model: it reads server chat and plays by running Baritone commands. Easiest: `.ai setup` opens a setup screen with provider presets and a Test button. From chat: `#ai key <api-key>` (a Groq, OpenAI, OpenRouter, Claude or Gemini key switches to its provider by itself), `#ai provider [name]` to list or pick a provider, `#ai model <name>`, then `#ai on`. Any OpenAI-compatible endpoint works through `#ai url`; the default is Qwen (`qwen-plus`).
-* `#construct <file> [x y z]` — build a schematic from an empty inventory: it gathers what the build needs with `#acquire` (mining, crafting, smelting) in batches that fit your inventory and builds as it goes. `#construct plan <file>` lists what it takes.
-* `#parkour` — run the parkour course you're standing on, solving each jump exactly against the client's own movement rules (neos, strafe jumps, ladders). `#parkour goto x y z` jumps your way to a block; `#parkour solve x y z` says how a jump is done without moving. With `#allowParkour` and `#allowHardParkour` on, Baritone also paths through jumps its own parkour can't do and makes them with the same solver.
-* `#goto` / `#mine` / `#follow` / `#elytra` and the rest of the Baritone command surface — pathfinding, mining, and Overworld/Nether elytra travel.
-* `#threats` / `#players` — proximity alerts plus a persistent player-sighting log.
+* `.baritone ai` — hand the controls to a language model: it reads server chat and plays by running Baritone commands. Easiest: `.ai setup` opens a setup screen with provider presets and a Test button. From chat: `.baritone ai key <api-key>` (a Groq, OpenAI, OpenRouter, Claude or Gemini key switches to its provider by itself), `.baritone ai provider [name]` to list or pick a provider, `.baritone ai model <name>`, then `.baritone ai on`. Any OpenAI-compatible endpoint works through `.baritone ai url`; the default is Qwen (`qwen-plus`).
+* `.construct <file> [x y z]` — build a schematic from an empty inventory: it gathers what the build needs with `.acquire` (mining, crafting, smelting) in batches that fit your inventory and builds as it goes. `.construct plan <file>` lists what it takes.
+* `.parkour` — run the parkour course you're standing on, solving each jump exactly against the client's own movement rules (neos, strafe jumps, ladders). `.parkour goto x y z` jumps your way to a block; `.parkour solve x y z` says how a jump is done without moving. With `.baritone set allowParkour true` and `.baritone set allowHardParkour true`, Baritone also paths through jumps its own parkour can't do and makes them with the same solver.
+* `.goto` / `.mine` / `.follow` / `.elytra` and the rest of the Baritone command surface — pathfinding, mining, and Overworld/Nether elytra travel.
+* `.threats` / `.players` — proximity alerts plus a persistent player-sighting log.
 * `.storage search <item>` — searches containers you've opened and highlights matches in green. `.storage clear` hides the outlines without deleting memory. Results include last-seen ages; up to 64 containers within 128 blocks are highlighted in the current dimension.
-* `#chest <item>` — searches the same remembered contents. `#chest <N> highlight` selects one result; legacy `goto` syntax also highlights without moving you. Contents refresh when you close a synced storage screen, including when you empty it.
-* `#structure` / `#where` — locate structures in singleplayer or multiplayer. On multiplayer they work from the seed (`#seedinput <seed>`) and are biome-validated, strongholds included.
-* `#seedmap` — an in-game seed map (like mcseedmap.net): every structure around you, validated by running vanilla structure generation offline, drawn on the JourneyMap fullscreen map with explorer-map icons, real footprints, hover details and right-click "go to". `#seedmap village monument`, `#seedmap 4000`, `#seedmap strongholds`, `#seedmap wp`, `#seedmap off`.
-* `#autosleep` — navigate to a bed automatically at night (experimental).
+* `.chest <item>` — searches the same remembered contents. `.chest <N> highlight` selects one result; legacy `goto` syntax also highlights without moving you. Contents refresh when you close a synced storage screen, including when you empty it.
+* `.structure` / `.where` — locate structures in singleplayer or multiplayer. On multiplayer they work from the seed (`.seedinput <seed>`) and are biome-validated, strongholds included.
+* `.seedmap` — an in-game seed map (like mcseedmap.net): every structure around you, validated by running vanilla structure generation offline, drawn on the JourneyMap fullscreen map with explorer-map icons, real footprints, hover details and right-click "go to". `.seedmap village monument`, `.seedmap 4000`, `.seedmap strongholds`, `.seedmap wp`, `.seedmap off`.
+* `.autosleep` — navigate to a bed automatically at night (experimental).
 
-* `#seedinput <seed>` — the world seed for the server you're on (numbers or text, converted like the world-creation screen). Each server keeps its own seed, shared with OreSim, and it's **verified** against the seed hash the server sends when you join — a wrong seed is refused instead of silently drawing a wrong map. `#seedinput check` shows the status.
+* `.seedinput <seed>` — the world seed for the server you're on (numbers or text, converted like the world-creation screen). Each server keeps its own seed, shared with OreSim, and it's **verified** against the seed hash the server sends when you join — a wrong seed is refused instead of silently drawing a wrong map. `.seedinput check` shows the status.
 
-Baritone's in-world overlays all work on 26.2: `#sel` selection boxes, the `#click` GUI highlight and elytra flight paths.
+Baritone's in-world overlays all work on 26.2: `.sel` selection boxes, the `.click` GUI highlight and elytra flight paths.
 
-While Baritone is pathing, its route is drawn in the world: a guide line from you to the next step, the current and queued path, the goal (box for block goals, beacon column for `#goto x z`), and the blocks it will break or place. Toggle with `#set renderPath false` / `#set renderGoal false`; colours and widths use the usual Baritone settings (`colorCurrentPath`, `pathRenderLineWidthPixels`, …).
+While Baritone is pathing, its route is drawn in the world: a guide line from you to the next step, the current and queued path, the goal (box for block goals, beacon column for `.goto x z`), and the blocks it will break or place. Toggle with `.baritone set renderPath false` / `.baritone set renderGoal false`; colours and widths use the usual Baritone settings (`colorCurrentPath`, `pathRenderLineWidthPixels`, …).
 
 Pathfinding, the native nether pathfinder, and all AI behaviour are bundled into the single client jar.
 
@@ -75,11 +75,11 @@ Pathfinding, the native nether pathfinder, and all AI behaviour are bundled into
 
 DIH has no minimap of its own; it draws on JourneyMap's. Download [JourneyMap for Fabric 26.2](https://modrinth.com/mod/journeymap/versions?g=26.2&l=fabric) and put it in `mods` next to the DIH jar. It isn't bundled because JourneyMap's licence doesn't allow redistribution. The client registers as a JourneyMap plugin, which adds:
 
-* toolbar toggles on the fullscreen map for the seed-map layer (map icon) and the `#heatmap` layer (fire-charge icon);
+* toolbar toggles on the fullscreen map for the seed-map layer (map icon) and the `.heatmap` layer (fire-charge icon);
 * right-click on the map → "Baritone: go here" or "Seed map around here";
 * right-click on a structure → "Baritone: go to …" or "Add waypoint".
 
-Without JourneyMap everything else still works; `#seedmap` then lists results in chat with clickable coordinates.
+Without JourneyMap everything else still works; `.seedmap` then lists results in chat with clickable coordinates.
 
 ---
 

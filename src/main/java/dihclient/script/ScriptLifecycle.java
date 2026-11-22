@@ -106,6 +106,8 @@ public final class ScriptLifecycle {
         return true;
     }
 
+    public static List<String> clientCommandNames() { return List.copyOf(COMMANDS.keySet()); }
+
     public static void tick() {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player != null && mc.level != null) {
