@@ -39,6 +39,10 @@ public final class CourseGraph {
         this.world = world;
     }
 
+    public BlockSource world() {
+        return world;
+    }
+
     /** The same graph over a fresh snapshot: the ruled-out jumps and fall counts carry over. */
     public CourseGraph withWorld(BlockSource newWorld) {
         CourseGraph next = new CourseGraph(newWorld);
@@ -157,8 +161,10 @@ public final class CourseGraph {
     }
 
     /**
-     * Where a course goes next with no goal: the reachable unvisited spot that moves furthest along {@code heading}
-     * (a unit vector in x/z), favouring checkpoint-looking blocks and pressure plates. Null when nothing is left.
+     * Where a course goes next with no goal: the nearest reachable unvisited spot that doesn't go back against
+     * {@code heading} (a unit vector in x/z; a turn to the side is fine), favouring spots straight on, spots that don't
+     * drop, and checkpoint-looking blocks and pressure plates. The ground under a course (a wide area lower than the
+     * player) is never taken for its next spot. Null when nothing is left.
      */
     public BlockPos next(BlockPos from, double headingX, double headingZ, Set<BlockPos> visited, List<BlockPos> spots) {
         return next(from, List.of(from), headingX, headingZ, visited, spots);
@@ -186,12 +192,13 @@ public final class CourseGraph {
             if (origin == null) continue;
             double dx = spot.getX() - origin.getX(), dz = spot.getZ() - origin.getZ();
             double distance = Math.sqrt(dx * dx + dz * dz);
-            double along = dx * headingX + dz * headingZ;
-            // The nearest spot that carries on along the course: courses are made to be done jump by jump.
-            if (headingX != 0.0 || headingZ != 0.0) {
-                if (along < 0.5) continue;
-            }
-            double score = -distance + 0.25 * along + 0.1 * (spot.getY() - origin.getY());
+            double along = (dx * headingX + dz * headingZ) / distance;
+            // Courses turn, but never double back: anything behind is where the player came from, or scenery.
+            if ((headingX != 0.0 || headingZ != 0.0) && along < -0.3) continue;
+            int dy = spot.getY() - origin.getY();
+            if (dy < 0 && isGround(spot, spots)) continue;
+            // The nearest spot that carries on: courses are made to be done jump by jump.
+            double score = -distance + 1.5 * along + (dy < 0 ? 1.5 * dy : 0.1 * dy);
             if (isCheckpoint(world.get(spot)) || isCheckpoint(world.get(spot.above()))) score += 3.0;
             if (score > bestScore) {
                 bestScore = score;
@@ -218,6 +225,14 @@ public final class CourseGraph {
             }
         }
         return out;
+    }
+
+    /** The most blocks a platform of a course has; more than this joined at one height is the ground (or a floor). */
+    static final int GROUND_SIZE = 40;
+
+    /** Whether {@code spot} is part of a wide area of spots at its height: the ground, not a course block. */
+    boolean isGround(BlockPos spot, List<BlockPos> spots) {
+        return platform(spot, spots, GROUND_SIZE + 1).size() > GROUND_SIZE;
     }
 
     static boolean isCheckpoint(BlockState state) {

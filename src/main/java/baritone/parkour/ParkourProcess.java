@@ -3,8 +3,11 @@ package baritone.parkour;
 import baritone.Baritone;
 import baritone.ai.director.JobStatus;
 import baritone.ai.director.LiveDirectorHost;
+import baritone.api.event.events.TickEvent;
+import baritone.api.event.listener.AbstractGameEventListener;
 import baritone.api.process.PathingCommand;
 import baritone.api.process.PathingCommandType;
+import baritone.parkour.course.CourseFollower;
 import baritone.parkour.course.CourseGraph;
 import baritone.parkour.exec.ParkourExecutor;
 import baritone.parkour.sim.BlockSource;
@@ -16,9 +19,7 @@ import baritone.parkour.solve.JumpSolver;
 import baritone.utils.BaritoneProcessHelper;
 import net.minecraft.core.BlockPos;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -30,7 +31,7 @@ import java.util.concurrent.Executors;
  * already visited, towards checkpoint blocks) until nothing is left to jump to. A jump the solver rules out is never
  * tried again; a jump fallen from three times stops the run with its name.
  */
-public final class ParkourProcess extends BaritoneProcessHelper {
+public final class ParkourProcess extends BaritoneProcessHelper implements AbstractGameEventListener {
     private static final ExecutorService SOLVER = Executors.newSingleThreadExecutor(r -> {
         Thread thread = new Thread(r, "DIH parkour route");
         thread.setDaemon(true);
@@ -43,16 +44,14 @@ public final class ParkourProcess extends BaritoneProcessHelper {
 
     private Mode mode = Mode.IDLE;
     private BlockPos goal;
-    private CourseGraph graph;
+    /** Which spot comes next, and the jumps ruled out so far; made on the first snapshot of a run. */
+    private CourseFollower follower;
     private BlockSource snapshot;
     private BlockPos at;
     private BlockPos jumpingTo;
     private CompletableFuture<JumpSolver.Result> solving;
     private PlayerState solvedFrom;
     private ParkourExecutor executor;
-    private final Set<BlockPos> visited = new HashSet<>();
-    private double headingX;
-    private double headingZ;
     private int jumps;
     private int falls;
     /** The largest gap between predicted and real position seen in this run's jumps. */
@@ -66,6 +65,7 @@ public final class ParkourProcess extends BaritoneProcessHelper {
 
     public ParkourProcess(Baritone baritone) {
         super(baritone);
+        baritone.getGameEventHandler().registerEventListener(this);
         if (!jobRegistered) {
             jobRegistered = true;
             LiveDirectorHost.registerJob("parkour", new LiveDirectorHost.ClientJob(
@@ -123,16 +123,12 @@ public final class ParkourProcess extends BaritoneProcessHelper {
         mode = next;
         outcome = null;
         goal = target;
-        graph = null;
-        visited.clear();
-        headingX = 0;
-        headingZ = 0;
+        follower = null;
         jumps = 0;
         falls = 0;
         maxDrift = 0.0;
         startedAt = System.currentTimeMillis();
         at = standingOn();
-        if (at != null) visited.add(at);
         String line = next == Mode.GOTO ? "Parkour to " + target.toShortString() + "." : "Following the parkour course.";
         logDirect(line + " #parkour stop stops.");
         return line;
@@ -152,6 +148,10 @@ public final class ParkourProcess extends BaritoneProcessHelper {
             end("Stopped parkour: left the world.");
             return new PathingCommand(null, PathingCommandType.DEFER);
         }
+        if (executor != null && chainOn()) {
+            PathingCommand chained = takeLink();
+            if (chained != null) return chained;
+        }
         if (executor != null) {
             ParkourExecutor.Status status = executor.tick(ctx.player());
             switch (status) {
@@ -162,18 +162,11 @@ public final class ParkourProcess extends BaritoneProcessHelper {
                     jumps++;
                     maxDrift = Math.max(maxDrift, executor.maxDrift());
                     if (!executor.firstDrift().isEmpty()) System.out.println("[DIH parkour] drift: " + executor.firstDrift());
-                    BlockPos from = at;
                     at = jumpingTo;
-                    visited.add(at);
-                    if (from != null) {
-                        double dx = at.getX() - from.getX(), dz = at.getZ() - from.getZ(), len = Math.sqrt(dx * dx + dz * dz);
-                        if (len > 0) {
-                            headingX = dx / len;
-                            headingZ = dz / len;
-                        }
-                    }
+                    if (follower != null) follower.landed(at);
                     executor = null;
                     jumpingTo = null;
+                    cancelLink();
                     if (mode == Mode.GOTO && at.equals(goal)) {
                         end("Parkour done: reached " + goal.toShortString() + " in " + jumps + " jumps, " + falls + " falls, "
                             + (System.currentTimeMillis() - startedAt) / 1000 + " s.");
@@ -184,7 +177,8 @@ public final class ParkourProcess extends BaritoneProcessHelper {
                     falls++;
                     String why = executor.detail();
                     executor = null;
-                    int onThisJump = graph == null || at == null || jumpingTo == null ? 1 : graph.fell(at, jumpingTo);
+                    cancelLink();
+                    int onThisJump = follower == null || at == null || jumpingTo == null ? 1 : follower.graph().fell(at, jumpingTo);
                     if (onThisJump >= MAX_FALLS) {
                         end("Stopped parkour: fell " + onThisJump + " times on the jump from " + at.toShortString() + " to "
                             + jumpingTo.toShortString() + ".");
@@ -209,13 +203,11 @@ public final class ParkourProcess extends BaritoneProcessHelper {
                     planNext();
                     return pause();
                 }
-                executor = new ParkourExecutor(snapshot, now, found.inputs(), jumpingTo);
-                executor.tick(ctx.player());
+                start(snapshot, now, found.inputs(), jumpingTo);
                 return pause();
             }
             // Ruled out from anywhere on this platform, or follow mode would just try it again from the next block.
-            if (at != null) graph.markInfeasible(at, jumpingTo);
-            for (BlockPos launch : launchPlatform) graph.markInfeasible(launch, jumpingTo);
+            follower.infeasible(at, jumpingTo);
             logDirect("No way to make the jump to " + jumpingTo.toShortString() + " (" + ((JumpSolver.Impossible) result).reason() + "); looking for another.");
             jumpingTo = null;
         }
@@ -228,29 +220,108 @@ public final class ParkourProcess extends BaritoneProcessHelper {
         return new PathingCommand(null, PathingCommandType.REQUEST_PAUSE);
     }
 
-    /** The platform the jump being solved leaves from. */
-    private List<BlockPos> launchPlatform = List.of();
+    // ---------------------------------------------------------------- the route ahead
+
+    /** The jumps planned past the current one, each from the last one's touchdown; null between runs of jumps. */
+    private RoutePlanner route;
+
+    private static boolean chainOn() {
+        return Baritone.settings().parkourChainJumps.value;
+    }
+
+    /** Plays {@code plan} to {@code target} from {@code from}; the first jump of a run also starts planning the route on. */
+    private void start(BlockSource world, PlayerState from, List<TickInput> plan, BlockPos target) {
+        snapshot = world;
+        jumpingTo = target;
+        executor = new ParkourExecutor(world, from, plan, target);
+        if (chainOn() && route == null && follower != null) {
+            route = RoutePlanner.start(ctx.world(), from, plan, target, chooser(follower.copy()));
+        }
+        executor.tick(ctx.player());
+    }
+
+    /** Picks the spots of the route ahead, on the planner's thread, with its own copy of the follower. */
+    private RoutePlanner.Chooser chooser(CourseFollower planning) {
+        if (mode == Mode.GOTO) {
+            BlockPos target = goal;
+            return (landing, world) -> {
+                if (landing.equals(target)) return null;
+                planning.world(world);
+                planning.landed(landing);
+                CourseGraph graph = planning.graph();
+                List<BlockPos> spots = graph.spots(landing, RADIUS - 2, 6, 4);
+                if (!spots.contains(target)) spots.add(target);
+                List<BlockPos> path = graph.route(landing, target, spots);
+                return path.size() < 2 ? null : path.get(1);
+            };
+        }
+        return (landing, world) -> {
+            planning.world(world);
+            planning.landed(landing);
+            return planning.next(landing);
+        };
+    }
+
+    private void cancelLink() {
+        if (route != null) route.cancel();
+        route = null;
+        ParkourExecutor.setRoute(List.of());
+    }
+
+    /**
+     * At the touchdown the next planned jump was solved for, goes straight on into it; the current jump's last ticks
+     * (braking to a stop) are dropped. Null when nothing is planned, or this isn't its touchdown.
+     */
+    private PathingCommand takeLink() {
+        if (route == null) return null;
+        PlayerState real = ParkourExecutor.stateOf(ctx.player());
+        RoutePlanner.Leg leg = route.take(real);
+        if (leg == null) return null;
+        jumps++;
+        maxDrift = Math.max(maxDrift, executor.maxDrift());
+        executor.release(ctx.player());
+        at = jumpingTo;
+        if (follower != null) follower.landed(at);
+        start(leg.world(), real, leg.link().inputs(), leg.link().target());
+        return pause();
+    }
+
+    /** Publishes the planned route for the world overlay: each leg up to where the next one takes over. */
+    private void publishRoute() {
+        if (route == null) return;
+        List<RoutePlanner.Leg> legs = route.ahead();
+        List<List<net.minecraft.world.phys.Vec3>> paths = new java.util.ArrayList<>(legs.size());
+        for (int i = 0; i < legs.size(); i++) {
+            List<net.minecraft.world.phys.Vec3> path = legs.get(i).path();
+            int end = i + 1 < legs.size() ? Math.min(path.size(), legs.get(i + 1).link().index() + 1) : path.size();
+            paths.add(path.subList(0, end));
+        }
+        ParkourExecutor.setRoute(paths);
+    }
+
+    @Override
+    public void onPostTick(TickEvent event) {
+        if (executor != null && ctx.player() != null) executor.afterTick(ctx.player());
+        publishRoute();
+    }
 
     /** Picks the next spot and starts solving the jump to it. */
     private void planNext() {
         BlockPos here = standingOn();
         if (here == null) return;
         if (at == null || !at.equals(here)) at = here;
-        visited.add(at);
         snapshot = LevelSnapshot.around(ctx.world(), at, RADIUS, 8, 8);
-        if (graph == null) graph = new CourseGraph(snapshot);
-        else graph = carryOver(graph, snapshot);
-        List<BlockPos> spots = graph.spots(at, RADIUS - 2, 6, 4);
-        // The whole platform underfoot counts as done, so following doesn't wander round it.
-        List<BlockPos> platform = graph.platform(at, spots, 64);
-        visited.addAll(platform);
-        launchPlatform = platform;
+        // The course is taken to go the way the player faces when the run starts.
+        if (follower == null) follower = new CourseFollower(snapshot, ctx.player().getYRot());
+        else follower.world(snapshot);
         BlockPos next;
         if (mode == Mode.GOTO) {
             if (at.equals(goal)) {
                 end("Parkour done: already on " + goal.toShortString() + ".");
                 return;
             }
+            CourseGraph graph = follower.graph();
+            List<BlockPos> spots = graph.spots(at, RADIUS - 2, 6, 4);
             if (!spots.contains(goal)) spots.add(goal);
             List<BlockPos> route = graph.route(at, goal, spots);
             if (route.size() < 2) {
@@ -259,7 +330,7 @@ public final class ParkourProcess extends BaritoneProcessHelper {
             }
             next = route.get(1);
         } else {
-            next = graph.next(at, platform, headingX, headingZ, visited, spots);
+            next = follower.next(at);
             if (next == null) {
                 end("Parkour done: no more jumps ahead after " + jumps + " jumps, " + falls + " falls.");
                 return;
@@ -285,11 +356,6 @@ public final class ParkourProcess extends BaritoneProcessHelper {
         return s;
     }
 
-    /** A graph over the new snapshot that keeps the old one's ruled-out jumps and fall counts. */
-    private static CourseGraph carryOver(CourseGraph old, BlockSource snapshot) {
-        return old.withWorld(snapshot);
-    }
-
     private BlockPos standingOn() {
         if (ctx.player() == null || !ctx.player().onGround()) return null;
         PlayerState s = ParkourExecutor.stateOf(ctx.player());
@@ -301,6 +367,7 @@ public final class ParkourProcess extends BaritoneProcessHelper {
         executor = null;
         if (solving != null) solving.cancel(true);
         solving = null;
+        cancelLink();
         mode = Mode.IDLE;
         jumpingTo = null;
         if (!line.isEmpty()) {

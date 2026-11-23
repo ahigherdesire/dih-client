@@ -52,6 +52,17 @@ public final class ParkourExecutor {
         return preview;
     }
 
+    private static volatile List<List<net.minecraft.world.phys.Vec3>> route = List.of();
+
+    /** The jumps planned after the current one (each a feet path), for the world overlay. */
+    public static List<List<net.minecraft.world.phys.Vec3>> route() {
+        return route;
+    }
+
+    public static void setRoute(List<List<net.minecraft.world.phys.Vec3>> paths) {
+        route = List.copyOf(paths);
+    }
+
     private final BlockPos target;
     private final double targetTop;
     private final BlockSource world;
@@ -166,8 +177,33 @@ public final class ParkourExecutor {
             player.input = input;
         }
         input.next = in;
+        yawBefore = player.getYRot();
         player.setYRot(in.yaw());
-        player.yRotO = in.yaw();
+        // The pitch doesn't change the movement: ease it towards the landing block, the way a player watches it.
+        pitchBefore = player.getXRot();
+        double dx = target.getX() + 0.5 - player.getX(), dz = target.getZ() + 0.5 - player.getZ();
+        float want = (float) Math.toDegrees(Math.atan2(player.getEyeY() - targetTop, Math.max(1.5, Math.sqrt(dx * dx + dz * dz))));
+        want = net.minecraft.util.Mth.clamp(want, -15.0F, 50.0F);
+        player.setXRot(pitchBefore + net.minecraft.util.Mth.clamp(want - pitchBefore, -MAX_PITCH_STEP, MAX_PITCH_STEP));
+    }
+
+    /** The most the pitch moves in a tick while watching the landing. */
+    private static final float MAX_PITCH_STEP = 5.0F;
+
+    /** The facing before the input of the tick being played: the camera turns from it over the frames that follow. */
+    private float yawBefore;
+    private float pitchBefore;
+
+    /**
+     * Called after the client tick: the game copied the new facing into the previous one when it ticked the player,
+     * which would snap the camera there. Putting the old facing back makes the frames until the next tick turn it
+     * smoothly instead (the way mouse movement looks).
+     */
+    public void afterTick(LocalPlayer player) {
+        if (input != null && player.input == input) {
+            player.yRotO = yawBefore;
+            player.xRotO = pitchBefore;
+        }
     }
 
     private Status finish(LocalPlayer player, Status end, String why) {

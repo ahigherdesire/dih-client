@@ -129,7 +129,10 @@ public final class DihBaritonePathRenderer {
                 f.addGoal(goal, argb(s.colorGoalBox.value, 0.9f), camPos, new int[]{0});
             }
 
-            if (s.parkourPreview.value) f.addParkour(ParkourExecutor.preview());
+            if (s.parkourPreview.value) {
+                f.addParkour(ParkourExecutor.preview());
+                f.addParkourRoute(ParkourExecutor.route());
+            }
             if (!s.renderPath.value) return f;
 
             IPathExecutor current = behavior.getCurrent();
@@ -223,6 +226,22 @@ public final class DihBaritonePathRenderer {
             AABB top = new AABB(t.getX(), t.getY() + 1.0, t.getZ(), t.getX() + 1.0, t.getY() + 1.02, t.getZ() + 1.0);
             fills.add(new Box(top, scaleAlpha(color, 0.18f)));
             addEdges(top, color, goalWidth);
+        }
+
+        /** The jumps planned after the current one: one line on through them, fainter, with each landing marked. */
+        void addParkourRoute(List<List<Vec3>> legs) {
+            if (legs == null || legs.isEmpty()) return;
+            int color = scaleAlpha(DihTheme.recolor(0xFFFF3B3B, DihTheme.Channel.ACCENT), 0.55f);
+            for (List<Vec3> path : legs) {
+                for (int i = 0; i + 1 < path.size(); i++) {
+                    lines.add(new Seg(path.get(i).add(0, 0.05, 0), path.get(i + 1).add(0, 0.05, 0), color, pathWidth));
+                }
+                if (!path.isEmpty()) {
+                    Vec3 land = path.getFirst();
+                    AABB mark = new AABB(land.x - 0.15, land.y + 0.02, land.z - 0.15, land.x + 0.15, land.y + 0.04, land.z + 0.15);
+                    addEdges(mark, color, goalWidth);
+                }
+            }
         }
 
         // ── Goal ──────────────────────────────────────────────────────────────

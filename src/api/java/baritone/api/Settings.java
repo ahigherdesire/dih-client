@@ -372,6 +372,12 @@ public final class Settings {
     public final Setting<Boolean> parkourPreview = new Setting<>(true);
 
     /**
+     * #parkour runs jumps together without stopping: the next jump is solved while this one is in the air, and taken
+     * at touchdown with the speed carried over. Off: the player stops on every block before the next jump.
+     */
+    public final Setting<Boolean> parkourChainJumps = new Setting<>(true);
+
+    /**
      * Actually pretty reliable.
      * <p>
      * Doesn't make it any more dangerous compared to just normal allowParkour th

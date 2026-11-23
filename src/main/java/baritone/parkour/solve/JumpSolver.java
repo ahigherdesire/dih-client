@@ -174,12 +174,13 @@ public final class JumpSolver {
         for (int i = 0; i < SETTLE_TICKS; i++) {
             if (atRest(s)) return out;
             double speed = Math.sqrt(s.vx * s.vx + s.vz * s.vz);
-            float yaw = speed > 1.0E-6 ? (float) Math.toDegrees(Math.atan2(-s.vx, s.vz)) : s.yaw;
+            float moving = speed > 1.0E-6 ? (float) Math.toDegrees(Math.atan2(-s.vx, s.vz)) : s.yaw;
             // Back against the slide only while that slows it; once backing would reverse it, let friction finish.
-            TickInput in = new TickInput(false, true, false, false, false, false, false, yaw);
+            // The camera keeps to its turn limit: the keys push against the slide from wherever it faces.
+            TickInput in = Search.steer(s.yaw, moving, Mth.wrapDegrees(moving + 180.0F), false, false);
             PlayerState braked = PlayerPhysics.step(s, in, world);
             if (braked.vx * s.vx + braked.vz * s.vz <= 0.0) {
-                in = TickInput.none(yaw);
+                in = TickInput.none(in.yaw());
                 braked = PlayerPhysics.step(s, in, world);
             }
             s = braked;
@@ -401,10 +402,8 @@ public final class JumpSolver {
                     s = step(s, in, inputs);
                 }
                 case BACK_UP -> {
-                    for (int i = 0; i < 2; i++) {
-                        float aim = aimYaw(s);
-                        s = step(s, new TickInput(false, true, false, false, false, false, false, aim), inputs);
-                    }
+                    Macro back = new Macro(Kind.STEP, Keys.BRAKE, 0.0F);
+                    for (int i = 0; i < 2; i++) s = step(s, input(s, back, false), inputs);
                 }
                 case EDGE_JUMP -> {
                     // Run on (re-aimed) until the next tick would leave the ground, and jump on that tick.
@@ -446,12 +445,53 @@ public final class JumpSolver {
         boolean airborneNow;
 
         TickInput input(PlayerState s, Macro macro, boolean jump) {
-            float heading = macro.straight() ? straightYaw(s) : aimYaw(s);
-            float yaw = Mth.wrapDegrees(heading + macro.offset() + macro.keys().turn);
             Keys k = macro.keys();
+            // No movement keys: the facing changes nothing, so it stays put.
+            if (k == Keys.NONE) return new TickInput(false, false, false, false, jump, false, false, s.yaw);
+            float heading = macro.straight() ? straightYaw(s) : aimYaw(s);
+            float yaw = Mth.wrapDegrees(heading + macro.offset() + k.turn);
             boolean forward = k == Keys.FORWARD || k == Keys.LEFT || k == Keys.RIGHT || k == Keys.WALK;
             boolean sprint = k == Keys.FORWARD || k == Keys.LEFT || k == Keys.RIGHT;
-            return new TickInput(forward, k == Keys.BRAKE, k == Keys.LEFT, k == Keys.RIGHT, jump, sprint, false, yaw);
+            float move = Mth.wrapDegrees(heading + macro.offset() + (k == Keys.BRAKE ? 180.0F : 0.0F));
+            // Moving, the camera stays within LOOK_LIMIT of the way the player goes: a player brakes with S and
+            // strafes with A and D, and doesn't look away from where it's flying.
+            double speed = Math.sqrt(s.vx * s.vx + s.vz * s.vz);
+            if (speed > 0.08) {
+                float moving = (float) Math.toDegrees(Math.atan2(-s.vx, s.vz));
+                float off = Mth.wrapDegrees(yaw - moving);
+                if (Math.abs(off) > LOOK_LIMIT) return steer(s.yaw, Mth.wrapDegrees(moving + Math.copySign(LOOK_LIMIT, off)), move, sprint, jump);
+            }
+            if (Math.abs(Mth.wrapDegrees(yaw - s.yaw)) <= MAX_TURN) {
+                return new TickInput(forward, k == Keys.BRAKE, k == Keys.LEFT, k == Keys.RIGHT, jump, sprint, false, yaw);
+            }
+            // A bigger turn than a player makes in a tick (or a look back: past the target's centre the aim points
+            // behind the player): turn as far as allowed and move as near that way as the keys go.
+            return steer(s.yaw, yaw, move, sprint, jump);
+        }
+
+        /** The furthest the camera looks from the way the player is moving (degrees). */
+        static final float LOOK_LIMIT = 90.0F;
+
+        /**
+         * The most the facing turns in one tick (degrees). Movement follows the facing, so the solver plans with this
+         * limit and every plan it finds is one where the camera turns smoothly; the keys make up the rest of a turn.
+         */
+        static final float MAX_TURN = 30.0F;
+
+        /**
+         * Turns from {@code facing} towards {@code want} by at most {@link #MAX_TURN}, and holds the keys whose
+         * direction is nearest {@code move} (a yaw) from there. W is straight on, A 90 degrees left (yaw - 90), D right,
+         * S back. Sprints only with W held.
+         */
+        static TickInput steer(float facing, float want, float move, boolean sprint, boolean jump) {
+            float yaw = Mth.wrapDegrees(facing + Mth.clamp(Mth.wrapDegrees(want - facing), -MAX_TURN, MAX_TURN));
+            int rel = Math.round(Mth.wrapDegrees(move - yaw) / 45.0F) * 45;
+            if (rel == -180) rel = 180;
+            boolean w = Math.abs(rel) <= 45;
+            boolean s = Math.abs(rel) >= 135;
+            boolean a = rel < 0 && rel > -180;
+            boolean d = rel > 0 && rel < 180;
+            return new TickInput(w, s, a, d, jump, sprint && w, false, yaw);
         }
 
         boolean dead(PlayerState s, int ticks, boolean leftGround) {
