@@ -124,7 +124,17 @@ public final class JumpSolver {
     }
 
     public static Result solve(BlockSource world, PlayerState start, BlockPos target, Limits limits) {
-        return new Search(world, start, target, limits, System.nanoTime()).run();
+        return solve(world, start, target, limits, null);
+    }
+
+    /**
+     * As {@link #solve(BlockSource, PlayerState, BlockPos, Limits)}, but a landing only counts when {@code continues}
+     * accepts the state the player touches down in (still moving): a jump planned so the one after it can be made.
+     */
+    public static Result solve(BlockSource world, PlayerState start, BlockPos target, Limits limits, java.util.function.Predicate<PlayerState> continues) {
+        Search search = new Search(world, start, target, limits, System.nanoTime());
+        search.continues = continues;
+        return search.run();
     }
 
     /** Whether {@code s} stands on top of {@code target}: on the ground at its top, centre over it (0.3 overhang allowed). */
@@ -199,6 +209,10 @@ public final class JumpSolver {
         /** Whether the player has been off the ground since the start (after that, only the target may be landed on). */
         final boolean leftGround;
 
+        /** Turning so far (search cost in ticks), and the last turn made (degrees), for steadier plans. */
+        double turnPenalty;
+        float lastTurn;
+
         Node(PlayerState state, Node parent, List<TickInput> inputs, int ticks, double f, boolean leftGround) {
             this.state = state;
             this.parent = parent;
@@ -221,6 +235,12 @@ public final class JumpSolver {
             for (List<TickInput> part : parts) out.addAll(part);
             return out;
         }
+    }
+
+    /** For probes: lifts the camera limits (turn per tick, look away from the movement) so the search tries any facing. */
+    static void cameraLimits(float maxTurn, float lookLimit) {
+        Search.MAX_TURN = maxTurn;
+        Search.LOOK_LIMIT = lookLimit;
     }
 
     private static final class Search {
@@ -323,7 +343,11 @@ public final class JumpSolver {
         int graceLandings;
 
         /** A plan that lands on the target: returned when it's robust, otherwise kept if it's the sturdiest yet. */
+        /** A test the touchdown has to pass (the next jump can be made from it), or null. */
+        java.util.function.Predicate<PlayerState> continues;
+
         Found accept(Node landed) {
+            if (continues != null && !continues.test(landed.state)) return null;
             List<TickInput> stop = settle(world, landed.state, target, targetTop);
             if (stop == null) return null;
             List<TickInput> plan = new ArrayList<>(landed.plan());
@@ -430,7 +454,20 @@ public final class JumpSolver {
             boolean leftGround = node.leftGround || airborneNow || !s.onGround;
             airborneNow = false;
             if (dead(s, ticks, leftGround)) return null;
-            return new Node(s, node, inputs, ticks, ticks + 2.0 * h(s), leftGround);
+            // Steady aim is cheaper: every degree turned costs a little, turning back against the last turn more.
+            double penalty = node.turnPenalty;
+            float lastYaw = node.state.yaw, lastTurn = node.lastTurn;
+            for (TickInput in : inputs) {
+                float turn = Mth.wrapDegrees(in.yaw() - lastYaw);
+                penalty += Math.abs(turn) * TURN_COST;
+                if (Math.abs(turn) > DEAD_ZONE && Math.abs(lastTurn) > DEAD_ZONE && Math.signum(turn) != Math.signum(lastTurn)) penalty += REVERSAL_COST;
+                if (Math.abs(turn) > DEAD_ZONE) lastTurn = turn;
+                lastYaw = in.yaw();
+            }
+            Node child = new Node(s, node, inputs, ticks, ticks + penalty + 2.0 * h(s), leftGround);
+            child.turnPenalty = penalty;
+            child.lastTurn = lastTurn;
+            return child;
         }
 
         PlayerState step(PlayerState s, TickInput in, List<TickInput> inputs) {
@@ -453,6 +490,14 @@ public final class JumpSolver {
             boolean forward = k == Keys.FORWARD || k == Keys.LEFT || k == Keys.RIGHT || k == Keys.WALK;
             boolean sprint = k == Keys.FORWARD || k == Keys.LEFT || k == Keys.RIGHT;
             float move = Mth.wrapDegrees(heading + macro.offset() + (k == Keys.BRAKE ? 180.0F : 0.0F));
+            // A hand on a mouse, not a snap: tiny corrections are left alone, and the camera goes part of the way to
+            // where it wants to look each tick, so a turn starts and ends gently and never twitches back and forth.
+            float want = Mth.wrapDegrees(yaw - s.yaw);
+            if (Math.abs(want) <= DEAD_ZONE) yaw = s.yaw;
+            else if (Math.abs(want) <= MAX_TURN) yaw = Mth.wrapDegrees(s.yaw + want * EASE);
+            // Over the landing, a flip of the aim is braking, not a new way to go: don't turn at all, a player brakes
+            // or strafes with the keys.
+            if (nearTarget(s) && Math.abs(Mth.wrapDegrees(yaw - s.yaw)) > 90.0F) return steer(s.yaw, s.yaw, move, sprint, jump);
             // Moving, the camera stays within LOOK_LIMIT of the way the player goes: a player brakes with S and
             // strafes with A and D, and doesn't look away from where it's flying.
             double speed = Math.sqrt(s.vx * s.vx + s.vz * s.vz);
@@ -464,19 +509,27 @@ public final class JumpSolver {
             if (Math.abs(Mth.wrapDegrees(yaw - s.yaw)) <= MAX_TURN) {
                 return new TickInput(forward, k == Keys.BRAKE, k == Keys.LEFT, k == Keys.RIGHT, jump, sprint, false, yaw);
             }
-            // A bigger turn than a player makes in a tick (or a look back: past the target's centre the aim points
-            // behind the player): turn as far as allowed and move as near that way as the keys go.
+            // A bigger turn than a player makes in a tick: turn as far as allowed and move as near that way as the
+            // keys go.
             return steer(s.yaw, yaw, move, sprint, jump);
         }
 
+        /** Turns smaller than this (degrees) aren't made: the aim's tick-to-tick wobble. */
+        static final float DEAD_ZONE = 2.0F;
+        /** The share of the remaining turn made each tick. */
+        static final float EASE = 0.6F;
+        /** Search cost (in ticks) of turning one degree, and of turning back against the last turn. */
+        static final double TURN_COST = 0.01;
+        static final double REVERSAL_COST = 1.5;
+
         /** The furthest the camera looks from the way the player is moving (degrees). */
-        static final float LOOK_LIMIT = 90.0F;
+        static float LOOK_LIMIT = 90.0F;
 
         /**
          * The most the facing turns in one tick (degrees). Movement follows the facing, so the solver plans with this
          * limit and every plan it finds is one where the camera turns smoothly; the keys make up the rest of a turn.
          */
-        static final float MAX_TURN = 30.0F;
+        static float MAX_TURN = 30.0F;
 
         /**
          * Turns from {@code facing} towards {@code want} by at most {@link #MAX_TURN}, and holds the keys whose
@@ -552,8 +605,21 @@ public final class JumpSolver {
 
         /** The heading of the shortest path round walls, at the furthest point in sight up to a few blocks on. */
         float aimYaw(PlayerState s) {
+            // Passing close by the landing's centre, the bearing to it swings fast; a player looks the way it's going.
+            if (nearTarget(s)) {
+                double speed = Math.sqrt(s.vx * s.vx + s.vz * s.vz);
+                if (speed > 0.03) return (float) Math.toDegrees(Math.atan2(-s.vx, s.vz));
+            }
             return field.aimYaw(s.x, s.z, targetX, targetZ, 4.0);
         }
+
+        /** Within about a block of the landing block's centre (horizontally). */
+        boolean nearTarget(PlayerState s) {
+            double dx = targetX - s.x, dz = targetZ - s.z;
+            return dx * dx + dz * dz < NEAR * NEAR;
+        }
+
+        static final double NEAR = 1.2;
 
         /** The heading from the start straight at the target, whatever is in the way. */
         float straightYaw(PlayerState s) {

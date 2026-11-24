@@ -45,7 +45,9 @@
       "baritone.parkour.ParkourTraceGameTest",
       "baritone.parkour.ParkourJumpGameTest",
       "baritone.parkour.ParkourCourseGameTest",
-      "baritone.parkour.ParkourHandoffGameTest"
+      "baritone.parkour.ParkourHandoffGameTest",
+      "baritone.parkour.ParkourRecordedCourseGameTest",
+      "baritone.parkour.ParkourMapGameTest"
     ]
   },
   "depends": {

@@ -10,14 +10,19 @@ import baritone.api.process.PathingCommandType;
 import baritone.parkour.course.CourseFollower;
 import baritone.parkour.course.CourseGraph;
 import baritone.parkour.exec.ParkourExecutor;
+import baritone.parkour.record.CourseRecorder;
 import baritone.parkour.sim.BlockSource;
 import baritone.parkour.sim.LevelSnapshot;
 import baritone.parkour.sim.PlayerPhysics;
 import baritone.parkour.sim.PlayerState;
 import baritone.parkour.sim.TickInput;
+import baritone.parkour.solve.JumpChain;
 import baritone.parkour.solve.JumpSolver;
+import baritone.parkour.solve.RunUpSearch;
 import baritone.utils.BaritoneProcessHelper;
+import baritone.api.pathing.goals.GoalBlock;
 import net.minecraft.core.BlockPos;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -39,6 +44,9 @@ public final class ParkourProcess extends BaritoneProcessHelper implements Abstr
     });
     private static final int RADIUS = 20;
     private static final int MAX_FALLS = 3;
+    /** How long follow mode waits at the end of what it can see for more of the course to appear (ticks). */
+    private static final int IDLE_TICKS = 40;
+    private int idleTicks;
 
     private enum Mode { IDLE, GOTO, FOLLOW }
 
@@ -53,6 +61,8 @@ public final class ParkourProcess extends BaritoneProcessHelper implements Abstr
     private PlayerState solvedFrom;
     private ParkourExecutor executor;
     private int jumps;
+    /** This run's jumps taken straight on from a touchdown, jumps solved from a stop, bigger second searches, walks. */
+    private int chained, fromRest, retries, walks;
     private int falls;
     /** The largest gap between predicted and real position seen in this run's jumps. */
     private double maxDrift;
@@ -96,8 +106,24 @@ public final class ParkourProcess extends BaritoneProcessHelper implements Abstr
 
     public String status() {
         if (mode == Mode.IDLE) return last.isEmpty() ? "Not running parkour." : last;
-        return (mode == Mode.GOTO ? "Parkour to " + goal.toShortString() : "Following the course") + ": " + jumps + " jumps, "
-            + falls + " falls" + (jumpingTo != null ? ", jumping to " + jumpingTo.toShortString() : "");
+        int planned = route == null ? 0 : route.size();
+        return (mode == Mode.GOTO ? "Parkour to " + goal.toShortString() : "Following the course") + ": " + jumps + " jumps"
+            + (checkpoints > 0 ? ", " + checkpoints + " checkpoints" : "") + ", " + planned + " planned ahead, " + falls + " falls, "
+            + (System.currentTimeMillis() - startedAt) / 1000 + " s" + (walkingTo != null ? ", walking on" : "")
+            + (jumpingTo != null ? ", jumping to " + jumpingTo.toShortString() : "");
+    }
+
+    /** Checkpoint-looking blocks (gold, plates...) landed on this run, and the last one, so it's counted once. */
+    private int checkpoints;
+    private BlockPos lastCheckpoint;
+
+    /** Counts and announces a landing on a checkpoint-looking block (a gold block, a pressure plate...). */
+    private void landedOn(BlockPos block) {
+        if (follower == null || block == null || block.equals(lastCheckpoint) || !follower.graph().onCheckpoint(block)) return;
+        lastCheckpoint = block;
+        checkpoints++;
+        logDirect(String.format(java.util.Locale.ROOT, "Checkpoint %d at %s: %d jumps, %.1f s.", checkpoints, block.toShortString(), jumps,
+            (System.currentTimeMillis() - startedAt) / 1000.0));
     }
 
     public boolean running() {
@@ -124,7 +150,11 @@ public final class ParkourProcess extends BaritoneProcessHelper implements Abstr
         outcome = null;
         goal = target;
         follower = null;
+        checkpoints = 0;
+        lastCheckpoint = null;
+        idleTicks = 0;
         jumps = 0;
+        chained = fromRest = retries = walks = runUps = 0;
         falls = 0;
         maxDrift = 0.0;
         startedAt = System.currentTimeMillis();
@@ -164,12 +194,13 @@ public final class ParkourProcess extends BaritoneProcessHelper implements Abstr
                     if (!executor.firstDrift().isEmpty()) System.out.println("[DIH parkour] drift: " + executor.firstDrift());
                     at = jumpingTo;
                     if (follower != null) follower.landed(at);
+                    landedOn(at);
                     executor = null;
                     jumpingTo = null;
                     cancelLink();
                     if (mode == Mode.GOTO && at.equals(goal)) {
                         end("Parkour done: reached " + goal.toShortString() + " in " + jumps + " jumps, " + falls + " falls, "
-                            + (System.currentTimeMillis() - startedAt) / 1000 + " s.");
+                            + (System.currentTimeMillis() - startedAt) / 1000 + " s" + tally() + ".");
                         return new PathingCommand(null, PathingCommandType.DEFER);
                     }
                 }
@@ -197,23 +228,134 @@ public final class ParkourProcess extends BaritoneProcessHelper implements Abstr
             if (!atRest(now)) return pause();
             JumpSolver.Result result = solving.getNow(null);
             solving = null;
+            boolean wasRunUp = runningUp;
+            runningUp = false;
+            runUpFor = null;
             if (result instanceof JumpSolver.Found found) {
                 if (Math.abs(now.x - solvedFrom.x) + Math.abs(now.y - solvedFrom.y) + Math.abs(now.z - solvedFrom.z) > 1.0E-4) {
                     jumpingTo = null;
                     planNext();
                     return pause();
                 }
+                fromRest++;
                 start(snapshot, now, found.inputs(), jumpingTo);
                 return pause();
             }
+            String reason = ((JumpSolver.Impossible) result).reason();
+            // Out of time or nodes isn't proof it can't be done: look harder once before giving up on it.
+            if (reason.contains("budget") && !retrying) {
+                retrying = true;
+                retries++;
+                BlockSource world = snapshot;
+                PlayerState from = solvedFrom;
+                BlockPos target = jumpingTo;
+                solving = CompletableFuture.supplyAsync(() -> JumpSolver.solve(world, from, target, HARD_LOOK), SOLVER);
+                return pause();
+            }
+            // Not from a standstill: maybe with a run-up from the back of this platform (head-hitter momentum, a neo).
+            if (!wasRunUp) {
+                BlockPos back = runUpStart(snapshot, at, jumpingTo);
+                if (back != null) {
+                    runUpFor = jumpingTo;
+                    runUps++;
+                    logDirect("Can't make the jump to " + jumpingTo.toShortString() + " from a standstill; taking a run-up from "
+                        + back.toShortString() + ".");
+                    jumpingTo = null;
+                    if (back.equals(at)) planNext();
+                    else walkTo(back, runUpFor);
+                    if (walkingTo != null) {
+                        PathingCommand walk = walk();
+                        if (walk != null) return walk;
+                    }
+                    return pause();
+                }
+            }
             // Ruled out from anywhere on this platform, or follow mode would just try it again from the next block.
             follower.infeasible(at, jumpingTo);
-            logDirect("No way to make the jump to " + jumpingTo.toShortString() + " (" + ((JumpSolver.Impossible) result).reason() + "); looking for another.");
+            logDirect("No way to make the jump to " + jumpingTo.toShortString() + " (" + reason + "); looking for another.");
             jumpingTo = null;
+        }
+        if (walkingTo != null) {
+            PathingCommand walk = walk();
+            if (walk != null) return walk;
         }
         if (!ctx.player().onGround()) return pause();
         planNext();
+        if (walkingTo != null) {
+            PathingCommand walk = walk();
+            if (walk != null) return walk;
+        }
         return pause();
+    }
+
+    // ---------------------------------------------------------------- walking to the take-off
+
+    /** A second, bigger search for a jump the first one ran out of budget on. */
+    private static final JumpSolver.Limits HARD_LOOK = new JumpSolver.Limits(2_000_000, 3_000_000_000L, 90, true);
+    /** Whether the jump being solved is already the bigger second search. */
+    private boolean retrying;
+    /** How far (blocks) the take-off may be before the player walks there first rather than solving the walk too. */
+    private static final double WALK_FIRST = 6.0;
+    private static final long WALK_TIMEOUT_MS = 20_000;
+    /** The block to walk to (with Baritone's pathing) before the next jump; null when not walking. */
+    private BlockPos walkingTo;
+    /** The spot the walk is for (ruled out if the walk never gets there), or null for a walk on along the platform. */
+    private BlockPos walkingFor;
+    private long walkStarted;
+
+    /**
+     * Walks to {@link #walkingTo} with Baritone's own pathing: a long walk across a platform is no jump, and the jump
+     * solver is slow at it. Null once there (the jump is planned next) or given up.
+     */
+    private PathingCommand walk() {
+        Vec3 feet = ctx.player().position();
+        double dx = walkingTo.getX() + 0.5 - feet.x, dz = walkingTo.getZ() + 0.5 - feet.z;
+        BlockPos here = standingOn();
+        if (here != null && (here.equals(walkingTo) || dx * dx + dz * dz < 0.6 * 0.6)) {
+            walkDone();
+            // Only the walk's path: cancelEverything would stop this process too.
+            ((baritone.behavior.PathingBehavior) baritone.getPathingBehavior()).softCancelIfSafe();
+            return null;
+        }
+        if (System.currentTimeMillis() - walkStarted > WALK_TIMEOUT_MS) {
+            if (walkingFor != null && at != null) follower.infeasible(at, walkingFor);
+            logDirect("Couldn't walk to " + walkingTo.toShortString() + "; looking for another way on.");
+            walkDone();
+            // Only the walk's path: cancelEverything would stop this process too.
+            ((baritone.behavior.PathingBehavior) baritone.getPathingBehavior()).softCancelIfSafe();
+            return null;
+        }
+        return new PathingCommand(new GoalBlock(walkingTo.above()), PathingCommandType.SET_GOAL_AND_PATH);
+    }
+
+    private void walkTo(BlockPos block, BlockPos forSpot) {
+        walkingTo = block;
+        walkingFor = forSpot;
+        walkStarted = System.currentTimeMillis();
+        walks++;
+        // Baritone's walking sets the aim each tick; smooth look eases the camera over a few ticks (the movement
+        // still goes by the exact aim). Only while parkour walks; the player's own setting comes back after.
+        if (smoothLookBefore == null) {
+            smoothLookBefore = Baritone.settings().smoothLook.value;
+            Baritone.settings().smoothLook.value = true;
+        }
+    }
+
+    /** The player's smoothLook setting while a parkour walk has it on; null when not overridden. */
+    private Boolean smoothLookBefore;
+
+    private void walkDone() {
+        walkingTo = null;
+        walkingFor = null;
+        if (smoothLookBefore != null) {
+            Baritone.settings().smoothLook.value = smoothLookBefore;
+            smoothLookBefore = null;
+        }
+    }
+
+    /** How the run went: jumps chained on, jumps from a stop, second searches, walks. */
+    private String tally() {
+        return " (" + chained + " chained, " + fromRest + " from a stop, " + retries + " retried, " + walks + " walks" + (runUps > 0 ? ", " + runUps + " run-ups" : "") + ")";
     }
 
     private PathingCommand pause() {
@@ -282,6 +424,8 @@ public final class ParkourProcess extends BaritoneProcessHelper implements Abstr
         executor.release(ctx.player());
         at = jumpingTo;
         if (follower != null) follower.landed(at);
+        landedOn(at);
+        chained++;
         start(leg.world(), real, leg.link().inputs(), leg.link().target());
         return pause();
     }
@@ -301,6 +445,7 @@ public final class ParkourProcess extends BaritoneProcessHelper implements Abstr
 
     @Override
     public void onPostTick(TickEvent event) {
+        CourseRecorder.tick(ctx.player(), ctx.world());
         if (executor != null && ctx.player() != null) executor.afterTick(ctx.player());
         publishRoute();
     }
@@ -315,7 +460,9 @@ public final class ParkourProcess extends BaritoneProcessHelper implements Abstr
         if (follower == null) follower = new CourseFollower(snapshot, ctx.player().getYRot());
         else follower.world(snapshot);
         BlockPos next;
-        if (mode == Mode.GOTO) {
+        if (runUpFor != null) {
+            next = runUpFor;
+        } else if (mode == Mode.GOTO) {
             if (at.equals(goal)) {
                 end("Parkour done: already on " + goal.toShortString() + ".");
                 return;
@@ -332,16 +479,53 @@ public final class ParkourProcess extends BaritoneProcessHelper implements Abstr
         } else {
             next = follower.next(at);
             if (next == null) {
-                end("Parkour done: no more jumps ahead after " + jumps + " jumps, " + falls + " falls.");
+                // Nothing in reach: walk on to the far end of this platform (what's next may come into reach, or a
+                // course that builds itself as the player goes builds it), then give new blocks a few seconds to appear.
+                BlockPos on = follower.furthestAlong(at, 2.0);
+                if (on != null) {
+                    idleTicks = 0;
+                    walkTo(on, null);
+                    return;
+                }
+                // On a finish (a gold block, a pressure plate...) the course is over; elsewhere, wait for more of it.
+                if (!follower.graph().onCheckpoint(at) && ++idleTicks < IDLE_TICKS) return;
+                end("Parkour done: no more jumps ahead after " + jumps + " jumps, " + falls + " falls" + tally() + ".");
                 return;
             }
+            idleTicks = 0;
+            // The jump is made from the nearest block of this platform that reaches it: walk there first if it's far.
+            BlockPos launch = follower.launch();
+            if (launch != null && !launch.equals(at)) {
+                Vec3 feet = ctx.player().position();
+                double dx = launch.getX() + 0.5 - feet.x, dz = launch.getZ() + 0.5 - feet.z;
+                if (dx * dx + dz * dz > WALK_FIRST * WALK_FIRST) {
+                    walkTo(launch, next);
+                    return;
+                }
+            }
         }
+        retrying = false;
         jumpingTo = next;
         solvedFrom = restingState(ParkourExecutor.stateOf(ctx.player()), snapshot);
         BlockSource world = snapshot;
         PlayerState from = solvedFrom;
         BlockPos target = next;
-        solving = CompletableFuture.supplyAsync(() -> JumpSolver.solve(world, from, target, JumpSolver.Limits.THOROUGH), SOLVER);
+        if (runUpFor != null) {
+            runningUp = true;
+            long seed = next.asLong() ^ runUps;
+            solving = CompletableFuture.supplyAsync(() -> RunUpSearch.solve(world, from, target, RUN_UP_NANOS, seed), SOLVER);
+            return;
+        }
+        // Land so the jump after this one can be made straight on, when there's a landing like that.
+        BlockPos then = mode == Mode.FOLLOW && chainOn() ? follower.peekAfter(next) : null;
+        solving = CompletableFuture.supplyAsync(() -> {
+            if (then != null) {
+                JumpSolver.Result r = JumpSolver.solve(world, from, target, JumpSolver.Limits.THOROUGH,
+                    touch -> JumpSolver.solve(world, touch, then, JumpChain.LOOK_AHEAD) instanceof JumpSolver.Found);
+                if (r instanceof JumpSolver.Found) return r;
+            }
+            return JumpSolver.solve(world, from, target, JumpSolver.Limits.THOROUGH);
+        }, SOLVER);
     }
 
     /** Whether the player has stopped: on the ground with no horizontal speed (the client zeroes tiny speeds). */
@@ -356,6 +540,49 @@ public final class ParkourProcess extends BaritoneProcessHelper implements Abstr
         return s;
     }
 
+    /** How long the run-up search may look for a jump that can't be made from a standstill. */
+    private static final long RUN_UP_NANOS = 8_000_000_000L;
+    /** The most blocks of run-up taken. */
+    private static final int MAX_RUN_UP = 8;
+    /** The jump a run-up is being taken for (walking back, then solving); null otherwise. */
+    private BlockPos runUpFor;
+    /** Whether the jump being solved is a run-up search. */
+    private boolean runningUp;
+    private int runUps;
+
+    /**
+     * The block to take a run-up from for the jump from {@code from} to {@code target}: straight back from the target
+     * through {@code from}, as far as this platform goes (up to {@link #MAX_RUN_UP} blocks), with room to stand. Null
+     * when there's less than three blocks of it.
+     */
+    static BlockPos runUpStart(BlockSource world, BlockPos from, BlockPos target) {
+        double dx = from.getX() - target.getX(), dz = from.getZ() - target.getZ();
+        double len = Math.sqrt(dx * dx + dz * dz);
+        if (len < 1.0E-6) return null;
+        dx /= len;
+        dz /= len;
+        BlockPos best = null;
+        int run = 0;
+        for (int k = 1; k <= MAX_RUN_UP; k++) {
+            BlockPos p = new BlockPos(from.getX() + (int) Math.round(dx * k), from.getY(), from.getZ() + (int) Math.round(dz * k));
+            if (!standable(world, p)) break;
+            best = p;
+            run = k;
+        }
+        return run >= 3 ? best : null;
+    }
+
+    private static boolean standable(BlockSource world, BlockPos p) {
+        net.minecraft.world.level.block.state.BlockState below = world.get(p);
+        if (below.getCollisionShape(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, p).isEmpty()) return false;
+        if (Math.abs(JumpSolver.topOf(world, p) - (p.getY() + 1)) > 1.0E-6) return false;
+        for (int up = 1; up <= 2; up++) {
+            BlockPos q = p.above(up);
+            if (!world.get(q).getCollisionShape(net.minecraft.world.level.EmptyBlockGetter.INSTANCE, q).isEmpty()) return false;
+        }
+        return true;
+    }
+
     private BlockPos standingOn() {
         if (ctx.player() == null || !ctx.player().onGround()) return null;
         PlayerState s = ParkourExecutor.stateOf(ctx.player());
@@ -368,6 +595,9 @@ public final class ParkourProcess extends BaritoneProcessHelper implements Abstr
         if (solving != null) solving.cancel(true);
         solving = null;
         cancelLink();
+        walkDone();
+        runUpFor = null;
+        runningUp = false;
         mode = Mode.IDLE;
         jumpingTo = null;
         if (!line.isEmpty()) {

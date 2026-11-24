@@ -39,4 +39,15 @@ final class CourseGraphTest {
         // The ladder itself isn't a spot to stand on.
         assertFalse(graph.standable(new BlockPos(0, 3, 2)));
     }
+
+    /** Reach goes by the gap between the blocks' edges, as the parkour wiki measures it, not by centre distance. */
+    @org.junit.jupiter.api.Test
+    void reachIsMeasuredEdgeToEdge() {
+        BlockPos o = BlockPos.ZERO;
+        org.junit.jupiter.api.Assertions.assertTrue(CourseGraph.inReach(o, new BlockPos(4, 0, -4)), "a 4x4 diagonal (a 3x3 gap)");
+        org.junit.jupiter.api.Assertions.assertTrue(CourseGraph.inReach(o, new BlockPos(0, 0, 5)), "a straight 4-block gap");
+        org.junit.jupiter.api.Assertions.assertFalse(CourseGraph.inReach(o, new BlockPos(0, 0, 6)), "a straight 5-block gap");
+        org.junit.jupiter.api.Assertions.assertTrue(CourseGraph.inReach(o, new BlockPos(0, 1, 4)), "up one over a 3-gap");
+        org.junit.jupiter.api.Assertions.assertFalse(CourseGraph.inReach(o, new BlockPos(0, 1, 5)), "up one over a 4-gap");
+    }
 }

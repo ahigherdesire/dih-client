@@ -10,6 +10,7 @@ import baritone.api.command.exception.CommandInvalidStateException;
 import baritone.api.utils.BetterBlockPos;
 import baritone.parkour.ParkourProcess;
 import baritone.parkour.exec.ParkourExecutor;
+import baritone.parkour.record.CourseRecorder;
 import baritone.parkour.sim.LevelSnapshot;
 import baritone.parkour.sim.PlayerState;
 import baritone.parkour.solve.JumpSolver;
@@ -46,10 +47,36 @@ public class ParkourCommand extends Command {
                     BlockPos target = args.getDatatypePost(RelativeBlockPos.INSTANCE, ctx.playerFeet());
                     solve(target);
                 }
-                default -> throw new CommandInvalidStateException("Unknown: #parkour " + sub + ". Try #parkour, #parkour goto x y z, #parkour stop.");
+                case "record" -> record(args);
+                default -> throw new CommandInvalidStateException("Unknown: #parkour " + sub + ". Try #parkour, #parkour goto x y z, #parkour stop, #parkour record.");
             }
         } catch (IllegalArgumentException e) {
             throw new CommandInvalidStateException(e.getMessage());
+        }
+    }
+
+    /** {@code #parkour record start|save <name>|status|stop}: copy a course out of this world to a file. */
+    private void record(IArgConsumer args) throws CommandException {
+        String what = args.hasAny() ? args.getString().toLowerCase(Locale.ROOT) : "status";
+        switch (what) {
+            case "start" -> {
+                if (ctx.player() == null) throw new IllegalArgumentException("Join a world first.");
+                logDirect(CourseRecorder.start(ctx.player(), ctx.world()));
+            }
+            case "save" -> {
+                args.requireMin(1);
+                String name = args.getString();
+                try {
+                    logDirect(CourseRecorder.save(name));
+                } catch (java.io.IOException e) {
+                    throw new CommandInvalidStateException("Couldn't save the course: " + e.getMessage());
+                } catch (IllegalStateException e) {
+                    throw new CommandInvalidStateException(e.getMessage());
+                }
+            }
+            case "stop" -> logDirect(CourseRecorder.stop());
+            case "status" -> logDirect(CourseRecorder.status());
+            default -> throw new CommandInvalidStateException("Try #parkour record start, #parkour record save <name>, #parkour record stop.");
         }
     }
 
@@ -72,7 +99,12 @@ public class ParkourCommand extends Command {
     public Stream<String> tabComplete(String label, IArgConsumer args) throws CommandException {
         if (args.hasExactlyOne()) {
             String prefix = args.peekString();
-            return Stream.of("goto", "solve", "stop", "status").filter(s -> s.startsWith(prefix));
+            return Stream.of("goto", "solve", "stop", "status", "record").filter(s -> s.startsWith(prefix));
+        }
+        if (args.has(2) && args.peekString().equalsIgnoreCase("record")) {
+            args.get();
+            String prefix = args.peekString();
+            return Stream.of("start", "save", "status", "stop").filter(s -> s.startsWith(prefix));
         }
         if (args.hasAny() && (args.peekString().equalsIgnoreCase("goto") || args.peekString().equalsIgnoreCase("solve"))) {
             args.get();
@@ -98,6 +130,8 @@ public class ParkourCommand extends Command {
             "> parkour goto <x> <y> <z> - Jump your way to that block.",
             "> parkour solve <x> <y> <z> - Solve one jump onto that block and say how, without moving.",
             "> parkour status - What it is doing.",
+            "> parkour record start - Start copying the course you're on to a file; run it to the end.",
+            "> parkour record save <name> - Save it to dih/parkour-courses/<name>.nbt (a structure file).",
             "> parkour stop - Stop (so do #stop and #cancel)."
         );
     }

@@ -67,6 +67,28 @@ public final class CourseFollower {
     }
 
     /**
+     * With nothing to jump to: the block of the platform underfoot furthest on along the course's heading, at least
+     * {@code min} blocks on from {@code here}, or null. Walking there brings what comes next into reach, or makes a
+     * course that builds itself as the player goes build the next part.
+     */
+    public BlockPos furthestAlong(BlockPos here, double min) {
+        List<BlockPos> platform = graph.platform(here, graph.spots(here, RADIUS, 6, 4), 256);
+        BlockPos best = null;
+        double bestAlong = min;
+        for (BlockPos p : platform) {
+            double along = (p.getX() - here.getX()) * headingX + (p.getZ() - here.getZ()) * headingZ;
+            double side = Math.abs((p.getX() - here.getX()) * headingZ - (p.getZ() - here.getZ()) * headingX);
+            // Straight on beats a little further but off to the side.
+            double score = along - 0.5 * side;
+            if (score > bestAlong) {
+                bestAlong = score;
+                best = p;
+            }
+        }
+        return best;
+    }
+
+    /**
      * The spot {@link #next} will pick once the player lands on {@code to} from where it is now, without changing
      * anything: for solving the jump after next while this one is in the air.
      */
@@ -85,6 +107,11 @@ public final class CourseFollower {
         seen.add(to);
         seen.addAll(platform);
         return graph.next(to, platform, hx, hz, seen, spots);
+    }
+
+    /** Where the last {@link #next} pick is jumped from: the nearest block of the platform that reaches it. */
+    public BlockPos launch() {
+        return graph.lastLaunch();
     }
 
     /** The jump from {@code from} to {@code to} can't be made, from there or anywhere else on that platform. */

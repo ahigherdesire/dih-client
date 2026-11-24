@@ -50,10 +50,28 @@ public final class JumpChain {
 
     /** The jump on to {@code next} from where {@code plan} touches down on {@code landing}, or null. */
     public static Link link(BlockSource world, PlayerState start, List<TickInput> plan, BlockPos landing, BlockPos next, JumpSolver.Limits limits) {
+        return link(world, start, plan, landing, next, null, limits);
+    }
+
+    /** How hard the look at the jump after next is: a quick check, made for every landing the search considers. */
+    public static final JumpSolver.Limits LOOK_AHEAD = new JumpSolver.Limits(25_000, 40_000_000L, 70, false);
+
+    /**
+     * The jump on to {@code next} from where {@code plan} touches down on {@code landing}, landing so the jump on to
+     * {@code then} can be made straight on from its touchdown too (looking a jump further ahead keeps the run going
+     * instead of stopping on {@code next}). Without such a landing, any landing on {@code next}. Null if there's none.
+     */
+    public static Link link(BlockSource world, PlayerState start, List<TickInput> plan, BlockPos landing, BlockPos next, BlockPos then,
+                            JumpSolver.Limits limits) {
         if (next == null) return null;
         Touchdown at = touchdown(world, start, plan, landing);
         if (at == null) return null;
-        JumpSolver.Result result = JumpSolver.solve(world, at.state(), next, limits);
+        JumpSolver.Result result = null;
+        if (then != null) {
+            result = JumpSolver.solve(world, at.state(), next, limits,
+                touch -> JumpSolver.solve(world, touch, then, LOOK_AHEAD) instanceof JumpSolver.Found);
+        }
+        if (!(result instanceof JumpSolver.Found)) result = JumpSolver.solve(world, at.state(), next, limits);
         return result instanceof JumpSolver.Found found ? new Link(at.index(), at.state(), found.inputs(), next) : null;
     }
 

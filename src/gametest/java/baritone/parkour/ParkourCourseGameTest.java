@@ -21,7 +21,15 @@ import java.util.Locale;
 @SuppressWarnings("UnstableApiUsage")
 public final class ParkourCourseGameTest implements FabricClientGameTest {
     private static final String TAG = "[ParkourCourseGameTest] ";
-    private static final int RUNS = Integer.getInteger("dih.parkourRuns", 10);
+    private static final int RUNS = Integer.getInteger("dih.parkourRuns", envInt("DIH_PARKOUR_RUNS", 10));
+
+    private static int envInt(String name, int fallback) {
+        try {
+            return Integer.parseInt(System.getenv(name));
+        } catch (RuntimeException e) {
+            return fallback;
+        }
+    }
     private static final int BASE_Y = 140;
 
     /**
@@ -48,6 +56,20 @@ public final class ParkourCourseGameTest implements FabricClientGameTest {
         static Hop neo() {
             return new Hop(0, 0, 6, "minecraft:stone", List.of("0 0 -1 minecraft:stone", "0 1 -1 minecraft:stone",
                 "0 2 -1 minecraft:stone", "0 3 -1 minecraft:stone"));
+        }
+
+        /**
+         * A triple neo with head-hitter momentum: a nine-block run-up strip, a two-high ceiling over its first seven,
+         * then a one-wide wall three deep and four high straight ahead, the landing right behind it.
+         */
+        static Hop tripleNeo() {
+            List<String> extras = new ArrayList<>();
+            for (int z = -12; z <= -4; z++) extras.add("0 0 " + z + " minecraft:stone");
+            for (int z = -12; z <= -6; z++) extras.add("0 3 " + z + " minecraft:stone");
+            for (int z = -3; z <= -1; z++) {
+                for (int y = 0; y <= 3; y++) extras.add("0 " + y + " " + z + " minecraft:stone");
+            }
+            return new Hop(0, 0, 13, "minecraft:stone", extras);
         }
 
         /** A ladder jump: across a one-block gap onto a ladder up a wall's near face, landing on the wall's top. */
@@ -78,13 +100,14 @@ public final class ParkourCourseGameTest implements FabricClientGameTest {
             Hop.of(0, 0, 4), Hop.of(0, 1, 3), Hop.of(0, 0, 4), new Hop(0, 0, 3, "minecraft:oak_fence"), Hop.of(0, -2, 4),
             Hop.of(3, 0, 3), Hop.of(0, 1, 3), new Hop(0, 0, 3, "minecraft:glass_pane"), Hop.of(0, 0, 4), Hop.of(-3, 0, 3),
             Hop.of(0, 1, 3), new Hop(0, 0, 4, "minecraft:gold_block")), 9));
+        out.add(new Course("tier-4 triple neo", 4, List.of(Hop.tripleNeo(), new Hop(0, 0, 3, "minecraft:gold_block")), 1));
         return out;
     }
 
     @Override
     public void runTest(ClientGameTestContext context) {
         context.runOnClient(client -> DihConfig.getGlobal().customMainMenu = false);
-        String tiers = System.getProperty("dih.parkourTiers", "1,2,3");
+        String tiers = System.getProperty("dih.parkourTiers", System.getenv().getOrDefault("DIH_PARKOUR_TIERS", "1,2,3"));
         List<String> failures = new ArrayList<>();
         try (TestSingleplayerContext world = context.worldBuilder().create()) {
             context.waitFor(client -> client.player != null && client.level != null);
@@ -102,7 +125,9 @@ public final class ParkourCourseGameTest implements FabricClientGameTest {
                 int passed = 0;
                 List<String> runs = new ArrayList<>();
                 for (int run = 0; run < RUNS; run++) {
-                    String result = once(context, world, origin, finish);
+                    // The first run of the triple neo is filmed (third person, every tick of every jump).
+                    String film = course.tier() == 4 && run == 0 ? "triple-neo" : null;
+                    String result = once(context, world, origin, finish, film);
                     runs.add(result);
                     if (result.startsWith("finished")) passed++;
                 }
@@ -116,7 +141,7 @@ public final class ParkourCourseGameTest implements FabricClientGameTest {
     }
 
     /** Builds the course in the air from {@code origin} and returns the finish block. */
-    private static BlockPos build(TestSingleplayerContext world, Course course, BlockPos origin) {
+    static BlockPos build(TestSingleplayerContext world, Course course, BlockPos origin) {
         world.getServer().runCommand("/forceload add " + (origin.getX() - 32) + " -16 " + (origin.getX() + 32) + " 96");
         world.getServer().runCommand("/fill " + (origin.getX() - 1) + " " + (origin.getY() - 1) + " " + (origin.getZ() - 4) + " "
             + (origin.getX() + 1) + " " + (origin.getY() - 1) + " " + origin.getZ() + " minecraft:stone");
@@ -134,18 +159,35 @@ public final class ParkourCourseGameTest implements FabricClientGameTest {
     }
 
     /** One run from the start platform: "finished <s> <falls>" or why not. */
-    private static String once(ClientGameTestContext context, TestSingleplayerContext world, BlockPos origin, BlockPos finish) {
+    private static String once(ClientGameTestContext context, TestSingleplayerContext world, BlockPos origin, BlockPos finish, String film) {
         world.getServer().runCommand("/tp @a " + (origin.getX() + 0.5) + " " + origin.getY() + " " + (origin.getZ() - 1.5) + " 0 0");
         context.waitTicks(5);
         context.waitFor(client -> client.player.onGround(), 60);
         context.waitTicks(5);
         long t0 = System.currentTimeMillis();
         context.runOnClient(client -> process().follow());
-        try {
-            context.waitFor(client -> !process().running() || client.player.getY() < origin.getY() - 12, 20 * 180);
-        } catch (RuntimeException | AssertionError e) {
-            context.runOnClient(client -> process().stop());
-            return "timed out";
+        if (film != null) {
+            context.runOnClient(client -> client.options.setCameraType(net.minecraft.client.CameraType.THIRD_PERSON_BACK));
+            int frame = 0;
+            boolean done = false;
+            for (int t = 0; t < 20 * 180 && !done; t++) {
+                context.waitTick();
+                done = context.computeOnClient(client -> !process().running() || client.player.getY() < origin.getY() - 12);
+                boolean jumping = context.computeOnClient(client -> process().status().contains("jumping to"));
+                if ((jumping || done) && frame < 600) context.takeScreenshot(String.format(Locale.ROOT, "%s-%03d", film, frame++));
+            }
+            context.runOnClient(client -> client.options.setCameraType(net.minecraft.client.CameraType.FIRST_PERSON));
+            if (!done) {
+                context.runOnClient(client -> process().stop());
+                return "timed out";
+            }
+        } else {
+            try {
+                context.waitFor(client -> !process().running() || client.player.getY() < origin.getY() - 12, 20 * 180);
+            } catch (RuntimeException | AssertionError e) {
+                context.runOnClient(client -> process().stop());
+                return "timed out";
+            }
         }
         double seconds = (System.currentTimeMillis() - t0) / 1000.0;
         return context.computeOnClient(client -> {

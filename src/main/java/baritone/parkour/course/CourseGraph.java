@@ -78,12 +78,25 @@ public final class CourseGraph {
         return out;
     }
 
+    /**
+     * The longest jump, as distance flown between the two blocks' near edges (the player can overhang each by 0.3), by
+     * height change (index = dy + 4, dy from -4 to +1): the Minecraft Parkour Wiki's "Longest Jumps" table, per tier.
+     * Measured edge to edge, a 4x4 diagonal (a 3x3 gap) is a shorter jump than a straight 5-block gap.
+     */
+    static final double[] MAX_FLIGHT = {5.89, 5.58, 5.27, 4.96, 4.33, 3.36};
+
     public static boolean inReach(BlockPos from, BlockPos to) {
         int dy = to.getY() - from.getY();
         if (dy > 1 || dy < -4) return false;
-        double dx = to.getX() - from.getX(), dz = to.getZ() - from.getZ();
-        double distance = Math.sqrt(dx * dx + dz * dz);
-        return distance > 0.0 && distance <= REACH[dy + 4];
+        int dx = Math.abs(to.getX() - from.getX()), dz = Math.abs(to.getZ() - from.getZ());
+        if (dx == 0 && dz == 0) return false;
+        return flight(dx, dz) <= MAX_FLIGHT[dy + 4];
+    }
+
+    /** The wiki's jump distance between blocks {@code dx} and {@code dz} apart (centre to centre): the gap less 0.6 each way. */
+    static double flight(int dx, int dz) {
+        double fx = Math.max(0.0, dx - 1.6), fz = Math.max(0.0, dz - 1.6);
+        return Math.sqrt(fx * fx + fz * fz);
     }
 
     public void markInfeasible(BlockPos from, BlockPos to) {
@@ -176,6 +189,7 @@ public final class CourseGraph {
      */
     public BlockPos next(BlockPos from, List<BlockPos> launch, double headingX, double headingZ, Set<BlockPos> visited, List<BlockPos> spots) {
         BlockPos best = null;
+        BlockPos bestOrigin = null;
         double bestScore = -Double.MAX_VALUE;
         for (BlockPos spot : spots) {
             if (visited.contains(spot)) continue;
@@ -193,8 +207,12 @@ public final class CourseGraph {
             double dx = spot.getX() - origin.getX(), dz = spot.getZ() - origin.getZ();
             double distance = Math.sqrt(dx * dx + dz * dz);
             double along = (dx * headingX + dz * headingZ) / distance;
-            // Courses turn, but never double back: anything behind is where the player came from, or scenery.
+            // Courses turn, but never double back: anything behind is where the player came from, or scenery. Behind
+            // the player, that is, not just behind the launch block: a platform can reach back a long way (a lobby
+            // floor), and scenery near its far end is "ahead" of that end.
             if ((headingX != 0.0 || headingZ != 0.0) && along < -0.3) continue;
+            double fx = spot.getX() - from.getX(), fz = spot.getZ() - from.getZ(), fd = Math.sqrt(fx * fx + fz * fz);
+            if ((headingX != 0.0 || headingZ != 0.0) && fd > 0.0 && (fx * headingX + fz * headingZ) / fd < -0.3) continue;
             int dy = spot.getY() - origin.getY();
             if (dy < 0 && isGround(spot, spots)) continue;
             // The nearest spot that carries on: courses are made to be done jump by jump.
@@ -203,9 +221,18 @@ public final class CourseGraph {
             if (score > bestScore) {
                 bestScore = score;
                 best = spot;
+                bestOrigin = origin;
             }
         }
+        lastLaunch = bestOrigin;
         return best;
+    }
+
+    /** The block of the launch platform the last {@link #next} measured its pick from: where to jump from. */
+    private BlockPos lastLaunch;
+
+    public BlockPos lastLaunch() {
+        return lastLaunch;
     }
 
     /** The spots joined to {@code at} at its height (4-connected), at most {@code max}: the platform it's part of. */
@@ -233,6 +260,11 @@ public final class CourseGraph {
     /** Whether {@code spot} is part of a wide area of spots at its height: the ground, not a course block. */
     boolean isGround(BlockPos spot, List<BlockPos> spots) {
         return platform(spot, spots, GROUND_SIZE + 1).size() > GROUND_SIZE;
+    }
+
+    /** Whether {@code spot} looks like a checkpoint or finish: the block, or a plate on it. */
+    public boolean onCheckpoint(BlockPos spot) {
+        return isCheckpoint(world.get(spot)) || isCheckpoint(world.get(spot.above()));
     }
 
     static boolean isCheckpoint(BlockState state) {

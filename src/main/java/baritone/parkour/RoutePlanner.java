@@ -48,6 +48,10 @@ final class RoutePlanner {
     }
 
     private final ConcurrentLinkedDeque<Leg> ahead = new ConcurrentLinkedDeque<>();
+    /** The spot after the last planned one, picked already (to plan that one with it in view). */
+    private BlockPos upcoming;
+    /** Set when the spot after next couldn't be picked yet (the course ended, or it's past the loaded chunks). */
+    private boolean thenUnknown;
     private volatile boolean cancelled;
     private volatile String stoppedBecause = "";
     private Future<?> task;
@@ -74,12 +78,17 @@ final class RoutePlanner {
                     continue;
                 }
                 BlockSource world = LevelSnapshot.around(level, target, RADIUS, 8, 8);
-                BlockPos next = chooser.after(target, world);
+                // The spots are picked in order, each once; the one after next is kept for the next round.
+                BlockPos next = upcoming != null ? upcoming : chooser.after(target, world);
+                upcoming = null;
                 if (next == null) {
                     stoppedBecause = "the course ends at " + target.toShortString();
                     return;
                 }
-                JumpChain.Link link = JumpChain.link(world, from, plan, target, next, JumpChain.LIMITS);
+                BlockPos then = loaded(level, next) ? chooser.after(next, LevelSnapshot.around(level, next, RADIUS, 8, 8)) : null;
+                upcoming = then;
+                if (then == null) thenUnknown = true;
+                JumpChain.Link link = JumpChain.link(world, from, plan, target, next, then, JumpChain.LIMITS);
                 if (link == null) {
                     stoppedBecause = "no jump without stopping from " + target.toShortString() + " to " + next.toShortString();
                     return;

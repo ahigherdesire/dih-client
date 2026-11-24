@@ -41,14 +41,19 @@ final class CourseFollowTest {
     }
 
     /** What a follow run did. */
-    record Run(boolean finished, List<BlockPos> targets, String end, float worstTurn, int backwardTicks, int ticks, int stops) {
+    record Run(boolean finished, List<BlockPos> targets, String end, float worstTurn, int backwardTicks, int ticks, int stops,
+               int reversals, float turned, int keyChanges) {
         @Override
         public String toString() {
-            return String.format(Locale.ROOT, "%s after %d jumps, %d ticks, %d stops (%s); worst per-tick turn %.0f deg; %d ticks facing >100 deg off the movement; targets %s",
-                finished ? "finished" : "NOT finished", targets.size(), ticks, stops, end, worstTurn, backwardTicks,
+            return String.format(Locale.ROOT, "%s after %d jumps, %d ticks, %d stops (%s); worst per-tick turn %.0f deg; %d ticks facing >100 deg off the movement; "
+                    + "jitter: %d turn reversals, %.0f deg turned, %d key changes; targets %s",
+                finished ? "finished" : "NOT finished", targets.size(), ticks, stops, end, worstTurn, backwardTicks, reversals, turned, keyChanges,
                 targets.stream().map(BlockPos::toShortString).toList());
         }
     }
+
+    /** Print every turn of the camera (debugging jitter). */
+    static boolean TRACE = Boolean.getBoolean("dih.traceTurns");
 
     /** The inputs played and how the camera moved, across a whole run. */
     private static final class Tape {
@@ -57,6 +62,12 @@ final class CourseFollowTest {
         float worstTurn;
         int backward;
         int ticks;
+        /** Ticks where the camera turned one way (over 1 degree) right after turning the other: the "jiggle". */
+        int reversals;
+        float turned;
+        float lastTurn;
+        int keyChanges;
+        String lastKeys = "";
 
         Tape(PlayerState start) {
             s = start;
@@ -65,7 +76,16 @@ final class CourseFollowTest {
 
         void play(BlockSource world, List<TickInput> inputs) {
             for (TickInput in : inputs) {
-                worstTurn = Math.max(worstTurn, Math.abs(net.minecraft.util.Mth.wrapDegrees(in.yaw() - lastYaw)));
+                float turn = net.minecraft.util.Mth.wrapDegrees(in.yaw() - lastYaw);
+                worstTurn = Math.max(worstTurn, Math.abs(turn));
+                turned += Math.abs(turn);
+                if (Math.abs(turn) > 1.0F && Math.abs(lastTurn) > 1.0F && Math.signum(turn) != Math.signum(lastTurn)) reversals++;
+                if (Math.abs(turn) > 1.0F) lastTurn = turn;
+                if (TRACE && Math.abs(turn) > 1.0F) System.out.printf(Locale.ROOT, "  tick %d turn %.1f -> yaw %.1f keys %s ground %b v=(%.3f, %.3f)%n",
+                    ticks, turn, in.yaw(), in.compact(), s.onGround, s.vx, s.vz);
+                String keys = (in.forward() ? "W" : "") + (in.left() ? "A" : "") + (in.back() ? "S" : "") + (in.right() ? "D" : "");
+                if (!keys.equals(lastKeys)) keyChanges++;
+                lastKeys = keys;
                 lastYaw = in.yaw();
                 double speed = Math.sqrt(s.vx * s.vx + s.vz * s.vz);
                 if (speed > 0.05) {
@@ -77,6 +97,9 @@ final class CourseFollowTest {
             }
         }
     }
+
+    /** Whether chained jumps are planned with the jump after them in view (off: the old one-jump-at-a-time picks). */
+    static boolean LOOK_AHEAD = true;
 
     static Run follow(BlockSource.MapSource world, PlayerState start, BlockPos finish) {
         return follow(world, start, finish, false);
@@ -115,7 +138,20 @@ final class CourseFollowTest {
                 plan = found.inputs();
             }
             targets.add(next);
-            link = chain ? JumpChain.link(world, s, plan, next, follower.peekAfter(next), JumpChain.LIMITS) : null;
+            if (chain) {
+                // The spot after the next one, as the follower will pick it: for landing so that jump can be made too.
+                CourseFollower ahead = follower.copy();
+                ahead.landed(next);
+                BlockPos after = ahead.next(next);
+                BlockPos then = null;
+                if (after != null) {
+                    ahead.landed(after);
+                    then = ahead.next(after);
+                }
+                link = JumpChain.link(world, s, plan, next, after, LOOK_AHEAD ? then : null, JumpChain.LIMITS);
+            } else {
+                link = null;
+            }
             if (link != null) {
                 tape.play(world, plan.subList(0, link.index()));
                 assertTrue(JumpChain.matches(tape.s, link.from()), "replay drifted from the link");
@@ -131,7 +167,7 @@ final class CourseFollowTest {
     }
 
     private static Run run(boolean finished, List<BlockPos> targets, String end, Tape tape, int stops) {
-        return new Run(finished, targets, end, tape.worstTurn, tape.backward, tape.ticks, stops);
+        return new Run(finished, targets, end, tape.worstTurn, tape.backward, tape.ticks, stops, tape.reversals, tape.turned, tape.keyChanges);
     }
 
     /** Finished on the gold block, never facing back against the movement, no turn past the solver's limit in a tick. */
@@ -158,6 +194,57 @@ final class CourseFollowTest {
     /** A start platform 3 wide along -z behind (x, y, z). */
     private static BlockSource.MapSource platform(int x, int y, int z) {
         return new BlockSource.MapSource().fill(x - 1, y, z - 3, x + 1, y, z, STONE);
+    }
+
+    /**
+     * Lone blocks zigzagging left and right of a line, three apart: every landing has to set up a jump off to the other
+     * side. Planned one jump at a time, a landing that's fine for itself can leave the next jump impossible without a
+     * stop; planned with the next jump in view, it shouldn't.
+     */
+    @Test
+    void zigzagOfLoneBlocks() {
+        BlockSource.MapSource w = platform(0, 0, 0);
+        int x = 0;
+        for (int i = 1; i <= 8; i++) {
+            x = i % 2 == 0 ? 0 : 2;
+            w.set(x, 0, 3 * i, i == 8 ? GOLD : STONE);
+        }
+        BlockPos finish = new BlockPos(x, 0, 24);
+        LOOK_AHEAD = false;
+        Run oneAtATime;
+        try {
+            oneAtATime = follow(w, startOn(0, 0, -1, 0.0F), finish, true);
+        } finally {
+            LOOK_AHEAD = true;
+        }
+        Run lookingAhead = follow(w, startOn(0, 0, -1, 0.0F), finish, true);
+        System.out.println("zigzag one at a time: " + oneAtATime);
+        System.out.println("zigzag looking ahead: " + lookingAhead);
+        check("zigzag looking ahead", lookingAhead);
+        assertTrue(lookingAhead.stops() <= oneAtATime.stops(), "looking ahead stopped more: " + lookingAhead + " vs " + oneAtATime);
+    }
+
+    /**
+     * Long straight jumps (4-block gaps, arriving fast) onto lone blocks, each followed by a sharp turn off to the side:
+     * arriving at full speed leaves no room to turn, so the landing has to be planned with the turn in view.
+     */
+    @Test
+    void fastArrivalsThenSharpTurns() {
+        BlockSource.MapSource w = platform(0, 0, 0);
+        w.set(0, 0, 5, STONE).set(3, 0, 5, STONE).set(3, 0, 10, STONE).set(0, 0, 10, STONE).set(0, 0, 15, STONE).set(3, 0, 15, GOLD);
+        BlockPos finish = new BlockPos(3, 0, 15);
+        LOOK_AHEAD = false;
+        Run oneAtATime;
+        try {
+            oneAtATime = follow(w, startOn(0, 0, -1, 0.0F), finish, true);
+        } finally {
+            LOOK_AHEAD = true;
+        }
+        Run lookingAhead = follow(w, startOn(0, 0, -1, 0.0F), finish, true);
+        System.out.println("fast then turn, one at a time: " + oneAtATime);
+        System.out.println("fast then turn, looking ahead: " + lookingAhead);
+        check("fast then turn looking ahead", lookingAhead);
+        assertTrue(lookingAhead.stops() <= oneAtATime.stops(), "looking ahead stopped more: " + lookingAhead + " vs " + oneAtATime);
     }
 
     @Test
