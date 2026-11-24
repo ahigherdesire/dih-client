@@ -279,6 +279,7 @@
     "security.DihProtectorClientCommonNetworkHandlerMixin",
     "security.DihProtectorDownloadedPackSourceMixin",
     "security.DihProtectorChatSigningMixin",
+    "security.DihTrueTypeFontGuardMixin",
     "compat.DihFlashbackConnectionMixin",
     "compat.DihReplayModGuiHandlerMixin",
     "compat.DihReplayStudioTeamMixin",
