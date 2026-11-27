@@ -10,7 +10,7 @@ This client is built around speed, control, and not pretending that users are to
 
 ## Install
 
-1. Install [Fabric Loader](https://fabricmc.net/use/installer/) 0.19.3+ for Minecraft 26.2 and [Fabric API](https://modrinth.com/mod/fabric-api). Java 25 is required.
+1. Install [Fabric Loader](https://fabricmc.net/use/installer/) 0.19.5+ for Minecraft 26.2 and [Fabric API](https://modrinth.com/mod/fabric-api). Java 25 is required.
 2. Put `DIH-Client-<version>-26.2.jar` in `.minecraft/mods`.
 3. Launch. `R.Shift` opens the module manager. All native and automation commands use the default `.` chat prefix: `.commands [search]` discovers commands and `.help <command>` shows detailed usage.
 

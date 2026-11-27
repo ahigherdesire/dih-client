@@ -1,6 +1,6 @@
 # DIH Client — Instruction Manual
 
-> Version **5.0** · Minecraft **26.2** · Fabric Loader **0.19.3** · Java **25+**
+> Version **5.0** · Minecraft **26.2** · Fabric Loader **0.19.5** · Java **25+**
 > A packet / macro / duping toolkit for players who want direct control over what the server actually receives.
 
 This manual is split into two halves:
@@ -15,7 +15,7 @@ This manual is split into two halves:
 DIH is a standard Fabric client mod.
 
 **To run a release build:**
-1. Install Fabric Loader `0.19.3+` for Minecraft `26.2` and the Fabric API.
+1. Install Fabric Loader `0.19.5+` for Minecraft `26.2` and the Fabric API.
 2. Drop the `DIH Client-*.jar` into your `.minecraft/mods/` folder.
 3. Launch the Fabric profile.
 
